@@ -18,7 +18,7 @@ const HUB_ROOMS = [
 function openStation(kind) {
   mouse.down = false; game.clicks = [];   // o clique seguinte só vale para o que for desenhado depois
   if (kind === "exit") { leaveHouse(); return; }
-  if (kind === "shopc") return; // A loja permanece na arte, mas não é interativa.
+  if (kind === "shopc") { openShop(); return; }
   if (kind === "junk") { game.menu = "junk"; game.jcur = 0; game.jconfirm = null; return; }
   game.menu = kind === "board" ? "missions" : kind;
   game.atBase = true; game.tab = 0; game.cur = 0; game.input = null; game.vside = 0; game.vcur = 0; game.ccur = 0; game.cstat = 0;
@@ -84,7 +84,7 @@ function drawHero(cx, cy, s) {
 }
 
 function drawHubRoom(r) {
-  const hov = r.kind !== "shopc" && mouse.x >= r.x && mouse.x <= r.x + r.w && mouse.y >= r.y && mouse.y <= r.y + r.h;
+  const hov = mouse.x >= r.x && mouse.x <= r.x + r.w && mouse.y >= r.y && mouse.y <= r.y + r.h;
   const { x, y, w, h } = r, wall = 12;
   // sombra e chão
   ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(x + 8, y + 10, w, h);
@@ -144,7 +144,7 @@ function drawHubRoom(r) {
   ctx.restore();
   if (hov) { ctx.fillStyle = "rgba(255,217,106,0.10)"; ctx.fillRect(x, y, w, h); ctx.strokeStyle = "#ffd96a"; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); }
   shadowTxt(r.name, x + w / 2, y + h / 2 + 6, 15, hov ? "#ffe9a8" : "#f0c9a0", "center", true, w - 10);
-  if (r.kind !== "shopc") regClick(x, y, w, h, () => openStation(r.kind));
+  regClick(x, y, w, h, () => openStation(r.kind));
 }
 
 // Arte da base (img/hub.png): uma imagem só com os 9 painéis numa grade 3x3, na mesma ordem de HUB_ROOMS
@@ -169,7 +169,7 @@ function drawHubArt() {
       ctx.fillStyle = "rgba(255,217,106,0.10)"; ctx.fillRect(rx, ry, rW, rH);
       ctx.strokeStyle = "#ffd96a"; ctx.lineWidth = 2; ctx.strokeRect(rx + 1, ry + 1, rW - 2, rH - 2);
     }
-    if (r.kind !== "shopc") regClick(rx, ry, rW, rH, () => openStation(r.kind));
+    regClick(rx, ry, rW, rH, () => openStation(r.kind));
   });
   return true;
 }
@@ -201,11 +201,11 @@ function drawHub() {
   const px = 8, pw = 248;
   ctx.fillStyle = "#14130f"; rr(px, 44, pw, H - 52, 8); ctx.fill();
   ctx.strokeStyle = "#5a4a2a"; ctx.lineWidth = 2; ctx.stroke();
-  const links = [["Mochila e equipamento", "pack"], ["Atributos", "stats"], ["Objetivos", "obj"], ["Mapa", "map"]];
+  const links = [["Mochila e equipamento", "pack"], ["Atributos", "stats"], ["Objetivos", "obj"], ["Mapa", "map"], ["Loja de Créditos", "creditshop"]];
   links.forEach(([label, m], i) => {
     const ly = 64 + i * 17, hov = mouse.x >= px + 10 && mouse.x <= px + 180 && mouse.y >= ly - 12 && mouse.y <= ly + 4;
     txt(label, px + 12, ly, 12, hov ? "#ffd96a" : "#f2eedc", "left", true);
-    regClick(px + 10, ly - 12, 170, 16, () => { game.menu = m; game.cur = 0; if (m === "map") game.mapSel = { cx: world.cell.cx, cy: world.cell.cy }; if (m === "obj") game.oscroll = 0; });
+    regClick(px + 10, ly - 12, 170, 16, () => { game.menu = m; game.cur = 0; if (m === "creditshop") { game.creditCur = 0; game.creditConfirm = null; } if (m === "map") game.mapSel = { cx: world.cell.cx, cy: world.cell.cy }; if (m === "obj") game.oscroll = 0; });
   });
   const skin = SKINS[save.skin] || SKINS[0];
   txt(playerName(), px + pw - 10, 64, 12, "#ffd96a", "right", true, 120);
