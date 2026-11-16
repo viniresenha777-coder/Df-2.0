@@ -377,11 +377,16 @@ function drawWeaponSide(d, cx, cy, s) {
   ctx.restore();
 }
 // Ícone oficial da Trindade (três seringas), carregado uma única vez.
+const RESET_CARD_ART = new Image();
+RESET_CARD_ART.src = "img/fm_reset_card.webp?v=20261116-reset-final";
 const TRINDADE_ICON = new Image();
 TRINDADE_ICON.src = "img/trindade_icon.webp?v=20261116-highres1";
 function drawMatIcon(id, cx, cy, s) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
-  if (id === "trindade_eterna") {
+  if (id === "reset_stats" && RESET_CARD_ART.complete && RESET_CARD_ART.naturalWidth) {
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(RESET_CARD_ART, -31, -23, 62, 46);
+  } else if (id === "trindade_eterna") {
     if (TRINDADE_ICON.complete && TRINDADE_ICON.naturalWidth > 0) {
       // Mantém a proporção e a transparência nas células da mochila e na loja.
       ctx.drawImage(TRINDADE_ICON, -30, -30, 60, 60);
