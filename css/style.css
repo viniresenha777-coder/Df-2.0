@@ -34,3 +34,6 @@ canvas {
 /* VIP exibido no rodapé da página, fora da área canvas do jogo. */
 .vip-footer { display: inline-block; margin-left: 12px; padding: 2px 9px; border: 1px solid #7b642e; border-radius: 4px; color: #f0d88a; white-space: nowrap; font-weight: bold; background: rgba(40,32,13,.5); }
 .vip-footer.inactive { border-color: #4a4b43; color: #a9a58f; background: transparent; }
+
+.trindade-footer { display:inline-block; margin-left:8px; padding:2px 8px; border:1px solid #c7a15b; border-radius:4px; color:#f2d88a; font-weight:bold; background:rgba(40,32,13,.5); }
+.trindade-footer[hidden] { display:none; }
