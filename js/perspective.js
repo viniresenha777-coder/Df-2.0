@@ -36,23 +36,96 @@ function drawBuildingGround(b) {
   drawDoor(b);
 }
 
-// parede entre dois cantos do chão, com janelas por andar
+// Parede projetada: reboco gasto, cantoneiras, caixilhos, vidro e tábuas.
+// A geometria continua a mesma (não altera hitboxes nem portas).
 function drawWall(b, ax, ay, bx, by, h, e, tone) {
   const p0 = proj(ax, ay, 0, e), p1 = proj(bx, by, 0, e), p2 = proj(bx, by, h, e), p3 = proj(ax, ay, h, e);
   poly([[p0.x, p0.y], [p1.x, p1.y], [p2.x, p2.y], [p3.x, p3.y]], shade(b.color, tone));
   ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p3.x, p3.y); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+  const house = b.type === "casa";
   const floors = bFloorsVis(b), len = Math.hypot(bx - ax, by - ay), fh = h / (floors + 0.35);
-  const nW = Math.max(1, Math.floor(len / 46)), night = isNight();
+  const nW = Math.max(1, Math.floor(len / (house ? 66 : 46))), night = isNight();
   const at = (t, hh) => proj(ax + (bx - ax) * t, ay + (by - ay) * t, hh, e);
+  if (house) {
+    // Alicerce escuro + molduras nas quinas, contrastando com o reboco.
+    const f0 = at(0, 0), f1 = at(1, 0), f2 = at(1, 8), f3 = at(0, 8);
+    poly([[f0.x, f0.y], [f1.x, f1.y], [f2.x, f2.y], [f3.x, f3.y]], shade(b.color, -0.54));
+    ctx.strokeStyle = "rgba(230,198,151,0.29)"; ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (const t of [0.025, 0.975]) {
+      const a = at(t, 8), c = at(t, h - 3);
+      ctx.moveTo(a.x, a.y); ctx.lineTo(c.x, c.y);
+    }
+    ctx.stroke();
+    // Reboco com juntas e goteiras finas; mantém-se legível em zoom distante.
+    for (let n = 1; n < 6; n++) {
+      const hh = 7 + (h - 14) * n / 6;
+      const a = at(0.02, hh), c = at(0.98, hh);
+      ctx.strokeStyle = n % 2 ? "rgba(20,18,14,0.11)" : "rgba(232,218,183,0.09)";
+      ctx.lineWidth = n % 2 ? 1 : 0.8;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(c.x, c.y); ctx.stroke();
+    }
+    for (let i = 0; i < 9; i++) {
+      const seed = bHash(b, 410 + i), t = 0.04 + 0.90 * seed;
+      const y = 6 + (h - 14) * bHash(b, 460 + i);
+      const a = at(t, y), c = at(t + 0.018, y - (3 + 7 * bHash(b, 490 + i)));
+      ctx.strokeStyle = "rgba(29,25,24,0.14)"; ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(c.x, c.y); ctx.stroke();
+    }
+    // Friso de argamassa logo abaixo dos beirais.
+    const a = at(0, h - 3), c = at(1, h - 3);
+    ctx.strokeStyle = "rgba(14,12,12,0.58)"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(c.x, c.y); ctx.stroke();
+    ctx.strokeStyle = "rgba(218,193,157,0.4)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y - 2); ctx.lineTo(c.x, c.y - 2); ctx.stroke();
+  }
   for (let f = 0; f < floors; f++) {
-    if (f > 0) { const l0 = at(0, f * fh), l1 = at(1, f * fh); ctx.strokeStyle = "rgba(0,0,0,0.22)"; ctx.beginPath(); ctx.moveTo(l0.x, l0.y); ctx.lineTo(l1.x, l1.y); ctx.stroke(); }
+    if (f > 0) {
+      const l0 = at(0, f * fh), l1 = at(1, f * fh);
+      ctx.strokeStyle = "rgba(0,0,0,0.22)";
+      ctx.beginPath(); ctx.moveTo(l0.x, l0.y); ctx.lineTo(l1.x, l1.y); ctx.stroke();
+    }
     const h0 = f * fh + fh * 0.32, h1 = f * fh + fh * 0.78;
     for (let i = 0; i < nW; i++) {
-      const t0 = (i + 0.28) / nW, t1 = (i + 0.72) / nW;
+      const t0 = (i + 0.27) / nW, t1 = (i + 0.73) / nW;
       const q0 = at(t0, h0), q1 = at(t1, h0), q2 = at(t1, h1), q3 = at(t0, h1);
-      const lit = night && bHash(b, f * 31 + i + 7) < 0.22;
-      poly([[q0.x, q0.y], [q1.x, q1.y], [q2.x, q2.y], [q3.x, q3.y]], lit ? "rgba(255,210,120,0.85)" : night ? "rgba(20,26,36,0.9)" : "rgba(40,58,72,0.85)");
+      const lit = night && bHash(b, f * 31 + i + 7) < (house ? 0.30 : 0.22);
+      const pane = lit ? "rgba(251,188,92,0.92)" : night ? "rgba(21,29,39,0.94)" : "rgba(44,65,76,0.88)";
+      if (house) {
+        // Reentrância escura e moldura aparente.
+        ctx.strokeStyle = "rgba(19,17,17,0.78)"; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(q0.x, q0.y); ctx.lineTo(q1.x, q1.y); ctx.lineTo(q2.x, q2.y); ctx.lineTo(q3.x, q3.y); ctx.closePath(); ctx.stroke();
+      }
+      poly([[q0.x, q0.y], [q1.x, q1.y], [q2.x, q2.y], [q3.x, q3.y]], pane);
+      if (house) {
+        const mid = (t0 + t1) / 2, m0 = at(mid, h0), m1 = at(mid, h1);
+        ctx.strokeStyle = "rgba(144,128,107,0.86)"; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(m0.x, m0.y); ctx.lineTo(m1.x, m1.y);
+        const mid0 = at(t0, (h0 + h1) / 2), mid1 = at(t1, (h0 + h1) / 2);
+        ctx.moveTo(mid0.x, mid0.y); ctx.lineTo(mid1.x, mid1.y); ctx.stroke();
+        ctx.strokeStyle = "rgba(202,221,217,0.26)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(q3.x + 2, q3.y + 2); ctx.lineTo(q2.x - 3, q2.y - 3); ctx.stroke();
+        // Peitoril de concreto projeta pequena sombra abaixo da janela.
+        const sill0 = at(t0 - 0.025 / nW, h0 - 2), sill1 = at(t1 + 0.025 / nW, h0 - 2);
+        ctx.strokeStyle = "rgba(18,17,16,0.5)"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(sill0.x, sill0.y + 2); ctx.lineTo(sill1.x, sill1.y + 2); ctx.stroke();
+        ctx.strokeStyle = "rgba(194,182,161,0.75)"; ctx.lineWidth = 1.7;
+        ctx.beginPath(); ctx.moveTo(sill0.x, sill0.y); ctx.lineTo(sill1.x, sill1.y); ctx.stroke();
+        // Algumas janelas estão protegidas com tábuas tortas.
+        if (bHash(b, 130 + f * 37 + i) < 0.17) {
+          ctx.strokeStyle = "rgba(74,52,37,0.97)"; ctx.lineWidth = 4.5;
+          ctx.beginPath(); ctx.moveTo(q0.x - 2, q0.y - 2); ctx.lineTo(q2.x + 2, q2.y + 2); ctx.stroke();
+          ctx.strokeStyle = "rgba(155,112,67,0.8)"; ctx.lineWidth = 1.4;
+          ctx.beginPath(); ctx.moveTo(q0.x - 2, q0.y - 4); ctx.lineTo(q2.x + 2, q2.y); ctx.stroke();
+        } else if (bHash(b, 205 + f * 37 + i) < 0.24) {
+          // Trincas pontuais, mantendo as janelas reconhecíveis.
+          const center = at(mid, (h0 + h1) / 2);
+          ctx.strokeStyle = "rgba(208,228,239,0.5)"; ctx.lineWidth = 0.8;
+          ctx.beginPath(); ctx.moveTo(center.x - 4, center.y - 5); ctx.lineTo(center.x + 2, center.y + 1);
+          ctx.lineTo(center.x - 1, center.y + 6); ctx.stroke();
+        }
+      }
     }
   }
 }
