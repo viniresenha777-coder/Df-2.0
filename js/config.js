@@ -260,14 +260,14 @@ const IMPLANT_RARITY = 0.1;      // multiplica a chance de achar implante no saq
 const BOSS_IMPLANT = 0.15;       // chefes que davam implante garantido: agora só às vezes
 const STAT_KEYS = ["exp", "hunter", "scavenger", "crit", "reload", "endurance", "metabolism", "vigor", "regen", "silence", "firepower", "thick", "greed", "agility", "saver", "implantLoot",
   "rage", "killHeal", "lootSense", "luck", "accImp", "stealthImp", "craftDisc", "critDmg", "leech", "adren",
-  "armorFind", "ammoLoot", "searchSpeed", "miscFind", "lootSpots", "atkSpeed", "deathDefy", "bossRare", "mcChance"];
+  "armorFind", "ammoLoot", "searchSpeed", "miscFind", "lootSpots", "atkSpeed", "deathDefy", "bossRare", "mcChance", "pvpPoints"];
 const FX_LABEL = {
   exp: "experiência", firepower: "dano causado", agility: "velocidade", thick: "redução do dano recebido",
   hunter: "chance de achar armas", armorFind: "chance de achar coletes", ammoLoot: "munição achada", greed: "dinheiro achado",
   searchSpeed: "velocidade de busca", miscFind: "chance de achar materiais", luck: "chance de itens raros",
   lootSpots: "lugares com saque", scavenger: "chance de achar suprimentos", deathDefy: "chance de sobreviver a um golpe fatal",
   bossRare: "chance de itens raros nos chefes", implantLoot: "chance de achar implantes",
-  mcChance: "chance de arma com melhorias", atkSpeed: "velocidade de ataque"
+  mcChance: "chance de arma com melhorias", atkSpeed: "velocidade de ataque", pvpPoints: "pontos PvP"
 };
 const IMP = {
   "implante_01": {"name":"Urso de Ferro","price":1000,"scrap":29000,"kind":0,"fx":{"thick":10},"flag":"jugger","text":"Força Imparável: imune a atordoamento, agarrões e lentidão; massa +500%; derruba infectados comuns ao correr; redução total limitada a 80%."},
