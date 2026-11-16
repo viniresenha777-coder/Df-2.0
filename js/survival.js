@@ -9,7 +9,7 @@
 const PROFS = [
   { id: "atleta",    name: "Atleta",    buff: ["+10% de velocidade de corrida"], debuff: [], sprint: 0.10 },
   { id: "militar",   name: "Militar",   buff: ["+20 pontos em Machinegun", "+10 pontos em Precisão de mira"], debuff: ["+15% de energia gasta ao correr"], attrs: { machinegun: 20, acc: 10 }, stamina: 0.15 },
-  { id: "medico",    name: "Médico",    buff: ["Kits médicos curam 50% a mais", "A infecção sobe 30% mais devagar"], debuff: [], med: 0.5, infect: -0.3 },
+  { id: "medico",    name: "Médico",    buff: ["Kits médicos curam 50% a mais", "Proteção contra infecção (quando ativada)"], debuff: [], med: 0.5, infect: -0.3 },
   { id: "atirador",  name: "Atirador",  buff: ["+15 pontos em Rifles", "+5 pontos em Precisão de mira"], debuff: ["-5% de velocidade"], attrs: { rifles: 15, acc: 5 }, fx: { agility: -5 } },
   { id: "lutador",   name: "Lutador",   buff: ["+20 pontos em Melee", "+10 pontos em Força"], debuff: [], attrs: { melee: 20, str: 10 } },
   { id: "catador",   name: "Catador",   buff: ["+15% de chance de munição e suprimentos"], debuff: ["-10 de vida máxima"], fx: { scavenger: 15, vigor: -10 } },
@@ -54,18 +54,22 @@ function drawProf() {
   txt("Clique para escolher e clique de novo para confirmar · ou setas + Enter", W / 2, H - 22, 13, "#a9a58f", "center");
 }
 
-// ---------- Infecção ----------
+// ---------- Infecção (desativada temporariamente, reversível por uma flag) ----------
+const INFECTION_ENABLED = false;
 function addInfection(z, mult) {
+  if (!INFECTION_ENABLED) { player.infect = 0; return; }
   if (adm.god) return;
   const base = (3 + regionOf(z ? z.zone : game.area) * 0.6) * (mult || 1);
   player.infect = Math.min(100, (player.infect || 0) + base * (1 + profVal("infect")));
   if (player.infect >= 100 && !player.infWarned) { player.infWarned = true; toast("Infecção grave! Use um antibiótico (I)"); }
 }
 function infectTick(sec) {
+  if (!INFECTION_ENABLED) { player.infect = 0; player.infWarned = false; return; }
   if (adm.god) { player.infect = 0; return; }
   if ((player.infect || 0) >= 100) player.hp -= 1.2 * sec; // infecção cheia: perde vida aos poucos
 }
 function useAnti() {
+  if (!INFECTION_ENABLED) return;
   if (!player.anti) { toast("Você não tem antibiótico"); return; }
   if (!player.infect) { toast("Você não está infectado"); return; }
   player.anti--; player.infect = Math.max(0, player.infect - 60); player.infWarned = false;
@@ -94,7 +98,7 @@ function eat() {
   player.hunger = Math.min(100, player.hunger + FOOD_Q[q].hunger);
   if (q === "fresca") { player.hp = Math.min(player.maxHp, player.hp + 5); toast("Comida fresca! (+5 de vida)"); }
   else if (q === "podre") {
-    if (Math.random() < 0.5) { addInfection(null, 2.5); toast("Estava estragada... a infecção subiu"); }
+    if (INFECTION_ENABLED && Math.random() < 0.5) { addInfection(null, 2.5); toast("Estava estragada... a infecção subiu"); }
     else toast("Comida estragada (sacia pouco)");
   } else toast("Você comeu");
   sfx.pickup(); stat("foodEaten");
