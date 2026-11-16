@@ -89,7 +89,15 @@ function drawLampTall(l, e) {
   ctx.strokeStyle = "#666b6e"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(l.x - 1, l.y - 2); ctx.lineTo(l.x - 1, topY + 2); ctx.stroke();
   ctx.fillStyle = "#3b4042"; circle(l.x, topY, l.big ? 6 : 4.5);
-  ctx.fillStyle = isNight() ? "#ffe6a0" : "#9a9a90"; circle(l.x, topY, l.big ? 3.5 : 2.5);
+  ctx.fillStyle = "#fff0b9"; circle(l.x, topY, l.big ? 3.5 : 2.5);
+  // Brilho da lâmpada acesa, inclusive no modo 2D.
+  ctx.globalCompositeOperation = "lighter";
+  const glow = ctx.createRadialGradient(l.x, topY, 0, l.x, topY, l.big ? 29 : 23);
+  glow.addColorStop(0, "rgba(255,245,194,0.84)");
+  glow.addColorStop(0.18, "rgba(255,219,130,0.40)");
+  glow.addColorStop(1, "rgba(255,190,100,0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(l.x, topY, l.big ? 29 : 23, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 // pinta de trás (norte) para a frente (sul) pela linha do chão de cada coisa:
