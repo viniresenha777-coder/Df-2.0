@@ -1,70 +1,26 @@
 "use strict";
 // =====================================================================
-//  Personagem: implantes, atributos, experiência, fome, sede e cura
+//  Personagem: atributos, experiência, fome, sede e cura
 // =====================================================================
 
-// ---------- Implantes ----------
-function newImplant(id) { return { id, alloc: {} }; }
-function randomImplant() { return newImplant(pick(IMP_IDS)); }
-function impColor(im) { return IMP_COLOR[IMP[im.id].kind || 0]; }
-function implantName(im) { return IMP[im.id].name; }
-function allocUsed(im) { let n = 0; for (const k in im.alloc || {}) n += im.alloc[k]; return n; }
-// save antigo ou mexido: só entra implante que existe, com os pontos dentro do limite
-function cleanImplant(im) {
-  if (!im || !IMP[im.id]) return null;
-  const d = IMP[im.id], out = newImplant(im.id);
-  if (d.alloc && im.alloc) {
-    let left = d.alloc.points;
-    for (const o of d.alloc.opts) { const n = Math.max(0, Math.min(left, im.alloc[o.key] | 0)); if (n) { out.alloc[o.key] = n; left -= n; } }
-  }
-  return out;
-}
-// efeitos de um implante (fixos + pontos distribuídos). O Mímico copia o da esquerda, com os negativos em dobro.
-function implantFx(im, i, list) {
-  const d = IMP[im.id], fx = {};
-  if (d.mimic) {
-    const left = list && i > 0 ? list[i - 1] : null;
-    if (!left || IMP[left.id].mimic) return fx;
-    const src = implantFx(left, i - 1, list);
-    for (const k in src) fx[k] = src[k] < 0 ? src[k] * 2 : src[k];
-    return fx;
-  }
-  for (const k in d.fx) fx[k] = d.fx[k];
-  if (d.alloc) for (const o of d.alloc.opts) { const n = (im.alloc && im.alloc[o.key]) || 0; if (n) fx[o.key] = (fx[o.key] || 0) + n * o.per; }
-  return fx;
-}
-function fxText(fx) { return Object.keys(fx).filter((k) => fx[k]).map((k) => `${sgn(fx[k])}% ${FX_LABEL[k] || k}`).join(" · "); }
-function implantDesc(im) {
-  const d = IMP[im.id], i = save.installed.indexOf(im), parts = [];
-  if (d.mimic) {
-    const left = i > 0 ? save.installed[i - 1] : null;
-    if (left && !IMP[left.id].mimic) parts.push(`Copiando ${implantName(left)}: ${fxText(implantFx(im, i, save.installed)) || "nada"}`);
-  } else {
-    const t = fxText(d.fx || {});
-    if (t) parts.push(t);
-    if (d.alloc) {
-      const a = {}; for (const o of d.alloc.opts) if (im.alloc && im.alloc[o.key]) a[o.key] = im.alloc[o.key] * o.per;
-      parts.push(`Pontos ${allocUsed(im)}/${d.alloc.points}${allocUsed(im) ? ": " + fxText(a) : " (arraste para o boneco para distribuir)"}`);
-    }
-  }
-  if (d.text) parts.push(d.text);
-  return parts.join(" · ");
-}
-// por que este implante não pode ser instalado agora (ou null se pode)
-function installBlock(im) {
-  if (save.installed.some((x) => x.id === im.id)) return `Você já tem ${implantName(im)} instalado (só um de cada)`;
-  if (save.installed.length >= IMPL_SLOTS) return "Sem espaço: remova um implante primeiro";
-  return null;
-}
-function canSwapImplants() { return inSafe() || !!(player.flags && player.flags.hook); }
+// Nenhum implante pode ser criado, equipado ou recuperado de versões antigas.
+function newImplant() { return null; }
+function randomImplant() { return null; }
+function cleanImplant() { return null; }
+function impColor() { return "#a9a58f"; }
+function implantName() { return "Item removido"; }
+function implantDesc() { return ""; }
+function installBlock() { return "Implantes foram removidos do jogo"; }
+function canSwapImplants() { return false; }
+function allocUsed() { return 0; }
+function fxText() { return ""; }
+function implantFx() { return {}; }
 function recalcImplants() {
   const all = {}, safe = {}, flags = {};
   STAT_KEYS.forEach((k) => { all[k] = 0; safe[k] = 0; });
-  save.installed.forEach((im, i) => {
-    const fx = implantFx(im, i, save.installed);
-    for (const k in fx) { all[k] = (all[k] || 0) + fx[k]; if (fx[k] > 0) safe[k] = (safe[k] || 0) + fx[k]; }
-    if (IMP[im.id].flag) flags[IMP[im.id].flag] = true;
-  });
+  // Limpa implantes antigos ainda em memória. Bônus de profissão permanecem.
+  if (save.installed.length) save.installed.length = 0;
+  if (player.bag && player.bag.length) player.bag.length = 0;
   const pf = prof(); // bônus e penalidades da profissão
   if (pf && pf.fx) for (const k in pf.fx) { all[k] = (all[k] || 0) + pf.fx[k]; safe[k] = (safe[k] || 0) + pf.fx[k]; }
   player.fxAll = all; player.fxSafe = safe; player.flags = flags; player.fx = all;
@@ -78,12 +34,12 @@ function recalcImplants() {
   player.hp = Math.min(player.hp, player.maxHp);
   lastStandTick();
 }
-// Último Suspiro (Desafia-Morte): com a vida crítica, as penalidades dos implantes deixam de valer
+// Compatibilidade: mantém bônus de profissão calculados pela rotina normal.
 function lastStandTick() {
   if (!player.fxAll) return;
   player.fx = player.flags.lastStand && player.hp / player.maxHp < 0.25 ? player.fxSafe : player.fxAll;
 }
-function makeStock() { return IMP_IDS.map((id) => ({ id, price: IMP[id].price })); }
+function makeStock() { return []; }
 
 // ---------- Atributos ----------
 function xpNeed(l) { return Math.round(30 + 6 * l + 0.12 * l * l); }
