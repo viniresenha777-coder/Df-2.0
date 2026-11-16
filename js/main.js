@@ -258,6 +258,7 @@ function update(dt) {
   const ox = cam.x, oy = cam.y;
   player.angle = Math.atan2(mouse.y + oy - player.y, mouse.x + ox - player.x);
   spriteTick(dt);
+  updateWeaponAim(); // antes de atirar e desenhar: cano, tiro e mouse sincronizados
 
   // tiro e recarga
   const w = curW(), inst = curInst();
