@@ -62,13 +62,14 @@ const fmWorld = (() => {
   function leader() {
     const mine = id();
     if (!mine || !world || !game || game.inside || game.hub) return null;
-    const ids = [mine];
-    // Somente quem está na mesma área e nas ruas pode comandar os zumbis.
+    const players = [{ uid: mine, since: typeof fmSocial !== "undefined" ? fmSocial.mySectorSince() : 0 }];
+    // O jogador que entrou primeiro na rua coordena o setor.
     if (typeof fmSocial !== "undefined") for (const p of fmSocial.online()) {
-      if (!p.inside && p.cx === world.cell.cx && p.cy === world.cell.cy && p.uid) ids.push(p.uid);
+      if (!p.inside && p.cx === world.cell.cx && p.cy === world.cell.cy && p.uid)
+        players.push({ uid: p.uid, since: p.since || 0 });
     }
-    ids.sort();
-    return ids[0] || mine;
+    players.sort((a, b) => (a.since || Infinity) - (b.since || Infinity) || a.uid.localeCompare(b.uid));
+    return players[0] ? players[0].uid : mine;
   }
   function isAuthority() {
     if (!channelReady || !channel || !world || game.inside || game.hub) return true;
@@ -226,7 +227,7 @@ const fmWorld = (() => {
     else if (isFollower()) smoothZombies();
   }
   return {
-    start, tick, clock, weatherKind, isAuthority, isFollower,
+    start, tick, nowMs, clock, weatherKind, isAuthority, isFollower,
     onChannel, onChannelReady, reportHit, requestSync
   };
 })();
