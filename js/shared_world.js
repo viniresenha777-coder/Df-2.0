@@ -43,7 +43,17 @@ const fmWorld = (() => {
   function timeOfWorld() {
     return timeReady ? Math.max(0, nowMs() - epoch) : 0; // aguarda a hora oficial do servidor
   }
-  function clock() { return 480 + timeOfWorld() * 0.003; } // Dia = 8 minutos reais.
+  // Mantém o número do dia e o horário já alcançados, sem voltar o relógio
+  // na atualização. Antes: um dia a cada 8 min; a partir desta versão:
+  // 1440 min virtuais a cada 600000 ms reais, exatamente 10 min por dia.
+  // O marco UTC é comum a todos, preservando a sincronização multiplayer.
+  const DAY_CYCLE_CHANGE_UTC = Date.UTC(2026, 10, 16, 23, 45, 0);
+  const MINUTES_PER_REAL_MS = 1440 / (10 * 60 * 1000);
+  function clock() {
+    const elapsed = timeOfWorld();
+    const oldElapsed = Math.min(elapsed, Math.max(0, DAY_CYCLE_CHANGE_UTC - epoch));
+    return 480 + oldElapsed * 0.003 + (elapsed - oldElapsed) * MINUTES_PER_REAL_MS;
+  }
   function weatherKind() {
     const phase = Math.floor(timeOfWorld() / WEATHER_PERIOD_MS) >>> 0;
     // Hash determinístico, igual para todos, independentemente do aparelho.
