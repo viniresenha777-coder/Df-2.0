@@ -60,8 +60,8 @@ const REGIONS = [
   { name: "Amarela",        diff: "Médio",         desc: "cuspidores, contaminados e infectados",   color: "#c8c048", hp: 2,   dmg: 1.15, spawn: 1.1,  loot: [46, 33, 16, 5, 0] },
   { name: "Laranja",        diff: "Médio+",        desc: "brutamontes · leve uma arma melhor",      color: "#e0902f", hp: 2.8, dmg: 1.35, spawn: 1.2,  loot: [30, 35, 24, 9, 2] },
   { name: "Vermelha",       diff: "Difícil",       desc: "tóxicos e mutantes · para experientes",   color: "#d8443a", hp: 3.8, dmg: 1.55, spawn: 1.3,  loot: [18, 32, 30, 16, 4] },
-  { name: "Vermelho-escura", diff: "Difícil+",     desc: "demônios · precisa de equipamentos bons",         color: "#9a2424", hp: 4.8, dmg: 1.75, spawn: 1.35, loot: [10, 26, 34, 23, 7] },
-  { name: "Preta",          diff: "Muito difícil", desc: "abominações · coletes e armas melhores",  color: "#2a2a2e", hp: 6,   dmg: 2,   spawn: 1.4,  loot: [5, 20, 35, 28, 12] },
+  { name: "Vermelho-escura", diff: "Difícil+",     desc: "demônios · precisa de implantes",         color: "#9a2424", hp: 4.8, dmg: 1.75, spawn: 1.35, loot: [10, 26, 34, 23, 7] },
+  { name: "Preta",          diff: "Muito difícil", desc: "abominações · implantes e coletes bons",  color: "#2a2a2e", hp: 6,   dmg: 2,   spawn: 1.4,  loot: [5, 20, 35, 28, 12] },
   { name: "Roxa",           diff: "Extrema",       desc: "o pior da cidade · vá preparado",         color: "#7a3ac8", hp: 7.5, dmg: 2.25, spawn: 1.5,  loot: [2, 14, 34, 34, 16] },
   { name: "Cinza",          diff: "Zona Morta",    desc: `só a partir do nível ${GRAY_LEVEL}`,      color: "#8a8a8a", hp: 9,   dmg: 2.55, spawn: 1.55, loot: [0, 10, 30, 38, 22] }
 ];
@@ -116,11 +116,11 @@ const ZTYPES = {
 // Chefes: aparecem em áreas sorteadas. tiers = em quais cores de área cada um pode surgir
 const BOSSES = {
   acougueiro: { name: "O Açougueiro", tiers: [0, 1, 2],    hp: 1,    spd: 1,    r: 28, skin: "#c08a7a", cloth: "#d8d0c0", drop: "Arma rara + colete" },
-  matriarca:  { name: "A Matriarca",  tiers: [2, 3],       hp: 1.35, spd: 0.65, r: 33, skin: "#b07a6a", cloth: "#6a3a3a", drop: "Arma + colete" },
+  matriarca:  { name: "A Matriarca",  tiers: [2, 3],       hp: 1.35, spd: 0.65, r: 33, skin: "#b07a6a", cloth: "#6a3a3a", drop: "Implante + colete" },
   capataz:    { name: "O Capataz",    tiers: [2, 3, 4],    hp: 1.2,  spd: 0.85, r: 27, skin: "#8a8a8a", cloth: "#2a2c30", drop: "Equipamento de alto nível" },
   pestilento: { name: "O Pestilento", tiers: [4, 5],       hp: 1.2,  spd: 0.9,  r: 28, skin: "#8a4a3a", cloth: "#4a2a20", drop: "Itens especiais" },
   carrasco:   { name: "O Carrasco",   tiers: [4, 5],       hp: 1.3,  spd: 0.95, r: 28, skin: "#a07060", cloth: "#1a1a1a", drop: "Arma única" },
-  necromante: { name: "O Necromante", tiers: [5, 6],       hp: 1,    spd: 0.9,  r: 24, skin: "#5a6a4a", cloth: "#1e2a1e", drop: "Armas raras" },
+  necromante: { name: "O Necromante", tiers: [5, 6],       hp: 1,    spd: 0.9,  r: 24, skin: "#5a6a4a", cloth: "#1e2a1e", drop: "Implantes raros" },
   alfa:       { name: "O Alfa",       tiers: [6, 7],       hp: 1.2,  spd: 2.1,  r: 26, skin: "#7a4a3a", cloth: "#4a2a20", drop: "Equipamento premium" },
   ceifador:   { name: "O Ceifador",   tiers: [7, 8],       hp: 1.7,  spd: 1.2,  r: 26, skin: "#3a3a3a", cloth: "#121214", drop: "Itens lendários" }
 };
@@ -246,15 +246,18 @@ const TABLES = {
 const LANDMARKS = { 0: ["hospital"], 3: ["bunker"], 4: ["hospital", "bunker"], 5: ["prisao", "bunker"], 6: ["prisao", "bunker", "hospital"], 7: ["bunker"] };
 // chance de o lugar não ter NADA (o resto continua igual quando tem algo)
 const EMPTY_CHANCE = { trash: 0.45, dumpster: 0.35, body: 0.25, corpse: 0.3, car: 0.3, crate: 0.25, chest: 0.1, airdrop: 0, boss: 0, furniture: 0.35 };
-const IMPLANT_CHANCE = {}; // desabilitado: não há implantes em saques
+const IMPLANT_CHANCE = { airdrop: 0.25, corpse: 0.02, boss: 1, chest: 0.06, trash: 0.01, dumpster: 0.015, crate: 0.03, car: 0.05,
+  "Armário": 0.02, "Cama": 0.02, "Estante": 0.03, "Cômoda": 0.02, "Mesa": 0.02, "Arquivo": 0.03, "Armário médico": 0.04,
+  "Armário de armas": 0.04, "Vitrine": 0.04, "Bancada": 0.03,
+  "Cela": 0.02, "Armário de evidências": 0.04, "Caixa militar": 0.05, "Beliche": 0.03, "Estoque de suprimentos": 0.01 };
 
 // ---------- Implantes ----------
-// Todos são únicos (só um de cada instalado) e comprados com créditos na clínica; no saque são raros.
+// Novo catálogo: 29 implantes; o sistema antigo de slots, saque e clínica é preservado.
 // fx = efeitos fixos (%). alloc = pontos que o jogador distribui (arrastando o implante para o boneco).
 // flag = efeito único (não é copiado pelo Mímico). mimic = copia o implante do slot à esquerda.
 const IMPL_SLOTS = 6, BAG_MAX = 8;
-const IMPLANT_RARITY = 0;      // multiplica a chance de achar implante no saque (valem muito)
-const BOSS_IMPLANT = 0;       // chefes que davam implante garantido: agora só às vezes
+const IMPLANT_RARITY = 0.1;      // multiplica a chance de achar implante no saque (valem muito)
+const BOSS_IMPLANT = 0.15;       // chefes que davam implante garantido: agora só às vezes
 const STAT_KEYS = ["exp", "hunter", "scavenger", "crit", "reload", "endurance", "metabolism", "vigor", "regen", "silence", "firepower", "thick", "greed", "agility", "saver", "implantLoot",
   "rage", "killHeal", "lootSense", "luck", "accImp", "stealthImp", "craftDisc", "critDmg", "leech", "adren",
   "armorFind", "ammoLoot", "searchSpeed", "miscFind", "lootSpots", "atkSpeed", "deathDefy", "bossRare", "mcChance"];
@@ -266,10 +269,38 @@ const FX_LABEL = {
   bossRare: "chance de itens raros nos chefes", implantLoot: "chance de achar implantes",
   mcChance: "chance de arma com melhorias", atkSpeed: "velocidade de ataque"
 };
-// Todos os implantes foram retirados do jogo. Mantém-se o catálogo vazio
-// para compatibilidade com código de versões antigas e saves migrados.
-const IMP = Object.freeze({});
-const IMP_IDS = [];
+const IMP = {
+  "implante_01": {"name":"Urso de Ferro","price":1000,"scrap":29000,"kind":0,"fx":{"thick":10},"flag":"jugger","text":"Força Imparável: imune a atordoamento, agarrões e lentidão; massa +500%; derruba infectados comuns ao correr; redução total limitada a 80%."},
+  "implante_02": {"name":"Macaco Cibernético","price":3000,"scrap":29000,"kind":2,"mimic":true},
+  "implante_03": {"name":"Lobo Fantasma","price":1000,"scrap":29000,"kind":0,"fx":{"firepower":5,"agility":7}},
+  "implante_04": {"name":"Aracnídeo Mortal","price":750,"scrap":29000,"kind":0,"fx":{"implantLoot":200},"flag":"hook","text":"Acesso remoto à configuração dos implantes seguindo regras de instalação e remoção."},
+  "implante_05": {"name":"Águia Sombria","price":1000,"scrap":29000,"kind":0,"fx":{"firepower":8,"hunter":25,"searchSpeed":15}},
+  "implante_06": {"name":"Cobra Venenosa","price":1000,"scrap":29000,"kind":0,"fx":{"firepower":5,"agility":5,"atkSpeed":5}},
+  "implante_07": {"name":"Colmeia Mecânica","price":3000,"scrap":29000,"kind":2,"fx":{},"alloc":{"points":20,"opts":[{"key":"hunter","per":5},{"key":"armorFind","per":5},{"key":"ammoLoot","per":5},{"key":"greed","per":5},{"key":"searchSpeed","per":2},{"key":"miscFind","per":2}]}},
+  "implante_08": {"name":"Cérebro Supremo","price":1000,"scrap":29000,"kind":0,"fx":{"exp":14}},
+  "implante_09": {"name":"Olho do Predador","price":1000,"scrap":29000,"kind":0,"fx":{"firepower":5,"ammoLoot":30,"greed":30,"armorFind":20,"searchSpeed":15}},
+  "implante_10": {"name":"Coluna de Titânio","price":1000,"scrap":29000,"kind":0,"fx":{"exp":5,"firepower":7,"agility":4}},
+  "implante_11": {"name":"Coração de Ferro","price":800,"scrap":29000,"kind":0,"fx":{"exp":5,"pvpPoints":5,"agility":5,"deathDefy":25},"flag":"lastStand","text":"Última Resistência: ao atingir vida crítica, ignora penalidades de atributos do implante. Bônus PvP reservado para o sistema PvP."},
+  "implante_12": {"name":"Garras do Carniceiro","price":1100,"scrap":29000,"kind":2,"fx":{"bossRare":50,"searchSpeed":10},"alloc":{"points":10,"opts":[{"key":"firepower","per":1},{"key":"agility","per":1}]}},
+  "implante_13": {"name":"DNA Mutante","price":3000,"scrap":29000,"kind":2,"fx":{},"alloc":{"points":20,"opts":[{"key":"exp","per":1},{"key":"firepower","per":1},{"key":"agility","per":1},{"key":"thick","per":1}]}},
+  "implante_14": {"name":"Radar Fantasma","price":1000,"scrap":29000,"kind":0,"fx":{"luck":25,"lootSpots":7,"searchSpeed":7,"scavenger":7}},
+  "implante_15": {"name":"Processador de Guerra","price":1000,"scrap":29000,"kind":0,"fx":{"mcChance":100},"flag":"mc","text":"Obra-Prima: chance-base de armas melhoradas ×2; +2 melhorias nas armas e +6 em coletes Mastercraft, incluindo chefes."},
+  "implante_16": {"name":"Costelas de Aço","price":1000,"scrap":29000,"kind":0,"fx":{"exp":11,"firepower":1,"thick":1,"agility":1}},
+  "implante_17": {"name":"Fungo Parasita","price":1000,"scrap":29000,"kind":1,"fx":{"thick":-5,"atkSpeed":15}},
+  "implante_18": {"name":"Núcleo Tóxico","price":1000,"scrap":29000,"kind":0,"fx":{"firepower":11}},
+  "implante_19": {"name":"Bobina de Tesla","price":2000,"scrap":29000,"kind":1,"fx":{"firepower":30,"agility":-20}},
+  "implante_20": {"name":"Garras Infernais","price":1000,"scrap":62612,"kind":0,"fx":{"pvpPoints":20,"firepower":10},"text":"Bônus PvP reservado para o sistema PvP."},
+  "implante_21": {"name":"Abóbora Maldita","price":1000,"scrap":29000,"kind":0,"fx":{"exp":9,"firepower":6},"event":true},
+  "implante_22": {"name":"Caveira Vampírica","price":1000,"scrap":29000,"kind":0,"fx":{"exp":5,"thick":5,"agility":6},"event":true},
+  "implante_23": {"name":"Máscara da Folia","price":1000,"scrap":29000,"kind":0,"fx":{"exp":4,"firepower":4,"agility":4,"ammoLoot":12,"greed":12,"armorFind":12,"hunter":12},"event":true},
+  "implante_24": {"name":"Tambor do Caos","price":1000,"scrap":29000,"kind":0,"fx":{"agility":11},"event":true},
+  "implante_25": {"name":"Sinos do Apocalipse","price":2000,"scrap":29000,"kind":1,"fx":{"firepower":-20,"ammoLoot":100,"greed":100,"armorFind":100,"hunter":100},"event":true},
+  "implante_26": {"name":"Bengala Congelante","price":2000,"scrap":29000,"kind":1,"fx":{"exp":-20,"agility":30},"event":true},
+  "implante_27": {"name":"Ovo Radioativo","price":2000,"scrap":29000,"kind":1,"fx":{"exp":30,"thick":-25},"event":true},
+  "implante_28": {"name":"Coelho Mutante","price":1000,"scrap":29000,"kind":0,"fx":{"ammoLoot":27,"greed":33,"armorFind":27,"hunter":33},"event":true},
+  "implante_29": {"name":"Trindade Suprema","price":1000,"scrap":29000,"kind":0,"fx":{"exp":4,"firepower":6,"agility":5},"event":true},
+};
+const IMP_IDS = Object.keys(IMP);
 const IMP_COLOR = ["#d4af37", "#e07b5a", "#c58bff"];     // comum · com penalidade · especial
 
 // ---------- Personagem: nível (1 a 200) e atributos ----------
