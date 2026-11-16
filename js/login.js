@@ -45,7 +45,7 @@ async function enterAccount(registering) {
   if (!loggedIn) {
     confirmRow.hidden = true;
     confirmEl.value = "";
-    loginStatus("Cadastro recebido! Confirme o e-mail enviado pelo Supabase e depois clique em Entrar.");
+    loginStatus("Se este e-mail ainda não tiver uma conta, você receberá uma mensagem de confirmação. Se já estiver cadastrado, use Entrar com sua senha. Não é necessário criar outra conta.");
     return;
   }
   if (importEl.checked && !fmCloud.hasOnlineSave()) {
