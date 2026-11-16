@@ -167,19 +167,54 @@ function drawZombieExtra(z) {
   }
 }
 
-// ---------- Corpos de sobreviventes na rua ----------
+// ---------- Cadáveres infectados nas ruas ----------
+// Os 4 sprites vieram do ZIP do criador, removidos os fundos quadrados.
+// A variante depende da posição e da semente da área: nunca muda no reload.
+const DEAD_ZOMBIES_IMG = new Image();
+DEAD_ZOMBIES_IMG.src = "img/zombies_dead_4.webp?v=20261116-four-corpses1";
+function deadZombieVariant(o) {
+  const cx = Math.floor(o.x + o.w / 2), cy = Math.floor(o.y + o.h / 2);
+  const seed = world && world.cell ? world.cell.seed >>> 0 : 0;
+  const h = (Math.imul(cx, 73856093) ^ Math.imul(cy, 19349663) ^ seed) >>> 0;
+  return h % 4;
+}
 function drawBody(o) {
-  ctx.save(); ctx.translate(o.x + o.w / 2, o.y + o.h / 2); ctx.rotate(o.ang);
-  ctx.fillStyle = "rgba(80,6,6,0.45)"; ellipse(3, 2, 20, 13);
-  ctx.fillStyle = o.pants; ctx.fillRect(-16, -5, 10, 4); ctx.fillRect(-16, 1, 10, 4);
-  ctx.strokeStyle = o.skin; ctx.lineWidth = 3; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(6, -15); ctx.moveTo(0, 6); ctx.lineTo(10, 10); ctx.stroke();
-  ctx.fillStyle = o.cloth; ellipse(0, 0, 8, 7);
-  if (o.bag) { ctx.fillStyle = "#5a4a32"; ctx.fillRect(-6, -9, 7, 5); }
-  ctx.fillStyle = o.skin; circle(10, 0, 4.5);
-  ctx.fillStyle = "#2a1e14"; ctx.beginPath(); ctx.arc(9, 0, 4.6, Math.PI * 0.5, Math.PI * 1.5); ctx.fill();
-  ctx.restore();
-  if (!o.opened) sparkle(o.x + o.w, o.y);
+  const x = o.x + o.w / 2, y = o.y + o.h / 2;
+  const active = lootSpotActive(o);
+  if (DEAD_ZOMBIES_IMG.complete && DEAD_ZOMBIES_IMG.naturalWidth) {
+    ctx.save();
+    if (active) {
+      // Sinal discreto de saque: brilho ATRÁS, sem amarelar nem ocultar o corpo.
+      const glow = ctx.createRadialGradient(x, y, 4, x, y, 42);
+      glow.addColorStop(0, "rgba(255,219,110,0.28)");
+      glow.addColorStop(0.6, "rgba(255,199,84,0.12)");
+      glow.addColorStop(1, "rgba(255,195,66,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(x, y, 42, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowColor = "rgba(255,221,122,0.62)";
+      ctx.shadowBlur = 8;
+    }
+    const v = deadZombieVariant(o), tile = 256, size = 72;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.filter = active ? "brightness(1.24) contrast(1.08)" : "brightness(1.17) contrast(1.06)";
+    ctx.drawImage(DEAD_ZOMBIES_IMG, (v % 2) * tile, Math.floor(v / 2) * tile, tile, tile,
+      x - size / 2, y - size / 2, size, size);
+    ctx.restore();
+  } else {
+    // Fallback enquanto a imagem é carregada (não deixa corpos invisíveis).
+    ctx.save(); ctx.translate(x, y); ctx.rotate(o.ang || 0);
+    ctx.fillStyle = "rgba(80,6,6,0.45)"; ellipse(3, 2, 20, 13);
+    ctx.fillStyle = o.pants || "#454039"; ctx.fillRect(-16, -5, 10, 4); ctx.fillRect(-16, 1, 10, 4);
+    ctx.strokeStyle = o.skin || "#8d826a"; ctx.lineWidth = 3; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(6, -15); ctx.moveTo(0, 6); ctx.lineTo(10, 10); ctx.stroke();
+    ctx.fillStyle = o.cloth || "#40483c"; ellipse(0, 0, 8, 7);
+    if (o.bag) { ctx.fillStyle = "#5a4a32"; ctx.fillRect(-6, -9, 7, 5); }
+    ctx.fillStyle = o.skin || "#8d826a"; circle(10, 0, 4.5);
+    ctx.restore();
+  }
+  // Sem saque real não aparece ? nem luz amarela.
+  if (active) drawLootQuestion(o, x, y - 30);
 }
 
 // ---------- Carros explosivos ----------
