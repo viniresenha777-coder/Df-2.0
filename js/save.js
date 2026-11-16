@@ -38,7 +38,7 @@ function loadSave() {
     save.vest = clamp(save.vest, -1, VESTS.length - 1);
     save.vestsOwned = VESTS.map((v, i) => !!(s.vestsOwned && s.vestsOwned[i]) || i === save.vest);
     save.outposts = OUTPOSTS.map((o, i) => i === 0 || !!(s.outposts && s.outposts[i]));
-    save.muted = !!s.muted; save.hud = s.hud === 1 ? 1 : 0; save.skin = clamp(s.skin | 0, 0, SKINS.length - 1); save.cape = clamp(s.cape | 0, 0, CAPES.length - 1); save.prof = typeof s.prof === "string" ? s.prof : null; save.name = typeof s.name === "string" ? s.name.slice(0, 16) : ""; save.classicChar = !!s.classicChar; save.vestDur = s.vestDur && typeof s.vestDur === "object" ? s.vestDur : {};
+    save.muted = !!s.muted; save.hud = s.hud === 1 ? 1 : 0; save.skin = clamp(s.skin | 0, 0, SKINS.length - 1); save.cape = clamp(s.cape | 0, 0, CAPES.length - 1); save.prof = typeof s.prof === "string" ? s.prof : null; save.name = typeof s.name === "string" ? s.name.slice(0, 16) : ""; save.classicChar = false; // Somente o novo boneco está disponível. save.vestDur = s.vestDur && typeof s.vestDur === "object" ? s.vestDur : {};
     save.music = s.music !== false;
     save.gfx = s.gfx === 0 || s.gfx === 1 ? s.gfx : 2;
     save.stats = s.stats && typeof s.stats === "object" ? s.stats : {};
