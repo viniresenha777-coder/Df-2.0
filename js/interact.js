@@ -12,7 +12,7 @@ function spots() {
   if (game.inside) {
     const h = game.inside;
     EXIT.x = IW() / 2 - 60; EXIT.y = IH() - 96;
-    return [...h.interior.filter((f) => !f.opened && f.searchable !== false && f.kind !== "decor"), ...h.corpses.filter((c) => !c.opened), ...((h.level | 0) === 0 ? [EXIT] : [])];
+    return [...h.interior.filter((f) => !f.opened && f.searchable !== false && f.kind !== "decor" && f.kind !== "shopc"), ...h.corpses.filter((c) => !c.opened), ...((h.level | 0) === 0 ? [EXIT] : [])];
   }
   const near = world.loot.query(player.x - 60, player.y - 60, player.x + 60, player.y + 60).filter((o) => !o.opened && !(o.fall > 0));
   for (const c of world.corpses) if (!c.opened && Math.abs(c.x - player.x) < 90 && Math.abs(c.y - player.y) < 90) near.push(c);
@@ -28,7 +28,7 @@ function spotPrompt(s) {
   if (s.kind === "exit") return "E: sair";
   if (s.kind === "stairs") return `E: ${s.label}`;
   if (s.kind === "survivor") return "E: resgatar o sobrevivente";
-  if (s.kind === "shopc") return "E: abrir a loja";
+  if (s.kind === "shopc") return ""; // Loja é decoração.
   if (SAFE_KINDS.includes(s.kind)) return `E: usar ${s.name.toLowerCase()}`;
   return `Segure E: vasculhar ${s.name.toLowerCase()}`;
 }
@@ -171,7 +171,7 @@ function interact() {
   if (s.kind === "exit") { leaveHouse(); return; }
   if (s.kind === "stairs") { changeFloor(s.dir); return; }
   if (s.kind === "survivor") { pickupSurvivor(s); return; }
-  if (s.kind === "shopc") { openShop(); return; }
+  if (s.kind === "shopc") return; // Nenhum menu ao interagir.
   if (SAFE_KINDS.includes(s.kind)) {
     game.menu = s.kind === "board" ? "missions" : s.kind;
     game.atBase = true; game.tab = 0; game.cur = 0; game.input = null; game.vside = 0; game.vcur = 0; game.ccur = 0; game.cstat = 0;
