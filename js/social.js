@@ -34,7 +34,7 @@ const fmSocial = (() => {
         persist(); // servidor é a fonte de verdade do nome definitivo
       }
       userId = uid;
-      await refreshFriends();
+      await refreshFriends().catch((error) => console.warn("Amigos não carregados:", error));
       if (myself() !== uid) return;
       channel = client.channel("fm-world-online-v1", { config: { presence: { key: uid } } });
       channel.on("presence", { event: "sync" }, syncPresence);
@@ -167,7 +167,11 @@ const fmSocial = (() => {
     timer = null; userId = null; peers.clear(); friends = []; profiles.clear(); lastSent = "";
     if (channel) {
       const old = channel; channel = null;
-      try { await old.untrack(); await db()?.removeChannel(old); } catch (_) {}
+      try {
+        const client = db();
+        await old.untrack();
+        if (client) await client.removeChannel(old);
+      } catch (_) {}
     }
   }
   return { start, stop, claimName, online, inSector, friendList, isFriend,
