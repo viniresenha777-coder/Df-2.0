@@ -332,11 +332,88 @@ function saveLevel(h) {
   const L = h.levels && h.levels[h.level | 0];
   if (L) { L.zombies = h.zombies; L.corpses = h.corpses; L.decals = h.decals; }
 }
+// Ao entrar em um prédio, dispersa os zumbis que estavam seguindo a pessoa
+// perto da porta. Mantém HP e identidade de rede; não gera cópias novas.
+// Só a autoridade da rua altera a horda compartilhada.
+function scatterDoorChasers(h) {
+  if (h.safe || typeof fmWorld === "undefined" || !fmWorld.isAuthority() || !world) return;
+  const entry = { x: player.x, y: player.y };
+  const peers = typeof fmSocial !== "undefined" ? fmSocial.inSector() : [];
+  let changed = false;
+  for (const z of zombies) {
+    if (z.hp <= 0 || z.boss || z.state !== "chase" || Math.hypot(z.x - entry.x, z.y - entry.y) > 850) continue;
+    // Evita retirar um zumbi que está lutando contra outro jogador na rua.
+    if (peers.some(p => Math.hypot(z.x - p.x, z.y - p.y) < 420)) continue;
+    for (let attempt = 0; attempt < 36; attempt++) {
+      const a = Math.random() * Math.PI * 2, d = rand(650, 1250);
+      const x = entry.x + Math.cos(a) * d, y = entry.y + Math.sin(a) * d;
+      if (x < 55 || y < 55 || x > WORLD_W - 55 || y > WORLD_H - 55 ||
+          nearSafe(x, y, 200) || !walkable(x, y, z.r + 8) ||
+          peers.some(p => Math.hypot(x - p.x, y - p.y) < 450)) continue;
+      z.x = x; z.y = y;
+      z.state = "idle"; z.tx = x; z.ty = y; z.wt = 0; z.lose = 0;
+      z.alertT = 0; z.stuckT = 0; z.detourT = 0;
+      changed = true;
+      break;
+    }
+  }
+  if (changed && typeof fmWorld.publishZombiesNow === "function") fmWorld.publishZombiesNow();
+}
+
+// Os perseguidores usam a escada 2 segundos depois. Os MESMOS zumbis são
+// removidos do andar de origem e inseridos no de destino: não duplicam.
+const FLOOR_CHASE_DELAY = 2000;
+function queueFloorPursuit(h, fromLevel, targetLevel, dir) {
+  if (!h || h.safe || typeof fmWorld !== "undefined" && fmWorld.isFollower()) return;
+  const original = h.levels[fromLevel];
+  if (!original) return;
+  const following = original.zombies.filter(z =>
+    z.hp > 0 && z.state === "chase" && Math.hypot(z.x - player.x, z.y - player.y) < 850);
+  if (!following.length) return;
+  game.floorPursuers = game.floorPursuers || [];
+  const now = performance.now();
+  for (const z of following) {
+    if (game.floorPursuers.some(p => p.zombie === z)) continue;
+    game.floorPursuers.push({ house: h, origin: fromLevel, target: targetLevel, dir,
+      zombie: z, arriveAt: now + FLOOR_CHASE_DELAY });
+  }
+}
+function floorPursuitTick(now = performance.now()) {
+  if (!game.floorPursuers || !game.floorPursuers.length) return;
+  game.floorPursuers = game.floorPursuers.filter(f => {
+    if (now < f.arriveAt) return true;
+    if (!game.inside || game.inside !== f.house || f.zombie.hp <= 0) return false;
+    const h = f.house, source = h.levels[f.origin], dest = h.levels[f.target];
+    if (!source || !dest) return false;
+    const idx = source.zombies.indexOf(f.zombie);
+    if (idx < 0) return false;
+    source.zombies.splice(idx, 1);
+    const stair = dest.interior.find(o => o.kind === "stairs" && o.dir === -f.dir);
+    const sx = stair ? stair.x + stair.w / 2 : h.iw / 2;
+    const sy = stair ? stair.y + stair.h / 2 : h.ih / 2;
+    let x = sx, y = sy + 38;
+    for (let n = 0; n < 15; n++) {
+      const a = Math.random() * Math.PI * 2, dist = rand(34, 75);
+      const px = sx + Math.cos(a) * dist, py = sy + Math.sin(a) * dist;
+      if (px < 48 || py < 48 || px > dest.iw - 48 || py > dest.ih - 48 ||
+          hits(dest.interior, px - 12, py - 12, 24, 24, 3)) continue;
+      x = px; y = py; break;
+    }
+    f.zombie.x = x; f.zombie.y = y; f.zombie.tx = x; f.zombie.ty = y;
+    f.zombie.stuckT = 0; f.zombie.detourT = 0; f.zombie.hitCd = 900;
+    f.zombie.state = "chase"; f.zombie.alertT = 550; f.zombie.lose = 0;
+    dest.zombies.push(f.zombie);
+    if (h.level === f.target) h.zombies = dest.zombies;
+    return false;
+  });
+}
 function changeFloor(dir) {
   const h = game.inside;
   if (!h) return;
+  const fromLevel = h.level | 0;
   saveLevel(h);
-  const nl = (h.level | 0) + dir;
+  const nl = fromLevel + dir;
+  queueFloorPursuit(h, fromLevel, nl, dir);
   if (!h.levels[nl]) h.levels[nl] = makeLevel(h, nl);
   mountLevel(h, nl);
   // chega ao lado da escada por onde veio
@@ -370,6 +447,8 @@ function interiorSpot(list, iw, ih) {
 function doorFront(b) { return { x: b.door.x + b.door.w / 2, y: b.facing === "up" ? b.y - 26 : b.y + b.h + 26 }; }
 
 function enterHouse(h) {
+  scatterDoorChasers(h);
+  game.floorPursuers = [];
   let fresh = false;
   if (!h.levels) {
     fresh = true;
@@ -396,6 +475,7 @@ function enterHouse(h) {
   else toast(`Você entrou: ${h.name}${fl > 1 ? ` · ${fl} ${h.def.under ? "níveis" : "andares"}` : ""}`);
 }
 function leaveHouse() {
+  game.floorPursuers = []; // perseguições pendentes não atravessam prédios.
   game.search = null; game.hub = false; game.menu = null; game.shop = false;
   const h = game.inside;
   if (h && h.levels) { saveLevel(h); mountLevel(h, 0); }
