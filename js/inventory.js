@@ -224,9 +224,9 @@ function drawPause() {
   ctx.fillStyle = "rgba(6,7,5,0.82)"; ctx.fillRect(0, 0, W, H);
   txt("PAUSADO", W / 2, 100, 46, "#f2eedc", "center", true);
   txt(`${playerName()}${prof() ? ` · ${prof().name}` : ""}`, W / 2, 124, 14, "#ffd96a", "center", true);
-  btn(W / 2 - 280, 290, 160, 34, "Trocar nome", () => { game.paused = false; openNameScreen(true); });
+  btn(W / 2 - 280, 290, 160, 34, "Amigos (U)", openFriends);
   btn(W / 2 - 280, 170, 160, 42, "Salvar progresso", manualSave);
-  btn(W / 2 - 280, 92, 160, 30, `Boneco: ${save.classicChar ? "clássico" : "novo"}`, () => { save.classicChar = !save.classicChar; persist(); });
+  txt("Boneco: novo", W / 2 - 200, 113, 16, "#e5e0c8", "center", true);
   const ago = game.lastSave ? Math.round((performance.now() - game.lastSave) / 1000) : null;
   txt(ago == null ? "ainda não salvou nesta sessão" : ago < 3 ? "salvo agora!" : `último checkpoint: há ${ago < 60 ? `${ago}s` : `${Math.floor(ago / 60)} min`}`, W / 2 - 200, 164, 10, ago != null && ago < 3 ? "#8fe08a" : "rgba(229,224,200,0.55)", "center");
   btn(W / 2 - 130, 518, 260, 42, NATIVE ? "Salvar e sair do jogo" : "Salvar e sair", saveAndQuit, true);
@@ -255,7 +255,7 @@ function drawPause() {
   txt(GFX.on ? (save.gfx >= 2 ? "luz, sombras, brilho e clima" : "luz, sombras e clima, sem brilho") : GFX.failed ? "WebGL indisponível neste PC" : "modo antigo, mais leve", W / 2 - 200, 274, 11, "rgba(229,224,200,0.55)", "center");
   txt("Créditos: armas extras do pacote \"2D Guns\" de Kay Lousberg (OpenGameArt.org, CC0)", W / 2, H - 14, 11, "rgba(229,224,200,0.45)", "center");
   const ctl = [["WASD", "andar"], ["Shift", "correr"], ["Mouse", "mirar e atacar"], ["1 2 3 / roda", "trocar arma"], ["R", "recarregar"], ["E", "vasculhar, entrar, usar"],
-    ["B", "mochila"], ["F G H", "comer, beber, kit"], ["C", "atributos e personagem"], ["M", "mapa do setor"], ["N", "mapa da cidade"], ["O", "objetivos"], ["Esc", "pausa e missões"], ["J", "música"], ["K", "som"]];
+    ["B", "mochila"], ["F G H", "comer, beber, kit"], ["C", "atributos e personagem"], ["M", "mapa do setor"], ["N", "mapa da cidade"], ["O", "objetivos"], ["Esc", "pausa e missões"], ["J", "música"], ["K", "som"], ["U", "amigos e jogadores"]];
   ctl.forEach(([k, v], i) => {
     const cx = i < 8 ? 150 : 410, cy = 340 + (i % 8) * 22;
     txt(k, cx, cy, 13, "#ffd96a", "right", true); txt(v, cx + 12, cy, 13, "#c9c4ad");
