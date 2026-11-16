@@ -148,7 +148,7 @@ function update(dt) {
   if (game.trans) { transTick(dt); return; } // trocando de área (tela escura)
   const k = dt / 16.67, sec = dt / 1000;
   game.time += dt;
-  game.clock += sec * 3; // 1 dia = 8 minutos reais
+  // Horário da cidade sincronizado pelo servidor em fmWorld.tick().
 
   const meta = 1 - Math.min(0.8, player.fx.metabolism / 100);
   player.hunger = Math.max(0, player.hunger - 0.12 * sec * meta);
@@ -228,17 +228,17 @@ function update(dt) {
   updateFuses(dt);
   updateParts(dt, k);
 
-  mapTick(dt);
+  if (!fmWorld.isFollower() || game.inside) mapTick(dt);
   if (game.trans) return;
   if (!game.inside) {
     manageRows();
     const pr = world.cell.zone;
     game.spawnTimer -= dt;
-    if (game.spawnTimer <= 0) { trickleSpawn(); game.spawnTimer = Math.max(2500, 6500 - pr * 250) * (isNight() ? 0.7 : 1); }
+    if (game.spawnTimer <= 0) { if (!fmWorld.isFollower()) trickleSpawn(); game.spawnTimer = Math.max(2500, 6500 - pr * 250) * (isNight() ? 0.7 : 1); }
     world.corpses = world.corpses.filter((c) => (c.life -= dt) > 0);
   }
 
-  updateZombies(dt, k);
+  if (!fmWorld.isFollower() || game.inside) updateZombies(dt, k);
   zombies = zombies.filter((z) => z.hp > 0);
   if (game.inside) game.inside.zombies = game.inside.zombies.filter((z) => z.hp > 0);
   if (adm.god) player.hp = player.maxHp;
@@ -342,6 +342,7 @@ resetGame();
 loadSprites();
 ensureDaily();
 restoreRun(); // volta do último checkpoint, se houver
+fmWorld.start(); // consulta relógio oficial do servidor Supabase
 if (save.name) fmSocial.start(); // publica posição somente após autenticação e nome definitivo
 // rodando pelo servidor local instalado: avisa que o jogo está aberto (o servidor fecha sozinho quando você sai)
 if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
@@ -360,6 +361,7 @@ function loop(now) {
   game.pings = game.pings.filter((p) => (p.t -= dt) > 0);
   game.flashes = game.flashes.filter((f) => (f.t -= dt) > 0);
   game.floats = game.floats.filter((f) => (f.t -= dt) > 0);
+  fmWorld.tick(); // relógio global e snapshots dos zumbis, inclusive durante pausas
   update(dt);
   checkpointTick(dt);
   updateCam(dt);
