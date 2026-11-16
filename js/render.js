@@ -234,9 +234,9 @@ function drawBloodList(list) {
   }
 }
 function drawLampPost(l) {
-  ctx.fillStyle = "rgba(0,0,0,0.35)"; circle(l.x + 3, l.y + 3, l.big ? 6 : 4);
-  ctx.fillStyle = "#1c1c1c"; circle(l.x, l.y, l.big ? 6 : 4);
-  ctx.fillStyle = isNight() ? "#ffe6a0" : "#8a8a80"; circle(l.x, l.y, l.big ? 3 : 2);
+  // Base exata do poste, sem sombra deslocada pelo chão.
+  ctx.fillStyle = "#26292b"; circle(l.x, l.y, l.big ? 4 : 3);
+  ctx.fillStyle = "#666a6b"; circle(l.x, l.y, l.big ? 2 : 1.5);
 }
 function drawFence(f) {
   ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(f.x + 3, f.y + 3, f.w, f.h);
