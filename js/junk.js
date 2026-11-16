@@ -138,15 +138,9 @@ function drawJunk() {
     rowClick(lx, y, lw, rh - 4, sel, () => { game.jcur = i; }, () => askSell(e, 1));
   });
   if (items.length > vis) txt(`${game.jcur + 1}/${items.length}`, lx + lw, ly - 6, 10, "#a9a58f", "right");
-  // Compra especial no Ferro Velho, separada da loja desativada.
-  ctx.fillStyle = "rgba(45,35,15,0.92)"; rr(532, 94, 394, 92, 7); ctx.fill();
-  ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 1.5; ctx.stroke();
-  txt("★ CARTÃO RESET DE STATS", 547, 117, 16, "#ffdf70", "left", true);
-  txt("Devolve pontos distribuídos · uso único", 547, 137, 11, "#d8d2ba");
-  btn(547, 145, 362, 34, "COMPRAR · $" + RESET_STATS_PRICE.toLocaleString("pt-BR") + " (C)", confirmBuyResetStats, true);
   // detalhe do item escolhido
   const e = items[game.jcur], px = 540, pw = 380;
-  ctx.fillStyle = "rgba(0,0,0,0.3)"; rr(px - 10, 92, pw + 20, 420, 8); ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,0.3)"; rr(px - 10, 92, pw + 20, 458, 8); ctx.fill();
   if (e) {
     if (e.kind === "weapon") drawWeaponSide(WDEF[e.it.id], px + pw / 2, 160, 1.5);
     else if (e.kind === "mat") drawMatIcon(e.it.id, px + pw / 2, 160, 1.5);
@@ -167,6 +161,15 @@ function drawJunk() {
       txt("As peças vão para a mochila (ou para o baú, se não couber).", px, by + 74, 11, "#a9a58f", "left", false, pw);
     }
   } else txt("Nada selecionado", px + pw / 2, 280, 14, "#6d6a58", "center");
+
+  // Cartão de reset no espaço inferior do Ferro Velho, abaixo dos comandos
+  // de vender/desmontar, sem cobrir detalhes de armas ou outros itens.
+  ctx.fillStyle = "rgba(45,35,15,0.96)"; rr(532, 444, 394, 101, 7); ctx.fill();
+  ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 1.5; ctx.stroke();
+  txt("★ CARTÃO RESET DE STATS", 547, 468, 16, "#ffdf70", "left", true);
+  txt("Recupere seus pontos de atributo · uso único", 547, 488, 11, "#d8d2ba");
+  btn(547, 496, 362, 39, "COMPRAR · $" + RESET_STATS_PRICE.toLocaleString("pt-BR") + " (C)", confirmBuyResetStats, true);
+
   hint("C compra cartão de reset · W/S escolhe · Enter vende · T vende tudo · D desmonta · Esc fecha");
   // confirmação para itens raros
   if (game.jconfirm) {
