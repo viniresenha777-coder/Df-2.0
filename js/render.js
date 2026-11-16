@@ -291,10 +291,38 @@ function drawAreaEdges() {
 }
 
 function drawBlockGround(b) {
+  // Marcas de poeira e terra nas bordas das ruas, sem bloquear o asfalto.
+  // O desgaste desaparece suavemente no chão e não cria colisões.
+  const edge = 22;
+  if (inView(b.x - edge,b.y - edge,b.w + 2*edge,b.h + 2*edge)) {
+    ctx.save();
+    let grad = ctx.createLinearGradient(b.x-edge,0,b.x,0);
+    grad.addColorStop(0,"rgba(28,29,24,0)");
+    grad.addColorStop(1,"rgba(31,34,25,.25)");
+    ctx.fillStyle=grad;ctx.fillRect(b.x-edge,b.y,edge,b.h);
+    grad=ctx.createLinearGradient(b.x+b.w,0,b.x+b.w+edge,0);
+    grad.addColorStop(0,"rgba(31,34,25,.25)");
+    grad.addColorStop(1,"rgba(28,29,24,0)");
+    ctx.fillStyle=grad;ctx.fillRect(b.x+b.w,b.y,edge,b.h);
+    grad=ctx.createLinearGradient(0,b.y-edge,0,b.y);
+    grad.addColorStop(0,"rgba(28,29,24,0)");
+    grad.addColorStop(1,"rgba(31,34,25,.25)");
+    ctx.fillStyle=grad;ctx.fillRect(b.x,b.y-edge,b.w,edge);
+    grad=ctx.createLinearGradient(0,b.y+b.h,0,b.y+b.h+edge);
+    grad.addColorStop(0,"rgba(31,34,25,.25)");
+    grad.addColorStop(1,"rgba(28,29,24,0)");
+    ctx.fillStyle=grad;ctx.fillRect(b.x,b.y+b.h,b.w,edge);
+    ctx.restore();
+  }
   ctx.fillStyle = PAT.sidewalk; ctx.fillRect(b.x, b.y, b.w, b.h);
-  ctx.strokeStyle = "#8f8d82"; ctx.lineWidth = 3; ctx.strokeRect(b.x + 1.5, b.y + 1.5, b.w - 3, b.h - 3);
+  // Guia da calçada em relevo, com desgaste de borda.
+  ctx.strokeStyle = "rgba(23,27,23,.74)";ctx.lineWidth=4;
+  ctx.strokeRect(b.x+1,b.y+1,b.w-2,b.h-2);
+  ctx.strokeStyle = "rgba(182,185,160,.50)";ctx.lineWidth=1.5;
+  ctx.strokeRect(b.x+3,b.y+3,b.w-6,b.h-6);
   ctx.fillStyle = PAT[b.ground]; ctx.fillRect(b.x + SIDEWALK, b.y + SIDEWALK, b.w - 2 * SIDEWALK, b.h - 2 * SIDEWALK);
-  ctx.strokeStyle = "rgba(0,0,0,0.3)"; ctx.lineWidth = 2; ctx.strokeRect(b.x + SIDEWALK, b.y + SIDEWALK, b.w - 2 * SIDEWALK, b.h - 2 * SIDEWALK);
+  ctx.strokeStyle = "rgba(0,0,0,0.34)"; ctx.lineWidth = 2;
+  ctx.strokeRect(b.x + SIDEWALK, b.y + SIDEWALK, b.w - 2 * SIDEWALK, b.h - 2 * SIDEWALK);
 }
 
 function drawRoadMarks() {
