@@ -97,8 +97,8 @@ function armorRed() {
   const a = A("armor") / (A("armor") + 150);
   return Math.min(0.78, 1 - (1 - a) * (1 - equipmentProtection() / 100));
 }
-function moneyMult() { return (1 + player.fx.greed / 100) * (save.gm ? 2 : 1); }
-function xpMult() { return (1 + player.fx.exp / 100) * (save.gm ? 2 : 1); }
+function moneyMult() { return (1 + player.fx.greed / 100) * (vipActive() ? 2 : 1); }
+function xpMult() { return (1 + player.fx.exp / 100) * (vipActive() ? 2 : 1); }
 function attrEffect(id, v) {
   switch (id) {
     case "endurance": return `${Math.round(v)} de vida-base (melhorias até 200 HP)`;
