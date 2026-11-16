@@ -86,6 +86,19 @@ function useResetStatsCard() {
   toast("Atributos resetados! Redistribua seus pontos.");
 }
 
+// Consumo da Trindade: 100 anos de calendário desde a ativação.
+function useTrindadeItem() {
+  const it = player.pack.find(x => x && x.kind === "mat" && x.id === "trindade_eterna" && x.qty > 0);
+  if (!it) { toast("Você não possui uma Trindade."); return; }
+  const exp = new Date(Math.max(Date.now(), Number(save.trindadeUntil) || 0));
+  exp.setUTCFullYear(exp.getUTCFullYear() + 100);
+  if (!Number.isFinite(exp.getTime())) { toast("Erro ao calcular validade."); return; }
+  it.qty--;
+  if (!it.qty) player.pack.splice(player.pack.indexOf(it), 1);
+  save.trindadeUntil = exp.getTime();
+  checkpoint("uso da Trindade");
+  toast("Trindade ativada: +35% de dano, corrida e armadura por 100 anos!");
+}
 // ---------- Controles ----------
 function audioStart() { sndInit(); if (SND.ac) { musicSetOn(save.music); musicStart(); } }
 window.addEventListener("keydown", (e) => {
@@ -201,7 +214,7 @@ function update(dt) {
   if (moving) {
     const slow = (player.flags.jugger ? 0 : (save.vest >= 0 ? VESTS[save.vest].slow || 0 : 0) + (curW().slow || 0)) - (player.fx.adren && player.hp / player.maxHp < 0.5 ? player.fx.adren : 0);
     player.moveAng = Math.atan2(dy, dx);
-    const len = Math.hypot(dx, dy), sp = (sprinting ? 3.38 * (1 + profVal("sprint")) : player.speed) * (1 + (player.fx.agility + vestSpeedBonus()) / 100) * (1 + (A("agi") - 10) * 0.004) * (1 - slow / 100);
+    const len = Math.hypot(dx, dy), sp = (sprinting ? 3.38 * (1 + profVal("sprint")) : player.speed) * (1 + (player.fx.agility + vestSpeedBonus()) / 100) * (1 + (A("agi") - 10) * 0.004) * (1 - slow / 100) * (sprinting && trindadeActive() ? 1.35 : 1);
     player.x += (dx / len) * sp * k; player.y += (dy / len) * sp * k;
     player.animT = (player.animT || 0) + dt; player.lastSp = sp * k / Math.max(0.01, dt / 16.67);
     if (!game.inside) save.stats.dist = S("dist") + sp * k;
