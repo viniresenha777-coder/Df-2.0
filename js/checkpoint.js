@@ -83,6 +83,7 @@ async function saveAndQuit() {
       game.quitting = true;
       setTimeout(() => window.fmQuit(), 150);
     } else {
+      if (typeof fmGifts !== "undefined") fmGifts.stop();
       if (typeof fmSocial !== "undefined") await fmSocial.stop();
       if (typeof fmCloud !== "undefined" && fmCloud.isActive()) await fmCloud.logout();
       game.quitting = true;
