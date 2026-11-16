@@ -311,31 +311,37 @@ const fmSocial = (() => {
 
 // Jogadores remotos visíveis nas ruas. Personagens desenhados com a aparência
 // básica e a paleta escolhida, sem afetar o combate local.
+// Renderização dos outros jogadores com a MESMA spritesheet nova do jogador local.
+// Usa cache separado para que trocar cores no multiplayer não reprocessa a sua roupa.
+const REMOTE_PLAYER_SHEETS = new Map();
+function remotePlayerSheet(skin, pose) {
+  if (!PSHEET.ok || !PSHEET.sheets[pose]) return null;
+  const key = skin + ":" + pose;
+  if (REMOTE_PLAYER_SHEETS.has(key)) return REMOTE_PLAYER_SHEETS.get(key);
+  const base = PSHEET.sheets[pose], mask = PSHEET.masks[pose];
+  const img = mask && mask.naturalWidth ? tintWithMask(base, mask, SKINS[skin] || SKINS[0]) : base;
+  REMOTE_PLAYER_SHEETS.set(key, img);
+  return img;
+}
 function drawOnlinePlayer(p) {
-  const skin = SKINS[p.skin] || SKINS[0];
-  const walk = Math.sin(performance.now() / 160 + p.x * 0.1) * (p.moving ? 8 : 0);
-  ctx.save();
-  ctx.fillStyle = "rgba(0,0,0,0.4)";
-  ellipse(p.x + 3, p.y + 5, 15, 11);
-  ctx.translate(p.x, p.y); ctx.rotate(p.angle);
-  ctx.lineCap = "round";
-  for (const [side, step] of [[-1, walk], [1, -walk]]) {
-    ctx.strokeStyle = skin.pants || "#333";
-    ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.moveTo(-4, side * 5); ctx.lineTo(step, side * 5); ctx.stroke();
-    ctx.fillStyle = "#201c18"; ellipse(step + 2, side * 5, 4.5, 3.5);
+  const S = PSHEET.size, cell = PSHEET.cell, pose = "punhos";
+  const skin = clamp(p.skin | 0, 0, SKINS.length - 1);
+  const sprite = remotePlayerSheet(skin, pose);
+  if (sprite) {
+    const row = sheetRow(Math.cos(p.angle || 0), Math.sin(p.angle || 0));
+    const col = p.moving ? (Math.floor(performance.now() / 110 + p.x * 0.05) % 8) : 1;
+    const x = p.x - S / 2, y = p.y + 6 - S * PSHEET.footY;
+    ctx.drawImage(sprite, col * cell, row * cell, cell, cell, x, y, S, S);
+    // Mochila e acessórios do boneco novo (sem copiar o equipamento da nossa conta).
+    for (const id of gearOrder(["pack", ...(SKIN_GEAR[skin] || [])], row !== 3 && row !== 4 && row !== 5)) {
+      const layer = gearImg(id, pose);
+      if (layer) ctx.drawImage(layer, col * cell, row * cell, cell, cell, x, y, S, S);
+    }
+  } else {
+    // Enquanto a spritesheet carrega, nunca desenha o antigo personagem 2D.
+    ctx.save(); ctx.fillStyle = "#73ceff"; circle(p.x, p.y, 7); ctx.restore();
   }
-  ctx.fillStyle = skin.jacket || "#606d50"; ellipse(0, 0, 9, 12);
-  ctx.fillStyle = "#35302b"; ctx.fillRect(-12, -6, 5, 12);
-  ctx.strokeStyle = skin.jacket || "#606d50"; ctx.lineWidth = 5;
-  for (const side of [-1, 1]) {
-    ctx.beginPath(); ctx.moveTo(2, side * 9); ctx.lineTo(13, side * 10); ctx.stroke();
-    ctx.fillStyle = skin.skin || "#b78e6a"; circle(13, side * 10, 3);
-  }
-  ctx.fillStyle = skin.helmet || skin.hood || skin.cap || skin.hair || "#393532"; circle(1, 0, 8);
-  ctx.fillStyle = skin.mask || skin.skin || "#b78e6a"; ellipse(5, 0, 5, 5.5);
-  ctx.restore();
-  hudT(p.name, p.x, p.y - 29, 11, fmSocial.isFriend(p.uid) ? "#8fe0a8" : "#73ceff", "center", true, 170);
+  hudT(p.name, p.x, p.y - 43, 11, fmSocial.isFriend(p.uid) ? "#8fe0a8" : "#73ceff", "center", true, 170);
 }
 
 function friendsKey(k) {
