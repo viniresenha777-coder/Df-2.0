@@ -102,12 +102,29 @@ const fmCloud = (() => {
     }
   }
   async function resend(email) {
-    const { error } = await requireClient().auth.resend({
-      type: "signup", email: email.trim().toLowerCase(),
-      options: { emailRedirectTo: location.origin + location.pathname }
-    });
-    if (error) throw friendly(error);
+    try {
+      const { error } = await requireClient().auth.resend({
+        type: "signup", email: email.trim().toLowerCase(),
+        options: { emailRedirectTo: location.origin + location.pathname }
+      });
+      if (error) throw friendly(error);
+    } catch (error) { throw friendly(error); }
   }
-  return { resume, login, logout, resend, write, read: () => snapshot,
+  // Diagnóstico do caminho de rede sem tentar criar uma conta nem enviar senhas.
+  async function ping() {
+    try {
+      const response = await fetch(URL + "/auth/v1/health", {
+        method: "GET", cache: "no-store", mode: "cors",
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!response.ok) throw new Error("Supabase respondeu HTTP " + response.status + ".");
+      return new URL(URL).hostname;
+    } catch (error) {
+      if (error.name === "TimeoutError")
+        throw new Error("O servidor não respondeu em 10 segundos. Verifique sua rede ou bloqueadores.");
+      throw friendly(error);
+    }
+  }
+  return { resume, login, logout, resend, ping, write, read: () => snapshot,
     isActive: () => !!user, hasOnlineSave: () => revision !== null };
 })();
