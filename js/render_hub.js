@@ -296,6 +296,13 @@ function drawAreaMap(x, y, w, h) {
   // chefe da área
   const boss = zombies.find((z) => z.boss && z.hp > 0);
   if (boss) hudT("☠", X(boss.x), Y(boss.y) + 6, 16, "#ff4a3a", "center", true);
+  // Posição dos jogadores conectados nesta área.
+  for (const online of fmSocial.inSector()) {
+    const xOnline = X(online.x), yOnline = Y(online.y);
+    ctx.fillStyle = fmSocial.isFriend(online.uid) ? "#8fe0a8" : "#73ceff";
+    circle(xOnline, yOnline, 4.5);
+    hudT(online.name, xOnline, yOnline - 8, 10, "#e5e0c8", "center", true, 130);
+  }
   // você
   const pp = here ? game.exitPos : player;
   ctx.save(); ctx.translate(X(pp.x), Y(pp.y)); ctx.rotate(here ? -Math.PI / 2 : player.angle);
