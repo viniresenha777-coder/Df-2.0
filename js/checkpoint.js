@@ -34,7 +34,7 @@ function runSnapshot() {
   return {
     v: 1, cx: world.cell.cx, cy: world.cell.cy, x: Math.round(pos.x), y: Math.round(pos.y),
     p: { hp: p.hp, hunger: p.hunger, thirst: p.thirst, stamina: p.stamina, food: p.food, foodQ: p.foodQ, water: p.water, med: p.med,
-         anti: p.anti, infect: p.infect || 0, slots: p.slots, pack: p.pack, reserve: p.reserve, bag: p.bag, cur: p.cur },
+         anti: p.anti, infect: p.infect || 0, slots: p.slots, pack: p.pack, reserve: p.reserve, cur: p.cur },
     g: { money: game.money, clock: game.clock, kills: game.kills, best: game.best, time: game.time },
     map: typeof MAP !== "undefined" && MAP ? {
       bossT: MAP.bossT,
@@ -154,7 +154,7 @@ function restoreRun() {
     while (player.slots.length < SLOT_N) player.slots.push(null);
     if (Array.isArray(p.pack)) player.pack = p.pack.filter(validItem).slice(0, PACK_MAX);
     if (p.reserve) for (const t in AMMO) player.reserve[t] = Math.max(0, p.reserve[t] | 0);
-    if (Array.isArray(p.bag)) player.bag = p.bag.map(cleanImplant).filter(Boolean).slice(0, BAG_MAX);
+    player.bag = []; // Nenhum implante de checkpoints antigos é recuperado.
     recalcImplants();
     player.hp = Math.max(1, Math.min(player.maxHp, p.hp || player.maxHp));
     game.money = r.g.money | 0; game.clock = r.g.clock || game.clock; game.kills = r.g.kills | 0; game.best = r.g.best | 0; if (Number.isFinite(r.g.time)) game.time = Math.max(0, r.g.time);
