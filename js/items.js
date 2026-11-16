@@ -456,16 +456,16 @@ function drawCreditIcon(cx, cy, s) {
   txt("C", 0, 8, 22, "#7a5a1a", "center", true);
   ctx.restore();
 }
-// Arte dos 29 novos implantes, lidos por índice no atlas 5 × 6 (192 px por célula).
+// Arte oficial dos 29 implantes, atlas 6 colunas × 5 linhas (160 px por célula).
 const NEW_IMPLANTS_ATLAS = new Image();
-NEW_IMPLANTS_ATLAS.src = "img/implants_new_atlas.webp?v=20261116-new29";
+NEW_IMPLANTS_ATLAS.src = "img/implantes_29_atlas.webp?v=20261116-atlas6x5";
 // ícone de qualquer coisa encontrada ou guardada
 function drawEntryIcon(e, cx, cy, s) {
   const t = e.type || e.kind;
   if (t === "implant" && e.im && IMP[e.im.id] && NEW_IMPLANTS_ATLAS.complete && NEW_IMPLANTS_ATLAS.naturalWidth) {
     const idx = IMP_IDS.indexOf(e.im.id);
     if (idx >= 0) {
-      const tile = 192, col = idx % 5, row = Math.floor(idx / 5), size = 64 * s;
+      const tile = 160, col = idx % 6, row = Math.floor(idx / 6), size = 64 * s;
       ctx.save();
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
