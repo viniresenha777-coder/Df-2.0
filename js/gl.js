@@ -246,12 +246,14 @@ function gfxTick(dt) {
   // relâmpagos durante a tempestade
   GFX.flash = Math.max(0, GFX.flash - sec * 3.2);
   if (def.storm && w.rain > 0.6) {
-    w.bolt -= dt;
-    if (w.bolt <= 0) {
-      w.bolt = rand(6000, 16000);
+    // Relâmpagos nos mesmos instantes para todos os jogadores.
+    const worldMs = typeof fmWorld !== "undefined" ? fmWorld.nowMs() : Date.now();
+    const bolt = Math.floor(worldMs / 9000);
+    if (w.boltPhase !== bolt) {
+      w.boltPhase = bolt;
       GFX.flash = game.inside ? 0.25 : 1.1;
       setTimeout(() => { GFX.flash = Math.max(GFX.flash, game.inside ? 0.15 : 0.6); }, 120);
-      setTimeout(() => { nz(2.4, 90, game.inside ? 0.5 : 0.9); nz(1.2, 260, 0.35); }, rand(350, 1600));
+      setTimeout(() => { nz(2.4, 90, game.inside ? 0.5 : 0.9); nz(1.2, 260, 0.35); }, 600);
     }
   }
   // som da chuva
