@@ -73,11 +73,31 @@ loginForm.addEventListener("submit", async (event) => {
   try {
     await enterAccount(registering);
   } catch (error) {
-    loginStatus(error.message || "Não foi possível entrar.", true);
+    loginStatus(displayAuthError(error), true);
   } finally {
     loginBusy(false);
   }
 });
+function displayAuthError(error) {
+  const detail = String(error && error.message || error || "");
+  if (/failed to fetch|networkerror|load failed/i.test(detail))
+    return "Não foi possível conectar ao Supabase. Atualize a página e use Testar conexão; verifique extensões, VPN ou bloqueios de rede.";
+  return detail || "Não foi possível concluir a solicitação.";
+}
+document.getElementById("test-connection").addEventListener("click", async () => {
+  if (starting) return;
+  loginBusy(true);
+  loginStatus("Testando conexão com o Supabase...");
+  try {
+    const host = await fmCloud.ping();
+    loginStatus("Servidor acessível: " + host + ". Agora tente entrar ou criar a conta.");
+  } catch (error) {
+    loginStatus(displayAuthError(error), true);
+  } finally {
+    loginBusy(false);
+  }
+});
+
 document.getElementById("resend-confirmation").addEventListener("click", async () => {
   if (starting) return;
   if (!emailEl.reportValidity()) return;
@@ -87,7 +107,7 @@ document.getElementById("resend-confirmation").addEventListener("click", async (
     await fmCloud.resend(emailEl.value);
     loginStatus("Se a confirmação estiver pendente, confira o e-mail de confirmação mais recente.");
   } catch (error) {
-    loginStatus(error.message, true);
+    loginStatus(displayAuthError(error), true);
   } finally {
     loginBusy(false);
   }
@@ -114,6 +134,6 @@ document.getElementById("resend-confirmation").addEventListener("click", async (
       loginStatus("Entre ou crie sua conta para continuar o jogo.");
     }
   } catch (error) {
-    loginStatus(error.message || "Não foi possível verificar a sessão.", true);
+    loginStatus(displayAuthError(error), true);
   }
 })();
