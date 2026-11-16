@@ -270,14 +270,14 @@ function activeBonuses() {
   if (A("armor")) source("thick", `Armadura: ${A("armor")}`);
   if (w.crit) source("crit", `Arma: ${w.name}`);
   if (w.slow) source("agility", `Arma: ${w.name}`);
-  if (save.gm) { source("exp", "VIP"); source("greed", "VIP (dinheiro x2)"); }
+  if (vipActive()) { source("exp", "VIP"); source("greed", "VIP (dinheiro x2)"); }
   const bonusKeys = ["exp", "greed", ...STAT_KEYS.filter(k => k !== "exp" && k !== "greed")];
   for (const k of bonusKeys) {
     const v = fx[k];
     if (!v || !BONUS_TXT[k]) continue;
     const bad = ["reload", "endurance", "metabolism", "thick", "silence", "accImp", "craftDisc"].includes(k) ? false : v < 0;
     const good = ["thick", "silence", "reload", "endurance", "metabolism", "accImp", "craftDisc"].includes(k) ? v > 0 : v > 0;
-    out.push({ icon: "◆", text: BONUS_TXT[k](v), from: (src[k] || []).join(", "), color: save.gm && (k === "exp" || k === "greed") ? "#ffd25a" : good && !bad ? "#8fd08a" : "#e07b5a" });
+    out.push({ icon: "◆", text: BONUS_TXT[k](v), from: (src[k] || []).join(", "), color: vipActive() && (k === "exp" || k === "greed") ? "#ffd25a" : good && !bad ? "#8fd08a" : "#e07b5a" });
   }
   if (vest && vest.acid) out.push({ icon: "▣", text: `-${vest.acid}% dano de ácido`, from: `Colete: ${vest.name}`, color: "#8fb3ff" });
   if (w.burn) out.push({ icon: "✦", text: `fogo ${w.burn}/s`, from: `Arma: ${w.name}`, color: "#ffb070" });
