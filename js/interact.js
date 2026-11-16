@@ -27,7 +27,7 @@ function spots() {
 }
 function nearSpot() {
   let best = null, bd = 32;
-  for (const s of spots()) { const d = rectDist(player.x, player.y, s); if (d < bd) { bd = d; best = s; } }
+  for (const s of spots()) { if (s.table && !spotHasRealLoot(s)) continue; const d = rectDist(player.x, player.y, s); if (d < bd) { bd = d; best = s; } }
   return best;
 }
 function spotPrompt(s) {
@@ -206,14 +206,32 @@ function searchTick(dt) {
   sr.t += dt;
   if (sr.t >= sr.dur) { game.search = null; openSpot(sr.spot); }
 }
+// O loot é sorteado uma só vez antes de destacar o objeto.
+// Assim, só fica amarelo quando existe um item REAL para recolher.
+function spotLootPrepared(spot) {
+  if (!spot || spot.opened || spot.searchable === false || !spot.table ||
+      SAFE_KINDS.includes(spot.kind) ||
+      spot.kind === "door" || spot.kind === "decor" || spot.kind === "exit") return [];
+  const now = game.time || 0;
+  if (!spot.preparedLoot || (spot.preparedAt != null && now - spot.preparedAt >= 300000)) {
+    const zone = game.inside ? game.inside.row : rowAt(spot.y + (spot.h || 0) / 2);
+    const found = spot.table === "boss" ? bossLoot(spot.bossId, zone) : rollLoot(spot.table, zone);
+    const dz = deadZoneDrop(zone);
+    if (dz) found.push(dz);
+    spot.preparedLoot = found;
+    spot.preparedAt = now;
+  }
+  return spot.preparedLoot;
+}
+function spotHasRealLoot(spot) { return spotLootPrepared(spot).length > 0; }
 function openSpot(s) {
+  const found = spotLootPrepared(s).slice();
   s.opened = true; s.openedAt = game.time;
   missionProgress("search", 1); stat("searches");
   if (s.kind === "airdrop") stat("airdrops");
-  const zone = game.inside ? game.inside.row : rowAt(player.y);
-  const found = s.table === "boss" ? bossLoot(s.bossId, zone) : rollLoot(s.table, zone);
-  const dz = deadZoneDrop(zone); // Zona Morta: 1% de implante de alto nível
-  if (dz) { found.push(dz); game.banner = { text: "Implante da Zona Morta!", sub: implantName(dz.im), t: 3200, gold: true }; }
+
+  if (found.some(item => item.dead && item.type === "implant"))
+    game.banner = { text: "Implante da Zona Morta!", sub: "Recompensa rara", t: 3200, gold: true };
   if (!found.length) { sfx.empty(); toast(`${s.name}: vazio`); return; }
   game.found = found; game.foundSrc = s.name; game.foundSpot = s; game.foundDrop = null; mouse.down = false;
   sfx.pickup();
