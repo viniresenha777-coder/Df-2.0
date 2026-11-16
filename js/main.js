@@ -239,6 +239,7 @@ function update(dt) {
   }
 
   if (!fmWorld.isFollower() || game.inside) updateZombies(dt, k);
+  else fmWorld.localZombieThreats(dt);
   zombies = zombies.filter((z) => z.hp > 0);
   if (game.inside) game.inside.zombies = game.inside.zombies.filter((z) => z.hp > 0);
   if (adm.god) player.hp = player.maxHp;
