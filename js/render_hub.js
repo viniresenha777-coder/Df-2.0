@@ -149,6 +149,13 @@ function drawHubRoom(r) {
 
 // Arte da base (img/hub.png): uma imagem só com os 9 painéis numa grade 3x3, na mesma ordem de HUB_ROOMS
 // (os nomes já vêm escritos na arte). Sem o arquivo, o jogo desenha as salas antigas.
+// A arte fornecida pelo criador está armazenada como WebP compacto em base64.
+const CREDIT_SHOP_BUTTON_ART = new Image();
+fetch("img/loja-creditos.b64")
+  .then(response => { if (!response.ok) throw new Error("Imagem indisponível"); return response.text(); })
+  .then(encoded => { CREDIT_SHOP_BUTTON_ART.src = "data:image/webp;base64," + encoded.trim(); })
+  .catch(error => console.warn("Falha ao carregar botão Loja de Créditos:", error));
+
 const HUB_ART = new Image();
 HUB_ART.onerror = () => { HUB_ART.bad = true; };
 HUB_ART.src = "img/hub.png";
@@ -188,7 +195,23 @@ function drawHub() {
   txt(`Mochila $${game.money}  ·  Banco $${save.bank}  ·  Créditos ${save.credits}`, W - 140, 24, 12, "#c9c4ad", "right", true);
   btn(W - 128, 6, 118, 26, "Sair (E)", () => leaveHouse());
   // Acesso à Loja de Créditos no canto superior esquerdo da base.
-  btn(6, 5, 98, 28, "Créditos", () => { game.menu = "creditshop"; game.creditCur = 0; game.creditConfirm = null; game.cur = 0; }, true);
+  // Imagem original do botão no mesmo ponto do cabeçalho (não criar novo link lateral).
+  const cbx = 6, cby = 2, cbw = 144, cbh = 34;
+  const creditHover = mouse.x >= cbx && mouse.x <= cbx + cbw && mouse.y >= cby && mouse.y <= cby + cbh;
+  if (CREDIT_SHOP_BUTTON_ART.complete && CREDIT_SHOP_BUTTON_ART.naturalWidth) {
+    ctx.drawImage(CREDIT_SHOP_BUTTON_ART, cbx, cby, cbw, cbh);
+    if (creditHover) {
+      ctx.strokeStyle = "#ffd96a"; ctx.lineWidth = 1.5;
+      ctx.strokeRect(cbx + 1, cby + 1, cbw - 2, cbh - 2);
+    }
+    regClick(cbx, cby, cbw, cbh, () => {
+      game.menu = "creditshop"; game.creditCur = 0; game.creditConfirm = null; game.cur = 0;
+    });
+  } else {
+    btn(cbx, cby + 3, cbw, 28, "Créditos", () => {
+      game.menu = "creditshop"; game.creditCur = 0; game.creditConfirm = null; game.cur = 0;
+    }, true);
+  }
 
   // planta da base
   if (!drawHubArt()) {
