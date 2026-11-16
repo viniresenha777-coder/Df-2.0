@@ -431,4 +431,14 @@ function refreshVipFooter() {
 }
 refreshVipFooter();
 setInterval(refreshVipFooter, 1000);
+// Somente os três bônus da Trindade ficam visíveis fora da área do jogo.
+function refreshTrindadeFooter() {
+  const el = document.getElementById("trindade-footer");
+  if (!el) return;
+  const active = trindadeActive();
+  el.hidden = !active;
+  if (active) el.textContent = "TRINDADE ATIVA · Dano +35% · Corrida +35% · Armadura +35%";
+}
+refreshTrindadeFooter();
+setInterval(refreshTrindadeFooter, 1000);
 requestAnimationFrame(loop);
