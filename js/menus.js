@@ -7,7 +7,7 @@
 // ---------- Teclas dentro dos menus ----------
 function menuKey(k) {
   if (game.input) { inputKey(k); return; }
-  if (game.menu === "admin") { adminKey(k); return; }
+  if (game.menu === "admin") { if (!canUseAdmin()) { game.menu = null; game.input = null; return; } adminKey(k); return; }
   if (game.menu === "name") { nameKey(k); return; }
   if (game.menu === "prof") { profKey(k); return; }
   if (game.menu === "junk") { junkKey(k); return; }
@@ -35,7 +35,7 @@ function inputKey(k) {
   if (k === "enter") {
     const a = parseInt(inp.text || "0", 10);
     game.input = null;
-    if (inp.mode === "adm") { if (inp.text !== "") inp.fn(a); }
+    if (inp.mode === "adm") { if (canUseAdmin() && inp.text !== "") inp.fn(a); }
     else if (inp.mode === "deposit") deposit(a);
     else if (inp.mode === "credits") buyCredits(a);
     else withdraw(a);
@@ -228,13 +228,21 @@ function travelKey(k) {
 // ---------- Painel de administrador (F2) ----------
 const adm = { god: false, infAmmo: false, noReq: false, noHunger: false, infStamina: false, freeze: false, dmg: 1, direct: false, shopAnywhere: false };
 const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Armas", "Implantes"];
+function canUseAdmin() {
+  return typeof fmCloud !== "undefined" && fmCloud.isActive() && fmCloud.isAdmin();
+}
 function toggleAdmin() {
+  if (!canUseAdmin()) {
+    if (game.menu === "admin") { game.menu = null; game.input = null; }
+    toast("Painel exclusivo do administrador.");
+    return;
+  }
   if (game.menu === "admin") { game.menu = null; game.input = null; return; }
   if (game.over) return;
   game.shop = false; game.input = null; game.menu = "admin";
   game.at = game.at || 0; game.ac = game.ac || 0;
 }
-function admAsk(label, fn) { game.input = { mode: "adm", text: "", label, fn }; }
+function admAsk(label, fn) { if (!canUseAdmin()) return; game.input = { mode: "adm", text: "", label, fn }; }
 function admSetLevel(n) {
   n = Math.max(1, Math.min(MAX_LEVEL, n));
   for (let l = player.level + 1; l <= n; l++) { const pts = l <= 50 ? 5 : 2; player.points += pts; player.wpoints += pts; }
@@ -257,6 +265,7 @@ function admReset() {
   persist(); resetGame(); toast("Progresso apagado");
 }
 function admRows() {
+  if (!canUseAdmin()) return [];
   const rows = [], tab = game.at;
   const T = (label, get, set) => rows.push({ label, on: get, val: () => (get() ? "LIGADO" : "desligado"), act: () => set(!get()) });
   const B = (label, fn) => rows.push({ label, val: () => "Enter", act: (d, how) => { if (how === "enter") fn(); } });
@@ -320,6 +329,7 @@ function admRows() {
   return rows;
 }
 function adminKey(k) {
+  if (!canUseAdmin()) { game.menu = null; game.input = null; return; }
   if (k === "escape" || k === "f2") { game.menu = null; return; }
   if (k === "tab") { game.at = (game.at + 1) % ADM_TABS.length; game.ac = 0; return; }
   const rows = admRows();
@@ -574,6 +584,7 @@ function drawMap() {
 }
 
 function drawAdmin() {
+  if (!canUseAdmin()) { game.menu = null; game.input = null; return; }
   const rows = admRows();
   game.ac = Math.max(0, Math.min(rows.length - 1, game.ac));
   menuFrame("Painel de administrador");
