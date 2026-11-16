@@ -358,8 +358,29 @@ function genStreets(wd, R) {
     if (!free(wd, x, y, w, h, 30)) continue;
     addCar(wd, x, y, w, h, true, R); break;
   }
-  for (let x = 120; x < WORLD_W; x += 330) wd.lamps.push({ x, y: hy0 + 6 }, { x: x + 165, y: hy1 - 6 });
-  for (let y = 120; y < WORLD_H; y += 330) wd.lamps.push({ x: vx0 + 6, y }, { x: vx1 - 6, y: y + 165 });
+  // Iluminação pública exclusivamente na calçada (faixa de concreto das
+  // quadras). Evita postes no meio da pista e também remove os antigos
+  // postes gerados dentro de pátios de bases e pontos de interesse.
+  wd.lamps = [];
+  const lampSpacing = 66;
+  const addSidewalkLamp = (x, y) => {
+    if (!wd.blocks.some(b => x >= b.x && y >= b.y && x <= b.x + b.w && y <= b.y + b.h &&
+      (x < b.x + SIDEWALK || x > b.x + b.w - SIDEWALK ||
+       y < b.y + SIDEWALK || y > b.y + b.h - SIDEWALK))) return;
+    if (!free(wd, x - 4, y - 4, 8, 8, 4)) return;
+    if (wd.lamps.some(l => Math.hypot(l.x - x, l.y - y) < lampSpacing)) return;
+    wd.lamps.push({ x, y, big: true });
+  };
+  for (const b of wd.blocks) {
+    const s = SIDEWALK / 2;
+    // Duas luminárias na calçada de frente para as ruas centrais.
+    const y = b.i < 2 ? b.y + b.h - s : b.y + s;
+    const x = (b.i % 2) === 0 ? b.x + b.w - s : b.x + s;
+    for (const f of [0.27, 0.73]) {
+      addSidewalkLamp(b.x + b.w * f, y);
+      addSidewalkLamp(x, b.y + b.h * f);
+    }
+  }
   for (let i = 0; i < 160; i++) {
     const x = R() * WORLD_W, y = R() * WORLD_H;
     if (blockAt(x, y, wd)) continue;
