@@ -82,6 +82,16 @@ function makeArea(cell) {
   }
   genStreets(wd, R);
   genBodies(wd, R);
+  // Reaplica saques anteriores ao reconstruir uma área salva.
+  if (Array.isArray(cell._savedLoot)) {
+    wd.lootList.forEach((loot, i) => {
+      if (cell._savedLoot[i]) {
+        loot.opened = true;
+        loot.openedAt = 0;
+      }
+    });
+    cell._savedLoot = null;
+  }
   if (typeof genScenery === "function") genScenery(wd); else wd.models = [];   // cenário 3D (models.js)
   wd.mini = buildMinimap(wd);
   world = prev || wd;
