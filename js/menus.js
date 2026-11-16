@@ -34,16 +34,22 @@ function inputKey(k) {
   const inp = game.input;
   if (k === "escape") { game.input = null; return; }
   if (k === "enter") {
-    const a = parseInt(inp.text || "0", 10);
+    const rawText = inp.text || "";
+    const a = parseInt(rawText || "0", 10);
     game.input = null;
-    if (inp.mode === "adm") { if (canUseAdmin() && inp.text !== "") inp.fn(a); }
+    if (inp.mode === "admText") { if (canUseAdmin() && rawText.trim()) inp.fn(rawText.trim()); }
+    else if (inp.mode === "adm") { if (canUseAdmin() && rawText !== "") inp.fn(a); }
     else if (inp.mode === "deposit") deposit(a);
     else if (inp.mode === "credits") buyCredits(a);
     else withdraw(a);
     return;
   }
   if (k === "backspace") { inp.text = inp.text.slice(0, -1); return; }
-  if (/^[0-9]$/.test(k) && inp.text.length < 9) inp.text += k;
+  if (inp.mode === "admText") {
+    const raw = game.rawKey || "";
+    if (raw.length === 1 && /[\p{L}\p{N} _.-]/u.test(raw) && inp.text.length < 40)
+      inp.text += raw;
+  } else if (/^[0-9]$/.test(k) && inp.text.length < 9) inp.text += k;
 }
 
 // ---------- Banco e VIP (loja, baú e mochila ficam em inventory.js) ----------
@@ -234,7 +240,7 @@ function travelKey(k) {
 
 // ---------- Painel de administrador (F2) ----------
 const adm = { god: false, infAmmo: false, noReq: false, noHunger: false, infStamina: false, freeze: false, dmg: 1, direct: false, shopAnywhere: false };
-const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Armas", "Implantes"];
+const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Armas", "Implantes", "Presentes"];
 function canUseAdmin() {
   return typeof fmCloud !== "undefined" && fmCloud.isActive() && fmCloud.isAdmin();
 }
@@ -247,8 +253,28 @@ function toggleAdmin() {
   if (game.over) return;
   game.shop = false; game.input = null; game.menu = "admin";
   game.at = game.at || 0; game.ac = game.ac || 0;
+  game.admGift = game.admGift || { name: "", type: "dinheiro", qty: 1000, itemIndex: 0, busy: false };
 }
 function admAsk(label, fn) { if (!canUseAdmin()) return; game.input = { mode: "adm", text: "", label, fn }; }
+function admAskText(label, fn) { if (!canUseAdmin()) return; game.input = { mode: "admText", text: "", label, fn }; }
+const ADM_GIFT_TYPES = ["dinheiro", "vip", "arma", "material"];
+const ADM_GIFT_MATERIALS = ["sucata", "pecas", "eletronicos", "nucleo", "placa"];
+function admGiftOptions(g) {
+  return g.type === "arma" ? WLIST.filter(w => !w.fists).map(w => w.id) : ADM_GIFT_MATERIALS;
+}
+async function admSendGift() {
+  if (!canUseAdmin()) return;
+  const g = game.admGift;
+  if (!g || g.busy) return;
+  if (!g.name || g.name.trim().length < 3) { toast("Informe o nome do destinatário."); return; }
+  g.busy = true;
+  try {
+    const options = admGiftOptions(g), item = options[Math.abs(g.itemIndex || 0) % options.length];
+    toast(await fmGifts.send(g.name, g.type, g.qty, item));
+  } catch (err) {
+    toast(err.message || "Não foi possível enviar.");
+  } finally { g.busy = false; }
+}
 function admSetLevel(n) {
   n = Math.max(1, Math.min(MAX_LEVEL, n));
   for (let l = player.level + 1; l <= n; l++) { player.points += survivalPointsForLevel(l); player.wpoints += weaponPointsForLevel(l); }
@@ -285,7 +311,7 @@ function admRows() {
     T("Munição infinita", () => adm.infAmmo, (v) => { adm.infAmmo = v; });
     T("Ignorar requisitos de armas", () => adm.noReq, (v) => { adm.noReq = v; });
     T("Zumbis congelados", () => adm.freeze, (v) => { adm.freeze = v; });
-    T("Loja em qualquer lugar", () => adm.shopAnywhere, (v) => { adm.shopAnywhere = v; });
+    // Loja fica somente como imagem decorativa.
     rows.push({ label: "Multiplicador de dano", val: () => "x" + adm.dmg, act: (d) => { const o = [1, 2, 5, 10, 100, 1000], i = o.indexOf(adm.dmg); adm.dmg = o[(i + (d || 1) + o.length) % o.length]; } });
     N("Hora do dia (0 a 23)", () => Math.floor(game.clock / 60) % 24, (v) => { game.clock = Math.floor(game.clock / 1440) * 1440 + v * 60; }, 1, 0, 23);
     rows.push({ label: `Ir para área de perigo (0 a ${MAX_ZONE})`, val: () => `agora: zona ${game.area}`, act: (d, how) => { if (how === "enter") admAsk("Ir para qual zona?", (v) => teleportZone(v)); } });
@@ -326,11 +352,34 @@ function admRows() {
       if (d.fists) return;
       rows.push({ label: `${d.name} · ${CAT_LABEL[d.cat]}${d.legendary ? " (lendária)" : d.special ? " (especial)" : ""}`, val: () => "dar", act: (x, how) => { if (how === "enter") admGiveWeapon(d.id); } });
     });
-  } else {
+  } else if (tab === 4) {
     T("Instalar direto (sem passar pela clínica)", () => adm.direct, (v) => { adm.direct = v; });
     IMP_IDS.forEach((id) => rows.push({ label: `${IMP[id].name} · ${IMP[id].price} créditos`, val: () => "dar", act: (d, how) => { if (how === "enter") admGiveImplant(id); } }));
     B("Limpar a mochila de implantes", () => { player.bag.length = 0; toast("Mochila de implantes vazia"); });
     B("Remover os implantes instalados", () => { save.installed.length = 0; persist(); recalcImplants(); toast("Implantes removidos"); });
+  } else if (tab === 5) {
+    const g = game.admGift || (game.admGift = { name: "", type: "dinheiro", qty: 1000, itemIndex: 0, busy: false });
+    B("Destinatário: " + (g.name || "(digitar nome in-game)"), () => admAskText("Nome do jogador", name => { g.name = name.slice(0,16); }));
+    rows.push({ label: "Tipo de presente (A/D para escolher)", val: () =>
+      ({dinheiro:"Dinheiro",vip:"VIP temporário",arma:"Arma",material:"Material"})[g.type],
+      act: (d) => { g.type = ADM_GIFT_TYPES[(ADM_GIFT_TYPES.indexOf(g.type) + (d < 0 ? -1 : 1) + ADM_GIFT_TYPES.length) % ADM_GIFT_TYPES.length]; g.itemIndex = 0; } });
+    if (g.type === "vip") {
+      rows.push({ label: "Duração do VIP (A/D para escolher)", val: () =>
+        g.qty === 1 ? "1 mês" : g.qty === 6 ? "6 meses" : "1 ano",
+        act: (d) => { const o = [1,6,12]; g.qty = o[(o.indexOf([1,6,12].includes(g.qty)?g.qty:1)+(d<0?-1:1)+o.length)%o.length]; } });
+    } else if (g.type === "dinheiro" || g.type === "material") {
+      N("Quantidade", () => g.qty, n => { g.qty = n; }, 100, 1, g.type === "material" ? 1000 : 10000000);
+    }
+    if (g.type === "arma" || g.type === "material") {
+      rows.push({label: "Item (A/D alterna)", val: () => {
+        const list = admGiftOptions(g), item = list[(g.itemIndex || 0) % list.length];
+        return g.type === "arma" ? WDEF[item].name : MATS[item].name;
+      }, act: (d) => { const list = admGiftOptions(g);
+        g.itemIndex = ((g.itemIndex || 0) + (d < 0 ? -1 : 1) + list.length) % list.length; }});
+    }
+    B("ENVIAR PRESENTE PARA O JOGADOR", () => admSendGift());
+    rows.push({ label: "A entrega é automática e aparece em Mensagens (I).",
+      val: () => g.busy ? "enviando..." : "somente ADM", act: () => {} });
   }
   return rows;
 }
@@ -611,7 +660,13 @@ function drawAdmin() {
   const rows = admRows();
   game.ac = Math.max(0, Math.min(rows.length - 1, game.ac));
   menuFrame("Painel de administrador");
-  ADM_TABS.forEach((t, i) => txt(t, 130 + i * 175, 78, 15, game.at === i ? "#ffd96a" : "#6d6a58", "center", true));
+  ADM_TABS.forEach((t, i) => {
+    const x = 36 + i * 148, w = 148;
+    ctx.fillStyle = game.at === i ? "rgba(212,175,55,0.16)" : "rgba(0,0,0,0)";
+    ctx.fillRect(x, 55, w, 34);
+    txt(t, x + w / 2, 78, 14, game.at === i ? "#ffd96a" : "#a9a58f", "center", true);
+    regClick(x, 55, w, 34, () => { game.at = i; game.ac = 0; game.input = null; });
+  });
   ctx.fillStyle = "#3d3b30"; ctx.fillRect(40, 90, 880, 1);
   const vis = 14, off = Math.max(0, Math.min(rows.length - vis, game.ac - 6));
   rows.slice(off, off + vis).forEach((r, j) => {
@@ -619,15 +674,16 @@ function drawAdmin() {
     rowBox(60, y, 840, 25, sel);
     txt(r.label, 74, y + 17, 14, "#e5e0c8", "left", false, 560);
     txt(r.val(), 886, y + 17, 14, on === true ? "#6fae4f" : "#ffd96a", "right", true);
+    regClick(60, y, 840, 25, () => { game.ac = off + j; r.act(1,"enter"); });
   });
   if (rows.length > vis) txt(`${game.ac + 1}/${rows.length} · use W/S para rolar`, W / 2, 506, 12, "#a9a58f", "center");
-  hint("W/S escolhe · Tab troca de aba · A/D ajusta · Enter ativa ou digita um valor · F2 ou Esc fecha");
+  hint("CLIQUE nas abas e opções · W/S seleciona · A/D muda valor · Enter confirma · F2/Esc fecha");
   if (game.msgT > 0) txt(game.msg, W / 2, 536, 16, "#ffd96a", "center", true);
-  if (game.input && game.input.mode === "adm") {
+  if (game.input && (game.input.mode === "adm" || game.input.mode === "admText")) {
     ctx.fillStyle = "rgba(0,0,0,0.96)"; rr(220, 200, 520, 170, 10); ctx.fill();
     ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 2; ctx.stroke();
     txt(game.input.label, W / 2, 240, 20, "#e5e0c8", "center", true);
-    txt(`${game.input.text || "0"}${Math.floor(performance.now() / 500) % 2 ? "|" : ""}`, W / 2, 300, 36, "#e5e0c8", "center", true);
-    txt("digite um número · Enter confirma · Esc cancela", W / 2, 345, 14, "#a9a58f", "center");
+    txt(`${game.input.text || ""}${Math.floor(performance.now() / 500) % 2 ? "|" : ""}`, W / 2, 300, game.input.mode === "admText" ? 23 : 36, "#e5e0c8", "center", true, 490);
+    txt(game.input.mode === "admText" ? "Digite o nome no jogo · Enter confirma · Esc cancela" : "Digite um número · Enter confirma · Esc cancela", W / 2, 345, 14, "#a9a58f", "center");
   }
 }
