@@ -312,10 +312,17 @@ function gfxLights(dark) {
   for (const s of game.spits) add(s.x - ox, s.y - oy, 55, 0.25 + 0.4 * dark, [0.5, 1, 0.3], false);
   if (!game.inside) {
     for (const a of game.airdrops || []) if (!a.opened) add(a.x + a.w / 2 - ox, a.y + a.h / 2 - oy, 170, (0.3 + 0.7 * dark) * fl(a.x, 40), [1, 0.22, 0.15], false);
+    // Refletores acesos: iluminação quente ancorada na lâmpada, não no pé.
+    // Renderizados antes dos postes comuns para reservar luzes no limite MAXL.
+    for (const m of world.models || []) if (m.id === "worklight") {
+      add(m.x - ox, m.y - 29 * (m.k || MODEL_K) / MODEL_K - oy,
+          132, 0.24 + dark * 0.90, [1, 0.85, 0.55], false);
+    }
     if (dark > 0.05) for (const l of world.lamps) {
       const flick = (Math.floor(l.x * 7 + l.y * 3) % 11) < 2;
       const I = dark * 1.15 * (flick ? (Math.sin(t / 47 + l.x) > 0.6 || Math.sin(t / 900 + l.y) > 0.85 ? 0.25 : 1) : fl(l.y, 400));
-      add(l.x - ox, l.y - oy, l.big ? 270 : 180, I, [1, 0.78, 0.5], false);
+      add(l.x - ox, l.y - (l.big ? 53 : 40) - oy,
+          l.big ? 250 : 165, I + 0.14, [1, 0.83, 0.56], false);
     }
   } else if (game.inside.safe) add(W / 2, H / 2, 560, 0.5, [1, 0.9, 0.75], false);
   return L;
