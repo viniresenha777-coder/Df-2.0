@@ -23,18 +23,36 @@ async function startGame() {
   if (loaded) return;
   loaded = true;
   loginForm.hidden = true;
-  document.querySelector(".wrap").hidden = false;
-  for (const scriptTag of document.getElementById("game-scripts").content.querySelectorAll("script")) {
-    const script = document.createElement("script");
-    script.src = scriptTag.getAttribute("src");
-    await new Promise((resolve, reject) => {
-      script.onload = resolve;
-      script.onerror = () => reject(new Error("Erro ao carregar " + script.src));
-      document.body.appendChild(script);
-    });
+  const stage = document.querySelector(".wrap");
+  stage.hidden = false;
+  // Um erro de JavaScript durante a inicialização não pode deixar só a tela preta.
+  let scriptError = null;
+  const onScriptError = (event) => {
+    if (!scriptError) scriptError = event.error || new Error(event.message || "Falha no jogo");
+  };
+  window.addEventListener("error", onScriptError);
+  try {
+    for (const scriptTag of document.getElementById("game-scripts").content.querySelectorAll("script")) {
+      const script = document.createElement("script");
+      script.src = scriptTag.getAttribute("src");
+      await new Promise((resolve, reject) => {
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("Erro ao carregar " + script.src));
+        document.body.appendChild(script);
+      });
+      if (scriptError) throw scriptError;
+    }
+    passwordEl.value = "";
+    confirmEl.value = "";
+  } catch (error) {
+    stage.hidden = true;
+    loginForm.hidden = false;
+    loginStatus("Erro ao abrir o jogo: " + (error.message || String(error)) +
+      ". Atualize a página com Ctrl+Shift+R. Seu progresso foi preservado.", true);
+    throw error;
+  } finally {
+    window.removeEventListener("error", onScriptError);
   }
-  passwordEl.value = "";
-  confirmEl.value = "";
 }
 async function enterAccount(registering) {
   const email = emailEl.value.trim();
