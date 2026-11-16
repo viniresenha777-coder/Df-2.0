@@ -13,6 +13,7 @@ function menuKey(k) {
   if (game.menu === "messages") { messagesKey(k); return; }
   if (game.menu === "prof") { profKey(k); return; }
   if (game.menu === "junk") { junkKey(k); return; }
+  if (game.menu === "creditshop") { creditShopKey(k); return; }
   if (k === "escape" || k === "e" || k === "b" || (k === "c" && game.menu === "stats") || (k === "m" && game.menu === "sector") || (k === "n" && game.menu === "map") || (k === "o" && game.menu === "obj")) { game.menu = null; return; }
   if (game.menu === "bank") {
     if (k === "d") game.input = { mode: "deposit", text: "" };
@@ -232,6 +233,70 @@ function sellImplant() {
   game.cur = Math.max(0, Math.min(game.cur, clinicItems().length - 1));
 }
 
+
+const CREDIT_IMPLANT_PRICE = 800;
+function buyCreditImplant() {
+  const id = IMP_IDS[game.creditCur | 0];
+  if (!id || !inSafe()) { toast("A Loja de Créditos só funciona na base."); return; }
+  if (player.bag.length >= BAG_MAX) { toast("Mochila de implantes cheia."); return; }
+  if (save.credits < CREDIT_IMPLANT_PRICE) { toast("São necessários 800 créditos."); return; }
+  if (player.bag.some(im => im.id === id) || save.installed.some(im => im.id === id)) {
+    toast("Você já possui esse implante."); return;
+  }
+  save.credits -= CREDIT_IMPLANT_PRICE;
+  player.bag.push(newImplant(id));
+  sfx.buy();
+  checkpoint("compra na Loja de Créditos");
+  toast("Comprou " + IMP[id].name + " por 800 créditos.");
+}
+function creditShopKey(k) {
+  if (game.creditConfirm) {
+    if (k === "escape" || k === "n") game.creditConfirm = null;
+    else if (k === "enter" || k === "s" || k === "y") {
+      if (IMP_IDS[game.creditCur] === game.creditConfirm) buyCreditImplant();
+      game.creditConfirm = null;
+    }
+    return;
+  }
+  if (k === "escape" || k === "e" || k === "b") { game.menu = null; return; }
+  if (k === "w" || k === "arrowup") game.creditCur = Math.max(0, (game.creditCur | 0) - 1);
+  else if (k === "s" || k === "arrowdown") game.creditCur = Math.min(IMP_IDS.length - 1, (game.creditCur | 0) + 1);
+  else if (k === "enter") game.creditConfirm = IMP_IDS[game.creditCur];
+}
+function drawCreditShop() {
+  game.creditCur = Math.max(0, Math.min(IMP_IDS.length - 1, game.creditCur | 0));
+  menuFrame("Loja de Créditos", "Saldo: " + save.credits + " créditos · Todos os implantes: 800 créditos cada");
+  const top = Math.max(0, Math.min(IMP_IDS.length - 12, game.creditCur - 5));
+  for (let j = 0; j < 12 && j + top < IMP_IDS.length; j++) {
+    const i = top + j, id = IMP_IDS[i], y = 95 + j * 36, selected = i === game.creditCur;
+    const owned = player.bag.some(im => im.id === id) || save.installed.some(im => im.id === id);
+    rowBox(38, y, 506, 33, selected, owned ? "#5b7547" : "#3d3b30");
+    txt(IMP[id].name, 52, y + 21, 14, selected ? "#ffdf70" : "#e5e0c8", "left", true, 310);
+    txt(owned ? "ADQUIRIDO" : "800 créditos", 528, y + 21, 12, owned ? "#6fd08a" : "#d4af37", "right", true);
+    rowClick(38, y, 506, 33, selected, () => { game.creditCur = i; }, () => { game.creditCur = i; game.creditConfirm = id; });
+  }
+  const id = IMP_IDS[game.creditCur];
+  if (id) {
+    txt(IMP[id].name, 576, 114, 20, "#ffd96a", "left", true, 342);
+    drawEntryIcon({ type: "implant", im: { id, alloc: {} } }, 752, 206, 1.7);
+    txtWrap(implantDesc({ id, alloc: {} }), 576, 280, 13, "#c9c4ad", 344, 19, 7);
+    btn(607, 447, 272, 40, "Comprar · 800 créditos", () => { game.creditConfirm = id; }, true);
+  }
+  hint("W/S navega pelos implantes · Enter compra · Esc fecha");
+  if (game.creditConfirm) {
+    const id = game.creditConfirm;
+    ctx.fillStyle = "rgba(0,0,0,.8)"; ctx.fillRect(0, 0, W, H);
+    regClick(0, 0, W, H, () => {});
+    ctx.fillStyle = "#292317"; rr(238, 191, 484, 188, 10); ctx.fill();
+    ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 2; ctx.stroke();
+    txt("Comprar " + IMP[id].name + "?", W / 2, 244, 19, "#f2eedc", "center", true, 450);
+    txt("Preço: 800 créditos · Você tem: " + save.credits, W / 2, 276, 13, "#d4af37", "center");
+    btn(275, 313, 184, 42, "Confirmar", () => { if (IMP_IDS[game.creditCur] === id) buyCreditImplant(); game.creditConfirm = null; }, true);
+    btn(502, 313, 184, 42, "Cancelar", () => { game.creditConfirm = null; });
+  }
+  menuToast();
+}
+
 // ---------- Viagem ----------
 function travelKey(k) {
   if (k === "w" || k === "arrowup") game.cur = Math.max(0, game.cur - 1);
@@ -425,6 +490,7 @@ function drawMenu() {
   else if (game.menu === "missions") drawMissions();
   else if (game.menu === "sector") drawSector();
   else if (game.menu === "junk") drawJunk();
+  else if (game.menu === "creditshop") drawCreditShop();
   else if (game.menu === "admin") drawAdmin();
   else if (game.menu === "travel") drawTravel();
   else if (game.menu === "map") drawMap();
