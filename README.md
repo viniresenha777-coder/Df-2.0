@@ -46,3 +46,11 @@ https://viniresenha777-coder.github.io/Df-2.0/recuperar.html
 O workflow [.github/workflows/pages.yml](.github/workflows/pages.yml) publica automaticamente mudanças de `index.html`, `css/`, `js/` ou `img/` na `main`. Uma nova Release com um ZIP completo também pode atualizar o jogo.
 
 > A publicação do site é automática, mas a execução do SQL e as configurações de Auth dependem do proprietário do Supabase.
+
+### Regressões de multiplayer, interiores e bônus
+
+Execute `node tests/regressions.cjs` (Node.js 18+). O teste usa dois clientes com transporte Realtime simulado e percorre os setores do mapa, casas, andares, combate compartilhado e limites dos interiores grandes. Também verifica a mobília determinística de todos os tipos de prédio e os totais de bônus.
+
+Os canais identificam setor, prédio e andar. Móveis e decorações mantêm posições fixas; a disponibilidade de saque varia entre os móveis, com loot individual. Colete e implante somam proteção (limitada a 95%, considerando desgaste do colete), e o atributo Armadura aplica sua redução sobre o dano restante. O painel mostra a redução efetiva total. XP e dinheiro aparecem em linhas consecutivas, com os multiplicadores efetivos.
+
+Validação manual antes de publicar: abra duas contas em navegadores separados, atualize ambas para a mesma versão, atravesse áreas, entre na mesma casa e troque de andar. Verifique posições, zumbis e dano; jogadores em casas ou andares diferentes não devem aparecer juntos. Repita em hospital/prisão e após reconectar. Os testes simulados não substituem esta checagem no Supabase real.

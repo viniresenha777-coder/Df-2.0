@@ -12,7 +12,7 @@ function spots() {
   if (game.inside) {
     const h = game.inside;
     EXIT.x = IW() / 2 - 60; EXIT.y = IH() - 96;
-    return [...h.interior.filter((f) => !f.opened && f.kind !== "decor"), ...h.corpses.filter((c) => !c.opened), ...((h.level | 0) === 0 ? [EXIT] : [])];
+    return [...h.interior.filter((f) => !f.opened && f.searchable !== false && f.kind !== "decor"), ...h.corpses.filter((c) => !c.opened), ...((h.level | 0) === 0 ? [EXIT] : [])];
   }
   const near = world.loot.query(player.x - 60, player.y - 60, player.x + 60, player.y + 60).filter((o) => !o.opened && !(o.fall > 0));
   for (const c of world.corpses) if (!c.opened && Math.abs(c.x - player.x) < 90 && Math.abs(c.y - player.y) < 90) near.push(c);
@@ -208,31 +208,43 @@ function openSpot(s) {
 // ---------- Interiores ----------
 function makeInterior(h, list, lvl) {
   list = list || []; lvl = lvl | 0;
+  const R = mulberry(Math.floor(bHash(h, lvl + 71) * 4294967296));
+  const choose = a => a[Math.floor(R() * a.length)];
+  const range = (a, b) => a + R() * (b - a);
   const d = h.def, iw = h.iw || W, ih = h.ih || H, area = (iw * ih) / (W * H);
-  let n = d.n[0] + Math.floor(Math.random() * (d.n[1] - d.n[0] + 1));
+  let n = d.n[0] + Math.floor(R() * (d.n[1] - d.n[0] + 1));
   n = Math.round(n * Math.sqrt(area) * (lvl > 0 && !d.landmark ? 0.7 : 1));
   const keepClear = lvl === 0 ? { x: iw / 2 - 100, y: ih - 210, w: 200, h: 210 } : { x: 40, y: ih / 2 - 60, w: 200, h: 170 };
   const add = (name, kind, table) => {
     const f = FURN[name] || { w: 26, h: 20, color: "#8a5a2b" };
     for (let t = 0; t < 50; t++) {
       let x, y;
-      const wall = Math.random();
-      if (wall < 0.3) { x = 60 + Math.random() * (iw - 120 - f.w); y = 56; }
-      else if (wall < 0.5) { x = 56; y = 70 + Math.random() * (ih - 260 - f.h); }
-      else if (wall < 0.7) { x = iw - 56 - f.w; y = 70 + Math.random() * (ih - 260 - f.h); }
-      else { x = 120 + Math.random() * (iw - 240 - f.w); y = 120 + Math.random() * (ih - 320 - f.h); }
+      const wall = R();
+      if (wall < 0.3) { x = 60 + R() * (iw - 120 - f.w); y = 56; }
+      else if (wall < 0.5) { x = 56; y = 70 + R() * (ih - 260 - f.h); }
+      else if (wall < 0.7) { x = iw - 56 - f.w; y = 70 + R() * (ih - 260 - f.h); }
+      else { x = 120 + R() * (iw - 240 - f.w); y = 120 + R() * (ih - 320 - f.h); }
       if (hits(list, x, y, f.w, f.h, kind === "decor" ? 14 : 22) || hits([keepClear], x, y, f.w, f.h, 0)) continue;
       const items = [];
-      for (let i = 0; i < 10; i++) items.push({ u: Math.random(), v: Math.random(), c: pick(["#c0392b", "#e0b040", "#4aa3df", "#6fae4f", "#e5e0c8", "#a35bd0", "#d9822b"]) });
+      for (let i = 0; i < 10; i++) items.push({ u: R(), v: R(), c: choose(["#c0392b", "#e0b040", "#4aa3df", "#6fae4f", "#e5e0c8", "#a35bd0", "#d9822b"]) });
       list.push({ x, y, w: f.w, h: f.h, color: f.color, kind, table, name, opened: false, items });
       return;
     }
   };
-  for (let i = 0; i < n; i++) { const name = pick(d.furn); add(name, "furniture", name); }
-  if (Math.random() < (d.landmark ? 0.35 : 0.22)) add("Baú", "chest", "chest");
+  for (let i = 0; i < n; i++) { const name = choose(d.furn); add(name, "furniture", name); }
+  if (R() < (d.landmark ? 0.35 : 0.22)) add("Baú", "chest", "chest");
   // enfeites (sem saque) para o lugar parecer mobiliado; não mudam a quantidade de saque
-  if (d.decor) { const nd = Math.round((2 + Math.floor(Math.random() * 3)) * Math.sqrt(area)); for (let i = 0; i < nd; i++) add(pick(d.decor), "decor", null); }
-  h.rug = d.floor === "wood" || d.floor === "carpet" ? { x: rand(200, iw - 600), y: rand(170, ih - 360), w: rand(240, 380), h: rand(140, 200), c: pick(["#6e3b3b", "#3b4e6e", "#5a6e3b", "#6e5a3b"]) } : null;
+  if (d.decor) { const nd = Math.round((2 + Math.floor(R() * 3)) * Math.sqrt(area)); for (let i = 0; i < nd; i++) add(choose(d.decor), "decor", null); }
+  h.rug = d.floor === "wood" || d.floor === "carpet" ? { x: range(200, iw - 600), y: range(170, ih - 360), w: range(240, 380), h: range(140, 200), c: choose(["#6e3b3b", "#3b4e6e", "#5a6e3b", "#6e5a3b"]) } : null;
+  // Only search availability changes; furniture, decorations and collisions stay fixed.
+  const candidates = list.filter(f => f.kind === "furniture" || f.kind === "chest");
+  const shuffled = candidates.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const available = new Set(shuffled.slice(0, Math.max(1, Math.ceil(candidates.length * 0.75))));
+  for (const f of candidates) f.searchable = available.has(f);
   return list;
 }
 

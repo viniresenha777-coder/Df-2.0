@@ -172,7 +172,7 @@ function update(dt) {
   if (adm.infStamina) { player.stamina = 100; player.exhausted = false; }
   game.objT -= dt;
   if (game.objT <= 0) { game.objT = 1000; objectivesTick(); }
-  if (!fmWorld.isFollower() || game.inside) eventsTick(dt);
+  if (!fmWorld.isFollower()) eventsTick(dt);
   gfxTick(dt);
   if (moving) {
     const slow = (player.flags.jugger ? 0 : (save.vest >= 0 ? VESTS[save.vest].slow || 0 : 0) + (curW().slow || 0)) - (player.fx.adren && player.hp / player.maxHp < 0.5 ? player.fx.adren : 0);
@@ -228,7 +228,7 @@ function update(dt) {
   updateFuses(dt);
   updateParts(dt, k);
 
-  if (!fmWorld.isFollower() || game.inside) mapTick(dt);
+  if (!fmWorld.isFollower()) mapTick(dt);
   if (game.trans) return;
   if (!game.inside) {
     manageRows();
@@ -238,7 +238,7 @@ function update(dt) {
     world.corpses = world.corpses.filter((c) => (c.life -= dt) > 0);
   }
 
-  if (!fmWorld.isFollower() || game.inside) updateZombies(dt, k);
+  if (!fmWorld.isFollower()) updateZombies(dt, k);
   else fmWorld.localZombieThreats(dt);
   zombies = zombies.filter((z) => z.hp > 0);
   if (game.inside) game.inside.zombies = game.inside.zombies.filter((z) => z.hp > 0);
@@ -292,6 +292,7 @@ function draw() {
   }
   if (game.inside) {
     for (const z of Zs()) { drawZombie(z); drawZombieExtra(z); }
+    for (const online of fmSocial.inSector()) drawOnlinePlayer(online);
     drawProjectiles();
     if (game.escort && !game.over) drawSurvivor(game.escort.x, game.escort.y, game.escort.ang, game.escort.walk, game.escort.moving);
     if (!game.over && !drawPlayerSprite()) drawPlayer();

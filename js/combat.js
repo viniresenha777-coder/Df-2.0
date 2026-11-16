@@ -151,7 +151,7 @@ function hurt(z, dmg, ang, quiet, fx) {
   if (z.bossId === "ceifador" && z.phase > 0) d *= 0.2; // sumindo: quase imune
   // Em um setor compartilhado, só o líder altera a vida dos zumbis.
   // Os tiros de outros jogadores são encaminhados ao líder via Broadcast.
-  if (!game.inside && typeof fmWorld !== "undefined" && fmWorld.isFollower()) {
+  if (typeof fmWorld !== "undefined" && fmWorld.isFollower()) {
     fmWorld.reportHit(z, d, ang);
     z.flash = 90;
     if (!quiet) {
@@ -360,7 +360,7 @@ function creeperBlast(z) {
 }
 function damagePlayer(dmg) {
   if (adm.god || performance.now() < (player.defyUntil || 0)) return;
-  const d = dmg * (1 - Math.max(-0.5, Math.min(player.flags.jugger ? 0.75 : 0.7, player.fx.thick / 100))) * (1 - armorRed());
+  const d = dmg * (1 - armorRed());
   player.hp -= d;
   wearVest(d);
   game.hurtT = 350; game.shake = Math.min(12, game.shake + 3 + d * 0.15);

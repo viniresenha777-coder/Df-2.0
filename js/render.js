@@ -406,7 +406,7 @@ function drawDoor(b) {
   const d = b.door, up = b.facing === "up";
   ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(d.x - 3, d.y - 1, d.w + 6, d.h + 2);
   if (b.enter) {
-    const searched = b.interior && !b.safe && b.interior.every((f) => f.opened || f.kind !== "furniture");
+    const searched = b.interior && !b.safe && b.interior.every((f) => f.opened || f.searchable === false || f.kind !== "furniture");
     ctx.fillStyle = b.safe ? "#2f6a46" : searched ? "#3a3a36" : "#5a3a1e"; ctx.fillRect(d.x, d.y, d.w, d.h);
     ctx.fillStyle = "#d4af37"; ctx.fillRect(d.x + d.w - 8, d.y + d.h / 2 - 1.5, 3, 3);
     ctx.fillStyle = "rgba(200,200,190,0.35)"; ctx.fillRect(d.x - 4, up ? d.y - 5 : d.y + d.h + 1, d.w + 8, 4);
@@ -586,7 +586,7 @@ function drawFurniture(f) {
   ctx.globalAlpha = 1;
   const near = Math.hypot(player.x - (x + w / 2), player.y - (y + h / 2)) < 140;
   if (SAFE_KINDS.includes(f.kind) || near) txt(n, x + w / 2, y + h + 16, 12, SAFE_KINDS.includes(f.kind) ? "#e5e0c8" : "rgba(229,224,200,0.8)", "center", true);
-  if (!f.opened && f.kind !== "exit" && !SAFE_KINDS.includes(f.kind)) sparkle(x + w + 2, y - 2);
+  if (!f.opened && f.searchable !== false && f.kind !== "exit" && !SAFE_KINDS.includes(f.kind)) sparkle(x + w + 2, y - 2);
 }
 function drawDecor(f) {
   const { x, y, w, h } = f, n = f.name;
@@ -1068,7 +1068,7 @@ function drawInteriorMinimap(x, y, w, h) {
     if (f.kind === "stairs") c = "#ffd96a";
     else if (f.kind === "decor") c = "#4e524a";
     else if (SAFE_KINDS.includes(f.kind)) c = "#6fae4f";
-    else c = f.opened ? "#5a5a52" : "#c9a040";
+    else c = f.opened || f.searchable === false ? "#5a5a52" : "#c9a040";
     ctx.fillStyle = c; ctx.fillRect(ox + f.x * k, oy + f.y * k, Math.max(2, f.w * k), Math.max(2, f.h * k));
     if (f.kind === "stairs") txt(f.dir > 0 ? (b.def.under ? "▼" : "▲") : b.def.under ? "▲" : "▼", ox + (f.x + f.w / 2) * k, oy + (f.y + f.h / 2) * k + 4, 10, "#141410", "center", true);
   }
@@ -1077,6 +1077,10 @@ function drawInteriorMinimap(x, y, w, h) {
     if (z.hp <= 0) continue;
     ctx.fillStyle = z.state === "chase" ? "#ff5a4a" : "rgba(200,70,60,0.85)";
     ctx.fillRect(ox + z.x * k - 2, oy + z.y * k - 2, 4, 4);
+  }
+  for (const online of fmSocial.inSector()) {
+    ctx.fillStyle = fmSocial.isFriend(online.uid) ? "#8fe0a8" : "#73ceff";
+    ctx.fillRect(ox + online.x * k - 2, oy + online.y * k - 2, 4, 4);
   }
   // área visível na tela
   ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1;
