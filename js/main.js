@@ -247,6 +247,7 @@ function update(dt) {
   searchTick(dt);
   escortTick(dt, k);
   updateBullets(dt, k);
+  tickBaseGuards(dt);
   updateSpits(dt, k);
   updateHazards(dt);
   updateFuses(dt);
