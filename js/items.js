@@ -219,7 +219,7 @@ function wStat(inst) {
 function curInst() { return player.slots[player.cur]; }
 function curW() { const i = curInst(); return WDEF[i ? i.id : "punhos"]; }
 function upSum(inst) { return inst.up.acc + inst.up.dmg + inst.up.rel; }
-function instName(inst) { const s = upSum(inst); return WDEF[inst.id].name + (s ? ` +${s}` : ""); }
+function instName(inst) { const s = upSum(inst); return WDEF[inst.id].name + (inst.gc && inst.up.acc === 8 && inst.up.dmg === 8 && inst.up.rel === 8 ? " (GC)" : (s ? ` +${s}` : "")); }
 function canUse(d) { if (adm.noReq || d.fists) return true; return A("str") >= d.req[0] && A(d.cat) >= d.req[1] && (!d.minLevel || player.level >= d.minLevel); }
 function reqText(d) { return `${d.minLevel ? `Nível ${d.minLevel}+ · ` : ""}Força ${d.req[0]} · ${CATNAME[d.cat]} ${d.req[1]}`; }
 function dmgMult(d) {
