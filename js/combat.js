@@ -18,7 +18,7 @@ function pushOut(e, r) {
 }
 function blocked(x, y) { return !!hitObstacle(x, y); }
 // Tiros e cuspe passam por cima do que é mais baixo que o personagem (caçamba, caixote, barril, corpo,
-// chafariz, cerca). Param em casa, carro, árvore, poste e objetos altos (contêiner, ruína, torre...).
+// chafariz, cerca e postes decorativos). Param em casa, carro, árvore e objetos altos (contêiner, ruína, torre...).
 const LOW_SOLIDS = new Set(["dumpster", "crate", "fountain", "body"]);
 function stopsShots(o) { return !o.thin && !o.low && !LOW_SOLIDS.has(o.kind); }
 // devolve o obstáculo atingido (ou true para paredes/borda), ou null
@@ -27,7 +27,9 @@ function hitObstacle(x, y) {
   if (x < 0 || y < 0 || x > WORLD_W || y > WORLD_H) return true;
   const o = world.obs.at(x, y).find((o) => stopsShots(o) && inRect(x, y, o));
   if (o) return o;
-  for (const l of world.lamps) if (Math.abs(x - l.x) < 4 && Math.abs(y - l.y) < 4) return l; // poste
+  // Postes e sombras são apenas visuais: não existe volume físico para o
+  // traço projetado no asfalto. Evita que tiros gerem faíscas invisíveis
+  // ou sejam bloqueados ao atravessar a sombra de um poste.
   return null;
 }
 
