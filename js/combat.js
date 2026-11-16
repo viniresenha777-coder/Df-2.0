@@ -199,7 +199,7 @@ function attack() {
   if (mz) {
     mx = mz.x; my = mz.y;
     const tx = mouse.x + cam.x, ty = mouse.y + cam.y;
-    if (Math.hypot(tx - mx, ty - my) > 40) aim = Math.atan2(ty - my, tx - mx);
+    if (Math.hypot(tx - mx, ty - my) > 8) aim = Math.atan2(ty - my, tx - mx);
   }
   player.shotAng = aim;
   const n = w.pellets || 1;
