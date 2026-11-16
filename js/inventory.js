@@ -127,7 +127,7 @@ function acceptFound() {
   stat("itemsTaken");
   if (e.type === "weapon") { registerWeapon(e.inst.id); if (WDEF[e.inst.id].rar >= 4) stat("legendaries"); }
   game.found.shift();
-  if (!game.found.length) game.found = null;
+  if (!game.found.length) finishFound();
   return true;
 }
 // comida, água, kit e antibiótico podem ser usados na hora (gasta 1; o resto continua oferecido)
@@ -155,20 +155,85 @@ function useFound() {
   }
   sfx.pickup(); stat("itemsTaken");
   e.amt--;
-  if (e.amt <= 0) { game.found.shift(); if (!game.found.length) game.found = null; }
+  if (e.amt <= 0) { game.found.shift(); if (!game.found.length) finishFound(); }
 }
-function declineFound() { game.found.shift(); if (!game.found.length) game.found = null; }
+// Loot recusado permanece como o mesmo item no chão por 10 segundos reais.
+const GROUND_LOOT_LIFETIME = 10000;
+function removeGroundDrop(drop) {
+  if (!game.groundDrops) return;
+  const i = game.groundDrops.indexOf(drop);
+  if (i >= 0) game.groundDrops.splice(i, 1);
+}
+function finishFound() {
+  if (game.foundDrop) removeGroundDrop(game.foundDrop);
+  game.found = null; game.foundDrop = null; game.foundSpot = null;
+}
+function groundDropsTick(now = performance.now()) {
+  if (!game.groundDrops) return;
+  game.groundDrops = game.groundDrops.filter(d => d.expiresAt > now);
+  if (game.foundDrop && game.foundDrop.expiresAt <= now) {
+    game.found = null; game.foundDrop = null; game.foundSpot = null;
+    if (game.menu === "pack") game.menu = null;
+    toast("O item deixado no chão desapareceu.");
+  }
+}
+function drawGroundDrops() {
+  if (!game.groundDrops) return;
+  const now = performance.now();
+  for (const d of game.groundDrops) {
+    if (d.expiresAt <= now ||
+      d.inside !== (game.inside || null) ||
+      (!d.inside && (d.cx !== world.cell.cx || d.cy !== world.cell.cy)) ||
+      !inView(d.x - 40, d.y - 40, 80, 80)) continue;
+    ctx.save();
+    ctx.fillStyle = "rgba(20,19,11,0.82)";
+    ctx.shadowColor = "#ffd334"; ctx.shadowBlur = 16;
+    circle(d.x, d.y, 22);
+    ctx.shadowBlur = 0; ctx.lineWidth = 2; ctx.strokeStyle = "#ffd334";
+    ctx.beginPath(); ctx.arc(d.x, d.y, 22, 0, Math.PI * 2); ctx.stroke();
+    drawEntryIcon(d.entry, d.x, d.y - 4, 0.45);
+    ctx.restore();
+    hudT(Math.ceil((d.expiresAt - now) / 1000) + "s", d.x, d.y + 34, 12, "#ffe07e", "center", true);
+  }
+}
+function declineFound() {
+  if (!game.found || !game.found.length) return;
+  const e = game.found.shift();
+  // Se o jogador abriu o item recusado do chão, ele conserva o prazo original.
+  if (!game.foundDrop) {
+    const spot = game.foundSpot;
+    const x = spot ? spot.x + spot.w / 2 : player.x;
+    const y = spot ? spot.y + spot.h / 2 : player.y;
+    if (!game.groundDrops) game.groundDrops = [];
+    game.groundDrops.push({
+      kind: "grounddrop", name: entryName(e), entry: e,
+      x, y, w: 24, h: 24, inside: game.inside || null,
+      cx: world.cell.cx, cy: world.cell.cy,
+      expiresAt: performance.now() + GROUND_LOOT_LIFETIME
+    });
+    toast("Item recusado: 10 segundos para recolher no chão.");
+  }
+  if (!game.found.length) {
+    game.found = null; game.foundDrop = null; game.foundSpot = null;
+  }
+}
 function takeAllFound() { while (game.found && acceptFound()); }
+function openPackFromFound() {
+  if (!game.found) return;
+  game.menu = "pack";
+  mouse.down = false;
+}
 function foundKey(k) {
   if (k === "enter" || k === "e" || k === "y" || k === "s") acceptFound();
   else if (k === "c" && canUseFound(game.found[0])) useFound();
   else if (k === "n" || k === "escape" || k === "q") declineFound();
   else if (k === "t") takeAllFound();
+  else if (k === "b" && game.found[0] && game.found[0].type === "weapon") openPackFromFound();
 }
 function drawFound() {
   const e = game.found[0];
   ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0, 0, W, H);
-  const x = 200, y = 120, w = 560, h = 350, wd = e.type === "weapon" ? WDEF[e.inst.id] : null;
+  const x = 200, y = 95, w = 560, h = 400, wd = e.type === "weapon" ? WDEF[e.inst.id] : null;
   ctx.fillStyle = "rgba(62,22,18,0.94)"; rr(x, y, w, h, 10); ctx.fill();
   ctx.strokeStyle = wd && wd.rar >= 2 ? rarColor(wd) : "#a04a3a"; ctx.lineWidth = wd && wd.rar >= 3 ? 3 : 2; ctx.stroke();
   if (wd && wd.rar >= 2) {
@@ -204,8 +269,10 @@ function drawFound() {
     btn(x + 110, y + 266, 150, 42, "SIM", acceptFound, true);
     btn(x + 300, y + 266, 150, 42, "NÃO", declineFound);
   }
+  if (e.type === "weapon") btn(x + 130, y + 318, 300, 36, "ABRIR MOCHILA (B)", openPackFromFound, true);
   const more = game.found.length - 1;
-  txt(`Enter/E: sim${usable ? " · C: usar agora" : ""} · N/Esc: não${more ? ` · T: pegar tudo (+${more} ${more > 1 ? "itens" : "item"})` : ""}`, W / 2, y + h - 14, 12, "rgba(232,192,160,0.7)", "center");
+  txt(`Enter/E: pegar${usable ? " · C: usar" : ""} · N/Esc: recusar (10s)${e.type === "weapon" ? " · B: mochila" : ""}${more ? " · T: tudo" : ""}`,
+    W / 2, y + h - 14, 12, "rgba(232,192,160,0.7)", "center");
   if (more) btn(x + w - 100, y + 274, 86, 28, "Tudo", takeAllFound);
   if (game.msgT > 0) txt(game.msg, W / 2, y + h + 26, 15, "#ffd96a", "center", true);
 }
