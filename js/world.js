@@ -72,7 +72,7 @@ function makeArea(cell) {
   const wd = {
     cell, zone: cell.zone, obstacles: [], obs: new Grid(160), loot: new Grid(160), lootList: [], buildings: [], cars: [], lamps: [], trees: [],
     props: [], decals: [], blood: [], corpses: [], blocks: [], outposts: [], paths: [], fences: [], spaces: [], bodies: [], shells: [],
-    pop: false, wave1N: 0, opBlock: null
+    pop: false, wave1N: 0, opBlock: null, guards: []
   };
   const prev = world;
   world = wd;
@@ -300,6 +300,7 @@ function genOutpost(wd, blk, inner, op, R) {
   wd.outposts[op.id] = b;
   // cerca com portão virado para o sul
   const f = { x: inner.x + 22, y: inner.y + 22, w: inner.w - 44, h: inner.h - 44 }, t = 8, gate = 150, gx = bx + bw / 2;
+  installBaseGuards(wd, op, f);
   fence(wd, f.x, f.y, f.w, t);
   fence(wd, f.x, f.y, t, f.h);
   fence(wd, f.x + f.w - t, f.y, t, f.h);
