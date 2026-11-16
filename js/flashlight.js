@@ -98,7 +98,8 @@ function flashlightBlocks() {
   const mask = flashCanvas(), c = FLASH_BLOCK.ctx;
   c.setTransform(1,0,0,1,0,0);
   c.clearRect(0, 0, mask.width, mask.height);
-  if (game.inside || game.over || !world || !player) return mask;
+  // Durante o dia não há feixe a bloquear: economiza CPU e garante a luz desligada.
+  if (game.inside || game.over || !world || !player || !flashlightActive()) return mask;
   c.setTransform(0.5,0,0,0.5,0,0);
   c.globalCompositeOperation = "source-over";
   c.fillStyle = "#000";
