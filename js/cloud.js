@@ -2,9 +2,9 @@
 // Conta e progresso online do Fronteira Morta 2.0.
 // Chave publishable: pode estar no navegador; NUNCA usar service_role aqui.
 const fmCloud = (() => {
-  const URL = "https://udoxuzyvyuxrqektdrxf.supabase.co";
+  const SUPABASE_URL = "https://udoxuzyvyuxrqektdrxf.supabase.co";
   const KEY = "sb_publishable_8serkqz1z5k9fZLnDxMNlQ_hv_PF88z";
-  const client = window.supabase && window.supabase.createClient(URL, KEY, {
+  const client = window.supabase && window.supabase.createClient(SUPABASE_URL, KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true,
       storageKey: "fronteira-morta-df20-auth" }
   });
@@ -146,12 +146,17 @@ const fmCloud = (() => {
   // Diagnóstico do caminho de rede sem tentar criar uma conta nem enviar senhas.
   async function ping() {
     try {
-      const response = await fetch(URL + "/auth/v1/health", {
+      const response = await fetch(SUPABASE_URL + "/auth/v1/health", {
         method: "GET", cache: "no-store", mode: "cors",
+        headers: { apikey: KEY, Accept: "application/json" },
         signal: AbortSignal.timeout(10000)
       });
-      if (!response.ok) throw new Error("Supabase respondeu HTTP " + response.status + ".");
-      return new URL(URL).hostname;
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403)
+          throw new Error("O Supabase está acessível, mas recusou a chave de acesso (HTTP " + response.status + "). Confira a chave publicável.");
+        throw new Error("Supabase respondeu HTTP " + response.status + ".");
+      }
+      return new URL(SUPABASE_URL).hostname;
     } catch (error) {
       if (error.name === "TimeoutError")
         throw new Error("O servidor não respondeu em 10 segundos. Verifique sua rede ou bloqueadores.");
