@@ -149,6 +149,17 @@ function hurt(z, dmg, ang, quiet, fx) {
     if (!quiet && Math.random() < 0.3) game.floats.push({ x: z.x, y: z.y - z.r - 10, text: "BLOQUEADO", t: 600 });
   }
   if (z.bossId === "ceifador" && z.phase > 0) d *= 0.2; // sumindo: quase imune
+  // Em um setor compartilhado, só o líder altera a vida dos zumbis.
+  // Os tiros de outros jogadores são encaminhados ao líder via Broadcast.
+  if (!game.inside && typeof fmWorld !== "undefined" && fmWorld.isFollower()) {
+    fmWorld.reportHit(z, d, ang);
+    z.flash = 90;
+    if (!quiet) {
+      game.floats.push({ x: z.x, y: z.y - z.r, text: Math.round(d).toString(), t: 700 });
+      sfx.hit();
+    }
+    return d;
+  }
   z.hp -= d; z.flash = 90;
   if (player.fx.leech) player.hp = Math.min(player.maxHp, player.hp + Math.min(player.maxHp * 0.05, d * player.fx.leech / 100));
   if (fx && z.hp > 0) {
@@ -263,7 +274,7 @@ function makeZombie(x, y, type, zone) {
     demon:    { skin: "#9a2a22", cloth: "#2a0a0a" }
   }[type];
   const z = Object.assign({
-    x, y, r: t.r, type, zone, row: zone, hp, maxHp: hp, dmg: (8 + sub) * t.dmg * R.dmg, hitDelay: t.hitDelay || 750,
+    netId: crypto.randomUUID(), x, y, r: t.r, type, zone, row: zone, hp, maxHp: hp, dmg: (8 + sub) * t.dmg * R.dmg, hitDelay: t.hitDelay || 750,
     speed: Math.min(2.9, (0.7 + Math.random() * 0.35 + reg * 0.1 + sub * 0.02) * t.spd), hitCd: 0, angle: Math.random() * 6.283,
     burn: 0, bleed: 0, stun: 0, chargeCd: 2000 + Math.random() * 2000, chargeT: 0, windT: 0, slamCd: 1500, slamT: 0,
     skin: pick(ZSKIN), cloth: pick(ZCLOTHES), anim: Math.random() * 10, flash: 0, spitCd: 1500 + Math.random() * 1500,
