@@ -11,11 +11,18 @@ const SAFE_KINDS = ["stash", "bank", "clinic", "board", "travel", "shopc", "craf
 function spots() {
   if (game.inside) {
     const h = game.inside;
+    const drops = (game.groundDrops || []).filter(d => d.expiresAt > performance.now() && d.inside === h);
+
     EXIT.x = IW() / 2 - 60; EXIT.y = IH() - 96;
-    return [...h.interior.filter((f) => !f.opened && f.searchable !== false && f.kind !== "decor" && f.kind !== "shopc"), ...h.corpses.filter((c) => !c.opened), ...((h.level | 0) === 0 ? [EXIT] : [])];
+    return [...drops, ...h.interior.filter((f) => !f.opened && f.searchable !== false && f.kind !== "decor" && f.kind !== "shopc"), ...h.corpses.filter((c) => !c.opened), ...((h.level | 0) === 0 ? [EXIT] : [])];
   }
   const near = world.loot.query(player.x - 60, player.y - 60, player.x + 60, player.y + 60).filter((o) => !o.opened && !(o.fall > 0));
   for (const c of world.corpses) if (!c.opened && Math.abs(c.x - player.x) < 90 && Math.abs(c.y - player.y) < 90) near.push(c);
+  for (const d of game.groundDrops || []) {
+    if (!d.inside && d.cx === world.cell.cx && d.cy === world.cell.cy &&
+        d.expiresAt > performance.now() && Math.abs(d.x - player.x) < 60 &&
+        Math.abs(d.y - player.y) < 60) near.push(d);
+  }
   return near;
 }
 function nearSpot() {
@@ -24,6 +31,7 @@ function nearSpot() {
   return best;
 }
 function spotPrompt(s) {
+  if (s.kind === "grounddrop") return "E: recolher item (" + Math.ceil(Math.max(0, s.expiresAt - performance.now()) / 1000) + "s)";
   if (s.kind === "door") return s.house.safe ? `E: entrar em ${s.name}` : s.house.type === "casa" ? "E: entrar na casa" : `E: entrar (${s.name.toLowerCase()})`;
   if (s.kind === "exit") return "E: sair";
   if (s.kind === "stairs") return `E: ${s.label}`;
@@ -171,6 +179,12 @@ function interact() {
   if (s.kind === "exit") { leaveHouse(); return; }
   if (s.kind === "stairs") { changeFloor(s.dir); return; }
   if (s.kind === "survivor") { pickupSurvivor(s); return; }
+  if (s.kind === "grounddrop") {
+    if (s.expiresAt <= performance.now()) return;
+    game.found = [s.entry]; game.foundSrc = "item deixado no chão";
+    game.foundDrop = s; game.foundSpot = s; mouse.down = false;
+    return;
+  }
   if (s.kind === "shopc") return; // Nenhum menu ao interagir.
   if (SAFE_KINDS.includes(s.kind)) {
     game.menu = s.kind === "board" ? "missions" : s.kind;
@@ -201,7 +215,7 @@ function openSpot(s) {
   const dz = deadZoneDrop(zone); // Zona Morta: 1% de implante de alto nível
   if (dz) { found.push(dz); game.banner = { text: "Implante da Zona Morta!", sub: implantName(dz.im), t: 3200, gold: true }; }
   if (!found.length) { sfx.empty(); toast(`${s.name}: vazio`); return; }
-  game.found = found; game.foundSrc = s.name; mouse.down = false;
+  game.found = found; game.foundSrc = s.name; game.foundSpot = s; game.foundDrop = null; mouse.down = false;
   sfx.pickup();
 }
 
