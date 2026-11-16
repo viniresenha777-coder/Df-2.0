@@ -236,6 +236,11 @@ function drawFriends() {
   menuFrame("Jogadores e amigos", "Adicione sobreviventes pelo nome usado dentro do jogo");
   const mx = 60, names = fmSocial.friendList(), online = fmSocial.online();
   txt("JOGADORES ONLINE: " + (online.length + 1), mx, 113, 16, "#8fe0a8", "left", true);
+  btn(752, 94, 130, 30, "Atualizar", () => {
+    fmSocial.refreshFriends()
+      .then(() => { game.friendStatus = "Lista atualizada."; })
+      .catch(() => { game.friendStatus = "Não foi possível atualizar."; });
+  });
   txt("Adicionar amigo pelo nome exato:", mx, 158, 15, "#e5e0c8", "left");
   ctx.fillStyle = "#161813"; rr(mx, 174, 560, 48, 8); ctx.fill();
   ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 1.5; ctx.stroke();
