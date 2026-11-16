@@ -98,6 +98,11 @@ function drawSortedScene() {
   for (const z of Zs()) if (inView(z.x - 60, z.y - 120, 120, 160)) list.push({ y: z.y, f: () => { drawZombie(z); drawZombieExtra(z); } });
   const es = game.escort;
   if (es && !game.over) list.push({ y: es.y, f: () => drawSurvivor(es.x, es.y, es.ang, es.walk, es.moving) });
+  // Jogadores de outras contas: mesmos setores e ruas, ordenados pela profundidade.
+  for (const online of fmSocial.inSector()) {
+    if (inView(online.x - 60, online.y - 100, 120, 160))
+      list.push({ y: online.y + 0.4, f: () => drawOnlinePlayer(online) });
+  }
   if (!game.over) list.push({ y: player.y + 0.5, f: () => { if (!drawPlayerSprite()) drawPlayer(); } });
   list.sort((a, b) => a.y - b.y);
   for (const it of list) it.f();
