@@ -172,7 +172,7 @@ function update(dt) {
   if (adm.infStamina) { player.stamina = 100; player.exhausted = false; }
   game.objT -= dt;
   if (game.objT <= 0) { game.objT = 1000; objectivesTick(); }
-  eventsTick(dt);
+  if (!fmWorld.isFollower() || game.inside) eventsTick(dt);
   gfxTick(dt);
   if (moving) {
     const slow = (player.flags.jugger ? 0 : (save.vest >= 0 ? VESTS[save.vest].slow || 0 : 0) + (curW().slow || 0)) - (player.fx.adren && player.hp / player.maxHp < 0.5 ? player.fx.adren : 0);
