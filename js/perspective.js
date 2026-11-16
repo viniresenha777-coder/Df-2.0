@@ -490,16 +490,19 @@ function drawPlayerSprite() {
   }
   if (w3 && !info.bh) drawW3();
   else if (!w3 && !info.bh) drawHeldWeapon(w, pose);      // arma na frente do corpo
-  // lanterna de peito (aparece quando o peito está virado para a câmera)
+  // A lanterna no colete fica fisicamente apagada sob o sol.
   if (info.cb == null ? row >= 1 && row <= 7 : !info.cb) {
-    const L = chestPoint(), a = row === 1 || row === 7 ? 0.55 : 1;
-    ctx.save(); ctx.globalAlpha = a; ctx.globalCompositeOperation = "lighter";
-    const g = ctx.createRadialGradient(L.x, L.y, 0, L.x, L.y, 7);
-    g.addColorStop(0, "rgba(255,240,190,0.95)"); g.addColorStop(1, "rgba(255,220,140,0)");
-    ctx.fillStyle = g; circle(L.x, L.y, 7);
-    ctx.restore();
+    const L = chestPoint();
+    if (flashlightActive()) {
+      const a = row === 1 || row === 7 ? 0.55 : 1;
+      ctx.save(); ctx.globalAlpha = a; ctx.globalCompositeOperation = "lighter";
+      const g = ctx.createRadialGradient(L.x, L.y, 0, L.x, L.y, 7);
+      g.addColorStop(0, "rgba(255,240,190,0.95)"); g.addColorStop(1, "rgba(255,220,140,0)");
+      ctx.fillStyle = g; circle(L.x, L.y, 7);
+      ctx.restore();
+    }
     ctx.fillStyle = "#1c1c1c"; ctx.fillRect(L.x - 2.5, L.y - 2, 5, 4);
-    ctx.fillStyle = "#fff4cf"; circle(L.x, L.y, 1.6);
+    ctx.fillStyle = flashlightActive() ? "#fff4cf" : "#595850"; circle(L.x, L.y, 1.6);
   }
   // clarão do tiro na ponta do cano
   if (p.flashT > 0 && !w.melee) {
@@ -593,21 +596,51 @@ function drawZombieSprite(z) {
 function drawAtmosphere() {
   if (game.over) return;
   const dark = game.inside ? 0.3 : darkness();
+  const sun = game.inside ? 0 : sunIntensity();
   const L = chestPoint(), px = L.x - cam.x, py = L.y - cam.y, a = player.angle;
-  // cone amarelado da lanterna na direção da mira
-  const reach = 360, half = 0.42, I = 0.05 + dark * 0.22;
-  ctx.save(); ctx.globalCompositeOperation = "lighter";
-  const g = ctx.createRadialGradient(px, py, 12, px, py, reach);
-  g.addColorStop(0, `rgba(255,214,140,${I})`); g.addColorStop(0.55, `rgba(255,200,120,${I * 0.55})`); g.addColorStop(1, "rgba(255,190,110,0)");
-  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, reach, a - half, a + half); ctx.closePath(); ctx.fill();
-  ctx.restore();
-  // neblina azulada (mais forte longe do personagem)
+  if (sun > 0.001) {
+    // Sol externo simulado, com luz dourada difusa vindo do alto/esquerda.
+    // Sem cone artificial: o sol ilumina o cenário inteiro, ao contrário
+    // da lanterna. Entardecer reduz o efeito continuamente.
+    ctx.save();
+    const warmth = ctx.createLinearGradient(0, 0, W, H);
+    warmth.addColorStop(0, `rgba(255,201,132,${0.11 * sun})`);
+    warmth.addColorStop(0.55, `rgba(249,193,112,${0.075 * sun})`);
+    warmth.addColorStop(1, `rgba(233,165,89,${0.025 * sun})`);
+    ctx.fillStyle = warmth; ctx.fillRect(0, 0, W, H);
+    const sunlight = ctx.createRadialGradient(W * 0.16, -H * 0.22, 12,
+      W * 0.16, -H * 0.22, Math.max(W, H) * 1.15);
+    sunlight.addColorStop(0, `rgba(255,235,176,${0.105 * sun})`);
+    sunlight.addColorStop(0.45, `rgba(255,213,146,${0.038 * sun})`);
+    sunlight.addColorStop(1, "rgba(255,199,130,0)");
+    ctx.fillStyle = sunlight; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+  // A lanterna só existe à noite; desliga automaticamente ao amanhecer.
+  if (flashlightActive()) {
+    const reach = 360, half = 0.42, I = 0.05 + dark * 0.22;
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    const g = ctx.createRadialGradient(px, py, 12, px, py, reach);
+    g.addColorStop(0, `rgba(255,214,140,${I})`);
+    g.addColorStop(0.55, `rgba(255,200,120,${I * 0.55})`);
+    g.addColorStop(1, "rgba(255,190,110,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(px, py);
+    ctx.arc(px, py, reach, a - half, a + half); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  // Neblina azul no escuro e poeira quente bem mais sutil de dia.
   const fog = ctx.createRadialGradient(px, py, 140, px, py, Math.max(W, H) * 0.8);
-  fog.addColorStop(0, "rgba(70,100,140,0)"); fog.addColorStop(1, `rgba(60,88,128,${game.inside ? 0.16 : 0.26})`);
+  fog.addColorStop(0, "rgba(70,100,140,0)");
+  fog.addColorStop(1, sun > 0 ? `rgba(166,141,98,${0.07 * sun + 0.10 * (1 - sun)})` :
+    `rgba(60,88,128,${game.inside ? 0.16 : 0.26})`);
   ctx.fillStyle = fog; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = "rgba(40,70,110,0.06)"; ctx.fillRect(0, 0, W, H);
-  // vinheta escura
+  if (sun < 0.1) {
+    ctx.fillStyle = `rgba(40,70,110,${0.06 * (1 - sun)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+  // Vinheta suavizada em dias de sol, preservada na escuridão.
   const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.42, W / 2, H / 2, H * 0.95);
-  v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,6,0.55)");
+  v.addColorStop(0, "rgba(0,0,0,0)");
+  v.addColorStop(1, `rgba(0,0,6,${0.55 - 0.22 * sun})`);
   ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
 }
