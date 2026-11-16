@@ -54,4 +54,11 @@ function loadSave() {
   } catch (e) { /* sem armazenamento: o progresso vale só nesta sessão */ }
 }
 // no .exe o arquivo só é gravado nos checkpoints (troca de área e a cada 1 minuto)
-function persist() { if (NATIVE) return; storeWrite(JSON.stringify(save)); }
+function persist() {
+  if (NATIVE) return;
+  storeWrite(JSON.stringify(save)).catch((error) => {
+    console.error("Falha ao sincronizar progresso:", error);
+    if (typeof game !== "undefined" && game && !game.savingExit)
+      toast("Falha na sincronização online. Use Salvar progresso para tentar novamente.");
+  });
+}
