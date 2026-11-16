@@ -74,6 +74,7 @@ function lootEntry(cat, t, table, zone) {
     const r = Math.random(), id = table === "chest" && r < 0.06 ? "nucleo" : r < 0.5 ? "sucata" : r < 0.78 ? "pecas" : "eletronicos";
     return { type: "mat", id, amt: id === "nucleo" ? 1 : 1 + Math.floor(Math.random() * 2) };
   }
+  if (cat === "implant") return { type: "implant", im: randomImplant() };
   if (cat === "food") return { type: "food", amt: lootAmt(t.food), q: rollFoodQ(zone), spr: pick(FOOD_SPR) };
   if (cat === "anti") return { type: "anti", amt: lootAmt(t.anti), spr: "pills" };
   return { type: cat, amt: lootAmt(t[cat]), spr: cat === "med" ? pick(MED_SPR) : Math.random() < 0.5 ? "soda" : null };
@@ -87,9 +88,12 @@ function rollLoot(table, zone) {
   for (const k of ["cash", "food", "water", "med", "ammo", "anti"]) if (t[k]) pool.push([k, t[k][0] * (k === "cash" ? 1 : sc) * vip]);
   const mc = MAT_CHANCE[table] != null ? MAT_CHANCE[table] : 0.06;
   if (mc && table !== "body") pool.push(["mat", mc * sc * (1 + player.fx.miscFind / 100)]);
-  // Armas e coletes têm chances próprias.
+  // arma e implante têm chance própria (antes, móveis com poucos tipos de item davam implante demais)
   const special = [];
   if (t.weapon && Math.random() < 2 * t.weapon * (1 + player.fx.hunter / 100) * vip * (1 + diffOf(zone) * 0.3)) special.push(lootEntry("weapon", t, table, zone));
+  // nos pontos especiais os implantes acompanham a região (azul dá pouco, roxa dá mais)
+  const ic = (IMPLANT_CHANCE[table] || 0) * (game.inside && game.inside.landmark ? 0.35 + regionOf(zone) * 0.12 : 1);
+  if (ic && Math.random() < 2 * ic * IMPLANT_RARITY * (1 + player.fx.implantLoot / 100) * vip) special.push(lootEntry("implant", t, table, zone));
   if (t.weapon && special.length < 2 && Math.random() < vestChance(t)) special.push(lootVest(zone));
   const want = lootCount(table), k = Math.min(special.length ? want - special.length : want, pool.length), out = special;
   for (let i = 0; i < k; i++) {
@@ -101,13 +105,14 @@ function rollLoot(table, zone) {
   return out;
 }
 
-// ---------- Saque dos chefes: armas, coletes e componentes ----------
+// ---------- Saque dos chefes: só arma, colete e implante (+ componentes de craft) ----------
 function weaponBetween(minR, maxR) {
   const list = WLIST.filter((d) => d.rar >= minR && d.rar <= maxR && !d.craftOnly && !d.fists && d.id !== "pistola");
   return pick(list).id;
 }
-// Chefes agora entregam apenas equipamentos e materiais, sem implantes.
-function bossBonusWeapon() {
+// chefes: o implante agora é raro; quando não vem, cai uma arma boa no lugar
+function bossImplant() {
+  if (Math.random() < BOSS_IMPLANT * (1 + player.fx.implantLoot / 100)) return { type: "implant", im: randomImplant() };
   return { type: "weapon", inst: newInst(weaponBetween(2, 4), upgrades(1 + upBonus())) };
 }
 function bossVest(a, b) { return { type: "vest", idx: a + Math.floor(Math.random() * (b - a + 1)) }; }
@@ -119,13 +124,13 @@ function bossLoot(id, zone) {
   let out;
   switch (id) {
     case "acougueiro": out = [Wp(2, 2), bossVest(1, 3)]; break;
-    case "matriarca":  out = [bossBonusWeapon(), bossVest(2, 4)]; break;
+    case "matriarca":  out = [bossImplant(), bossVest(2, 4)]; break;
     case "capataz":    out = [Wp(2, 3), bossVest(4, 6)]; break;
-    case "pestilento": out = [special(), bossBonusWeapon()]; break;
+    case "pestilento": out = [special(), bossImplant()]; break;
     case "carrasco":   out = [Wp(3, 3, upgrades(3 + Math.floor(Math.random() * 4) + upBonus())), Wp(2, 3)]; break;
-    case "necromante": out = [bossBonusWeapon(), bossBonusWeapon()]; break;
+    case "necromante": out = [bossImplant(), bossImplant()]; break;
     case "alfa":       out = [Wp(3, 4), bossVest(5, 6)]; break;
-    case "ceifador":   out = [Wp(4, 4), bossBonusWeapon()]; break;
+    case "ceifador":   out = [Wp(4, 4), bossImplant()]; break;
     default:           out = [Wp(2, 3), bossVest(1, 4)];
   }
   out.push({ type: "mat", id: "nucleo", amt: 1 });
@@ -162,6 +167,8 @@ function rollLootFull(table, zone) {
     out.push({ type: "mat", id, amt: id === "nucleo" ? 1 : 1 + Math.floor(Math.random() * (table === "boss" ? 1 : 3)) });
     if (table === "boss") out.push({ type: "mat", id: pick(["pecas", "eletronicos"]), amt: 3 + Math.floor(Math.random() * 4) });
   }
+  if (Math.random() < (IMPLANT_CHANCE[table] || 0) * IMPLANT_RARITY * (1 + player.fx.implantLoot / 100) * (vipActive() ? 1.6 : 1))
+    out.push({ type: "implant", im: randomImplant() });
   if (Math.random() < vestChance(t)) out.push(lootVest(zone));
   return out;
 }
@@ -223,6 +230,8 @@ function openSpot(s) {
   missionProgress("search", 1); stat("searches");
   if (s.kind === "airdrop") stat("airdrops");
 
+  if (found.some(item => item.dead && item.type === "implant"))
+    game.banner = { text: "Implante da Zona Morta!", sub: "Recompensa rara", t: 3200, gold: true };
   if (!found.length) { sfx.empty(); toast(`${s.name}: vazio`); return; }
   game.found = found; game.foundSrc = s.name; game.foundSpot = s; game.foundDrop = null; mouse.down = false;
   sfx.pickup();
