@@ -5,6 +5,7 @@
 //  Os preços são provisórios: o jogo ainda não tem economia oficial.
 // =====================================================================
 const JUNK_RAR = [40, 130, 380, 950, 2400];          // piso de venda por raridade da arma
+const RESET_STATS_PRICE = MATS.reset_stats.price;
 const JUNK_CONS = { comum: 8, fresca: 16, podre: 2, water: 6, med: 25, anti: 40 };
 
 function weaponSellPrice(inst) {
@@ -29,6 +30,7 @@ function junkItems() {
   const L = [];
   player.slots.forEach((it, i) => { if (it) L.push({ kind: "weapon", it, where: "slot", i, name: instName(it), unit: weaponSellPrice(it), qty: 1, rare: WDEF[it.id].rar >= 2, sub: `slot ${i + 1}${player.cur === i ? " · na mão" : ""}` }); });
   player.pack.forEach((it) => {
+    if (it.kind === "mat" && it.id === "reset_stats") return; // cartão consumível não é revendido
     if (it.kind === "weapon") L.push({ kind: "weapon", it, where: "pack", name: instName(it), unit: weaponSellPrice(it), qty: 1, rare: WDEF[it.id].rar >= 2, sub: "mochila" });
     else if (it.kind === "mat") L.push({ kind: "mat", it, name: MATS[it.id].name, unit: matSellPrice(it.id), qty: it.qty, rare: it.id === "nucleo" || it.id === "placa", sub: "material" });
   });
@@ -84,6 +86,24 @@ function askDismantle(e) {
   if (e.rare) game.jconfirm = { text: `Desmontar ${e.name}?`, sub: `Você recebe ${partsText(weaponParts(e.it))}. A arma some.`, fn };
   else fn();
 }
+
+function buyResetStatsCard() {
+  if (!inSafe()) { toast("Compre o cartão no Ferro Velho da base."); return; }
+  if (game.money < RESET_STATS_PRICE) { toast("Dinheiro insuficiente para o cartão."); return; }
+  if (!addMat("reset_stats", 1)) { toast("Mochila cheia."); return; }
+  game.money -= RESET_STATS_PRICE;
+  sfx.buy();
+  checkpoint("compra de cartão de reset");
+  toast("Cartão Reset de Stats comprado! Abra a mochila (B) e arraste-o até o personagem.");
+}
+function confirmBuyResetStats() {
+  game.jconfirm = {
+    text: "Comprar Cartão Reset de Stats?",
+    sub: "Custa $" + RESET_STATS_PRICE.toLocaleString("pt-BR") + " · Uso único · Arraste no personagem",
+    fn: buyResetStatsCard
+  };
+}
+
 function junkKey(k) {
   const items = junkItems(), e = items[game.jcur | 0];
   if (game.jconfirm) {
@@ -92,6 +112,7 @@ function junkKey(k) {
     return;
   }
   if (k === "escape" || k === "e") { game.menu = null; return; }
+  if (k === "c") { confirmBuyResetStats(); return; }
   if (k === "w" || k === "arrowup") game.jcur = Math.max(0, (game.jcur | 0) - 1);
   else if (k === "s" || k === "arrowdown") game.jcur = Math.min(items.length - 1, (game.jcur | 0) + 1);
   else if (k === "enter" || k === "v") askSell(e, 1);
@@ -117,6 +138,12 @@ function drawJunk() {
     rowClick(lx, y, lw, rh - 4, sel, () => { game.jcur = i; }, () => askSell(e, 1));
   });
   if (items.length > vis) txt(`${game.jcur + 1}/${items.length}`, lx + lw, ly - 6, 10, "#a9a58f", "right");
+  // Compra especial no Ferro Velho, separada da loja desativada.
+  ctx.fillStyle = "rgba(45,35,15,0.92)"; rr(532, 94, 394, 92, 7); ctx.fill();
+  ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 1.5; ctx.stroke();
+  txt("★ CARTÃO RESET DE STATS", 547, 117, 16, "#ffdf70", "left", true);
+  txt("Devolve pontos distribuídos · uso único", 547, 137, 11, "#d8d2ba");
+  btn(547, 145, 362, 34, "COMPRAR · $" + RESET_STATS_PRICE.toLocaleString("pt-BR") + " (C)", confirmBuyResetStats, true);
   // detalhe do item escolhido
   const e = items[game.jcur], px = 540, pw = 380;
   ctx.fillStyle = "rgba(0,0,0,0.3)"; rr(px - 10, 92, pw + 20, 420, 8); ctx.fill();
@@ -140,7 +167,7 @@ function drawJunk() {
       txt("As peças vão para a mochila (ou para o baú, se não couber).", px, by + 74, 11, "#a9a58f", "left", false, pw);
     }
   } else txt("Nada selecionado", px + pw / 2, 280, 14, "#6d6a58", "center");
-  hint("W/S escolhe · Enter vende 1 · T vende tudo · D desmonta arma · clique 2x vende · E ou Esc fecha");
+  hint("C compra cartão de reset · W/S escolhe · Enter vende · T vende tudo · D desmonta · Esc fecha");
   // confirmação para itens raros
   if (game.jconfirm) {
     const c = game.jconfirm;
