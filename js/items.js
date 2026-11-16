@@ -138,6 +138,7 @@ const OLD_IDS = ["pistola", "ak47", "deagle", "katana", "uzi", "escopeta", "snip
 // ---------- Materiais e receitas ----------
 const MATS = {
   reset_stats: { name: "Cartão Reset de Stats", price: 5000 },
+  trindade_eterna: { name: "Trindade · 100 anos", price: 20000000 },
   sucata:      { name: "Sucata de metal",          price: 40 },
   pecas:       { name: "Peças de arma",            price: 90 },
   eletronicos: { name: "Componentes eletrônicos",  price: 140 },
@@ -377,7 +378,13 @@ function drawWeaponSide(d, cx, cy, s) {
 }
 function drawMatIcon(id, cx, cy, s) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
-  if (MATS[id] && MATS[id].cashProtection) {
+  if (id === "trindade_eterna") {
+    ctx.fillStyle = "#20212b"; rr(-28,-23,56,46,5); ctx.fill();
+    ctx.strokeStyle = "#ebce79"; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = "#ebce79";
+    for (let j=0;j<3;j++) { const a=-Math.PI/2+j*Math.PI*2/3; circle(Math.cos(a)*13,Math.sin(a)*13,6); }
+    txt("III",0,17,13,"#fff1bd","center",true);
+  } else if (MATS[id] && MATS[id].cashProtection) {
     ctx.fillStyle = "#59646b"; rr(-28, -24, 56, 48, 5); ctx.fill();
     ctx.fillStyle = "#2d373d"; rr(-21, -18, 42, 36, 3); ctx.fill();
     ctx.strokeStyle = "#b7c3ca"; ctx.lineWidth = 3; ctx.strokeRect(-21, -18, 42, 36);
