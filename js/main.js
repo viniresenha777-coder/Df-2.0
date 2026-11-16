@@ -211,15 +211,32 @@ function update(dt) {
   if (game.objT <= 0) { game.objT = 1000; objectivesTick(); }
   if (!fmWorld.isFollower()) eventsTick(dt);
   gfxTick(dt);
+  // Aceleração/desaceleração curta, baseada em dt: elimina o aspecto de
+  // deslocamento aos solavancos sem alterar a velocidade máxima do personagem.
+  let goalVX = 0, goalVY = 0;
   if (moving) {
     const slow = (player.flags.jugger ? 0 : (save.vest >= 0 ? VESTS[save.vest].slow || 0 : 0) + (curW().slow || 0)) - (player.fx.adren && player.hp / player.maxHp < 0.5 ? player.fx.adren : 0);
-    player.moveAng = Math.atan2(dy, dx);
-    const len = Math.hypot(dx, dy), sp = (sprinting ? 3.38 * (1 + profVal("sprint")) : player.speed) * (1 + (player.fx.agility + vestSpeedBonus()) / 100) * (1 + (A("agi") - 10) * 0.004) * (1 - slow / 100) * (sprinting && trindadeActive() ? 1.35 : 1);
-    player.x += (dx / len) * sp * k; player.y += (dy / len) * sp * k;
-    player.animT = (player.animT || 0) + dt; player.lastSp = sp * k / Math.max(0.01, dt / 16.67);
-    if (!game.inside) save.stats.dist = S("dist") + sp * k;
-    player.walk += sp * k * 0.16;
-    if (sprinting && Math.random() < dt / 70) dust(player.x - (dx / len) * 8, player.y - (dy / len) * 8);
+    const len = Math.hypot(dx, dy);
+    const sp = (sprinting ? 3.38 * (1 + profVal("sprint")) : player.speed) *
+      (1 + (player.fx.agility + vestSpeedBonus()) / 100) *
+      (1 + (A("agi") - 10) * 0.004) * (1 - slow / 100) *
+      (sprinting && trindadeActive() ? 1.35 : 1);
+    goalVX = dx / len * sp; goalVY = dy / len * sp;
+  }
+  const motionLerp = 1 - Math.exp(-dt / 55);
+  player.moveVX = (player.moveVX || 0) + (goalVX - (player.moveVX || 0)) * motionLerp;
+  player.moveVY = (player.moveVY || 0) + (goalVY - (player.moveVY || 0)) * motionLerp;
+  const actualSpeed = Math.hypot(player.moveVX, player.moveVY);
+  player.walkBlend = (player.walkBlend || 0) + ((moving ? 1 : 0) - (player.walkBlend || 0)) * (1 - Math.exp(-dt / 100));
+  player.moving = actualSpeed > 0.08;
+  if (actualSpeed > 0.01) {
+    player.moveAng = Math.atan2(player.moveVY, player.moveVX);
+    player.x += player.moveVX * k; player.y += player.moveVY * k;
+    player.animT = (player.animT || 0) + dt;
+    player.lastSp = actualSpeed;
+    if (!game.inside) save.stats.dist = S("dist") + actualSpeed * k;
+    player.walk += actualSpeed * k * 0.16;
+    if (sprinting && Math.random() < dt / 70) dust(player.x - player.moveVX / actualSpeed * 8, player.y - player.moveVY / actualSpeed * 8);
   }
   if (sprinting) {
     player.stamina -= 24 * sec * (1 - Math.min(0.8, player.fx.endurance / 100)) * (1 + profVal("stamina"));
