@@ -17,6 +17,22 @@ Apenas um JSON com o progresso do jogo é guardado em `public.fm_partidas`, asso
 Se o link de confirmação apontar para `localhost:3000`, o Site URL/Redirect URLs ainda não estão corretos.
 A opção **Reenviar confirmação** ajuda quando o link anterior expirou.
 
+### Recuperação de senha por e-mail
+
+1. No login, clique em **Esqueci minha senha**, informe seu e-mail e peça o link.
+2. O Supabase envia a mensagem de recuperação. A resposta é neutra mesmo que o e-mail não exista, para proteger a privacidade.
+3. O jogador abre o **link recebido no próprio e-mail**. Isso comprova o acesso à caixa postal e cria uma sessão de recuperação.
+4. A página [recuperar.html](recuperar.html) valida a sessão (evento `PASSWORD_RECOVERY` ou token recebido no link) antes de liberar a escolha de uma nova senha.
+5. Depois de salvar, a sessão é encerrada e o jogador volta ao login normalmente. Os saves não são alterados.
+
+**Configuração obrigatória em Authentication → URL Configuration → Redirect URLs:**
+
+```text
+https://viniresenha777-coder.github.io/Df-2.0/recuperar.html
+```
+
+É necessário adicionar essa URL além da raiz do jogo, que deve permanecer cadastrada. Sem isso, o link de recuperação pode redirecionar para outro endereço (por exemplo a tela de login sem o formulário para nova senha). Não é necessário alterar a tabela de partidas ou armazenar senhas.
+
 ### Como o salvamento funciona
 
 - Checkpoints automáticos na troca de área e periodicamente; salvamento manual no menu.
