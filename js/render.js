@@ -1249,6 +1249,20 @@ function drawHUD() {
   // ---- linhas de texto embaixo das barras ----
   let ny = 64;
   hudT(playerName().toUpperCase(), 12, ny, 12, "#ffd96a", "left", true); ny += 15;
+  // VIP temporário: exibe status e validade junto aos dados do personagem.
+  // O selo desaparece automaticamente ao vencer; VIP legado é identificado.
+  if (typeof vipActive === "function" && vipActive()) {
+    const validity = save.gm ? "Validade: sem vencimento (legado)" :
+      "Validade: " + new Date(save.vipUntil).toLocaleDateString("pt-BR");
+    ctx.save();
+    ctx.fillStyle = "rgba(28,22,10,0.88)";
+    rr(9, ny - 2, 257, 37, 6); ctx.fill();
+    ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 1; ctx.stroke();
+    hudT("★ VIP ATIVO", 17, ny + 11, 13, "#ffdf70", "left", true);
+    hudT(validity, 17, ny + 27, 11, "#f2e4b0", "left", true, 243);
+    ctx.restore();
+    ny += 43;
+  }
   const xpTxt = player.level >= MAX_LEVEL ? "MÁXIMO" : `${Math.floor(player.xp)} / ${xpNeed(player.level)} (${Math.floor((100 * player.xp) / xpNeed(player.level))}%)`;
   hudT(`NÍV ${player.level}: ${xpTxt}`, 12, ny, 11, "#e5e0c8", "left", true); ny += 15;
   hudT(`ENERGIA: ${Math.round(player.stamina)}%${player.exhausted ? " · EXAUSTO" : ""}`, 12, ny, 11, player.exhausted ? "#e05a4a" : "#e5e0c8", "left", true); ny += 15;
