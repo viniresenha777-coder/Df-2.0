@@ -64,7 +64,6 @@ loginForm.addEventListener("submit", async (event) => {
   const registering = event.submitter && event.submitter.value === "register";
   if (registering && confirmRow.hidden) {
     confirmRow.hidden = false;
-    confirmEl.required = true;
     confirmEl.focus();
     loginStatus("Confirme a senha e clique novamente em Criar conta.");
     return;
