@@ -140,7 +140,7 @@ function explode(x, y, r, dmg) {
 }
 function hurt(z, dmg, ang, quiet, fx) {
   z.lastMelee = !!(fx && fx.melee);   // o Rastejante só não explode quando morre no corpo a corpo
-  let d = dmg * (1 + player.fx.firepower / 100) * adm.dmg, crit = false;
+  let d = dmg * (1 + player.fx.firepower / 100) * adm.dmg * (trindadeActive() ? 1.35 : 1), crit = false;
   if (player.fx.rage && player.hp / player.maxHp < 0.4) d *= 1 + player.fx.rage / 100;
   if (!(fx && fx.noCrit) && Math.random() * 100 < Math.min(85, A("crit") * 0.5 + player.fx.crit + (fx && fx.crit ? fx.crit : 0))) { d *= 2 + player.fx.critDmg / 100; crit = true; }
   // o Capataz bloqueia de frente: atire pelas costas ou pelos lados
