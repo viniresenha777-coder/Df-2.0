@@ -265,10 +265,27 @@ function drawHub() {
     if (vd < 100) regClick(bx, 296, bw, 16, repairVest);
   }
 
-  // bônus (só texto)
-  const bon = activeBonuses().slice(0, 4);
-  bon.forEach((b, i) => shadowTxt(b.text, px + 12, 330 + i * 15, 11, b.color, "left", true, pw - 24));
-  if (activeBonuses().length > 4) txt(`+${activeBonuses().length - 4} bônus`, px + 12, 330 + 4 * 15, 10, "#8a8672");
+  // Na base, exibir SOMENTE os três bônus de combate calculados com os
+  // atributos efetivos do personagem. XP/dinheiro/loot e outros bônus
+  // continuam disponíveis exclusivamente nas telas detalhadas do jogo.
+  const hubWeapon = curW();
+  const damageMultiplier = (1 + (player.fx.firepower || 0) / 100) *
+    dmgMult(hubWeapon) * (trindadeActive() ? 1.35 : 1);
+  const hubSlow = (player.flags.jugger ? 0 :
+    (save.vest >= 0 ? VESTS[save.vest].slow || 0 : 0) + (hubWeapon.slow || 0)) -
+    (player.fx.adren && player.hp / player.maxHp < 0.5 ? player.fx.adren : 0);
+  const sprintMultiplier = (1 + profVal("sprint")) *
+    (1 + ((player.fx.agility || 0) + vestSpeedBonus()) / 100) *
+    (1 + (A("agi") - 10) * 0.004) * (1 - hubSlow / 100) *
+    (trindadeActive() ? 1.35 : 1);
+  const signed = n => (n > 0 ? "+" : "") + n + "%";
+  const hubBonuses = [
+    ["Dano " + signed(Math.round((damageMultiplier - 1) * 100)), "#e89f80"],
+    ["Velocidade " + signed(Math.round((sprintMultiplier - 1) * 100)), "#85c5ff"],
+    ["Armadura " + Math.round(armorRed() * 100) + "%", "#a8d5a3"]
+  ];
+  hubBonuses.forEach(([label, color], i) =>
+    shadowTxt(label, px + 12, 330 + i * 19, 12, color, "left", true, pw - 24));
 
   // armas equipadas com a munição embaixo
   ctx.fillStyle = "#3d3220"; ctx.fillRect(px + 10, 404, pw - 20, 2);
