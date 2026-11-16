@@ -84,9 +84,15 @@ function entryName(e) {
   return "?";
 }
 // coletes: guarda os que você tem e equipa o melhor automaticamente
-function gainVest(idx) {
+function gainVest(idx, mcArmor = 0) {
   const had = save.vestsOwned[idx];
   if (!had) { save.vestUpgrades = save.vestUpgrades || {}; save.vestUpgrades[idx] = cleanVestUpgrade(null); }
+  // Processador de Guerra: coletes Mastercraft encontrados já vêm com +6 de armadura.
+  if (mcArmor > 0) {
+    const up = save.vestUpgrades[idx] || cleanVestUpgrade(null);
+    up.armor = Math.min(VEST_UP_MAX, (up.armor || 0) + mcArmor);
+    save.vestUpgrades[idx] = up;
+  }
   save.vestsOwned[idx] = true;
   if (save.vest < 0 || VESTS[idx].armor > VESTS[save.vest].armor) { save.vest = idx; recalcImplants(); toast(`${VESTS[idx].name} equipado`); }
   else toast(had ? `Você já tem ${VESTS[idx].name}` : `${VESTS[idx].name} guardado (troque na mochila com V)`);
@@ -121,7 +127,7 @@ function acceptFound() {
   } else if (e.type === "implant") {
     if (player.bag.length >= BAG_MAX) { toast("Mochila de implantes cheia"); sfx.empty(); return false; }
     player.bag.push(e.im);
-  } else if (e.type === "vest") gainVest(e.idx);
+  } else if (e.type === "vest") gainVest(e.idx, e.mcArmor || 0);
   else if (e.type === "credit") { save.credits += e.amt; persist(); sfx.level(); }
   sfx.pickup();
   stat("itemsTaken");
