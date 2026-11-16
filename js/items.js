@@ -456,9 +456,24 @@ function drawCreditIcon(cx, cy, s) {
   txt("C", 0, 8, 22, "#7a5a1a", "center", true);
   ctx.restore();
 }
+// Arte dos 29 novos implantes, lidos por índice no atlas 5 × 6 (192 px por célula).
+const NEW_IMPLANTS_ATLAS = new Image();
+NEW_IMPLANTS_ATLAS.src = "img/implants_new_atlas.webp?v=20261116-new29";
 // ícone de qualquer coisa encontrada ou guardada
 function drawEntryIcon(e, cx, cy, s) {
   const t = e.type || e.kind;
+  if (t === "implant" && e.im && IMP[e.im.id] && NEW_IMPLANTS_ATLAS.complete && NEW_IMPLANTS_ATLAS.naturalWidth) {
+    const idx = IMP_IDS.indexOf(e.im.id);
+    if (idx >= 0) {
+      const tile = 192, col = idx % 5, row = Math.floor(idx / 5), size = 64 * s;
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(NEW_IMPLANTS_ATLAS, col * tile, row * tile, tile, tile, cx - size / 2, cy - size / 2, size, size);
+      ctx.restore();
+      return;
+    }
+  }
   if (t === "vest") { drawVestIcon(e.idx, cx, cy, s); return; }
   if (t === "credit") { drawCreditIcon(cx, cy, s); return; }
   if (e.spr && drawSpr(e.spr, cx, cy, 70 * s, 56 * s)) return;
