@@ -235,6 +235,9 @@ function update(dt) {
   }
   pushOut(player, player.r);
   if (!game.inside && moving) edgeCheck(dx, dy);
+  // Atualiza a câmera ANTES de calcular o ângulo e disparar; isso elimina
+  // o frame de atraso entre ponteiro, cano da arma e projétil.
+  updateCam(dt);
   const ox = cam.x, oy = cam.y;
   player.angle = Math.atan2(mouse.y + oy - player.y, mouse.x + ox - player.x);
   spriteTick(dt);
@@ -408,7 +411,6 @@ function loop(now) {
   groundDropsTick(now); // o prazo dos itens continua correndo mesmo com menus abertos
   update(dt);
   checkpointTick(dt);
-  updateCam(dt);
   draw();
   
 
