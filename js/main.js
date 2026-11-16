@@ -81,14 +81,14 @@ window.addEventListener("keydown", (e) => {
     return;
   }
   if (game.menu) { menuKey(k); return; }
-  if (game.shop) { shopKey(k); return; }
+  if (game.shop) { game.shop = false; return; }
   if (game.hub && (k === "escape" || k === "e")) { leaveHouse(); return; }
   if (game.hub && (k === "r" || k === "f" || k === "p" || k === "l")) { if (k === "f") eat(); return; }
   if (game.paused) { if (k === "escape" || k === "p") togglePause(); return; }
   if (k === "escape" && game.sectorMap) { game.sectorMap = false; return; }
   if (k === "escape" || k === "p") { togglePause(); return; }
   if (k === "b") { game.menu = "pack"; mouse.down = false; return; }
-  if (k === "l") { openShop(); return; }
+  // A tecla L não abre mais a loja. O painel visual continua no refúgio.
   if (k === "k") { sndMute(!SND.muted); save.muted = SND.muted; persist(); toast(SND.muted ? "Som desligado" : "Som ligado"); return; }
   if (k === "n") { game.menu = "map"; game.mapSel = { cx: world.cell.cx, cy: world.cell.cy }; return; }
   if (k === "o") { game.menu = "obj"; game.oscroll = 0; return; }
