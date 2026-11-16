@@ -135,13 +135,13 @@ void main(){
   vec3 col = vec3(texture2D(uLit, uv + c * ab).r, texture2D(uLit, uv).g, texture2D(uLit, uv - c * ab).b);
   col += texture2D(uBloom, uv).rgb * uBloomK;
   float l = dot(col, vec3(0.299, 0.587, 0.114));
-  col = mix(vec3(l), col, 0.84);
+  col = mix(vec3(l), col, 0.92);
   col += vec3(-0.012, 0.006, 0.02) * (1.0 - l);
   col *= uTint;
   col = clamp(col, 0.0, 1.0);
   col = mix(col, col * col * (3.0 - 2.0 * col), 0.22);
   float v = smoothstep(0.82, 0.28, length(vec2(c.x, c.y * 0.85)));
-  col *= mix(0.45, 1.0, v);
+  col *= mix(0.56, 1.0, v);
   col = mix(col, vec3(0.55, 0.02, 0.02), clamp(uHurt * (1.0 - v) * 1.5, 0.0, 0.75));
   col += (hash(floor(vUv * uRes * uDpr) + fract(uTime * 7.0) * 100.0) - 0.5) * uGrain;
   gl_FragColor = vec4(col, 1.0);
@@ -388,7 +388,10 @@ function gfxDraw() { GFX.gl.drawArrays(GFX.gl.TRIANGLES, 0, 3); }
 function gfxRender() {
   const gl = GFX.gl, high = save.gfx >= 2;
   if (gl.isContextLost()) return;
-  const dark = game.inside ? (game.inside.safe ? 0.12 : 0.26 + darkness() * 0.3) : darkness();
+  // WebGL e Canvas usam a mesma escala de exposição: noite legível,
+  // mantendo o feixe da lanterna e as sombras dos edifícios relevantes.
+  const baseDark = game.inside ? (game.inside.safe ? 0.12 : 0.26 + darkness() * 0.3) : darkness();
+  const dark = Math.min(0.78, baseDark * 0.78);
   const px = player.x - cam.x, py = player.y - cam.y;
   gfxMask(px, py);
   const flashlightShadow = flashlightBlocks();
@@ -405,7 +408,7 @@ function gfxRender() {
   gfxBind(P, "uScene", 0, GFX.T.scene); gfxBind(P, "uMask", 1, GFX.T.mask); gfxBind(P, "uFlashBlocked", 2, GFX.T.flashBlocked);
   gl.uniform2f(P.u("uRes"), W, H); gl.uniform2f(P.u("uMaskTexel"), 2 / W, 2 / H);
   gl.uniform2f(P.u("uCam"), cam.x, cam.y); gl.uniform2f(P.u("uPlayer"), px, py);
-  gl.uniform1f(P.u("uDark"), dark); gl.uniform1f(P.u("uDayShadow"), game.inside ? 0 : 0.42);
+  gl.uniform1f(P.u("uDark"), dark); gl.uniform1f(P.u("uDayShadow"), game.inside ? 0 : 0.32);
   gl.uniform1f(P.u("uTime"), tm);
   gl.uniform1f(P.u("uFog"), game.inside ? 0 : GFX.wx.fog); gl.uniform1f(P.u("uRain"), game.inside ? 0 : GFX.wx.rain);
   gl.uniform1f(P.u("uFlash"), GFX.flash * (game.inside ? 0.3 : 0.55));
