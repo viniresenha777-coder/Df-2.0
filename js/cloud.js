@@ -112,6 +112,37 @@ const fmCloud = (() => {
       if (error) throw friendly(error);
     } catch (error) { throw friendly(error); }
   }
+  // O Supabase envia o link para a caixa postal do titular; o navegador
+  // não recebe informação sobre a existência ou não da conta.
+  async function sendPasswordRecovery(email) {
+    const addr = email.trim().toLowerCase();
+    const redirectTo = new URL("recuperar.html", location.href).href;
+    try {
+      const { error } = await requireClient().auth.resetPasswordForEmail(addr, { redirectTo });
+      if (error) throw friendly(error);
+    } catch (error) { throw friendly(error); }
+  }
+  function observeAuth(callback) {
+    return requireClient().auth.onAuthStateChange(callback);
+  }
+  async function recoverySession() {
+    const db = requireClient();
+    const { data, error } = await db.auth.getSession();
+    if (error) throw friendly(error);
+    if (!data || !data.session) return null;
+    const verified = await db.auth.getUser();
+    if (verified.error || !verified.data.user) return null;
+    return { accessToken: data.session.access_token, user: verified.data.user };
+  }
+  async function changeRecoveredPassword(password) {
+    const db = requireClient();
+    const { error } = await db.auth.updateUser({ password });
+    if (error) throw friendly(error);
+    // O link de recuperação não deixa o jogo aberto em uma sessão autenticada.
+    const result = await db.auth.signOut({ scope: "local" });
+    if (result.error) console.warn("Senha redefinida; erro ao encerrar sessão local:", result.error.message);
+    return true;
+  }
   // Diagnóstico do caminho de rede sem tentar criar uma conta nem enviar senhas.
   async function ping() {
     try {
@@ -127,6 +158,7 @@ const fmCloud = (() => {
       throw friendly(error);
     }
   }
-  return { resume, login, logout, resend, ping, write, read: () => snapshot,
-    isActive: () => !!user, hasOnlineSave: () => revision !== null };
+  return { resume, login, logout, resend, ping,
+    sendPasswordRecovery, observeAuth, recoverySession, changeRecoveredPassword,
+    write, read: () => snapshot, isActive: () => !!user, hasOnlineSave: () => revision !== null };
 })();
