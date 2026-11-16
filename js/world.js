@@ -362,7 +362,9 @@ function genStreets(wd, R) {
   // Iluminação pública exclusivamente na calçada (faixa de concreto das
   // quadras). Evita postes no meio da pista e também remove os antigos
   // postes gerados dentro de pátios de bases e pontos de interesse.
-  wd.lamps = [];
+  // Preserve luminárias de bases e pontos especiais; adicione as públicas
+  // nas calçadas externas E internas, nunca no asfalto.
+  wd.lamps = wd.lamps || [];
   const lampSpacing = 66;
   const addSidewalkLamp = (x, y) => {
     if (!wd.blocks.some(b => x >= b.x && y >= b.y && x <= b.x + b.w && y <= b.y + b.h &&
@@ -374,12 +376,20 @@ function genStreets(wd, R) {
   };
   for (const b of wd.blocks) {
     const s = SIDEWALK / 2;
-    // Duas luminárias na calçada de frente para as ruas centrais.
-    const y = b.i < 2 ? b.y + b.h - s : b.y + s;
-    const x = (b.i % 2) === 0 ? b.x + b.w - s : b.x + s;
+    // Calçadas voltadas à avenida central (inalterada em 140 unidades).
+    const innerY = b.i < 2 ? b.y + b.h - s : b.y + s;
+    const innerX = (b.i % 2) === 0 ? b.x + b.w - s : b.x + s;
     for (const f of [0.27, 0.73]) {
-      addSidewalkLamp(b.x + b.w * f, y);
-      addSidewalkLamp(x, b.y + b.h * f);
+      addSidewalkLamp(b.x + b.w * f, innerY);
+      addSidewalkLamp(innerX, b.y + b.h * f);
+    }
+    // Calçadas voltadas às QUATRO ruas laterais de 150 unidades.
+    // Três postes espaçados por lado, inclusive no norte/sul/leste/oeste.
+    const outerY = b.i < 2 ? b.y + s : b.y + b.h - s;
+    const outerX = (b.i % 2) === 0 ? b.x + s : b.x + b.w - s;
+    for (const f of [0.18, 0.50, 0.82]) {
+      addSidewalkLamp(b.x + b.w * f, outerY);
+      addSidewalkLamp(outerX, b.y + b.h * f);
     }
   }
   for (let i = 0; i < 160; i++) {
