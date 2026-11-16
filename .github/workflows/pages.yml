@@ -1,13 +1,17 @@
 name: Publicar Fronteira Morta 2.0
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/pages.yml"
   release:
     types: [published]
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Tag de uma release que tenha o ZIP completo do jogo (ex.: v2.0)"
-        required: true
+        description: "Tag da release ZIP (deixe em branco para usar a mais recente)"
+        required: false
         type: string
 
 permissions:
@@ -16,56 +20,53 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: github-pages
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
       - name: Baixar repositório
         uses: actions/checkout@v4
         with:
           ref: main
-          persist-credentials: true
 
-      - name: Baixar e conferir o ZIP da release
+      - name: Extrair última versão do jogo
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
-        shell: bash
+          TAG_INPUT: ${{ github.event.release.tag_name || inputs.release_tag }}
         run: |
           set -euo pipefail
+          tag="$TAG_INPUT"
+          if [ -z "$tag" ]; then
+            tag="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)"
+          fi
+          echo "Usando release: $tag"
           mkdir -p "$RUNNER_TEMP/df20-assets" "$RUNNER_TEMP/df20-web"
-          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.zip' --dir "$RUNNER_TEMP/df20-assets"
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern '*.zip' --dir "$RUNNER_TEMP/df20-assets"
           mapfile -d '' zips < <(find "$RUNNER_TEMP/df20-assets" -maxdepth 1 -type f -iname '*.zip' -print0)
           if [ "${#zips[@]}" -ne 1 ]; then
-            echo "::error::A release deve conter exatamente um arquivo .zip do jogo."
+            echo "::error::A release precisa conter exatamente um arquivo ZIP do jogo."
             exit 1
           fi
           unzip -tq "${zips[0]}" >/dev/null
           unzip -q "${zips[0]}" -d "$RUNNER_TEMP/df20-web"
-          test -f "$RUNNER_TEMP/df20-web/index.html" || { echo "::error::ZIP sem index.html na raiz."; exit 1; }
-          test -f "$RUNNER_TEMP/df20-web/js/main.js" || { echo "::error::ZIP sem js/main.js."; exit 1; }
-          test -f "$RUNNER_TEMP/df20-web/css/style.css" || { echo "::error::ZIP sem css/style.css."; exit 1; }
-          test -d "$RUNNER_TEMP/df20-web/img" || { echo "::error::ZIP sem pasta img."; exit 1; }
-          echo "Arquivos extraídos:"
-          find "$RUNNER_TEMP/df20-web" -type f | wc -l
+          test -f "$RUNNER_TEMP/df20-web/index.html" || { echo "::error::Falta index.html na raiz do ZIP."; exit 1; }
+          test -d "$RUNNER_TEMP/df20-web/js" || { echo "::error::Falta pasta js."; exit 1; }
+          test -d "$RUNNER_TEMP/df20-web/css" || { echo "::error::Falta pasta css."; exit 1; }
+          test -d "$RUNNER_TEMP/df20-web/img" || { echo "::error::Falta pasta img."; exit 1; }
+          echo "Arquivos do jogo: $(find "$RUNNER_TEMP/df20-web" -type f | wc -l)"
 
-      - name: Salvar arquivos do jogo na main
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+      - name: Salvar nova versão na main
         shell: bash
         run: |
           set -euo pipefail
           rsync -a --delete --exclude='.git/' --exclude='.github/' --exclude='README.md' "$RUNNER_TEMP/df20-web/" "$GITHUB_WORKSPACE/"
-          git add --all
+          git add -A
           if ! git diff --cached --quiet; then
-            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Atualiza jogo para release $RELEASE_TAG"
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Importa última versão do Fronteira Morta"
             git push origin HEAD:main
           fi
 
@@ -74,11 +75,18 @@ jobs:
         with:
           enablement: true
 
-      - name: Preparar site
+      - name: Enviar site para publicação
         uses: actions/upload-pages-artifact@v3
         with:
           path: ${{ runner.temp }}/df20-web
 
-      - name: Publicar jogo
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar site
         id: deployment
         uses: actions/deploy-pages@v4
