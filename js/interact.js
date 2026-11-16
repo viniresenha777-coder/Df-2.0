@@ -58,17 +58,17 @@ function lootVest(zone) {
   const ids = VESTS.map((v, i) => i).filter((i) => VESTS[i].price), max = Math.min(ids.length - 1, 1 + regionOf(zone));
   return { type: "vest", idx: ids[Math.floor(Math.random() * (max + 1))] };
 }
-function vestChance(t) { return (t.weapon || 0) * 0.3 * (1 + player.fx.armorFind / 100) * (save.gm ? 1.6 : 1); }
+function vestChance(t) { return (t.weapon || 0) * 0.3 * (1 + player.fx.armorFind / 100) * (vipActive() ? 1.6 : 1); }
 function lootEntry(cat, t, table, zone) {
   if (cat === "weapon") {
     const up = {};
     if (zone >= 4 && Math.random() < upChance()) for (let i = 0; i < 1 + Math.floor(zone / 5) + upBonus(); i++) { const s = pick(UP_STATS).id; up[s] = Math.min(UP_MAX, (up[s] || 0) + 1); }
-    return { type: "weapon", inst: newInst(randomWeaponDrop(zone, save.gm ? 1 : 0), up) };
+    return { type: "weapon", inst: newInst(randomWeaponDrop(zone, vipActive() ? 1 : 0), up) };
   }
   if (cat === "cash") return { type: "cash", amt: lootCash(lootAmt(t.cash), zone) };
   if (cat === "ammo") {
     const types = usedAmmoTypes(), ammo = types.length ? pick(types) : "9mm";
-    return { type: "ammo", ammo, amt: Math.round(lootAmt(t.ammo) * AMMO[ammo].box * (save.gm ? 2 : 1) * ammoMult()) };
+    return { type: "ammo", ammo, amt: Math.round(lootAmt(t.ammo) * AMMO[ammo].box * (vipActive() ? 2 : 1) * ammoMult()) };
   }
   if (cat === "mat") {
     const r = Math.random(), id = table === "chest" && r < 0.06 ? "nucleo" : r < 0.5 ? "sucata" : r < 0.78 ? "pecas" : "eletronicos";
@@ -84,7 +84,7 @@ function rollLoot(table, zone) {
   if (table === "airdrop") return rollLootFull(table, zone);
   const ec = EMPTY_CHANCE[table] != null ? EMPTY_CHANCE[table] : EMPTY_CHANCE.furniture;
   if (Math.random() < ec * (game.inside && game.inside.landmark ? 0.45 : 1) * Math.max(0, 1 - player.fx.lootSpots / 100)) return [];
-  const t = TABLES[table] || {}, sc = 1 + player.fx.scavenger / 100, vip = save.gm ? 1.6 : 1, pool = [];
+  const t = TABLES[table] || {}, sc = 1 + player.fx.scavenger / 100, vip = vipActive() ? 1.6 : 1, pool = [];
   for (const k of ["cash", "food", "water", "med", "ammo", "anti"]) if (t[k]) pool.push([k, t[k][0] * (k === "cash" ? 1 : sc) * vip]);
   const mc = MAT_CHANCE[table] != null ? MAT_CHANCE[table] : 0.06;
   if (mc && table !== "body") pool.push(["mat", mc * sc * (1 + player.fx.miscFind / 100)]);
@@ -143,21 +143,21 @@ function rollLootFull(table, zone) {
   const t = TABLES[table] || {}, out = [];
   for (const k of ["weapon", "cash", "ammo", "food", "water", "med", "anti"]) {
     if (k === "weapon") {
-      const wc = (t.weapon || 0) * (1 + player.fx.hunter / 100) * (save.gm ? 1.6 : 1) * (1 + diffOf(zone) * 0.3);
+      const wc = (t.weapon || 0) * (1 + player.fx.hunter / 100) * (vipActive() ? 1.6 : 1) * (1 + diffOf(zone) * 0.3);
       if (wc > 0 && Math.random() < wc) {
         const up = {};
         if (zone >= 4 && Math.random() < upChance()) for (let i = 0; i < 1 + Math.floor(zone / 5) + upBonus(); i++) { const s = pick(UP_STATS).id; up[s] = Math.min(UP_MAX, (up[s] || 0) + 1); }
-        out.push({ type: "weapon", inst: newInst(randomWeaponDrop(zone, (save.gm ? 1 : 0) + (table === "boss" || table === "airdrop" ? 1 : 0) + (table === "boss" && Math.random() * 100 < player.fx.bossRare ? 1 : 0)), up) });
+        out.push({ type: "weapon", inst: newInst(randomWeaponDrop(zone, (vipActive() ? 1 : 0) + (table === "boss" || table === "airdrop" ? 1 : 0) + (table === "boss" && Math.random() * 100 < player.fx.bossRare ? 1 : 0)), up) });
       }
       continue;
     }
     const e = t[k];
-    if (!e || Math.random() >= e[0] * (save.gm ? 1.6 : 1) * (k === "cash" ? 1 : 1 + player.fx.scavenger / 100)) continue;
+    if (!e || Math.random() >= e[0] * (vipActive() ? 1.6 : 1) * (k === "cash" ? 1 : 1 + player.fx.scavenger / 100)) continue;
     let amt = e[1] + Math.floor(Math.random() * (e[2] - e[1] + 1));
     if (k === "cash") out.push({ type: "cash", amt: lootCash(amt, zone) });
     else if (k === "ammo") {
       const types = usedAmmoTypes(), ammo = types.length ? pick(types) : "9mm";
-      out.push({ type: "ammo", ammo, amt: Math.round(amt * AMMO[ammo].box * (save.gm ? 2 : 1) * ammoMult()) });
+      out.push({ type: "ammo", ammo, amt: Math.round(amt * AMMO[ammo].box * (vipActive() ? 2 : 1) * ammoMult()) });
     } else if (k === "food") out.push({ type: "food", amt, q: table === "airdrop" ? (Math.random() < 0.6 ? "fresca" : "comum") : rollFoodQ(zone), spr: pick(FOOD_SPR) });
     else if (k === "anti") out.push({ type: "anti", amt, spr: "pills" });
     else out.push({ type: k, amt, spr: k === "med" ? pick(MED_SPR) : Math.random() < 0.5 ? "soda" : null });
@@ -167,7 +167,7 @@ function rollLootFull(table, zone) {
     out.push({ type: "mat", id, amt: id === "nucleo" ? 1 : 1 + Math.floor(Math.random() * (table === "boss" ? 1 : 3)) });
     if (table === "boss") out.push({ type: "mat", id: pick(["pecas", "eletronicos"]), amt: 3 + Math.floor(Math.random() * 4) });
   }
-  if (Math.random() < (IMPLANT_CHANCE[table] || 0) * IMPLANT_RARITY * (1 + player.fx.implantLoot / 100) * (save.gm ? 1.6 : 1))
+  if (Math.random() < (IMPLANT_CHANCE[table] || 0) * IMPLANT_RARITY * (1 + player.fx.implantLoot / 100) * (vipActive() ? 1.6 : 1))
     out.push({ type: "implant", im: randomImplant() });
   if (Math.random() < vestChance(t)) out.push(lootVest(zone));
   return out;
