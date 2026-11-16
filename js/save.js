@@ -60,7 +60,19 @@ function loadSave() {
       const c = s.char;
       save.char.level = Math.min(MAX_LEVEL, Math.max(1, c.level || 1));
       save.char.xp = c.xp || 0; save.char.points = c.points || 0; save.char.wpoints = c.wpoints || 0;
-      ATTRS.forEach((d) => { save.char.attrs[d.id] = Math.min(ATTR_MAX, Math.max(d.start, (c.attrs && c.attrs[d.id]) || d.start)); });
+      // Migração: valores de versões antigas acima dos novos limites voltam
+      // para a reserva de pontos correspondente, sem apagar investimento.
+      ATTRS.forEach((d) => {
+        const raw = c.attrs && Number(c.attrs[d.id]);
+        const previous = Number.isFinite(raw) ? Math.max(d.start, Math.floor(raw)) : d.start;
+        const cap = weaponSkillCap(d.id);
+        save.char.attrs[d.id] = Math.min(cap, previous);
+        const excess = Math.max(0, previous - cap);
+        if (excess) {
+          if (WEAPON_SKILL_IDS.includes(d.id)) save.char.wpoints += excess;
+          else save.char.points += excess;
+        }
+      });
     }
   } catch (e) { /* sem armazenamento: o progresso vale só nesta sessão */ }
 }
