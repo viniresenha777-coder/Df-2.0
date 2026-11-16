@@ -5,7 +5,7 @@
 // =====================================================================
 const SAVE_KEY = "fronteira-morta";
 const save = {
-  bank: 0, vault: [], installed: [], credits: 0, gm: false, missions: [],
+  bank: 0, vault: [], installed: [], credits: 0, gm: false, missions: [], receivedGifts: [],
   vest: -1, outposts: OUTPOSTS.map((o, i) => i === 0), muted: false, hud: 0, skin: 0, cape: 0, prof: null, name: "", classicChar: false, vestDur: {}, vestUpgrades: {}, music: true, gfx: 2,
   stats: {}, story: 0, ach: {}, daily: null, coll: [], vestsOwned: VESTS.map(() => false), vestVer: 2,
   char: { level: 1, xp: 0, points: 0, wpoints: 0, attrs: defaultAttrs() }
@@ -32,6 +32,7 @@ function loadSave() {
     else if (Array.isArray(s.stash)) save.vault = s.stash.map((v, i) => (v && OLD_IDS[i] ? newInst(OLD_IDS[i]) : null)).filter(Boolean); // save antigo
     { const seen = {}; save.installed = (s.installed || []).map(cleanImplant).filter((im) => im && !seen[im.id] && (seen[im.id] = true)).slice(0, IMPL_SLOTS); }
     save.credits = s.credits || 0; save.gm = !!s.gm;
+    save.receivedGifts = Array.isArray(s.receivedGifts) ? s.receivedGifts.filter(id => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)).slice(-2000) : [];
     save.missions = (s.missions || []).filter((m) => m && m.type && m.target).slice(0, 3);
     save.vest = typeof s.vest === "number" ? s.vest : -1;
     if (s.vestVer !== 2 && save.vest >= 0) save.vest = [0, 2, 4][save.vest] != null ? [0, 2, 4][save.vest] : 0; // coletes do save antigo
