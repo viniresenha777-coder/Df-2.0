@@ -118,10 +118,11 @@ const fmSocial = (() => {
     const next = client.channel(topic, { config: { broadcast: { ack: false, self: false } } });
     moveChannel = next;
     next.on("broadcast", { event: "move" }, receiveMovement);
+    if (typeof fmWorld !== "undefined") fmWorld.onChannel(next);
     next.subscribe((status) => {
       if (moveChannel !== next) return;
       moveReady = status === "SUBSCRIBED";
-      if (moveReady) sendMovement(true);
+      if (moveReady) { sendMovement(true); if (typeof fmWorld !== "undefined") fmWorld.onChannelReady(next); }
     });
   }
 
