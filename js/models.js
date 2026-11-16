@@ -42,17 +42,17 @@ function carModel(c) {
 function drawCarModel(c) {
   const id = carModel(c); if (!id) return false;
   const d = PROP_SPR[id], k = Math.max(c.w, c.h) / Math.max(d.fw, d.fd);
-  const f = c.searchable && !c.opened ? LOOT_YELLOW_FILTER : c.burnt ? "brightness(0.35) sepia(0.5)" : c.wreck ? "brightness(0.6) saturate(0.5)" : null;
+  const f = lootSpotActive(c) ? LOOT_YELLOW_FILTER : c.burnt ? "brightness(0.35) sepia(0.5)" : c.wreck ? "brightness(0.6) saturate(0.5)" : null;
   if (!drawModel(id, c.x + c.w / 2, c.y + c.h / 2, k, f)) return false;
-  if (c.searchable && !c.opened) drawLootQuestion(c, c.x + c.w / 2, c.y - 11);
+  if (lootSpotActive(c)) drawLootQuestion(c, c.x + c.w / 2, c.y - 11);
   return true;
 }
 function drawDumpsterModel(o) {
   const id = o.w >= o.h ? "dumpster" : "dumpster_90";
   if (!modelOk(id)) return false;
   const d = PROP_SPR[id], k = Math.max(o.w, o.h) / Math.max(d.fw, d.fd);
-  if (!drawModel(id, o.x + o.w / 2, o.y + o.h / 2, k, !o.opened ? LOOT_YELLOW_FILTER : "brightness(0.7)")) return false;
-  if (!o.opened) drawLootQuestion(o, o.x + o.w / 2, o.y - 11);
+  if (!drawModel(id, o.x + o.w / 2, o.y + o.h / 2, k, lootSpotActive(o) ? LOOT_YELLOW_FILTER : o.opened ? "brightness(0.7)" : null)) return false;
+  if (lootSpotActive(o)) drawLootQuestion(o, o.x + o.w / 2, o.y - 11);
   return true;
 }
 
