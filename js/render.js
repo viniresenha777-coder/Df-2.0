@@ -1148,11 +1148,12 @@ function drawProjectiles() {
 // =====================================================================
 //  Luz (dia e noite, lanterna, postes) e efeitos de tela
 // =====================================================================
-function hole(x, y, r, a) {
-  const g = lctx.createRadialGradient(x, y, 0, x, y, r);
+function holeTo(c, x, y, r, a) {
+  const g = c.createRadialGradient(x, y, 0, x, y, r);
   g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(1, "rgba(0,0,0,0)");
-  lctx.fillStyle = g; lctx.beginPath(); lctx.arc(x, y, r, 0, 6.283); lctx.fill();
+  c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 6.283); c.fill();
 }
+function hole(x, y, r, a) { holeTo(lctx, x, y, r, a); }
 function drawLighting() {
   // Noite ainda é perigosa, porém 25% mais legível do que a versão anterior.
   const baseDark = game.inside ? (game.inside.safe ? 0.12 : 0.26 + darkness() * 0.3) : darkness();
@@ -1161,14 +1162,30 @@ function drawLighting() {
   lctx.globalCompositeOperation = "source-over"; lctx.clearRect(0, 0, W, H);
   lctx.fillStyle = `rgba(6,10,24,${dark})`; lctx.fillRect(0, 0, W, H);
   lctx.globalCompositeOperation = "destination-out";
-  const px = player.x - cam.x, py = player.y - cam.y;
+  const chest = typeof chestPoint === "function" ? chestPoint() : player;
+  const px = chest.x - cam.x, py = chest.y - cam.y;
   if (!game.over) {
-    hole(px, py, 153, 0.91);
+    // Recorta a luz do jogador ANTES de abrir a escuridão. Assim nem
+    // o halo próximo nem o feixe atravessam casas, telhados ou postes.
+    flashCutCanvas();
+    const beam = FLASH_BLOCK.cutCtx;
+    beam.setTransform(1, 0, 0, 1, 0, 0);
+    beam.clearRect(0, 0, W, H);
+    beam.globalCompositeOperation = "source-over";
+    holeTo(beam, px, py, 153, 0.91);
     if (dark > 0.3) {
-      const len = 435, half = 0.50, g = lctx.createRadialGradient(px, py, 10, px, py, len);
+      const len = 435, half = 0.50, g = beam.createRadialGradient(px, py, 10, px, py, len);
       g.addColorStop(0, "rgba(0,0,0,0.95)"); g.addColorStop(0.6, "rgba(0,0,0,0.65)"); g.addColorStop(1, "rgba(0,0,0,0)");
-      lctx.fillStyle = g; lctx.beginPath(); lctx.moveTo(px, py); lctx.arc(px, py, len, player.angle - half, player.angle + half); lctx.closePath(); lctx.fill();
+      beam.fillStyle = g;
+      beam.beginPath(); beam.moveTo(px, py);
+      beam.arc(px, py, len, player.angle - half, player.angle + half);
+      beam.closePath(); beam.fill();
     }
+    beam.globalCompositeOperation = "destination-out";
+    beam.drawImage(flashlightBlocks(), 0, 0, W, H);
+    beam.globalCompositeOperation = "source-over";
+    lctx.globalCompositeOperation = "destination-out";
+    lctx.drawImage(FLASH_BLOCK.cut, 0, 0);
     if (player.flashT > 0) hole(px + Math.cos(player.angle) * 40, py + Math.sin(player.angle) * 40, 230, 0.85);
   }
   const lamps = game.inside ? [] : world.lamps.filter((l) => inView(l.x - 220, l.y - 220, 440, 440));
