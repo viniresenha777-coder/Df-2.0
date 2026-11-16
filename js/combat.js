@@ -194,14 +194,13 @@ function attack() {
     }
     return;
   }
-  let mx = player.x + Math.cos(player.angle) * (w.len + 12), my = player.y + Math.sin(player.angle) * (w.len + 12), aim = player.angle;
+  // Direção do projétil = direção estável do corpo/arma, NUNCA
+  // vetor da ponta do cano até o mouse (que inverte perto do corpo).
+  const aim = player.angle;
+  let mx = player.x + Math.cos(aim) * (w.len + 12);
+  let my = player.y + Math.sin(aim) * (w.len + 12);
   const mz = muzzlePoint();
-  if (mz) {
-    mx = mz.x; my = mz.y;
-    // Usa exatamente o ângulo da arma VISÍVEL no personagem.
-    // Corrige o tiro lateral quando o modelo estava virado em outra direção.
-    aim = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle;
-  }
+  if (mz) { mx = mz.x; my = mz.y; }
   player.shotAng = aim;
   const n = w.pellets || 1;
   for (let i = 0; i < n; i++) {
