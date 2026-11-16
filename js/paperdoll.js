@@ -222,6 +222,10 @@ function invDrop(src, dst) {
     if (src.sel == null) { toast("Isso não dá para descartar aqui"); return; }
     inv.sel = src.sel; INV.confirm = { name: invItemName(src) }; return;
   }
+  if (src.type === "mat" && src.item.id === "reset_stats" && dst.area === "doll") {
+    INV.confirm = { resetStats: true, name: "Cartão Reset de Stats" };
+    return;
+  }
   if (src.type === "vest") {
     if (src.area === "vests" && dst.area === "vestslot") equipVest(src.item.i);
     else if (src.area === "vestslot" && (dst.area === "vests" || dst.area === "pack")) unequipVest();
@@ -437,13 +441,13 @@ function drawInventory() {
   if (INV.confirm) {
     ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "#1a1913"; rr(W / 2 - 200, H / 2 - 60, 400, 120, 10); ctx.fill(); ctx.strokeStyle = "#e05a4a"; ctx.lineWidth = 2; ctx.stroke();
-    txt(`Descartar ${INV.confirm.name}?`, W / 2, H / 2 - 22, 16, "#f2eedc", "center", true, 370);
-    txt("Some para sempre.", W / 2, H / 2, 12, "#a9a58f", "center");
-    btn(W / 2 - 150, H / 2 + 16, 140, 30, "Descartar", () => { INV.confirm = null; packDiscard(); }, true);
+    txt(INV.confirm.resetStats ? "Resetar atributos e proficiências?" : `Descartar ${INV.confirm.name}?`, W / 2, H / 2 - 22, 16, "#f2eedc", "center", true, 370);
+    txt(INV.confirm.resetStats ? "Todos os pontos investidos voltam. O cartão será consumido." : "Some para sempre.", W / 2, H / 2, 12, "#a9a58f", "center");
+    btn(W / 2 - 150, H / 2 + 16, 140, 30, INV.confirm.resetStats ? "Resetar" : "Descartar", () => { const reset = INV.confirm.resetStats; INV.confirm = null; if (reset) useResetStatsCard(); else packDiscard(); }, true);
     btn(W / 2 + 10, H / 2 + 16, 140, 30, "Cancelar", () => { INV.confirm = null; });
   }
   drawAllocPanel();
-  hint("Arraste para equipar ou guardar · clique duas vezes num item para equipar/guardar · 1 2 3 slot · B ou Esc fecha");
+  hint("Arraste o cartão no personagem para resetar stats · arraste armas para equipar · B ou Esc fecha");
 }
 
 // ---------------------------------------------------------------- texto em várias linhas
