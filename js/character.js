@@ -69,7 +69,12 @@ function recalcImplants() {
   if (pf && pf.fx) for (const k in pf.fx) { all[k] = (all[k] || 0) + pf.fx[k]; safe[k] = (safe[k] || 0) + pf.fx[k]; }
   player.fxAll = all; player.fxSafe = safe; player.flags = flags; player.fx = all;
   const vest = save.vest >= 0 ? VESTS[save.vest] : null;
-  player.maxHp = Math.max(30, 100 + 3 * (player.level - 1) + all.vigor + (vest && vest.hp ? vest.hp : 0));
+  // Endurance vale a mesma quantidade em HP. Colete e implantes acrescentam
+  // pontos de vida até o limite absoluto de 200, sem bônus automático por nível.
+  const baseHp = Number.isFinite(player.attrs.endurance) ? player.attrs.endurance : 100;
+  const implantBonus = Math.max(-20, Math.min(35, all.vigor || 0));
+  const vestBonus = Math.max(0, Math.min(25, vest && vest.hp ? vest.hp : 0));
+  player.maxHp = Math.max(30, Math.min(PLAYER_HP_CAP, baseHp + implantBonus + vestBonus));
   player.hp = Math.min(player.hp, player.maxHp);
   lastStandTick();
 }
@@ -90,12 +95,13 @@ function equipmentProtection() {
 }
 function armorRed() {
   const a = A("armor") / (A("armor") + 150);
-  return 1 - (1 - a) * (1 - equipmentProtection() / 100);
+  return Math.min(0.78, 1 - (1 - a) * (1 - equipmentProtection() / 100));
 }
 function moneyMult() { return (1 + player.fx.greed / 100) * (save.gm ? 2 : 1); }
 function xpMult() { return (1 + player.fx.exp / 100) * (save.gm ? 2 : 1); }
 function attrEffect(id, v) {
   switch (id) {
+    case "endurance": return `${Math.round(v)} de vida-base (melhorias até 200 HP)`;
     case "str": return `+${v - 10}% de dano melee · exigência das armas`;
     case "armor": return `-${Math.round((v / (v + 150)) * 100)}% de dano recebido`;
     case "agi": return `+${Math.round((v - 10) * 0.4)}% de velocidade`;
