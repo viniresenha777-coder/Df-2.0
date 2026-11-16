@@ -40,7 +40,7 @@ const fmWorld = (() => {
     syncClock();
   }
   function timeOfWorld() {
-    return Math.max(0, nowMs() - epoch);
+    return timeReady ? Math.max(0, nowMs() - epoch) : 0; // aguarda a hora oficial do servidor
   }
   function clock() { return 480 + timeOfWorld() * 0.003; } // Dia = 8 minutos reais.
   function weatherKind() {
