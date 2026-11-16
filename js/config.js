@@ -13,9 +13,9 @@ const FONT = "'Trebuchet MS', 'Segoe UI', sans-serif";
 // os lados; ao sair pela borda de uma área a tela escurece e carrega a vizinha.
 // Cada área tem 2 x 2 quadras com ruas em cruz no meio e ruas nas bordas.
 // Ruas perimetrais mais largas (70 -> 110), sem alterar a avenida central (140).
-const AREA_EDGE = 110, BLOCK_W = 620, BLOCK_H = 640, ST_W = 140;
-const WORLD_W = 2 * AREA_EDGE + 2 * BLOCK_W + ST_W;   // 1600
-const WORLD_H = 2 * AREA_EDGE + 2 * BLOCK_H + ST_W;   // 1640
+const AREA_EDGE = 150, BLOCK_W = 620, BLOCK_H = 640, ST_W = 140;
+const WORLD_W = 2 * AREA_EDGE + 2 * BLOCK_W + ST_W;   // 1680
+const WORLD_H = 2 * AREA_EDGE + 2 * BLOCK_H + ST_W;   // 1720
 const SIDEWALK = 26;
 const MID_X = AREA_EDGE + BLOCK_W + ST_W / 2, MID_Y = AREA_EDGE + BLOCK_H + ST_W / 2;
 // ruas: faixas [início, fim] na horizontal (y) e na vertical (x)
