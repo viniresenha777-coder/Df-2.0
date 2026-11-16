@@ -28,6 +28,19 @@ function drawModel(id, gx, gy, k, filter) {
   if (filter) ctx.filter = filter;
   ctx.drawImage(im, gx - d.cx * s, gy - d.cy * s, d.w * s, d.h * s);
   if (filter) ctx.filter = "none";
+  if (id === "worklight") {
+    // A lâmpada acesa ilumina o topo do refletor (Canvas 2D / sem WebGL).
+    const bx = gx, by = gy - (d.cy - 13) * s;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const halo = ctx.createRadialGradient(bx, by, 0, bx, by, 38);
+    halo.addColorStop(0, "rgba(255,246,200,0.82)");
+    halo.addColorStop(0.12, "rgba(255,224,135,0.52)");
+    halo.addColorStop(0.45, "rgba(255,204,105,0.16)");
+    halo.addColorStop(1, "rgba(255,184,90,0)");
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(bx, by, 38, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
   return true;
 }
 // retângulo no chão ocupado pelo modelo
@@ -69,13 +82,23 @@ const FURN_MODEL = {
 
 // ---------- Geração: decoração 3D da área ----------
 const SCENERY = {
-  street: ["barrel_red", "barrel_blue", "barrel_black", "barrel_yellow", "barrel_red", "propane", "fruitbox", "woodbox", "cart", "worklight"],
+  street: ["barrel_red", "barrel_blue", "barrel_black", "barrel_yellow", "barrel_red", "propane", "fruitbox", "woodbox", "cart"],
   bodies: ["deadbody", "deadbody_60", "bodybag"],
   ruins: ["ruin_a", "ruin_b", "ruin_c", "ruin_d", "ruin_e"],
-  military: ["container", "container_90", "barrel_black", "barrel_yellow", "toolbox", "worklight", "propane"]
+  military: ["container", "container_90", "barrel_black", "barrel_yellow", "toolbox", "propane"]
 };
+// Worklights só podem nascer sobre a faixa de concreto das calçadas.
+// A regra central também cobre chamadas futuras vindas de outros geradores.
+function onCitySidewalk(wd, x, y) {
+  return wd.blocks.some(b =>
+    x >= b.x + 3 && x <= b.x + b.w - 3 &&
+    y >= b.y + 3 && y <= b.y + b.h - 3 &&
+    (x <= b.x + SIDEWALK - 3 || x >= b.x + b.w - SIDEWALK + 3 ||
+     y <= b.y + SIDEWALK - 3 || y >= b.y + b.h - SIDEWALK + 3));
+}
 function addModel(wd, id, gx, gy, opt) {
   if (!modelOk(id)) return null;
+  if (id === "worklight" && !onCitySidewalk(wd, gx, gy)) return null;
   opt = opt || {};
   const k = opt.k || MODEL_K, r = modelRect(id, gx, gy, k);
   const m = 6;
@@ -108,6 +131,25 @@ function tryPlace(wd, id, a, R, tries, opt) {
   return null;
 }
 function inEdge(x, y) { return x < AREA_EDGE + 30 || y < AREA_EDGE + 30 || x > WORLD_W - AREA_EDGE - 30 || y > WORLD_H - AREA_EDGE - 30; }
+// Refletores de obra somente nas quatro faixas de calçada de cada quadra.
+function addSidewalkWorklights(wd, R) {
+  for (const b of wd.blocks) {
+    const n = R() < 0.36 ? 2 : 1;
+    for (let j = 0; j < n; j++) for (let attempt = 0; attempt < 20; attempt++) {
+      const side = Math.floor(R() * 4), pad = SIDEWALK / 2;
+      let x, y;
+      if (side === 0 || side === 1) {
+        x = b.x + 65 + R() * Math.max(1, b.w - 130);
+        y = side === 0 ? b.y + pad : b.y + b.h - pad;
+      } else {
+        x = side === 2 ? b.x + pad : b.x + b.w - pad;
+        y = b.y + 65 + R() * Math.max(1, b.h - 130);
+      }
+      if (wd.lamps.some(l => Math.hypot(l.x - x, l.y - y) < 60)) continue;
+      if (addModel(wd, "worklight", x, y, { k: 15, margin: 3 })) break;
+    }
+  }
+}
 function genScenery(wd) {
   wd.models = [];
   if (typeof PROP_SPR === "undefined") return;
@@ -139,6 +181,7 @@ function genScenery(wd) {
     if (b.kind === "com" && R() < 0.45) addModel(wd, "busstop", b.x + 80 + R() * (b.w - 160), b.y + b.h - 22, { margin: 2, solid: false });
     if (b.kind === "parking" && R() < 0.6) addModel(wd, pick(["dumpster", "container"], R), b.x + 60 + R() * (b.w - 120), b.y + 40, { margin: 4 });
   }
+  addSidewalkWorklights(wd, R);
   // corpos espalhados pela rua (só cenário; os que têm itens continuam sendo os de antes)
   const nb = 2 + Math.floor(R() * 3) + Math.floor(zone / 3);
   for (let i = 0; i < nb; i++) for (let t = 0; t < 10; t++) {
