@@ -1293,7 +1293,7 @@ function drawLighting() {
   lctx.globalCompositeOperation = "destination-out";
   const chest = typeof chestPoint === "function" ? chestPoint() : player;
   const px = chest.x - cam.x, py = chest.y - cam.y;
-  if (!game.over) {
+  if (!game.over && flashlightActive()) {
     // Recorta a luz do jogador ANTES de abrir a escuridão. Assim nem
     // o halo próximo nem o feixe atravessam casas, telhados ou postes.
     flashCutCanvas();
