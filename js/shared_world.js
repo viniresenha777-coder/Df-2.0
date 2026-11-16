@@ -124,6 +124,9 @@ const fmWorld = (() => {
   }
   function sendSnapshot(force) {
     if (!channelReady || !channel || !isAuthority() || !world || game.trans || snapshotBusy) return;
+    // Sem outro jogador nesta rua, não consuma a cota gratuita de Realtime.
+    if (!force && typeof fmSocial !== "undefined" && !fmSocial.online().some(p =>
+      !p.inside && p.cx === world.cell.cx && p.cy === world.cell.cy)) return;
     const now = performance.now();
     if (!force && now - lastSnapshot < SNAPSHOT_MS) return;
     lastSnapshot = now;
