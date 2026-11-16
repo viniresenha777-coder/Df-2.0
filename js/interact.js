@@ -56,7 +56,7 @@ function ammoMult() { return Math.max(0.2, 1 + player.fx.ammoLoot / 100); }
 // colete achado no saque (só os que se compram com dinheiro; regiões piores dão coletes melhores)
 function lootVest(zone) {
   const ids = VESTS.map((v, i) => i).filter((i) => VESTS[i].price), max = Math.min(ids.length - 1, 1 + regionOf(zone));
-  return { type: "vest", idx: ids[Math.floor(Math.random() * (max + 1))] };
+  return { type: "vest", idx: ids[Math.floor(Math.random() * (max + 1))], mcArmor: player.flags.mc ? 6 : 0 };
 }
 function vestChance(t) { return (t.weapon || 0) * 0.3 * (1 + player.fx.armorFind / 100) * (vipActive() ? 1.6 : 1); }
 function lootEntry(cat, t, table, zone) {
@@ -115,7 +115,7 @@ function bossImplant() {
   if (Math.random() < BOSS_IMPLANT * (1 + player.fx.implantLoot / 100)) return { type: "implant", im: randomImplant() };
   return { type: "weapon", inst: newInst(weaponBetween(2, 4), upgrades(1 + upBonus())) };
 }
-function bossVest(a, b) { return { type: "vest", idx: a + Math.floor(Math.random() * (b - a + 1)) }; }
+function bossVest(a, b) { return { type: "vest", idx: a + Math.floor(Math.random() * (b - a + 1)), mcArmor: player.flags.mc ? 6 : 0 }; }
 function upgrades(n) { const up = {}; for (let i = 0; i < n; i++) { const s = pick(UP_STATS).id; up[s] = Math.min(UP_MAX, (up[s] || 0) + 1); } return up; }
 function bossLoot(id, zone) {
   const rb = Math.random() * 100 < player.fx.bossRare ? 1 : 0;      // Matador: raridade maior no saque dos chefes
