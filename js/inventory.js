@@ -520,44 +520,25 @@ function drawStash() {
 // =====================================================================
 //  Loja dos postos
 // =====================================================================
-const SHOP_TABS = ["Armas", "Munição", "Coletes", "Materiais", "Cofres"];
+const SHOP_TABS = ["Munição"];
+const AMMO_PACK_SIZE = 999, AMMO_PACK_PRICE = 14000;
 const CAT_ORDER = { pistols: 0, machinegun: 1, shotguns: 2, rifles: 3, melee: 4 };
 const SHOP_WEAPONS = WLIST.filter((d) => d.rar <= 3 && !d.craftOnly && !d.fists && d.price > 0).sort((a, b) => CAT_ORDER[a.cat] - CAT_ORDER[b.cat] || a.price - b.price);
-function shopList() {
-  const t = game.shopTab || 0;
-  if (t === 0) return SHOP_WEAPONS;
-  if (t === 1) return Object.keys(AMMO);
-  if (t === 2) return VESTS.map((v, i) => i);
-  if (t === 4) return SAFE_IDS;
-  return ["sucata", "pecas", "eletronicos"];
-}
+function shopList() { return Object.keys(AMMO); }
 function openShop() {
-  return; // Loja removida das interações; preserva a arte.
-  if (!inSafe() && !adm.shopAnywhere) { toast("A loja fica no balcão dos postos seguros"); return; }
-  game.shop = true; game.shopTab = game.shopTab || 0; game.shopCur = game.shopCur || 0;
+  if (!inSafe() && !adm.shopAnywhere) { toast("A loja de munições fica na base."); return; }
+  game.shop = true; game.shopTab = 0; game.shopCur = 0;
 }
 function shopBuy() {
-  const t = game.shopTab, item = shopList()[game.shopCur];
-  if (item == null) return;
-  if (t === 0) {
-    if (game.money < item.price) { toast("Dinheiro insuficiente"); return; }
-    const r = addWeapon(newInst(item.id));
-    if (!r) { toast("Mochila cheia"); return; }
-    game.money -= item.price; sfx.buy(); registerWeapon(item.id);
-    toast(`${item.name} comprada (${r === "slot" ? "equipada" : "foi para a mochila"})${canUse(item) ? "" : ` · exige ${reqText(item)}`}`);
-  } else if (t === 1) {
-    const a = AMMO[item];
-    if (game.money < a.price) { toast("Dinheiro insuficiente"); return; }
-    if (ammoRoom(item) < a.box) { toast("Mochila cheia: munição ocupa 1 espaço a cada 500 balas"); return; }
-    game.money -= a.price; player.reserve[item] += a.box; sfx.buy(); toast(`+${a.box} balas ${item}`);
-  } else if (t === 2) buyVest(item);
-  else {
-    const m = MATS[item];
-    if (game.money < m.price) { toast("Dinheiro insuficiente"); return; }
-    if (!addMat(item, 1)) { toast("Mochila cheia"); return; }
-    game.money -= m.price; sfx.buy(); toast(`+1 ${m.name}`);
-    if (m.cashProtection) checkpoint("compra de cofre");
-  }
+  const type = shopList()[game.shopCur | 0];
+  if (!type) return;
+  if (game.money < AMMO_PACK_PRICE) { toast("Você precisa de $14.000 para comprar munições."); return; }
+  if (ammoRoom(type) < AMMO_PACK_SIZE) { toast("Espaço insuficiente para 999 munições na mochila."); return; }
+  game.money -= AMMO_PACK_PRICE;
+  player.reserve[type] = (player.reserve[type] || 0) + AMMO_PACK_SIZE;
+  sfx.buy();
+  checkpoint("compra de pacote de munição");
+  toast("Comprou 999 munições " + type + " por $14.000");
 }
 function vestText(v) {
   const up = vestUpgrade(VESTS.indexOf(v));
@@ -579,77 +560,36 @@ function buyVest(i) {
 function shopKey(k) {
   if (k === "b" || k === "escape" || k === "e") { game.shop = false; return; }
   const len = shopList().length;
-  if (k === "tab" || k === "d" || k === "arrowright") { game.shopTab = (game.shopTab + 1) % SHOP_TABS.length; game.shopCur = 0; }
-  else if (k === "a" || k === "arrowleft") { game.shopTab = (game.shopTab + SHOP_TABS.length - 1) % SHOP_TABS.length; game.shopCur = 0; }
-  else if (k === "w" || k === "arrowup") game.shopCur = Math.max(0, game.shopCur - 1);
+  if (k === "w" || k === "arrowup") game.shopCur = Math.max(0, game.shopCur - 1);
   else if (k === "s" || k === "arrowdown") game.shopCur = Math.min(len - 1, game.shopCur + 1);
   else if (k === "enter") shopBuy();
 }
 function drawShop() {
-  menuFrame("Loja do posto", `Dinheiro: $${game.money}  ·  Mochila: ${packUsed()}/${PACK_MAX}  ·  Colete: ${save.vest >= 0 ? VESTS[save.vest].name : "nenhum"}`);
-  SHOP_TABS.forEach((t, i) => {
-    const x = 40 + i * 105, sel = game.shopTab === i;
-    txt(t, x + 55, 104, 15, sel ? "#ffd96a" : "#6d6a58", "center", true);
-    if (sel) { ctx.fillStyle = "#ffd96a"; ctx.fillRect(x + 15, 110, 80, 2); }
-    regClick(x, 88, 110, 26, () => { game.shopTab = i; game.shopCur = 0; });
+  menuFrame("Loja de Munições", "Dinheiro: $" + game.money.toLocaleString("pt-BR") + " · Cada pacote: 999 munições por $14.000");
+  const list = shopList();
+  const selected = Math.min(list.length - 1, Math.max(0, game.shopCur | 0));
+  game.shopCur = selected;
+  list.forEach((type, i) => {
+    const y = 110 + i * 42;
+    if (y > 480) return;
+    rowBox(40, y, 520, 38, selected === i);
+    drawEntryIcon({ type: "ammo", ammo: type }, 76, y + 20, 0.5);
+    txt(type + " · 999 unidades", 124, y + 18, 15, "#f2eedc", "left", true);
+    txt("Você tem: " + (player.reserve[type] || 0), 124, y + 33, 11, "#a9a58f");
+    txt("$14.000", 544, y + 25, 14, game.money >= AMMO_PACK_PRICE ? "#6fae4f" : "#e05a4a", "right", true);
+    rowClick(40, y, 520, 38, selected === i, () => { game.shopCur = i; }, shopBuy);
   });
-  const list = shopList(), vis = 9, off = Math.max(0, Math.min(list.length - vis, game.shopCur - 4)), t = game.shopTab;
-  list.slice(off, off + vis).forEach((item, j) => {
-    const i = off + j, y = 122 + j * 42, x = 40, w = 520, sel = game.shopCur === i;
-    rowBox(x, y, w, 38, sel);
-    rowClick(x, y, w, 38, sel, () => { game.shopCur = i; }, shopBuy);
-    if (t === 0) {
-      drawWeaponSide(item, x + 42, y + 19, 0.26);
-      txt(item.name, x + 86, y + 17, 14, rarColor(item), "left", true);
-      txt(`${RARITY[item.rar].name} · ${CAT_LABEL[item.cat]} · dano ${item.dmg}${item.pellets ? ` x${item.pellets}` : ""}`, x + 86, y + 32, 11, canUse(item) ? "#a9a58f" : "#e07b5a");
-      txt(`$${item.price}`, x + w - 12, y + 25, 15, game.money >= item.price ? "#6fae4f" : "#c0392b", "right", true);
-    } else if (t === 1) {
-      const a = AMMO[item];
-      drawEntryIcon({ type: "ammo", ammo: item }, x + 36, y + 20, 0.5);
-      txt(`${item} · caixa com ${a.box}`, x + 86, y + 17, 14, "#e5e0c8", "left", true);
-      txt(`reserva: ${player.reserve[item]}${usedAmmoTypes().includes(item) ? " · suas armas usam" : ""}`, x + 86, y + 32, 11, "#a9a58f");
-      txt(`$${a.price}`, x + w - 12, y + 25, 15, game.money >= a.price ? "#6fae4f" : "#c0392b", "right", true);
-    } else if (t === 2) {
-      const v = VESTS[item], own = save.vestsOwned[item], on = save.vest === item;
-      drawVestIcon(item, x + 30, y + 17, vestArt(item) ? 0.4 : 0.55);
-      txt(`${item + 1}. ${v.name}`, x + 60, y + 17, 13, RARITY[v.rar].color, "left", true, 330);
-      txt(vestText(v), x + 60, y + 32, 10, "#a9a58f", "left", false, 340);
-      const price = on ? "equipado" : own ? "seu" : v.craft ? "oficina" : v.credits ? `${v.credits} créditos` : `$${v.price}`;
-      const ok = own || (v.credits ? save.credits >= v.credits : !v.craft && game.money >= v.price);
-      txt(price, x + w - 12, y + 25, 13, on ? "#ffd96a" : ok ? "#6fae4f" : "#c0392b", "right", true);
-    } else {
-      const m = MATS[item];
-      drawMatIcon(item, x + 36, y + 19, 0.45);
-      txt(m.name, x + 86, y + 17, 14, "#e5e0c8", "left", true);
-      txt(`você tem: ${matCount(item)}`, x + 86, y + 32, 11, "#a9a58f");
-      txt(`$${m.price}`, x + w - 12, y + 25, 15, game.money >= m.price ? "#6fae4f" : "#c0392b", "right", true);
-    }
-  });
-  if (list.length > vis) txt(`${game.shopCur + 1}/${list.length}`, 300, 510, 12, "#a9a58f", "center");
-  const sel = list[game.shopCur], px = 600, pw = 320;
-  ctx.fillStyle = "rgba(0,0,0,0.25)"; rr(px - 10, 122, pw + 20, 380, 8); ctx.fill();
-  if (t === 0 && sel) weaponDetail(sel, null, px, 130, pw);
-  else if (t === 1 && sel) { drawEntryIcon({ type: "ammo", ammo: sel }, px + pw / 2, 200, 1.6); txt(`Munição ${sel}`, px, 290, 18, "#f2eedc", "left", true); txt(`Usada por: ${WLIST.filter((d) => d.ammo === sel).map((d) => d.short || d.name).join(", ")}`, px, 314, 12, "#a9a58f", "left", false, pw); }
-  else if (t === 4 && sel) {
-    drawMatIcon(sel, px + pw / 2, 200, 1.6);
-    txt(MATS[sel].name, px, 290, 18, "#f2eedc", "left", true);
-    txt(safeDescription(sel), px, 314, 12, "#ffd96a", "left", false, pw);
-    txt("Funciona apenas na mochila; no baú não protege.", px, 338, 11, "#a9a58f", "left", false, pw);
-    txt("Vale o maior limite. Não é consumido ao morrer.", px, 358, 11, "#a9a58f", "left", false, pw);
-    txt(`Proteção atual: $${cashProtection().toLocaleString("pt-BR")}`, px, 388, 12, "#6fae4f");
+  const type = list[selected], px = 600;
+  ctx.fillStyle = "rgba(0,0,0,.35)"; rr(px - 10, 100, 326, 380, 8); ctx.fill();
+  if (type) {
+    drawEntryIcon({ type: "ammo", ammo: type }, 760, 188, 1.6);
+    txt("Munição " + type, px, 286, 20, "#f2eedc", "left", true);
+    txt("Pacote com 999 unidades", px, 316, 15, "#ffd96a");
+    txt("Preço: $14.000", px, 344, 15, "#6fae4f", "left", true);
+    txt("Espaço necessário na mochila", px, 369, 12, "#a9a58f");
+    btn(px + 60, 422, 200, 42, "Comprar (Enter)", shopBuy, true);
   }
-  else if (t === 3 && sel) { drawMatIcon(sel, px + pw / 2, 200, 1.6); txt(MATS[sel].name, px, 290, 18, "#f2eedc", "left", true); txt("Material da oficina (craft e melhorias)", px, 314, 12, "#a9a58f"); }
-  else if (t === 2 && sel != null) {
-    const v = VESTS[sel];
-    drawVestIcon(sel, px + pw / 2, 200, 2.2);
-    txt(v.name, px, 290, 17, RARITY[v.rar].color, "left", true, pw);
-    txt(`${RARITY[v.rar].name} · ${v.armor}% de proteção`, px, 312, 12, "#c9c4ad");
-    txt(vestText(v), px, 332, 12, "#a9a58f", "left", false, pw);
-    txt(v.craft ? "Só na oficina (craft difícil)" : v.credits ? `Só com ${v.credits} créditos · você tem ${save.credits}` : "Compra com dinheiro ou acha com chefes", px, 356, 12, "#ffd96a", "left", true, pw);
-    txt("Colete fica com você mesmo se morrer.", px, 380, 12, "#a9a58f");
-  }
-  btn(px + 70, 450, 180, 40, "Comprar (Enter)", shopBuy, true);
-  hint("A/D ou Tab troca de aba · W/S escolhe · Enter compra · clique 2x para comprar · B, E ou Esc fecha");
+  hint("W/S escolhe calibre · Enter compra · B, E ou Esc fecha");
   menuToast();
 }
 
