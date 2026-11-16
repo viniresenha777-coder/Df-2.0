@@ -321,12 +321,12 @@ function weaponSkillCap(id, profession = (typeof save !== "undefined" ? save.pro
   if (id === "rifles" && profession === "atirador") return 135;
   return WEAPON_SKILL_IDS.includes(id) ? 120 : ATTR_MAX;
 }
-// 199 níveis ganhos = 630 pontos de armas. São 70 pontos iniciais;
-// portanto, o orçamento total do personagem até o nível 200 é 700.
+// 199 níveis ganhos = 665 pontos. Início: Força 25 + Melee 5 + Pistols 5 = 35.
+// Orçamento de arma até o nível 200: 35 + 665 = 700, antes de bônus da profissão.
 function weaponPointsAtLevel(level) {
   const l = Math.min(MAX_LEVEL, Math.max(1, Math.floor(level)));
-  return Math.max(0, Math.min(l, 37) - 1) * 7 +
-    Math.max(0, Math.min(l, 50) - 37) * 6 +
+  return Math.max(0, Math.min(l, 23) - 1) * 8 +
+    Math.max(0, Math.min(l, 50) - 23) * 7 +
     Math.max(0, Math.min(l, 100) - 50) * 3 +
     Math.max(0, Math.min(l, 150) - 100) * 2 +
     Math.max(0, l - 150);
@@ -339,20 +339,20 @@ function survivalPointsForLevel(level) {
   return level <= 50 ? 3 : level <= 100 ? 2 : 1;
 }
 const ATTRS = [
-  { id: "endurance", name: "Endurance (vida)", start: 100 },
-  { id: "str",        name: "Força",                 start: 10 },
-  { id: "armor",      name: "Armadura",              start: 10 },
-  { id: "agi",        name: "Agilidade",             start: 10 },
-  { id: "acc",        name: "Precisão de mira",      start: 10 },
-  { id: "crit",       name: "Chance de crítico",     start: 10 },
-  { id: "reload",     name: "Velocidade de recarga", start: 10 },
-  { id: "silence",    name: "Silêncio ao andar",     start: 10 },
-  { id: "stealth",    name: "Furtividade",           start: 1 },
-  { id: "melee",      name: "Melee",                 start: 20 },
-  { id: "pistols",    name: "Pistols",               start: 10 },
-  { id: "rifles",     name: "Rifles",                start: 10 },
-  { id: "shotguns",   name: "Shotguns",              start: 10 },
-  { id: "machinegun", name: "Machinegun",            start: 10 }
+  { id: "endurance", name: "Endurance (vida)", start: 25 },
+  { id: "str",        name: "Força",                 start: 25 },
+  { id: "armor",      name: "Armadura",              start: 0 },
+  { id: "agi",        name: "Agilidade",             start: 25 },
+  { id: "acc",        name: "Precisão de mira",      start: 25 },
+  { id: "crit",       name: "Chance de crítico",     start: 25 },
+  { id: "reload",     name: "Velocidade de recarga", start: 25 },
+  { id: "silence",    name: "Silêncio ao andar",     start: 0 },
+  { id: "stealth",    name: "Furtividade",           start: 0 },
+  { id: "melee",      name: "Melee",                 start: 5 },
+  { id: "pistols",    name: "Pistols",               start: 5 },
+  { id: "rifles",     name: "Rifles",                start: 0 },
+  { id: "shotguns",   name: "Shotguns",              start: 0 },
+  { id: "machinegun", name: "Machinegun",            start: 0 }
 ];
 const CATNAME = { melee: "Melee", pistols: "Pistols", rifles: "Rifles", shotguns: "Shotguns", machinegun: "Machinegun" };
 function defaultAttrs() { const a = {}; ATTRS.forEach((d) => { a[d.id] = d.start; }); return a; }
