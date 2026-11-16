@@ -75,6 +75,7 @@ window.addEventListener("keydown", (e) => {
   if (k === "f2") { toggleAdmin(); return; }
   if (game.over) { if (k === "enter") respawnPlayer(); return; }
   if (game.quitting) return;
+  if (game.menu === "pack" && game.found) { menuKey(k); return; } // mochila sobre loot: preserva a oferta
   if (game.found) { foundKey(k); return; }
   if (k === "u" && !e.repeat && !game.shop && !game.over && !game.menu) {
     openFriends();
@@ -269,7 +270,7 @@ function draw() {
     if (game.shop || game.menu || game.found) game.clicks = [];   // com um menu aberto, a base atrás não recebe clique
     if (game.shop) drawShop();
     if (game.menu) drawMenu();
-    if (game.found) drawFound();
+    if (game.found && game.menu !== "pack") drawFound();
     if (game.banner && !game.menu && !game.shop) { const a = Math.min(1, game.banner.t / 500); ctx.globalAlpha = a; ctx.fillStyle = "rgba(8,9,7,0.82)"; rr(566 - 190, 57, 380, 28, 6); ctx.fill(); txt(game.banner.text, 566, 77, 18, game.banner.gold ? "#ffd96a" : "#e5e0c8", "center", true); ctx.globalAlpha = 1; }
     if (game.msgT > 0 && !game.menu && !game.shop) { ctx.globalAlpha = Math.min(1, game.msgT / 300); txt(game.msg, 566, H - 30, 14, "#ffd96a", "center", true, 560); ctx.globalAlpha = 1; }
     drawTransition();
@@ -284,6 +285,7 @@ function draw() {
   ctx.save();
   ctx.translate(-Math.round(cam.x) + shx, -Math.round(cam.y) + shy);
   if (game.inside) drawInterior(); else { drawWorld(); drawAirdrops(); }
+  drawGroundDrops(); // itens recusados continuam visíveis por 10s reais
   drawHazards();
   for (const p of game.pings) {
     const f = 1 - p.t / 350;
@@ -327,7 +329,7 @@ function draw() {
   if (game.sectorMap && !game.over && !game.menu && !game.shop && !game.found && !game.paused) drawSectorOverlay();
   if (game.shop && !game.over) drawShop();
   if (game.menu && !game.over) drawMenu();
-  if (game.found && !game.over) drawFound();
+  if (game.found && !game.over && game.menu !== "pack") drawFound();
   if (game.paused && !game.over && !game.menu && !game.shop) drawPause();
   if (game.over) drawGameOver();
   if (game.quitting) drawQuitScreen();
@@ -364,6 +366,7 @@ function loop(now) {
   game.flashes = game.flashes.filter((f) => (f.t -= dt) > 0);
   game.floats = game.floats.filter((f) => (f.t -= dt) > 0);
   fmWorld.tick(); // relógio global e snapshots dos zumbis, inclusive durante pausas
+  groundDropsTick(now); // o prazo dos itens continua correndo mesmo com menus abertos
   update(dt);
   checkpointTick(dt);
   updateCam(dt);
