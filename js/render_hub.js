@@ -187,6 +187,8 @@ function drawHub() {
   shadowTxt(h.name.toUpperCase(), 272, 26, 20, "#c8483a", "left", true);
   txt(`Mochila $${game.money}  ·  Banco $${save.bank}  ·  Créditos ${save.credits}`, W - 140, 24, 12, "#c9c4ad", "right", true);
   btn(W - 128, 6, 118, 26, "Sair (E)", () => leaveHouse());
+  // Acesso à Loja de Créditos no canto superior esquerdo da base.
+  btn(6, 5, 98, 28, "Créditos", () => { game.menu = "creditshop"; game.creditCur = 0; game.creditConfirm = null; game.cur = 0; }, true);
 
   // planta da base
   if (!drawHubArt()) {
@@ -201,7 +203,7 @@ function drawHub() {
   const px = 8, pw = 248;
   ctx.fillStyle = "#14130f"; rr(px, 44, pw, H - 52, 8); ctx.fill();
   ctx.strokeStyle = "#5a4a2a"; ctx.lineWidth = 2; ctx.stroke();
-  const links = [["Mochila e equipamento", "pack"], ["Atributos", "stats"], ["Objetivos", "obj"], ["Mapa", "map"], ["Loja de Créditos", "creditshop"]];
+  const links = [["Mochila e equipamento", "pack"], ["Atributos", "stats"], ["Objetivos", "obj"], ["Mapa", "map"]];
   links.forEach(([label, m], i) => {
     const ly = 64 + i * 17, hov = mouse.x >= px + 10 && mouse.x <= px + 180 && mouse.y >= ly - 12 && mouse.y <= ly + 4;
     txt(label, px + 12, ly, 12, hov ? "#ffd96a" : "#f2eedc", "left", true);
