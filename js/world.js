@@ -35,7 +35,7 @@ function makeMap(seed) {
     for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(LR() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
     LANDMARKS[tier].forEach((t, i) => { if (opts[i]) opts[i].landmark = t; });
   }
-  MAP = { cells, bossT: 240000 };
+  MAP = { cells, bossT: 240000, bossRandom: mulberry(seed + 1234507) };
   for (let i = 0; i < BOSS_MAX; i++) placeBoss();
 }
 function cellAt(cx, cy) { return (MAP.cells[cy] && MAP.cells[cy][cx]) || null; }
@@ -48,11 +48,11 @@ function placeBoss() {
   if (!free.length) return null;
   // escolhe primeiro o chefe que está aparecendo menos, depois uma área da cor certa para ele
   const count = (id) => bossCells().filter((c) => c.boss === id).length;
-  const ids = Object.keys(BOSSES).sort((a, b) => count(a) - count(b) || Math.random() - 0.5);
+  const ids = Object.keys(BOSSES).sort((a, b) => count(a) - count(b) || a.localeCompare(b));
   for (const id of ids) {
     const opts = free.filter((c) => BOSSES[id].tiers.includes(c.tier));
     if (!opts.length) continue;
-    const c = pick(opts);
+    const c = opts[Math.floor(MAP.bossRandom() * opts.length)];
     c.boss = id; c.bossHp = null; c.cleared = false;
     return c;
   }
@@ -423,6 +423,7 @@ function activateArea() {
   const cell = world.cell;
   if (world.pop) return;
   world.pop = true;
+  if (typeof fmWorld !== "undefined" && fmWorld.isFollower()) { fmWorld.requestSync(); return; }
   for (const o of world.lootList) if (o.opened && game.time - o.openedAt > 300000) o.opened = false; // saques voltam depois de 5 min
   const z = cell.zone, reg = regionOf(z), frac = clamp((game.time - cell.leftAt) / 90000, 0.25, 1);
   let n = Math.round(Math.min(18, z === 0 ? 5 : 7 + (z % REGION_ROWS) * 1.2 + reg * 1.1) * REGIONS[reg].spawn * frac * (isNight() ? 1.25 : 1));
@@ -445,8 +446,10 @@ function activateArea() {
 }
 // ao matar a primeira leva da área do chefe, o surgimento de zumbis cai 30%
 function mapTick(dt) {
-  MAP.bossT -= dt;
-  if (MAP.bossT <= 0) {
+  // Chefes iniciais seguem uma semente comum. Não se criam novos chefes
+  // aleatórios por navegador durante o multiplayer.
+  if (typeof fmWorld === "undefined") MAP.bossT -= dt;
+  if (typeof fmWorld === "undefined" && MAP.bossT <= 0) {
     MAP.bossT = 240000;
     if (bossCells().length < BOSS_MAX) {
       const c = placeBoss();
