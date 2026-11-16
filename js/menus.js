@@ -564,7 +564,7 @@ function drawMap() {
   // área escolhida
   const sel = cellAt(game.mapSel.cx, game.mapSel.cy), lx = 540;
   const sectorOnline = fmSocial.online().filter(p => p.cx === game.mapSel.cx && p.cy === game.mapSel.cy);
-  txt("JOGADORES NESTA ÁREA: " + sectorOnline.length, lx, 87, 12, "#73ceff", "left", true);
+  txt("ONLINE: " + sectorOnline.length + (sectorOnline.length ? " · " + sectorOnline.map(p => p.name).join(", ") : ""), lx, 87, 12, "#73ceff", "left", true, 370);
   if (!sel) {
     txt(`${cellCode(game.mapSel.cx, game.mapSel.cy)} · sem passagem`, lx, 120, 20, "#6d6a58", "left", true);
     txt("Escombros e prédios caídos fecham essa área.", lx, 144, 13, "#a9a58f");
