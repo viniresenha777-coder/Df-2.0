@@ -228,7 +228,7 @@ function foundKey(k) {
   else if (k === "c" && canUseFound(game.found[0])) useFound();
   else if (k === "n" || k === "escape" || k === "q") declineFound();
   else if (k === "t") takeAllFound();
-  else if (k === "b" && game.found[0] && game.found[0].type === "weapon") openPackFromFound();
+  else if (k === "b" && game.found[0]) openPackFromFound();
 }
 function drawFound() {
   const e = game.found[0];
@@ -258,7 +258,7 @@ function drawFound() {
   } else if (e.type === "mat") txt("Material usado na oficina dos postos para criar e melhorar armas", W / 2, y + 222, 12, "#d8c8b0", "center");
   else if (e.type === "implant") { txt(implantDesc(e.im), W / 2, y + 222, 12, "#d8c8b0", "center", false, w - 40); if (e.dead) txt("★ EXCLUSIVO DA ZONA MORTA", W / 2, y + 242, 12, "#ffd96a", "center", true); }
   else if (e.type === "food") txt(e.q === "fresca" ? "Comida fresca: sacia muito e recupera um pouco de vida" : e.q === "podre" ? "Comida estragada: sacia pouco e pode aumentar a infecção" : "Comida enlatada comum", W / 2, y + 222, 12, FOOD_Q[e.q || "comum"].color, "center", true);
-  else if (e.type === "anti") txt("Antibiótico: tecla I reduz a infecção em 60%", W / 2, y + 222, 12, "#8fd0ff", "center", true);
+  else if (e.type === "anti") txt("Antibiótico guardado para futura atualização de infecção", W / 2, y + 222, 12, "#8fd0ff", "center", true);
   else if (e.type === "ammo") txt(`A munição ocupa a mochila: 1 espaço a cada ${AMMO_STACK} balas de cada tipo`, W / 2, y + 222, 12, "#d8c8b0", "center");
   const usable = canUseFound(e);
   if (usable) {
@@ -269,9 +269,9 @@ function drawFound() {
     btn(x + 110, y + 266, 150, 42, "SIM", acceptFound, true);
     btn(x + 300, y + 266, 150, 42, "NÃO", declineFound);
   }
-  if (e.type === "weapon") btn(x + 130, y + 318, 300, 36, "ABRIR MOCHILA (B)", openPackFromFound, true);
+  btn(x + 130, y + 318, 300, 36, "ABRIR MOCHILA (B)", openPackFromFound, true);
   const more = game.found.length - 1;
-  txt(`Enter/E: pegar${usable ? " · C: usar" : ""} · N/Esc: recusar (10s)${e.type === "weapon" ? " · B: mochila" : ""}${more ? " · T: tudo" : ""}`,
+  txt(`Enter/E: pegar${usable ? " · C: usar" : ""} · N/Esc: recusar (10s) · B: mochila${more ? " · T: tudo" : ""}`,
     W / 2, y + h - 14, 12, "rgba(232,192,160,0.7)", "center");
   if (more) btn(x + w - 100, y + 274, 86, 28, "Tudo", takeAllFound);
   if (game.msgT > 0) txt(game.msg, W / 2, y + h + 26, 15, "#ffd96a", "center", true);
@@ -286,6 +286,7 @@ function drawPause() {
   txt("PAUSADO", W / 2, 100, 46, "#f2eedc", "center", true);
   txt(`${playerName()}${prof() ? ` · ${prof().name}` : ""}`, W / 2, 124, 14, "#ffd96a", "center", true);
   btn(W / 2 - 280, 290, 160, 34, "Amigos (U)", openFriends);
+  btn(W / 2 - 280, 334, 160, 34, "Mensagens (I)" + (inboxUnread() ? " · " + inboxUnread() : ""), openMessages);
   btn(W / 2 - 280, 170, 160, 42, "Salvar progresso", manualSave);
   txt("Boneco: novo", W / 2 - 200, 113, 16, "#e5e0c8", "center", true);
   const ago = game.lastSave ? Math.round((performance.now() - game.lastSave) / 1000) : null;
@@ -316,7 +317,7 @@ function drawPause() {
   txt(GFX.on ? (save.gfx >= 2 ? "luz, sombras, brilho e clima" : "luz, sombras e clima, sem brilho") : GFX.failed ? "WebGL indisponível neste PC" : "modo antigo, mais leve", W / 2 - 200, 274, 11, "rgba(229,224,200,0.55)", "center");
   txt("Créditos: armas extras do pacote \"2D Guns\" de Kay Lousberg (OpenGameArt.org, CC0)", W / 2, H - 14, 11, "rgba(229,224,200,0.45)", "center");
   const ctl = [["WASD", "andar"], ["Shift", "correr"], ["Mouse", "mirar e atacar"], ["1 2 3 / roda", "trocar arma"], ["R", "recarregar"], ["E", "vasculhar, entrar, usar"],
-    ["B", "mochila"], ["F G H", "comer, beber, kit"], ["C", "atributos e personagem"], ["M", "mapa do setor"], ["N", "mapa da cidade"], ["O", "objetivos"], ["Esc", "pausa e missões"], ["J", "música"], ["K", "som"], ["U", "amigos e jogadores"]];
+    ["B", "mochila"], ["F G H", "comer, beber, kit"], ["C", "atributos e personagem"], ["M", "mapa do setor"], ["N", "mapa da cidade"], ["O", "objetivos"], ["Esc", "pausa e missões"], ["J", "música"], ["K", "som"], ["U", "amigos e jogadores"], ["I", "mensagens"]];
   ctl.forEach(([k, v], i) => {
     const cx = i < 8 ? 150 : 410, cy = 340 + (i % 8) * 22;
     txt(k, cx, cy, 13, "#ffd96a", "right", true); txt(v, cx + 12, cy, 13, "#c9c4ad");
