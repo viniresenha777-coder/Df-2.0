@@ -311,8 +311,33 @@ const IMP = {
 const IMP_IDS = Object.keys(IMP);
 const IMP_COLOR = ["#d4af37", "#e07b5a", "#c58bff"];     // comum · com penalidade · especial
 
-// ---------- Personagem: nível (1 a 250) e atributos ----------
-const MAX_LEVEL = 250, ATTR_MAX = 200, PLAYER_HP_CAP = 200;
+// ---------- Personagem: nível (1 a 200) e atributos ----------
+const MAX_LEVEL = 200, ATTR_MAX = 200, PLAYER_HP_CAP = 200;
+// Cinco proficiências de armas e Força: 100 + 5 x 120 = 700.
+// Atirador pode atingir Rifles 135 graças à especialização da profissão.
+const WEAPON_SKILL_IDS = ["str", "melee", "pistols", "rifles", "shotguns", "machinegun"];
+function weaponSkillCap(id, profession = (typeof save !== "undefined" ? save.prof : null)) {
+  if (id === "str") return 100;
+  if (id === "rifles" && profession === "atirador") return 135;
+  return WEAPON_SKILL_IDS.includes(id) ? 120 : ATTR_MAX;
+}
+// 199 níveis ganhos = 630 pontos de armas. São 70 pontos iniciais;
+// portanto, o orçamento total do personagem até o nível 200 é 700.
+function weaponPointsAtLevel(level) {
+  const l = Math.min(MAX_LEVEL, Math.max(1, Math.floor(level)));
+  return Math.max(0, Math.min(l, 37) - 1) * 7 +
+    Math.max(0, Math.min(l, 50) - 37) * 6 +
+    Math.max(0, Math.min(l, 100) - 50) * 3 +
+    Math.max(0, Math.min(l, 150) - 100) * 2 +
+    Math.max(0, l - 150);
+}
+function weaponPointsForLevel(level) {
+  return weaponPointsAtLevel(level) - weaponPointsAtLevel(level - 1);
+}
+// Pontos de sobrevivência são uma reserva SEPARADA dos 700 de armas.
+function survivalPointsForLevel(level) {
+  return level <= 50 ? 3 : level <= 100 ? 2 : 1;
+}
 const ATTRS = [
   { id: "endurance", name: "Endurance (vida)", start: 100 },
   { id: "str",        name: "Força",                 start: 10 },
