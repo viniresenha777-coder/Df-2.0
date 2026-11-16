@@ -312,13 +312,12 @@ const IMP_IDS = Object.keys(IMP);
 const IMP_COLOR = ["#d4af37", "#e07b5a", "#c58bff"];     // comum · com penalidade · especial
 
 // ---------- Personagem: nível (1 a 200) e atributos ----------
-const MAX_LEVEL = 200, ATTR_MAX = 200, PLAYER_HP_CAP = 200;
-// Cinco proficiências de armas e Força: 100 + 5 x 120 = 700.
-// Atirador pode atingir Rifles 135 graças à especialização da profissão.
+const MAX_LEVEL = 200, ATTR_MAX = 100, PLAYER_HP_CAP = 200;
+// Limites de distribuição: stats gerais até 100, Força até 100,
+// e as cinco proficiências de armas até 120 cada (700 pontos no total).
 const WEAPON_SKILL_IDS = ["str", "melee", "pistols", "rifles", "shotguns", "machinegun"];
-function weaponSkillCap(id, profession = (typeof save !== "undefined" ? save.prof : null)) {
+function weaponSkillCap(id) {
   if (id === "str") return 100;
-  if (id === "rifles" && profession === "atirador") return 135;
   return WEAPON_SKILL_IDS.includes(id) ? 120 : ATTR_MAX;
 }
 // 199 níveis ganhos = 665 pontos. Início: Força 25 + Melee 5 + Pistols 5 = 35.
