@@ -33,3 +33,12 @@ body { background: #070b0a; }
 .fm-auth .fm-import { font-weight: 400; display: flex; gap: 8px; align-items: flex-start; color: #d5d1b8; font-size: 13px; line-height: 1.5; }
 .fm-auth .fm-import input { margin-top: 3px; accent-color: #b59c47; }
 .fm-auth small { display: block; color: #8f998a; font-size: 12px; margin-top: 15px; line-height: 1.5; }
+
+.fm-auth .fm-auth-actions:has(> button:only-child) { grid-template-columns: 1fr; }
+.fm-auth-return {
+  display: inline-block; margin-top: 16px;
+  color: #d6b85a; font-size: 14px; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.fm-auth-return:hover { color: #f2d780; }
+.fm-auth-panel > p#reset-success { color: #b8dfad; line-height: 1.5; font-size: 14px; }
