@@ -539,7 +539,7 @@ function drawFurnitureBase(f) {
   const mid = typeof FURN_MODEL !== "undefined" && FURN_MODEL[n];
   if (mid && modelOk(mid)) {
     const d = PROP_SPR[mid], k = Math.min(w / d.fw, h / d.fd) * 1.05;
-    if (drawModel(mid, x + w / 2, y + h / 2, k, f.opened ? "brightness(0.7)" : null)) { ctx.globalAlpha = 1; return; }
+    if (drawModel(mid, x + w / 2, y + h / 2, k, !f.opened && f.searchable !== false ? LOOT_YELLOW_FILTER : f.opened ? "brightness(0.7)" : null)) { ctx.globalAlpha = 1; return; }
   }
   ctx.fillStyle = "rgba(0,0,0,0.32)"; ctx.fillRect(x + 5, y + 5, w, h);
   if (f.kind === "decor") { drawDecor(f); ctx.globalAlpha = 1; return; }
