@@ -60,7 +60,7 @@ function resetGame() {
   manageRows();
   if (!save.name) openNameScreen(false); // personagem novo: primeiro o nome, depois a profissão
   else if (!save.prof) game.menu = "prof";
-  game.banner = { text: "Fronteira Morta", sub: "Refúgio · entre (E) para usar loja, oficina, banco e missões · N abre o mapa de áreas", t: 4200, gold: true };
+  game.banner = { text: "Fronteira Morta", sub: "Refúgio · entre (E) para oficina, banco, clínica e missões · I abre Mensagens", t: 4200, gold: true };
 }
 
 // ---------- Controles ----------
@@ -101,7 +101,7 @@ window.addEventListener("keydown", (e) => {
   else if (k === "f") eat();
   else if (k === "g") drink();
   else if (k === "h") heal();
-  else if (k === "i") useAnti();
+  else if (k === "i") openMessages();
   else if (k === "c") { game.menu = "stats"; game.cur = 0; }
   else if (k === "m") { game.sectorMap = !game.sectorMap; }
   else if (n >= 1 && n <= SLOT_N) selectWeapon(n - 1);
