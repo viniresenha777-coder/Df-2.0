@@ -195,11 +195,12 @@ function attack() {
     return;
   }
   let mx = player.x + Math.cos(player.angle) * (w.len + 12), my = player.y + Math.sin(player.angle) * (w.len + 12), aim = player.angle;
-  const mz = muzzlePoint(); // personagem novo: sai da ponta do cano e vai na direção do mouse
+  const mz = muzzlePoint();
   if (mz) {
     mx = mz.x; my = mz.y;
-    const tx = mouse.x + cam.x, ty = mouse.y + cam.y;
-    if (Math.hypot(tx - mx, ty - my) > 8) aim = Math.atan2(ty - my, tx - mx);
+    // Usa exatamente o ângulo da arma VISÍVEL no personagem.
+    // Corrige o tiro lateral quando o modelo estava virado em outra direção.
+    aim = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle;
   }
   player.shotAng = aim;
   const n = w.pellets || 1;
