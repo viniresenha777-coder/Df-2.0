@@ -251,6 +251,7 @@ const fmWorld = (() => {
   }
   return {
     start, tick, nowMs, clock, weatherKind, isAuthority, isFollower,
-    onChannel, onChannelReady, reportHit, requestSync, localZombieThreats
+    onChannel, onChannelReady, reportHit, requestSync, localZombieThreats,
+    publishZombiesNow: () => sendSnapshot(true)
   };
 })();
