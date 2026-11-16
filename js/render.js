@@ -1037,16 +1037,18 @@ function hole(x, y, r, a) {
   lctx.fillStyle = g; lctx.beginPath(); lctx.arc(x, y, r, 0, 6.283); lctx.fill();
 }
 function drawLighting() {
-  const dark = game.inside ? (game.inside.safe ? 0.12 : 0.26 + darkness() * 0.3) : darkness();
+  // Noite ainda é perigosa, porém 25% mais legível do que a versão anterior.
+  const baseDark = game.inside ? (game.inside.safe ? 0.12 : 0.26 + darkness() * 0.3) : darkness();
+  const dark = Math.min(0.78, baseDark * 0.75);
   if (dark < 0.03) return;
   lctx.globalCompositeOperation = "source-over"; lctx.clearRect(0, 0, W, H);
   lctx.fillStyle = `rgba(6,10,24,${dark})`; lctx.fillRect(0, 0, W, H);
   lctx.globalCompositeOperation = "destination-out";
   const px = player.x - cam.x, py = player.y - cam.y;
   if (!game.over) {
-    hole(px, py, 115, 0.85);
+    hole(px, py, 153, 0.91);
     if (dark > 0.3) {
-      const len = 390, half = 0.46, g = lctx.createRadialGradient(px, py, 10, px, py, len);
+      const len = 435, half = 0.50, g = lctx.createRadialGradient(px, py, 10, px, py, len);
       g.addColorStop(0, "rgba(0,0,0,0.95)"); g.addColorStop(0.6, "rgba(0,0,0,0.65)"); g.addColorStop(1, "rgba(0,0,0,0)");
       lctx.fillStyle = g; lctx.beginPath(); lctx.moveTo(px, py); lctx.arc(px, py, len, player.angle - half, player.angle + half); lctx.closePath(); lctx.fill();
     }
