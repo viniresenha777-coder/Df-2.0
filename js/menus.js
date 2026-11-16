@@ -9,6 +9,7 @@ function menuKey(k) {
   if (game.input) { inputKey(k); return; }
   if (game.menu === "admin") { if (!canUseAdmin()) { game.menu = null; game.input = null; return; } adminKey(k); return; }
   if (game.menu === "name") { nameKey(k); return; }
+  if (game.menu === "friends") { friendsKey(k); return; }
   if (game.menu === "prof") { profKey(k); return; }
   if (game.menu === "junk") { junkKey(k); return; }
   if (k === "escape" || k === "e" || k === "b" || (k === "c" && game.menu === "stats") || (k === "m" && game.menu === "sector") || (k === "n" && game.menu === "map") || (k === "o" && game.menu === "obj")) { game.menu = null; return; }
@@ -371,6 +372,7 @@ function drawMenu() {
   else if (game.menu === "admin") drawAdmin();
   else if (game.menu === "travel") drawTravel();
   else if (game.menu === "map") drawMap();
+  else if (game.menu === "friends") drawFriends();
   else if (game.menu === "pack") drawInventory();
   else if (game.menu === "craft") drawCraft();
   else if (game.menu === "obj") drawObjectives();
@@ -514,7 +516,7 @@ function tierTextColor(t) { return REGIONS[t].color === "#2a2a2e" ? "#9a9aa0" : 
 function drawMap() {
   const here = world.cell;
   if (!game.mapSel) game.mapSel = { cx: here.cx, cy: here.cy };
-  menuFrame("Mapa da cidade", `${allCells().length} áreas · oeste tranquilo, leste mortal · ☠ = chefe vivo (${bossCells().length})`);
+  menuFrame("Mapa da cidade", `${allCells().length} áreas · ${fmSocial.online().length + 1} jogador(es) online · ☠ = chefe vivo (${bossCells().length})`);
   const cs = 34, gx = 34, gy = 96, now = performance.now();
   for (let cy = 0; cy < MAP_H; cy++) for (let cx = 0; cx < MAP_W; cx++) {
     const c = cellAt(cx, cy), x = gx + cx * cs, y = gy + cy * cs;
@@ -534,6 +536,20 @@ function drawMap() {
     if (game.mapSel.cx === cx && game.mapSel.cy === cy) { ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.strokeRect(x + 4, y + 4, cs - 8, cs - 8); ctx.setLineDash([]); }
     regClick(x, y, cs, cs, () => { game.mapSel = { cx, cy }; });
   }
+  // Marcadores de sobreviventes online por setor: azul = jogador, verde = amigo.
+  const locations = new Map();
+  for (const p of fmSocial.online()) {
+    const key = p.cx + "," + p.cy;
+    if (!locations.has(key)) locations.set(key, []);
+    locations.get(key).push(p);
+  }
+  for (const [key, group] of locations) {
+    const [cx, cy] = key.split(",").map(Number);
+    const x = gx + cx * cs + cs - 9, y = gy + cy * cs + 9;
+    ctx.fillStyle = group.some(p => fmSocial.isFriend(p.uid)) ? "#8fe0a8" : "#73ceff";
+    circle(x, y, 9);
+    txt(String(group.length), x, y + 4, 11, "#101613", "center", true);
+  }
   for (let cx = 0; cx < MAP_W; cx++) txt(String.fromCharCode(65 + cx), gx + cx * cs + cs / 2, gy - 6, 10, "#a9a58f", "center", true);
   for (let cy = 0; cy < MAP_H; cy++) txt(String(cy + 1), gx - 8, gy + cy * cs + cs / 2 + 4, 10, "#a9a58f", "right", true);
   // legenda das cores
@@ -544,9 +560,11 @@ function drawMap() {
     ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1; ctx.strokeRect(x, y - 10, 14, 14);
     txt(`${RG.name} · ${RG.diff}`, x + 19, y + 2, 11, "#c9c4ad", "left", true);
   });
-  txt("⌂ base  ☠ chefe  H hospital  P prisão  B bunker  amarelo = você  apagado = não visitada", gx, ly + 66, 11, "#a9a58f");
+  txt("⌂ base  ☠ chefe  H hospital  P prisão  B bunker  amarelo = você  azul = online  verde = amigo", gx, ly + 66, 11, "#a9a58f");
   // área escolhida
   const sel = cellAt(game.mapSel.cx, game.mapSel.cy), lx = 540;
+  const sectorOnline = fmSocial.online().filter(p => p.cx === game.mapSel.cx && p.cy === game.mapSel.cy);
+  txt("JOGADORES NESTA ÁREA: " + sectorOnline.length, lx, 87, 12, "#73ceff", "left", true);
   if (!sel) {
     txt(`${cellCode(game.mapSel.cx, game.mapSel.cy)} · sem passagem`, lx, 120, 20, "#6d6a58", "left", true);
     txt("Escombros e prédios caídos fecham essa área.", lx, 144, 13, "#a9a58f");
