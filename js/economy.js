@@ -43,12 +43,12 @@ function nameKey(k) {
   let d = game.nameDraft || "";
   if (k === "backspace") d = d.slice(0, -1);
   else if (k === "enter") { confirmName(); return; }
-  else if (raw.length === 1 && /[\\p{L}\\p{N} _\\-.]/u.test(raw) && d.length < NAME_MAX) d += raw;
-  game.nameDraft = d.replace(/^\\s+/, "");
+  else if (raw.length === 1 && /[\p{L}\p{N} _.-]/u.test(raw) && d.length < NAME_MAX) d += raw;
+  game.nameDraft = d.replace(/^\s+/, "");
 }
 async function confirmName() {
   if (game.nameBusy) return;
-  const n = (game.nameDraft || "").trim().replace(/\\s+/g, " ");
+  const n = (game.nameDraft || "").trim().replace(/\s+/g, " ");
   if (n.length < NAME_MIN) { toast(`O nome precisa ter pelo menos ${NAME_MIN} letras`); return; }
   game.nameBusy = true;
   try {
