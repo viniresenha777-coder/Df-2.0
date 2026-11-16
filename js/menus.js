@@ -10,6 +10,7 @@ function menuKey(k) {
   if (game.menu === "admin") { if (!canUseAdmin()) { game.menu = null; game.input = null; return; } adminKey(k); return; }
   if (game.menu === "name") { nameKey(k); return; }
   if (game.menu === "friends") { friendsKey(k); return; }
+  if (game.menu === "messages") { messagesKey(k); return; }
   if (game.menu === "prof") { profKey(k); return; }
   if (game.menu === "junk") { junkKey(k); return; }
   if (k === "escape" || k === "e" || k === "b" || (k === "c" && game.menu === "stats") || (k === "m" && game.menu === "sector") || (k === "n" && game.menu === "map") || (k === "o" && game.menu === "obj")) { game.menu = null; return; }
@@ -70,9 +71,9 @@ function buyCredits(n) {
   save.bank -= cost; save.credits += n; persist(); toast(`Comprou ${n} créditos`);
 }
 function buyGM() {
-  if (save.gm) { toast("Você já é VIP"); return; }
+  if (save.gm) { toast("Você já tem VIP legado permanente"); return; }
   if (save.credits < GM_COST) { toast(`Precisa de ${GM_COST} créditos para ativar o VIP`); return; }
-  save.credits -= GM_COST; save.gm = true; persist(); toast("VIP ativado!"); sfx.level();
+  save.credits -= GM_COST; addVipMonths(1); persist(); toast("VIP de 1 mês ativado!"); sfx.level();
 }
 
 // ---------- Atributos ----------
@@ -362,7 +363,7 @@ function admRows() {
     B("Destinatário: " + (g.name || "(digitar nome in-game)"), () => admAskText("Nome do jogador", name => { g.name = name.slice(0,16); }));
     rows.push({ label: "Tipo de presente (A/D para escolher)", val: () =>
       ({dinheiro:"Dinheiro",vip:"VIP temporário",arma:"Arma",material:"Material"})[g.type],
-      act: (d) => { g.type = ADM_GIFT_TYPES[(ADM_GIFT_TYPES.indexOf(g.type) + (d < 0 ? -1 : 1) + ADM_GIFT_TYPES.length) % ADM_GIFT_TYPES.length]; g.itemIndex = 0; } });
+      act: (d) => { g.type = ADM_GIFT_TYPES[(ADM_GIFT_TYPES.indexOf(g.type) + (d < 0 ? -1 : 1) + ADM_GIFT_TYPES.length) % ADM_GIFT_TYPES.length]; g.itemIndex = 0; g.qty = g.type === "vip" ? 1 : g.type === "arma" ? 1 : g.type === "material" ? 10 : 1000; } });
     if (g.type === "vip") {
       rows.push({ label: "Duração do VIP (A/D para escolher)", val: () =>
         g.qty === 1 ? "1 mês" : g.qty === 6 ? "6 meses" : "1 ano",
@@ -428,6 +429,7 @@ function drawMenu() {
   else if (game.menu === "travel") drawTravel();
   else if (game.menu === "map") drawMap();
   else if (game.menu === "friends") drawFriends();
+  else if (game.menu === "messages") drawMessages();
   else if (game.menu === "pack") drawInventory();
   else if (game.menu === "craft") drawCraft();
   else if (game.menu === "obj") drawObjectives();
@@ -436,16 +438,16 @@ function drawMenu() {
 }
 
 function drawBank() {
-  menuFrame("Banco", `Mochila: $${game.money}  ·  Banco: $${save.bank}  ·  Créditos: ${save.credits}  ·  VIP: ${save.gm ? "ativo" : "inativo"}`);
+  menuFrame("Banco", `Mochila: $${game.money}  ·  Banco: $${save.bank}  ·  Créditos: ${save.credits}  ·  VIP: ${vipStatus()}`);
   txt("O dinheiro do banco não se perde quando você morre. Só dá para usar o banco dentro de um posto.", W / 2, 100, 13, "#a9a58f", "center");
   const rows = [["D", "Depositar (digitar valor)"], ["A", "Depositar tudo"], ["S", "Sacar (digitar valor)"], ["T", "Sacar tudo"],
-                ["C", `Comprar créditos ($${CREDIT_PRICE} cada)`], ["G", `Ativar VIP (${GM_COST} créditos)`]];
+                ["C", `Comprar créditos ($${CREDIT_PRICE} cada)`], ["G", `Ativar VIP por 1 mês (${GM_COST} créditos)`]];
   rows.forEach(([key, label], i) => {
     const x = i % 2 === 0 ? 100 : 500, y = 124 + Math.floor(i / 2) * 60;
     rowBox(x, y, 360, 50, false, i >= 4 ? "#d4af37" : null);
     txt(`${key}  ${label}`, x + 16, y + 31, 16, "#e5e0c8", "left", true);
   });
-  txt(`VIP (${GM_COST} créditos = $${CREDIT_PRICE * GM_COST}, pagos com o saldo do banco) — benefícios permanentes:`, W / 2, 332, 15, "#d4af37", "center", true);
+  txt(`VIP (${GM_COST} créditos = $${CREDIT_PRICE * GM_COST}, pagos com o saldo do banco) — benefícios durante o VIP:`, W / 2, 332, 15, "#d4af37", "center", true);
   txt("+100% de chance de corpos para saquear · +100% de XP · +60% de saque nos lugares vasculháveis", W / 2, 360, 14, "#a9a58f", "center");
   txt("+100% de munição · +100% de dinheiro · armas lendárias podem aparecer nos saques (teclas 9 e 0)", W / 2, 382, 14, "#a9a58f", "center");
   hint("E, B ou Esc fecha");
