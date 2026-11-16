@@ -71,10 +71,10 @@ function recalcImplants() {
   const vest = save.vest >= 0 ? VESTS[save.vest] : null;
   // Endurance vale a mesma quantidade em HP. Colete e implantes acrescentam
   // pontos de vida até o limite absoluto de 200, sem bônus automático por nível.
-  const baseHp = Number.isFinite(player.attrs.endurance) ? player.attrs.endurance : 100;
+  const baseHp = Number.isFinite(player.attrs.endurance) ? player.attrs.endurance : 25;
   const implantBonus = Math.max(-20, Math.min(35, all.vigor || 0));
   const vestBonus = Math.max(0, Math.min(25, vest && vest.hp ? vest.hp : 0));
-  player.maxHp = Math.max(30, Math.min(PLAYER_HP_CAP, baseHp + implantBonus + vestBonus));
+  player.maxHp = Math.max(1, Math.min(PLAYER_HP_CAP, baseHp + implantBonus + vestBonus));
   player.hp = Math.min(player.hp, player.maxHp);
   lastStandTick();
 }
