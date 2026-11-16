@@ -275,7 +275,7 @@ function makeZombie(x, y, type, zone) {
   }[type];
   const z = Object.assign({
     netId: crypto.randomUUID(), x, y, r: t.r, type, zone, row: zone, hp, maxHp: hp, dmg: (8 + sub) * t.dmg * R.dmg, hitDelay: t.hitDelay || 750,
-    speed: Math.min(2.9, (0.7 + Math.random() * 0.35 + reg * 0.1 + sub * 0.02) * t.spd), hitCd: 0, angle: Math.random() * 6.283,
+    speed: Math.min(2.9, (0.7 + Math.random() * 0.35 + reg * 0.1 + sub * 0.02) * t.spd) * (type === "dog" ? 0.8 : 1), hitCd: 0, angle: Math.random() * 6.283,
     burn: 0, bleed: 0, stun: 0, chargeCd: 2000 + Math.random() * 2000, chargeT: 0, windT: 0, slamCd: 1500, slamT: 0,
     skin: pick(ZSKIN), cloth: pick(ZCLOTHES), anim: Math.random() * 10, flash: 0, spitCd: 1500 + Math.random() * 1500,
     stuckT: 0, detourT: 0, detourDir: 1, stains: [Math.random(), Math.random(), Math.random()], lunge: 0
