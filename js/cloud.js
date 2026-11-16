@@ -19,6 +19,8 @@ const fmCloud = (() => {
   }
   function friendly(error) {
     if (!error) return new Error("Erro desconhecido");
+    if (error.message && /failed to fetch|networkerror|load failed/i.test(error.message))
+      return new Error("Não foi possível conectar ao Supabase. Confira se o projeto está ativo, se a URL/API Key estão corretas e se sua rede permite acesso ao Supabase.");
     if (error.code === "PGRST205" || error.code === "42P01" || error.code === "42501")
       return new Error("O banco de partidas ainda não foi configurado no Supabase. Execute o SQL de instalação.");
     if (error.code === "23505")
