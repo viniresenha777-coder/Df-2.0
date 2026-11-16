@@ -208,7 +208,7 @@ function drawOnlinePlayer(p) {
 }
 
 function friendsKey(k) {
-  if (k === "escape" || k === "u") { game.menu = null; return; }
+  if (k === "escape") { game.menu = null; return; }
   if (game.friendBusy) return;
   if (k === "enter") { friendsAdd(); return; }
   let s = game.friendDraft || "";
@@ -259,5 +259,5 @@ function drawFriends() {
   });
   const onlineNames = online.slice(0, 5).map(p => p.name).join(" · ");
   txt("Conectados: " + (onlineNames || "nenhum outro jogador online"), mx, 547, 12, "#73ceff", "left", false, 835);
-  hint("Digite o nome e pressione Enter · Esc ou U fecha");
+  hint("Digite o nome e pressione Enter · Esc fecha");
 }
