@@ -1,7 +1,7 @@
 "use strict";
 // =====================================================================
 //  Progresso que não se perde ao morrer: banco, baú da base (armas e
-//  materiais), personagem, missões, colete e postos.
+//  materiais), implantes instalados, personagem, missões, colete e postos.
 // =====================================================================
 const SAVE_KEY = "fronteira-morta";
 const save = {
@@ -28,10 +28,9 @@ function loadSave() {
     if (!s) return;
     save.bank = s.bank || 0;
     save.run = s.run && s.run.v === 1 ? s.run : null; // checkpoint da partida
-    if (save.run && save.run.p) delete save.run.p.bag; // não restaurar implantes antigos
     if (Array.isArray(s.vault)) save.vault = s.vault.filter(validItem).slice(0, VAULT_MAX);
     else if (Array.isArray(s.stash)) save.vault = s.stash.map((v, i) => (v && OLD_IDS[i] ? newInst(OLD_IDS[i]) : null)).filter(Boolean); // save antigo
-    save.installed = []; // Remove implantes de qualquer salvamento antigo.
+    { const seen = {}; save.installed = (s.installed || []).map(cleanImplant).filter((im) => im && !seen[im.id] && (seen[im.id] = true)).slice(0, IMPL_SLOTS); }
     save.credits = s.credits || 0; save.gm = !!s.gm;
     save.vipUntil = Number.isFinite(s.vipUntil) && s.vipUntil > 0 ? Math.floor(s.vipUntil) : 0;
     save.trindadeUntil = Number.isFinite(s.trindadeUntil) && s.trindadeUntil > 0 ? Math.floor(s.trindadeUntil) : 0;
