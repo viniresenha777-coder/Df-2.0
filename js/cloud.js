@@ -86,12 +86,18 @@ const fmCloud = (() => {
     return operation;
   }
   async function logout() {
+    // Uma falha de rede ao revogar o refresh token não deve impedir que o
+    // jogador retorne à tela de login após o progresso ter sido salvo.
     await pending;
-    const { error } = await requireClient().auth.signOut({ scope: "local" });
-    if (error) throw friendly(error);
-    user = null;
-    snapshot = null;
-    revision = null;
+    const db = requireClient();
+    try {
+      const { error } = await db.auth.signOut({ scope: "local" });
+      if (error) console.warn("Logout local com erro de servidor:", error.message);
+    } finally {
+      user = null;
+      snapshot = null;
+      revision = null;
+    }
   }
   async function resend(email) {
     const { error } = await requireClient().auth.resend({
