@@ -231,11 +231,12 @@ function gfxSetQuality(q) {
 function gfxWeatherName() { const n = WEATHER[GFX.wx.kind].name; return n ? ` · ${n}` : ""; }
 function gfxTick(dt) {
   const w = GFX.wx, sec = dt / 1000;
-  w.timer -= dt;
-  if (w.timer <= 0) {
-    const r = Math.random(), kind = r < 0.5 ? 0 : r < 0.7 ? 1 : r < 0.92 ? 2 : 3;
-    w.timer = rand(150000, 320000);
-    if (kind !== w.kind) { w.kind = kind; if (GFX.on && WEATHER[kind].msg) toast(WEATHER[kind].msg); else if (GFX.on && w.kind === 0) toast("O tempo abriu"); }
+  // Clima global determinístico: mesmos eventos no mesmo instante para todos.
+  const kind = typeof fmWorld !== "undefined" ? fmWorld.weatherKind() : 0;
+  if (kind !== w.kind) {
+    w.kind = kind;
+    if (GFX.on && WEATHER[kind].msg) toast(WEATHER[kind].msg);
+    else if (GFX.on && kind === 0) toast("O tempo abriu");
   }
   const def = WEATHER[w.kind], reg = game.inside ? 0 : regionOf(game.area);
   w.tRain = def.rain;
