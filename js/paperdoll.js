@@ -222,6 +222,7 @@ function invDrop(src, dst) {
     if (src.sel == null) { toast("Isso não dá para descartar aqui"); return; }
     inv.sel = src.sel; INV.confirm = { name: invItemName(src) }; return;
   }
+  if (src.type === "mat" && src.item.id === "trindade_eterna" && dst.area === "doll") { INV.confirm = { trindade: true, name: "Trindade · 100 anos" }; return; }
   if (src.type === "mat" && src.item.id === "reset_stats" && dst.area === "doll") {
     INV.confirm = { resetStats: true, name: "Cartão Reset de Stats" };
     return;
@@ -441,9 +442,9 @@ function drawInventory() {
   if (INV.confirm) {
     ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "#1a1913"; rr(W / 2 - 200, H / 2 - 60, 400, 120, 10); ctx.fill(); ctx.strokeStyle = "#e05a4a"; ctx.lineWidth = 2; ctx.stroke();
-    txt(INV.confirm.resetStats ? "Resetar atributos e proficiências?" : `Descartar ${INV.confirm.name}?`, W / 2, H / 2 - 22, 16, "#f2eedc", "center", true, 370);
-    txt(INV.confirm.resetStats ? "Todos os pontos investidos voltam. O cartão será consumido." : "Some para sempre.", W / 2, H / 2, 12, "#a9a58f", "center");
-    btn(W / 2 - 150, H / 2 + 16, 140, 30, INV.confirm.resetStats ? "Resetar" : "Descartar", () => { const reset = INV.confirm.resetStats; INV.confirm = null; if (reset) useResetStatsCard(); else packDiscard(); }, true);
+    txt(INV.confirm.trindade ? "Consumir Trindade por 100 anos?" : INV.confirm.resetStats ? "Resetar atributos e proficiências?" : `Descartar ${INV.confirm.name}?`, W / 2, H / 2 - 22, 16, "#f2eedc", "center", true, 370);
+    txt(INV.confirm.trindade ? "+35% dano, corrida e armadura. Consome 1 item." : INV.confirm.resetStats ? "Todos os pontos investidos voltam. O cartão será consumido." : "Some para sempre.", W / 2, H / 2, 12, "#a9a58f", "center");
+    btn(W / 2 - 150, H / 2 + 16, 140, 30, INV.confirm.trindade ? "Consumir" : INV.confirm.resetStats ? "Resetar" : "Descartar", () => { const reset = INV.confirm.resetStats, trindade = INV.confirm.trindade; INV.confirm = null; if (trindade) useTrindadeItem(); else if (reset) useResetStatsCard(); else packDiscard(); }, true);
     btn(W / 2 + 10, H / 2 + 16, 140, 30, "Cancelar", () => { INV.confirm = null; });
   }
   drawAllocPanel();
