@@ -13,7 +13,8 @@ const fmGifts = (() => {
     const targetName = normalize(name);
     if (targetName.length < 3 || targetName.length > 16) throw new Error("Digite o nome exato do jogador.");
     if (!types.has(type)) throw new Error("Tipo de presente inválido.");
-    const n = type === "vip" || type === "arma" ? 1 : Math.floor(Number(amount));
+    const n = type === "arma" ? 1 : Math.floor(Number(amount));
+    if (type === "vip" && ![1, 6, 12].includes(n)) throw new Error("Escolha VIP por 1 mês, 6 meses ou 1 ano.");
     if (!Number.isInteger(n) || n < 1 || n > 10000000) throw new Error("Quantidade inválida.");
     if (type === "material" && n > 1000) throw new Error("Máximo: 1.000 materiais.");
     if (type === "arma" && (!WDEF[itemId] || WDEF[itemId].fists)) throw new Error("Arma inexistente. Use o ID da arma.");
@@ -42,12 +43,14 @@ const fmGifts = (() => {
   function canReceive(g) {
     if (g.tipo === "arma") return !!WDEF[g.item_id] && !WDEF[g.item_id].fists &&
       (player.slots.includes(null) || packUsed() < PACK_MAX);
-    if (g.tipo === "material") return !!MATS[g.item_id] && packUsed() < PACK_MAX;
-    return true;
+    if (g.tipo === "material") return !!MATS[g.item_id] &&
+      (player.pack.some(it => it.kind === "mat" && it.id === g.item_id) || packUsed() < PACK_MAX);
+    if (g.tipo === "vip") return [1, 6, 12].includes(g.quantidade);
+    return g.tipo === "dinheiro" && Number.isInteger(g.quantidade) && g.quantidade > 0;
   }
   function apply(g) {
     if (g.tipo === "dinheiro") game.money += g.quantidade;
-    else if (g.tipo === "vip") save.gm = true;
+    else if (g.tipo === "vip") addVipMonths(g.quantidade);
     else if (g.tipo === "arma") return !!addWeapon(newInst(g.item_id));
     else if (g.tipo === "material") return !!addMat(g.item_id, g.quantidade);
     return true;
@@ -75,24 +78,34 @@ const fmGifts = (() => {
         // Snapshot de rollback para falhas de rede. Nunca confirma presente
         // antes de salvar o UUID de recebimento no progresso do destinatário.
         const old = {
-          money: game.money, gm: save.gm, run: save.run,
-          gifts: save.receivedGifts.slice(),
+          money: game.money, gm: save.gm, vipUntil: save.vipUntil, run: save.run,
+          gifts: save.receivedGifts.slice(), inbox: (save.inbox || []).slice(),
           slots: player.slots.slice(), pack: player.pack.slice()
         };
         try {
           if (!apply(g)) throw new Error("Sem espaço para o presente.");
           save.receivedGifts.push(g.id);
+          const description = g.tipo === "dinheiro" ? "$" + g.quantidade.toLocaleString("pt-BR") :
+            g.tipo === "vip" ? "VIP de " + (g.quantidade === 12 ? "1 ano" : g.quantidade + (g.quantidade === 1 ? " mês" : " meses")) +
+              " · válido até " + new Date(save.vipUntil).toLocaleDateString("pt-BR") :
+            g.tipo === "arma" ? WDEF[g.item_id].name :
+              g.quantidade + "x " + MATS[g.item_id].name;
+          if (!Array.isArray(save.inbox)) save.inbox = [];
+          save.inbox.push({ id: g.id, text: "Presente do administrador: " + description,
+            createdAt: Date.now(), read: false });
+          save.inbox = save.inbox.slice(-100);
           save.run = runSnapshot();
           await storeWrite(JSON.stringify(save));
         } catch (err) {
-          game.money = old.money; save.gm = old.gm; save.run = old.run;
-          save.receivedGifts = old.gifts; player.slots = old.slots; player.pack = old.pack;
+          game.money = old.money; save.gm = old.gm; save.vipUntil = old.vipUntil; save.run = old.run;
+          save.receivedGifts = old.gifts; save.inbox = old.inbox;
+          player.slots = old.slots; player.pack = old.pack;
           throw err;
         }
         await acknowledge(g.id);
-        toast("Presente ADM recebido: " + (g.tipo === "dinheiro" ? "$" + g.quantidade :
-          g.tipo === "vip" ? "VIP permanente" : g.tipo === "arma" ? WDEF[g.item_id].name :
-          g.quantidade + "x " + MATS[g.item_id].name));
+        game.banner = { text: "VOCÊ RECEBEU UM PRESENTE!", sub: "Abra Mensagens (I) para ver os detalhes.",
+          t: 4800, gold: true };
+        toast("Novo presente do administrador! Veja em Mensagens (I).");
       }
     } catch (err) {
       console.warn("Correio de presentes:", err);
