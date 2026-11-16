@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070b0a">
+  <title>Recuperar senha — Fronteira Morta</title>
+  <link rel="stylesheet" href="css/auth.css?v=20261116-5">
+</head>
+<body>
+  <main class="fm-auth">
+    <section class="fm-auth-panel">
+      <p class="fm-auth-kicker">Segurança da conta</p>
+      <h1>NOVA SENHA</h1>
+      <p class="fm-auth-sub">Acesse esta página pelo link enviado ao seu e-mail para verificar sua conta antes de alterar a senha.</p>
+      <p id="reset-status" role="status" aria-live="polite">Verificando o link de recuperação...</p>
+      <form id="reset-password-form" hidden>
+        <label for="new-password">Nova senha
+          <input id="new-password" name="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+        </label>
+        <label for="confirm-new-password">Confirmar nova senha
+          <input id="confirm-new-password" name="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+        </label>
+        <div class="fm-auth-actions">
+          <button type="submit" class="primary">Salvar nova senha</button>
+        </div>
+      </form>
+      <p id="reset-success" hidden>Senha alterada com sucesso. Use sua nova senha para entrar no Fronteira Morta.</p>
+      <a class="fm-auth-return" href="./?v=20261116-5">Voltar ao login</a>
+      <small>O progresso do seu personagem continuará associado à mesma conta.</small>
+    </section>
+  </main>
+  <script>
+    // Guarda apenas em memória os sinais de um link de recuperação ANTES
+    // de a biblioteca de autenticação processar e remover o fragmento da URL.
+    window.__fmRecoveryLink = (() => {
+      const hash = new URLSearchParams(location.hash.slice(1));
+      const query = new URLSearchParams(location.search);
+      return {
+        token: hash.get("type") === "recovery" ? hash.get("access_token") : null,
+        hasCode: query.has("code"),
+        errorCode: hash.get("error_code") || query.get("error_code"),
+        error: hash.get("error") || query.get("error")
+      };
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/cloud.js?v=20261116-5"></script>
+  <script src="js/reset-password.js?v=20261116-5"></script>
+</body>
+</html>
