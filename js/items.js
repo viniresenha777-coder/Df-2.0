@@ -33,7 +33,7 @@ const CAT_LABEL = { pistols: "Pistola", machinegun: "Metralhadora", shotguns: "E
 // look = formato do desenho · req = [força, proficiência] · slow = % de velocidade perdida com a arma na mão
 const WLIST = [
   // pistolas
-  { id: "pistola",  name: "Pistola 9mm",   cat: "pistols", look: "pistol",   dmg: 20, delay: 300, mag: 12, reload: 1000, ammo: "9mm",  price: 0,    req: [0, 10],  len: 14, color: "#3b3a30", sound: [0.1, 0.15] },
+  { id: "pistola",  name: "Pistola 9mm",   cat: "pistols", look: "pistol",   dmg: 20, delay: 300, mag: 12, reload: 1000, ammo: "9mm",  price: 0,    req: [0, 5],  len: 14, color: "#3b3a30", sound: [0.1, 0.15] },
   { id: "colt",     name: "Colt .45",      cat: "pistols", look: "pistol",   dmg: 32, delay: 330, mag: 8,  reload: 1100, ammo: ".45",  price: 300,  req: [10, 20], len: 15, color: "#6a6a66" },
   { id: "glock",    name: "Glock 18",      cat: "pistols", look: "pistol",   dmg: 15, delay: 110, mag: 20, reload: 1100, ammo: "9mm",  price: 350,  req: [10, 25], len: 15, color: "#2a2a2a", short: "Glock 18" },
   { id: "revolver", name: "Revólver Magnum", short: "Magnum", cat: "pistols", look: "revolver", dmg: 58, delay: 560, mag: 6, reload: 1900, ammo: ".50", price: 650, req: [15, 35], len: 17, color: "#8a8f96" },
@@ -50,7 +50,7 @@ const WLIST = [
   { id: "scar",     name: "SCAR-H",        cat: "machinegun", look: "ar",    dmg: 64, delay: 140, mag: 20, reload: 1900, ammo: "7.62", price: 3000, req: [40, 100], len: 31, color: "#8a7a5a" },
   // metralhadoras pesadas
   { id: "m249",     name: "M249",          cat: "machinegun", look: "lmg",   dmg: 38, delay: 90,  mag: 100, reload: 4000, ammo: "5.56", price: 4200, req: [55, 110], len: 34, color: "#2a2d30", slow: 6 },
-  { id: "minigun",  name: "Minigun",       cat: "machinegun", look: "minigun", dmg: 30, delay: 45, mag: 250, reload: 6000, ammo: "5.56", price: 9000, req: [80, 150], len: 34, color: "#4a4d50", slow: 14 },
+  { id: "minigun",  name: "Minigun",       cat: "machinegun", look: "minigun", dmg: 30, delay: 45, mag: 250, reload: 6000, ammo: "5.56", price: 9000, req: [80, 120], len: 34, color: "#4a4d50", slow: 14 },
   // escopetas
   { id: "canoduplo", name: "Cano Duplo",   cat: "shotguns", look: "shotgun", dmg: 26, delay: 350, mag: 2,  reload: 1500, ammo: "cartucho", price: 450,  req: [15, 30], len: 26, color: "#6b4a2b", wood: true, pellets: 6, spread: 0.32, life: 360 },
   { id: "escopeta", name: "Escopeta",      cat: "shotguns", look: "shotgun", dmg: 22, delay: 800, mag: 6,  reload: 2200, ammo: "cartucho", price: 700,  req: [20, 40], len: 28, color: "#6b4a2b", wood: true, pellets: 5, spread: 0.28, life: 380 },
@@ -59,9 +59,9 @@ const WLIST = [
   // rifles
   { id: "caca",     name: "Rifle de Caça", cat: "rifles", look: "rifle",   dmg: 90,  delay: 900,  mag: 5,  reload: 2200, ammo: "7.62", price: 900,  req: [15, 35],  len: 34, color: "#6b4a2b", pierce: true, speed: 17, life: 1200 },
   { id: "sniper",   name: "Sniper",        cat: "rifles", look: "rifle",   dmg: 120, delay: 1100, mag: 5,  reload: 2400, ammo: "7.62", price: 1500, req: [25, 70],  len: 36, color: "#2f3b2a", pierce: true, speed: 18, life: 1300, sound: [0.1, 0.15] },
-  { id: "barrett",  name: "Barrett .50",   cat: "rifles", look: "rifle",   dmg: 260, delay: 1400, mag: 10, reload: 3200, ammo: ".50",  price: 6500, req: [60, 130], len: 40, color: "#3a3d32", pierce: true, speed: 20, life: 1500, sound: [1, 1] },
+  { id: "barrett",  name: "Barrett .50",   cat: "rifles", look: "rifle",   dmg: 260, delay: 1400, mag: 10, reload: 3200, ammo: ".50",  price: 6500, req: [60, 120], len: 40, color: "#3a3d32", pierce: true, speed: 20, life: 1500, sound: [1, 1] },
   // corpo a corpo
-  { id: "faca",     name: "Faca",          cat: "melee", look: "knife",   dmg: 18,  delay: 250,  range: 42, arc: 0.7,  price: 100,  req: [0, 10],  len: 16, color: "#c9ced2" },
+  { id: "faca",     name: "Faca",          cat: "melee", look: "knife",   dmg: 18,  delay: 250,  range: 42, arc: 0.7,  price: 100,  req: [0, 5],  len: 16, color: "#c9ced2" },
   { id: "taco",     name: "Taco de beisebol", short: "Taco", cat: "melee", look: "bat", dmg: 30, delay: 480, range: 56, arc: 0.9, price: 150, req: [10, 15], len: 28, color: "#8a6a45" },
   { id: "facao",    name: "Facão",         cat: "melee", look: "machete", dmg: 42,  delay: 420,  range: 58, arc: 0.85, price: 400,  req: [15, 30], len: 28, color: "#b9bec2" },
   { id: "katana",   name: "Katana",        cat: "melee", look: "katana",  dmg: 35,  delay: 450,  range: 62, arc: 0.95, price: 600,  req: [10, 20], len: 34, color: "#d7dde0" },
@@ -70,13 +70,13 @@ const WLIST = [
   { id: "espada",   name: "Espada longa",  short: "Espada", cat: "melee", look: "sword", dmg: 70, delay: 600, range: 78, arc: 1.0, price: 1800, req: [40, 90], len: 40, color: "#d0d4d8" },
   // lendárias (só em saques de VIP)
   { id: "ak_ouro",  name: "AK-47 Dourada", short: "AK Ouro", cat: "machinegun", look: "ar", dmg: 70, delay: 120, mag: 40, reload: 1600, ammo: "7.62", price: 0, req: [60, 120], len: 32, color: "#d4af37", legendary: true },
-  { id: "katana_dragao", name: "Katana do Dragão", short: "Katana Dr.", cat: "melee", look: "katana", dmg: 90, delay: 380, range: 72, arc: 1.1, price: 0, req: [70, 130], len: 38, color: "#e05a3a", legendary: true },
+  { id: "katana_dragao", name: "Katana do Dragão", short: "Katana Dr.", cat: "melee", look: "katana", dmg: 90, delay: 380, range: 72, arc: 1.1, price: 0, req: [70, 120], len: 38, color: "#e05a3a", legendary: true },
   // especiais (só criando na oficina)
   { id: "besta",    name: "Besta silenciosa", short: "Besta", cat: "rifles", look: "crossbow", dmg: 160, delay: 850, mag: 1, reload: 900, ammo: "virote", price: 0, req: [20, 50], len: 30, color: "#5a4a32", pierce: true, speed: 15, life: 1300, sound: [0, 0], special: true },
   { id: "serra",    name: "Serra elétrica", short: "Serra", cat: "melee", look: "chainsaw", dmg: 22, delay: 90, range: 52, arc: 0.55, price: 0, req: [30, 60], len: 34, color: "#d08a2a", sound: [0.6, 0.8], special: true },
   { id: "lancachamas", name: "Lança-chamas", short: "Lança-ch.", cat: "machinegun", look: "flamer", dmg: 9, delay: 60, mag: 120, reload: 2600, ammo: "combustível", price: 0, req: [35, 70], len: 30, color: "#a33b32", pellets: 3, spread: 0.22, life: 300, speed: 7, pierce: true, fire: true, sound: [0.5, 0.6], special: true },
   { id: "lamina",   name: "Lâmina Sombria", short: "Lâmina S.", cat: "melee", look: "katana", dmg: 110, delay: 420, range: 74, arc: 1.05, price: 0, req: [60, 120], len: 40, color: "#8a5ae0", lifesteal: 0.08, special: true },
-  { id: "trovao",   name: "Rifle Trovão",  short: "Trovão", cat: "rifles", look: "rifle", dmg: 300, delay: 1300, mag: 4, reload: 2800, ammo: ".50", price: 0, req: [70, 140], len: 40, color: "#3a5a8a", pierce: true, explode: 90, speed: 18, life: 1400, sound: [1, 1], special: true },
+  { id: "trovao",   name: "Rifle Trovão",  short: "Trovão", cat: "rifles", look: "rifle", dmg: 300, delay: 1300, mag: 4, reload: 2800, ammo: ".50", price: 0, req: [70, 135], len: 40, color: "#3a5a8a", pierce: true, explode: 90, speed: 18, life: 1400, sound: [1, 1], special: true },
   // novas armas com efeitos (bleed = chance de sangramento · burn = dano de fogo por segundo · stun = chance de atordoar · crit = +% de crítico)
   { id: "silenciada", name: "Pistola silenciada", short: "Silenciada", cat: "pistols", look: "pistol", dmg: 24, delay: 280, mag: 15, reload: 1100, ammo: "9mm", price: 550, req: [10, 30], len: 18, color: "#2a2a2a", sound: [0.02, 0.05] },
   { id: "revolver_orn", name: "Revólver Ornamentado", short: "Ornamentado", cat: "pistols", look: "revolver", dmg: 110, delay: 520, mag: 6, reload: 1700, ammo: ".50", price: 0, req: [30, 90], len: 18, color: "#b07a3a", crit: 25 },
@@ -84,10 +84,10 @@ const WLIST = [
   { id: "choque",   name: "Rifle de Choque", short: "Choque", cat: "rifles", look: "rifle", dmg: 140, delay: 900, mag: 8, reload: 2200, ammo: "7.62", price: 0, req: [45, 110], len: 36, color: "#3a8ac0", pierce: true, speed: 19, life: 1300, stun: 0.6 },
   { id: "baioneta", name: "Fuzil Baioneta", short: "Baioneta", cat: "machinegun", look: "ar", dmg: 58, delay: 130, mag: 30, reload: 1700, ammo: "5.56", price: 0, req: [40, 100], len: 34, color: "#5a5d60", bleed: 0.3 },
   { id: "lancador", name: "Lançador Espinhoso", short: "Lançador", cat: "rifles", look: "rifle", dmg: 220, delay: 1100, mag: 6, reload: 3000, ammo: "granada", price: 0, req: [45, 110], len: 30, color: "#4a4a4a", explode: 120, speed: 8, life: 1100, sound: [1, 1], grenade: true },
-  { id: "machado_fuzil", name: "Fuzil-Machado", short: "Fuzil-Mach.", cat: "machinegun", look: "lmg", dmg: 85, delay: 140, mag: 40, reload: 2600, ammo: "7.62", price: 0, req: [60, 130], len: 38, color: "#6a6d70", pierce: true, knock: true, slow: 8 },
+  { id: "machado_fuzil", name: "Fuzil-Machado", short: "Fuzil-Mach.", cat: "machinegun", look: "lmg", dmg: 85, delay: 140, mag: 40, reload: 2600, ammo: "7.62", price: 0, req: [60, 120], len: 38, color: "#6a6d70", pierce: true, knock: true, slow: 8 },
   { id: "pistolalamina", name: "Pistola-Lâmina", short: "P.-Lâmina", cat: "shotguns", look: "shotgun", dmg: 60, delay: 420, mag: 6, reload: 1800, ammo: "cartucho", price: 0, req: [50, 120], len: 32, color: "#b08a4a", pellets: 4, spread: 0.18, life: 420, bleed: 0.5, lifesteal: 0.05 },
-  { id: "espadaserra", name: "Espada-Serra", short: "Esp.-Serra", cat: "melee", look: "chainsaw", dmg: 60, delay: 160, range: 70, arc: 0.8, price: 0, req: [60, 130], len: 40, color: "#a33b32", bleed: 0.6, sound: [0.6, 0.8] },
-  { id: "espadafogo", name: "Espada Flamejante", short: "Esp. Fogo", cat: "melee", look: "sword", dmg: 150, delay: 520, range: 82, arc: 1.05, price: 0, req: [70, 140], len: 42, color: "#ff8a3a", burn: 40 },
+  { id: "espadaserra", name: "Espada-Serra", short: "Esp.-Serra", cat: "melee", look: "chainsaw", dmg: 60, delay: 160, range: 70, arc: 0.8, price: 0, req: [60, 120], len: 40, color: "#a33b32", bleed: 0.6, sound: [0.6, 0.8] },
+  { id: "espadafogo", name: "Espada Flamejante", short: "Esp. Fogo", cat: "melee", look: "sword", dmg: 150, delay: 520, range: 82, arc: 1.05, price: 0, req: [70, 120], len: 42, color: "#ff8a3a", burn: 40 },
   // munição infinita, mas superaquece: segure o tiro com cuidado
   { id: "minigun_inf", name: "Minigun Infernal", short: "Infernal", cat: "machinegun", look: "minigun", dmg: 26, delay: 50, mag: 600, reload: 3250, ammo: "", price: 0, req: [100, 120], minLevel: 25, len: 36, color: "#8a6a4a", slow: 20, infinite: true, noCrit: true, spread: 0.2, sound: [1, 1] },
   // sem arma na mão
