@@ -76,6 +76,11 @@ window.addEventListener("keydown", (e) => {
   if (game.over) { if (k === "enter") resetGame(); return; }
   if (game.quitting) return;
   if (game.found) { foundKey(k); return; }
+  if (k === "u" && !e.repeat && !game.shop && !game.over) {
+    if (game.menu === "friends") game.menu = null;
+    else if (!game.menu) openFriends();
+    return;
+  }
   if (game.menu) { menuKey(k); return; }
   if (game.shop) { shopKey(k); return; }
   if (game.hub && (k === "escape" || k === "e")) { leaveHouse(); return; }
@@ -338,6 +343,7 @@ resetGame();
 loadSprites();
 ensureDaily();
 restoreRun(); // volta do último checkpoint, se houver
+if (save.name) fmSocial.start(); // publica posição somente após autenticação e nome definitivo
 // rodando pelo servidor local instalado: avisa que o jogo está aberto (o servidor fecha sozinho quando você sai)
 if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
   setInterval(() => { fetch("/__ping", { cache: "no-store" }).catch(() => {}); }, 15000);
