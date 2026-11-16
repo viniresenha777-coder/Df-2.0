@@ -95,6 +95,7 @@ function drawSortedScene() {
   for (const m of world.models || []) if (inView(m.x - 160, m.y - 220, 320, 300)) list.push({ y: m.south, f: () => drawModel(m.id, m.x, m.y, m.k) });
   for (const c of world.cars) if (carModel(c) && inView(c.x - 20, c.y - 60, c.w + 40, c.h + 80)) list.push({ y: c.y + c.h, f: () => drawCarModel(c) });
   if (modelOk("dumpster")) for (const o of world.loot.query(cam.x - 60, cam.y - 60, cam.x + W + 60, cam.y + H + 100)) if (o.kind === "dumpster") list.push({ y: o.y + o.h, f: () => { if (!drawDumpsterModel(o)) drawLootObj(o); } });
+  for (const g of world.guards || []) if (inView(g.x - 32, g.y - 75, 64, 115)) list.push({ y: g.y + 0.2, f: () => drawBaseGuard(g) });
   for (const z of Zs()) if (inView(z.x - 60, z.y - 120, 120, 160)) list.push({ y: z.y, f: () => { drawZombie(z); drawZombieExtra(z); } });
   const es = game.escort;
   if (es && !game.over) list.push({ y: es.y, f: () => drawSurvivor(es.x, es.y, es.ang, es.walk, es.moving) });
