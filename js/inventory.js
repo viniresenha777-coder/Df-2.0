@@ -656,6 +656,7 @@ function craftKey(k) {
   if (k === "w" || k === "arrowup") game.ccur = Math.max(0, game.ccur - 1);
   else if (k === "s" || k === "arrowdown") game.ccur = Math.max(0, Math.min(len - 1, game.ccur + 1));
   else if (k === "enter") { if (game.ctab === 0) craftRecipe(); else if (game.ctab === 1) upgradeWeapon(); else upgradeVest(); }
+  else if (k === "g" && game.ctab === 1) craftPerfect();
   else if (k === "v") repairVest();
 }
 // o implante Artesão dá desconto no dinheiro da oficina
@@ -694,8 +695,26 @@ function finishUpgrade(message) {
   save.run = runSnapshot();
   persist(); sfx.buy(); toast(message);
 }
+const CRAFT_PERFEITO_PRECO = 100000;
+function craftPerfect() {
+  if (game.ctab !== 1) return;
+  const it = craftWeapons()[game.ccur];
+  if (!it) return;
+  if (it.gc && it.up.acc === 8 && it.up.dmg === 8 && it.up.rel === 8) {
+    toast("Esta arma já tem Craft Perfeito (GC)."); return;
+  }
+  if (game.money < CRAFT_PERFEITO_PRECO) {
+    toast("Craft Perfeito exige $100.000."); return;
+  }
+  game.money -= CRAFT_PERFEITO_PRECO;
+  it.up = { acc: 8, dmg: 8, rel: 8 };
+  it.gc = true;
+  finishUpgrade(instName(it) + " · Craft Perfeito 8/8/8!");
+  game.banner = { text: instName(it), sub: "CRAFT PERFEITO · Precisão 8 · Dano 8 · Recarga 8", t: 3300, gold: true };
+}
 function upgradeWeapon() {
   const it = craftWeapons()[game.ccur];
+  if (it && it.gc) { toast("Arma GC já está no máximo. Não é possível sortear novamente."); return; }
   if (!it || !payUpgrade(upgradeCost(it))) return;
   it.up = rollUpgrades(UP_STATS, UP_MAX);
   finishUpgrade(`${WDEF[it.id].name}: Precisão ${it.up.acc} · Dano ${it.up.dmg} · Recarga ${it.up.rel}`);
@@ -791,9 +810,15 @@ function drawCraft() {
       const c = isVest ? vestUpgradeCost(it) : upgradeCost(it), cost = craftMoney(c.money);
       txt(`Sorteio: $${cost}`, px, 459, 13, game.money >= cost ? "#6fae4f" : "#e05a4a", "left", true);
       matsLine(c.mats, px + 180, 459);
-      btn(px + 70, 474, 180, 36, "Melhorar (Enter)", isVest ? upgradeVest : upgradeWeapon, true);
+      btn(px + 70, 474, 180, 36, "Melhorar (Enter)", isVest ? upgradeVest : upgradeWeapon, true, !isVest && !!it.gc);
+      if (!isVest) {
+        const isGC = !!it.gc && it.up.acc === 8 && it.up.dmg === 8 && it.up.rel === 8;
+        btn(px + 28, 515, 264, 35,
+          isGC ? "CRAFT PERFEITO (GC)" : "Craft Perfeito 8/8/8 · $100.000",
+          craftPerfect, true, isGC || game.money < CRAFT_PERFEITO_PRECO);
+      }
     }
-    hint("W/S escolhe o equipamento · Enter sorteia todos os atributos · Tab troca de aba · E ou Esc fecha");
+    hint(game.ctab === 1 ? "W/S escolhe · Enter melhora · G: Craft Perfeito 8/8/8 ($100.000) · Esc fecha" : "W/S escolhe · Enter melhora · Tab troca de aba · E ou Esc fecha");
   }
   menuToast();
 }
