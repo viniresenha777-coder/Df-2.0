@@ -97,7 +97,9 @@ function trindadeActive() { return (save.trindadeUntil || 0) > Date.now(); }
 function armorRed() {
   const a = A("armor") / (A("armor") + 150);
   const baseline = Math.min(0.78, 1 - (1 - a) * (1 - equipmentProtection() / 100));
-  return Math.min(0.95, baseline * (trindadeActive() ? 1.35 : 1));
+  const boosted = baseline * (trindadeActive() ? 1.35 : 1);
+  // Urso de Ferro tem teto próprio de 80% de redução total.
+  return Math.min(player.flags.jugger ? 0.8 : 0.95, boosted);
 }
 function moneyMult() { return (1 + player.fx.greed / 100) * (vipActive() ? 2 : 1); }
 function xpMult() { return (1 + player.fx.exp / 100) * (vipActive() ? 2 : 1); }
