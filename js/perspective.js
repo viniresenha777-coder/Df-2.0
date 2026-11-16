@@ -25,7 +25,7 @@ function bHeight(b) {
 }
 function bFloorsVis(b) { return b.safe ? 2 : b.noDoor ? 1 : buildingFloors(b); }
 // telha laranja para os telhados inclinados (cada casa com um tom)
-const ROOF_TILE = ["#b5562c", "#a84f2a", "#c0663a", "#9a4826", "#b8603a"];
+const ROOF_TILE = ["#a75b45", "#95503b", "#8b4d42", "#987057", "#a56a4b", "#765750", "#855744"];
 function roofColor(b) { return b.roofCol || (b.roofCol = ROOF_TILE[Math.floor(bHash(b, 3) * ROOF_TILE.length)]); }
 
 // chão do prédio (sombra, base e porta): desenhado junto com a rua
