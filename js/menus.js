@@ -83,7 +83,13 @@ function addPoint(n) {
   if (player[pool] <= 0) { toast(weapon ? "Sem pontos de armas" : "Sem pontos de atributo"); return; }
   const amt = Math.min(n, player[pool], ATTR_MAX - player.attrs[d.id]);
   if (amt <= 0) { toast("Atributo no máximo"); return; }
-  player.attrs[d.id] += amt; player[pool] -= amt; syncChar();
+  const previousMaxHp = player.maxHp;
+  player.attrs[d.id] += amt; player[pool] -= amt;
+  if (d.id === "endurance") {
+    recalcImplants();
+    player.hp = Math.min(player.maxHp, player.hp + Math.max(0, player.maxHp - previousMaxHp));
+  }
+  syncChar();
 }
 
 // ---------- Missões ----------
@@ -297,9 +303,9 @@ function admRows() {
     B("Subir 10 níveis", () => admSetLevel(player.level + 10));
     N("Pontos de atributo livres", () => player.points, (v) => { player.points = v; syncChar(); }, 5, 0, 99999);
     N("Pontos de armas livres", () => player.wpoints, (v) => { player.wpoints = v; syncChar(); }, 5, 0, 99999);
-    B("Todos os atributos no máximo (200)", () => { ATTRS.forEach((d) => { player.attrs[d.id] = ATTR_MAX; }); syncChar(); toast("Atributos no máximo"); });
-    B("Voltar atributos ao valor inicial", () => { ATTRS.forEach((d) => { player.attrs[d.id] = d.start; }); syncChar(); toast("Atributos reiniciados"); });
-    ATTRS.forEach((d) => N(d.name + (CATNAME[d.id] ? " (arma)" : ""), () => player.attrs[d.id], (v) => { player.attrs[d.id] = v; syncChar(); }, 5, 1, ATTR_MAX));
+    B("Todos os atributos no máximo (200)", () => { ATTRS.forEach((d) => { player.attrs[d.id] = ATTR_MAX; }); recalcImplants(); syncChar(); toast("Atributos no máximo"); });
+    B("Voltar atributos ao valor inicial", () => { ATTRS.forEach((d) => { player.attrs[d.id] = d.start; }); recalcImplants(); syncChar(); toast("Atributos reiniciados"); });
+    ATTRS.forEach((d) => N(d.name + (CATNAME[d.id] ? " (arma)" : ""), () => player.attrs[d.id], (v) => { player.attrs[d.id] = v; if (d.id === "endurance") recalcImplants(); syncChar(); }, 5, 1, ATTR_MAX));
   } else if (tab === 2) {
     N("Dinheiro na mochila", () => game.money, (v) => { game.money = v; }, 1000, 0, 999999999);
     N("Dinheiro no banco", () => save.bank, (v) => { save.bank = v; persist(); }, 10000, 0, 999999999);
@@ -413,7 +419,7 @@ function drawStats() {
     regClick(50 + i * 120, 24, 110, 24, () => { game.stab = i; game.skc = save.skin; });
   });
   if (game.stab === 1) { drawSkins(); hint("A/D escolhe · Enter usa · Tab volta aos atributos · C ou Esc fecha"); return; }
-  txt(`Pontos de atributo: ${player.points}  ·  Pontos de armas: ${player.wpoints}   ·   XP ${Math.floor(player.xp)}/${player.level >= MAX_LEVEL ? "máx" : xpNeed(player.level)}`,
+  txt(`HP ${Math.ceil(player.hp)}/${Math.ceil(player.maxHp)} (máx. 200)  ·  Pontos de atributo: ${player.points}  ·  Armas: ${player.wpoints}   ·   XP ${Math.floor(player.xp)}/${player.level >= MAX_LEVEL ? "máx" : xpNeed(player.level)}`,
     W / 2, 74, 16, player.points + player.wpoints > 0 ? "#ffd96a" : "#a9a58f", "center");
   ATTRS.forEach((d, i) => {
     const y = 90 + i * 31, sel = game.cur === i, v = player.attrs[d.id];
