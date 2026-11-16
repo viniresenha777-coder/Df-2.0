@@ -63,6 +63,29 @@ function resetGame() {
   game.banner = { text: "Fronteira Morta", sub: "Refúgio · entre (E) para oficina, banco, clínica e missões · I abre Mensagens", t: 4200, gold: true };
 }
 
+
+function useResetStatsCard() {
+  const it = player.pack.find(x => x && x.kind === "mat" && x.id === "reset_stats" && x.qty > 0);
+  if (!it) { toast("Você não possui um cartão de reset."); return; }
+  let normal = 0, weapons = 0;
+  ATTRS.forEach(a => {
+    const invested = Math.max(0, Math.round((player.attrs[a.id] || a.start) - a.start));
+    if (WEAPON_SKILL_IDS.includes(a.id)) weapons += invested;
+    else normal += invested;
+    player.attrs[a.id] = a.start;
+  });
+  player.points += normal;
+  player.wpoints += weapons;
+  it.qty--;
+  if (!it.qty) player.pack.splice(player.pack.indexOf(it), 1);
+  recalcImplants();
+  player.hp = Math.min(player.hp, player.maxHp);
+  syncChar();
+  checkpoint("uso do cartão de reset de stats");
+  game.menu = "stats"; game.stab = 0; game.cur = 0;
+  toast("Atributos resetados! Redistribua seus pontos.");
+}
+
 // ---------- Controles ----------
 function audioStart() { sndInit(); if (SND.ac) { musicSetOn(save.music); musicStart(); } }
 window.addEventListener("keydown", (e) => {
