@@ -376,14 +376,26 @@ function drawWeaponSide(d, cx, cy, s) {
   }
   ctx.restore();
 }
+// Ícone oficial da Trindade (três seringas), carregado uma única vez.
+const TRINDADE_ICON = new Image();
+TRINDADE_ICON.src = "img/trindade_icon.webp?v=20261116-highres1";
 function drawMatIcon(id, cx, cy, s) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
   if (id === "trindade_eterna") {
-    ctx.fillStyle = "#20212b"; rr(-28,-23,56,46,5); ctx.fill();
-    ctx.strokeStyle = "#ebce79"; ctx.lineWidth = 3; ctx.stroke();
-    ctx.fillStyle = "#ebce79";
-    for (let j=0;j<3;j++) { const a=-Math.PI/2+j*Math.PI*2/3; circle(Math.cos(a)*13,Math.sin(a)*13,6); }
-    txt("III",0,17,13,"#fff1bd","center",true);
+    if (TRINDADE_ICON.complete && TRINDADE_ICON.naturalWidth > 0) {
+      // Mantém a proporção e a transparência nas células da mochila e na loja.
+      ctx.drawImage(TRINDADE_ICON, -30, -30, 60, 60);
+    } else {
+      // Ícone reserva somente enquanto a imagem original está carregando.
+      ctx.fillStyle = "#20212b"; rr(-28, -23, 56, 46, 5); ctx.fill();
+      ctx.strokeStyle = "#ebce79"; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = "#ebce79";
+      for (let j = 0; j < 3; j++) {
+        const a = -Math.PI / 2 + j * Math.PI * 2 / 3;
+        circle(Math.cos(a) * 13, Math.sin(a) * 13, 6);
+      }
+      txt("III", 0, 17, 13, "#fff1bd", "center", true);
+    }
   } else if (MATS[id] && MATS[id].cashProtection) {
     ctx.fillStyle = "#59646b"; rr(-28, -24, 56, 48, 5); ctx.fill();
     ctx.fillStyle = "#2d373d"; rr(-21, -18, 42, 36, 3); ctx.fill();
