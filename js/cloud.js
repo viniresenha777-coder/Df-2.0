@@ -25,6 +25,8 @@ const fmCloud = (() => {
       return new Error("O banco de partidas ainda não foi configurado no Supabase. Execute o SQL de instalação.");
     if (error.code === "23505")
       return new Error("Já existe uma partida online para essa conta. Entre novamente para carregá-la.");
+    if (error.code === "user_already_exists" || /user already registered|user already exists/i.test(error.message || ""))
+      return new Error("Este e-mail já está cadastrado. Clique em Entrar ou recupere sua senha.");
     if (error.message && /email not confirmed/i.test(error.message))
       return new Error("Confirme seu e-mail antes de entrar. Se o link expirou, use Reenviar confirmação.");
     if (error.message && /invalid login credentials/i.test(error.message))
