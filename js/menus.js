@@ -234,92 +234,91 @@ function sellImplant() {
 }
 
 
-const CREDIT_IMPLANT_PRICE = 800;
-function buyCreditImplant() {
-  const id = IMP_IDS[game.creditCur | 0];
-  if (!id || !inSafe()) { toast("A Loja de Créditos só funciona na base."); return; }
-  if (player.bag.length >= BAG_MAX) { toast("Mochila de implantes cheia."); return; }
-  if (save.credits < CREDIT_IMPLANT_PRICE) { toast("São necessários 800 créditos."); return; }
-  if (player.bag.some(im => im.id === id) || save.installed.some(im => im.id === id)) {
-    toast("Você já possui esse implante."); return;
-  }
-  save.credits -= CREDIT_IMPLANT_PRICE;
-  player.bag.push(newImplant(id));
-  sfx.buy();
-  checkpoint("compra na Loja de Créditos");
-  toast("Comprou " + IMP[id].name + " por 800 créditos.");
-}
+// Loja do refúgio: 29 implantes novos (preço individual em créditos) e
+// Trindade consumível (dinheiro do jogo, não é implante).
 const TRINDADE_PRICE = 20000000;
-function creditItemId() { return (game.creditCur | 0) === 0 ? "trindade_eterna" : IMP_IDS[(game.creditCur | 0) - 1]; }
+function creditShopItem() {
+  const i = Math.max(0, Math.min(IMP_IDS.length, game.creditCur | 0));
+  return i === 0 ? "trindade_eterna" : IMP_IDS[i - 1];
+}
 function buyTrindade() {
-  if (!inSafe()) { toast("A Trindade só pode ser comprada na base."); return; }
-  if (game.money < TRINDADE_PRICE) { toast("Dinheiro insuficiente. Custa $20.000.000."); return; }
+  if (!inSafe()) { toast("Compre a Trindade na base."); return; }
+  if (game.money < TRINDADE_PRICE) { toast("É preciso $20.000.000."); return; }
   if (!addMat("trindade_eterna", 1)) { toast("Mochila cheia."); return; }
   game.money -= TRINDADE_PRICE;
-  sfx.buy();
-  checkpoint("compra de Trindade");
-  toast("Trindade comprada! Arraste o item no personagem para consumir.");
+  sfx.buy(); checkpoint("compra de Trindade");
+  toast("Trindade adquirida! Arraste-a sobre o personagem para consumir.");
 }
-function creditConfirmPurchase(id) {
+function buyCreditImplant(id) {
+  const d = IMP[id];
+  if (!d || !inSafe()) { toast("Implante indisponível."); return; }
+  if (player.bag.length >= BAG_MAX) { toast("Mochila de implantes cheia."); return; }
+  if (player.bag.some(im => im.id === id) || save.installed.some(im => im.id === id)) { toast("Você já possui este implante."); return; }
+  if (save.credits < d.price) { toast("Créditos insuficientes. Necessário: " + d.price); return; }
+  save.credits -= d.price;
+  player.bag.push(newImplant(id));
+  sfx.buy(); checkpoint("compra de implante");
+  toast("Comprou " + d.name + " por " + d.price + " créditos.");
+}
+function creditShopBuy(id) {
   if (id === "trindade_eterna") buyTrindade();
-  else {
-    const idx = IMP_IDS.indexOf(id);
-    if (idx < 0) return;
-    const orig = game.creditCur;
-    game.creditCur = orig - 1;
-    try { buyImplant(idx); } finally { game.creditCur = orig; }
-  }
+  else if (IMP[id]) buyCreditImplant(id);
 }
 function creditShopKey(k) {
   if (game.creditConfirm) {
     if (k === "escape" || k === "n") game.creditConfirm = null;
     else if (k === "enter" || k === "s" || k === "y") {
-      const id = game.creditConfirm; game.creditConfirm = null;
-      if (creditItemId() === id) creditConfirmPurchase(id);
+      const chosen = game.creditConfirm; game.creditConfirm = null;
+      creditShopBuy(chosen);
     }
     return;
   }
   if (k === "escape" || k === "e" || k === "b") { game.menu = null; return; }
   if (k === "w" || k === "arrowup") game.creditCur = Math.max(0, (game.creditCur | 0) - 1);
   else if (k === "s" || k === "arrowdown") game.creditCur = Math.min(IMP_IDS.length, (game.creditCur | 0) + 1);
-  else if (k === "enter") game.creditConfirm = creditItemId();
+  else if (k === "enter") game.creditConfirm = creditShopItem();
 }
 function drawCreditShop() {
   game.creditCur = Math.max(0, Math.min(IMP_IDS.length, game.creditCur | 0));
-  menuFrame("Loja de Créditos", "Créditos: " + save.credits + " · Dinheiro: $" + game.money.toLocaleString("pt-BR") + " · Implantes: 800 créditos");
-  const top = Math.max(0, Math.min(IMP_IDS.length - 10, game.creditCur - 5));
-  for (let j = 0; j < 11 && j + top <= IMP_IDS.length; j++) {
-    const i = j + top, id = i ? IMP_IDS[i - 1] : "trindade_eterna", special = i === 0;
-    const y = 96 + j * 37, selected = i === game.creditCur;
+  menuFrame("Loja de Créditos", "Créditos: " + save.credits.toLocaleString("pt-BR") + " · Dinheiro: $" + game.money.toLocaleString("pt-BR") + " · 29 implantes disponíveis");
+  const visible = 11, top = Math.max(0, Math.min(IMP_IDS.length + 1 - visible, game.creditCur - 5));
+  for (let j = 0; j < visible && j + top <= IMP_IDS.length; j++) {
+    const i = top + j, special = i === 0, id = special ? "trindade_eterna" : IMP_IDS[i - 1], y = 96 + j * 37;
+    const d = special ? null : IMP[id];
     const owned = !special && (player.bag.some(im => im.id === id) || save.installed.some(im => im.id === id));
-    rowBox(38, y, 506, 34, selected, special ? "#b18a42" : owned ? "#5b7547" : "#3d3b30");
-    txt(special ? "★ Trindade · consumível (100 anos)" : IMP[id].name, 52, y + 21, 13, selected ? "#ffdf70" : "#e5e0c8", "left", true, 305);
-    txt(special ? "$20.000.000" : owned ? "ADQUIRIDO" : "800 créditos", 528, y + 21, 12, special ? "#f0bb64" : owned ? "#6fd08a" : "#d4af37", "right", true);
-    rowClick(38, y, 506, 34, selected, () => { game.creditCur = i; }, () => { game.creditCur = i; game.creditConfirm = id; });
+    rowBox(36, y, 514, 34, game.creditCur === i, special ? "#aa8933" : d.event ? "#8c476d" : owned ? "#47774d" : "#454338");
+    if (special) drawMatIcon("trindade_eterna", 58, y + 17, 0.42);
+    else drawEntryIcon({ type:"implant", im:{id, alloc:{}} }, 58, y + 17, 0.40);
+    txt(special ? "★ Trindade · 100 anos (item)" : d.name, 82, y + 22, 13, game.creditCur === i ? "#ffd96a" : "#e5e0c8", "left", true, 306);
+    txt(special ? "$20.000.000" : owned ? "POSSUI" : d.price.toLocaleString("pt-BR") + " cr", 532, y + 22, 12, special ? "#ffcb72" : owned ? "#7ed39d" : "#d4af37", "right", true);
+    regClick(36, y, 514, 34, () => { if (game.creditCur === i) game.creditConfirm = id; else game.creditCur = i; });
   }
-  const id = creditItemId(), special = id === "trindade_eterna";
+  const id = creditShopItem(), special = id === "trindade_eterna";
   if (special) {
-    txt("Trindade · 100 anos", 576, 114, 20, "#ffd96a", "left", true, 342);
-    drawMatIcon(id, 752, 206, 1.8);
-    txtWrap("Item consumível (diferente do Implante Trindade). Ao usar, concede +35% dano, +35% velocidade de corrida e +35% proteção, calculados sobre os atributos e equipamentos. Dura 100 anos.", 576, 280, 13, "#c9c4ad", 344, 19, 8);
-    if (trindadeActive()) txt("Válido até " + new Date(save.trindadeUntil).toLocaleDateString("pt-BR"), 576, 421, 12, "#8fd08a");
-  } else if (IMP[id]) {
-    txt(IMP[id].name, 576, 114, 20, "#ffd96a", "left", true, 342);
-    drawEntryIcon({ type: "implant", im: { id, alloc: {} } }, 752, 206, 1.7);
-    txtWrap(implantDesc({ id, alloc: {} }), 576, 280, 13, "#c9c4ad", 344, 19, 7);
+    txt("Trindade · consumível", 578, 114, 20, "#ffd96a", "left", true, 348);
+    drawMatIcon(id, 753, 215, 2.1);
+    txtWrap("Dura 100 anos após o uso. +35% de dano, +35% de velocidade de corrida e +35% de proteção proporcional aos atributos. Não ocupa espaço de implante.", 574, 300, 13, "#c9c4ad", 344, 19, 8);
+    if (trindadeActive()) txt("Ativa até " + new Date(save.trindadeUntil).toLocaleDateString("pt-BR"), 578, 418, 12, "#8fd08a");
+  } else {
+    const d = IMP[id], im = { id, alloc: {} };
+    txt(d.name, 574, 114, 20, "#ffd96a", "left", true, 348);
+    drawEntryIcon({ type: "implant", im }, 754, 201, 1.8);
+    txtWrap(implantDesc(im), 574, 290, 13, "#c9c4ad", 344, 18, 9);
+    if (d.event) txt("★ Edição de evento", 574, 425, 12, "#e7a2d2");
   }
-  btn(607, 447, 272, 40, special ? "Comprar · $20.000.000" : "Comprar · 800 créditos", () => { game.creditConfirm = id; }, true);
-  hint("W/S navega · Enter compra · Esc fecha");
+  const price = special ? "$20.000.000" : IMP[id].price.toLocaleString("pt-BR") + " créditos";
+  btn(608, 457, 270, 38, "Comprar · " + price, () => { game.creditConfirm = id; }, true);
+  hint("W/S seleciona · Enter confirma · Esc fecha");
   if (game.creditConfirm) {
-    const confirmId = game.creditConfirm, isSpecial = confirmId === "trindade_eterna";
-    ctx.fillStyle = "rgba(0,0,0,.8)"; ctx.fillRect(0, 0, W, H);
+    const cid = game.creditConfirm, sp = cid === "trindade_eterna", cd = sp ? null : IMP[cid];
+    ctx.fillStyle = "rgba(0,0,0,0.82)"; ctx.fillRect(0, 0, W, H);
     regClick(0, 0, W, H, () => {});
-    ctx.fillStyle = "#292317"; rr(238, 191, 484, 188, 10); ctx.fill();
+    ctx.fillStyle = "#27231b"; rr(226, 188, 508, 195, 9); ctx.fill();
     ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 2; ctx.stroke();
-    txt(isSpecial ? "Comprar Trindade consumível?" : "Comprar " + IMP[confirmId].name + "?", W / 2, 244, 19, "#f2eedc", "center", true, 450);
-    txt(isSpecial ? "Preço: $20.000.000" : "Preço: 800 créditos", W / 2, 276, 13, "#d4af37", "center");
-    btn(275, 313, 184, 42, "Confirmar", () => { game.creditConfirm = null; if (creditItemId() === confirmId) creditConfirmPurchase(confirmId); }, true);
-    btn(502, 313, 184, 42, "Cancelar", () => { game.creditConfirm = null; });
+    txt("CONFIRMAR COMPRA", W / 2, 228, 20, "#f2eedc", "center", true);
+    txt(sp ? "Trindade · $20.000.000" : cd.name + " · " + cd.price + " créditos", W / 2, 272, 15, "#e3c46a", "center", true, 480);
+    btn(276, 315, 184, 40, "Confirmar", () => { game.creditConfirm = null; creditShopBuy(cid); }, true);
+    btn(506, 315, 184, 40, "Cancelar", () => { game.creditConfirm = null; });
   }
   menuToast();
 }
