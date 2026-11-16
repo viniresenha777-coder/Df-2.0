@@ -19,8 +19,12 @@ function drawModel(id, gx, gy, k, filter) {
   if (!im) return false;
   k = k || MODEL_K;
   const s = k / d.ppm;
-  ctx.fillStyle = "rgba(0,0,0,0.32)";                // sombra no chão
-  ellipse(gx + 3, gy + 3, d.fw * k * 0.55, d.fd * k * 0.55);
+  // O refletor/poste worklight usa apenas a própria arte. A elipse
+  // antiga simulava uma sombra enorme que parecia área de impacto.
+  if (id !== "worklight") {
+    ctx.fillStyle = "rgba(0,0,0,0.32)";
+    ellipse(gx + 3, gy + 3, d.fw * k * 0.55, d.fd * k * 0.55);
+  }
   if (filter) ctx.filter = filter;
   ctx.drawImage(im, gx - d.cx * s, gy - d.cy * s, d.w * s, d.h * s);
   if (filter) ctx.filter = "none";
@@ -80,8 +84,16 @@ function addModel(wd, id, gx, gy, opt) {
   if (wd.loot.query(r.x - 20, r.y - 20, r.x + r.w + 20, r.y + r.h + 20).some((o) => r.x - 20 < o.x + o.w && r.x + r.w + 20 > o.x && r.y - 20 < o.y + o.h && r.y + r.h + 20 > o.y)) return null;
   const o = { id, x: gx, y: gy, k, south: gy + r.h / 2 };
   wd.models.push(o);
-  if (opt.solid !== false && r.w * r.h > 120)
-    solid(wd, { x: r.x + 2, y: r.y + 2, w: r.w - 4, h: r.h - 4, kind: "model", id, low: !MODEL_TALL.has(id.replace(/_\d+$/, "")) }, false);
+  if (opt.solid !== false && r.w * r.h > 120) {
+    if (id === "worklight") {
+      // Contato somente com o pequeno pé central do refletor.
+      // Não bloquear por todo o retângulo da imagem ou por sua sombra.
+      const foot = Math.max(3, Math.min(4, k * 0.17));
+      solid(wd, { x: gx - foot, y: gy - foot, w: foot * 2, h: foot * 2, kind: "model", id, low: false }, false);
+    } else {
+      solid(wd, { x: r.x + 2, y: r.y + 2, w: r.w - 4, h: r.h - 4, kind: "model", id, low: !MODEL_TALL.has(id.replace(/_\d+$/, "")) }, false);
+    }
+  }
   return o;
 }
 // Modelos mais altos que o personagem: seguram tiros. O resto (barris, botijões, caixas, carrinho,
