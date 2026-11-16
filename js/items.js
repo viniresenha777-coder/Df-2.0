@@ -137,6 +137,7 @@ const OLD_IDS = ["pistola", "ak47", "deagle", "katana", "uzi", "escopeta", "snip
 
 // ---------- Materiais e receitas ----------
 const MATS = {
+  reset_stats: { name: "Cartão Reset de Stats", price: 5000 },
   sucata:      { name: "Sucata de metal",          price: 40 },
   pecas:       { name: "Peças de arma",            price: 90 },
   eletronicos: { name: "Componentes eletrônicos",  price: 140 },
