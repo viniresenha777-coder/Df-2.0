@@ -90,17 +90,118 @@ function gridLines(step, color) {
     for (let i = 0; i <= s; i += step) { g.beginPath(); g.moveTo(i + 0.5, 0); g.lineTo(i + 0.5, s); g.moveTo(0, i + 0.5); g.lineTo(s, i + 0.5); g.stroke(); }
   };
 }
+// Materiais do terreno feitos uma única vez, sem aumentar o custo de cada frame.
+// Variações de terra, musgo, brita e fissuras substituem as cores chapadas.
+function terrainTexture(kind) {
+  const size = 256, c = document.createElement("canvas");
+  c.width = c.height = size;
+  const g = c.getContext("2d");
+  const palette = {
+    asphalt: [65, 67, 61], grass: [68, 80, 50], park: [58, 82, 49],
+    dirt: [86, 78, 58], lot: [69, 70, 66], gravel: [80, 81, 73]
+  };
+  const base = palette[kind] || palette.asphalt;
+  const vegetation = kind === "grass" || kind === "park";
+  const street = kind === "asphalt";
+  const hash = (x,y,k) => {
+    let h = Math.imul(x + 391 * k, 374761393) ^ Math.imul(y + 127 * k, 668265263);
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  };
+  // Ruído contínuo periódico, para as bordas de cada padrão se encaixarem.
+  const smooth = (x, y, grid, salt) => {
+    const a = x / grid, b = y / grid, ix = Math.floor(a), iy = Math.floor(b);
+    const fx = a - ix, fy = b - iy, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+    const period = size / grid;
+    const h = (xx, yy) => hash((xx + period) % period, (yy + period) % period, salt);
+    const lo = h(ix,iy)*(1-u) + h(ix+1,iy)*u;
+    const hi = h(ix,iy+1)*(1-u) + h(ix+1,iy+1)*u;
+    return lo*(1-v)+hi*v;
+  };
+  const pixels = g.createImageData(size, size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const large = (smooth(x,y,64,3)-.5)*34;
+    const medium = (smooth(x,y,16,7)-.5)*19;
+    const fine = (hash(x,y,11)-.5)*27;
+    const l = large + medium + fine;
+    const o = (y*size+x)*4;
+    const tint = vegetation ? (smooth(x,y,32,15)-.5)*18 : (smooth(x,y,32,17)-.5)*8;
+    pixels.data[o] = Math.max(0,Math.min(255, base[0]+l+(vegetation ? tint : 0)));
+    pixels.data[o+1] = Math.max(0,Math.min(255,base[1]+l+ (vegetation ? tint*1.9 : 0)));
+    pixels.data[o+2] = Math.max(0,Math.min(255,base[2]+l-(vegetation ? tint*.5 : 0)));
+    pixels.data[o+3] = 255;
+  }
+  g.putImageData(pixels,0,0);
+  // Grânulos, folhas e pedrinhas não seguem uma grade artificial.
+  let seed = kind.split("").reduce((a,c) => a*31+c.charCodeAt(0),13421) >>> 0;
+  const rnd = () => {seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296};
+  const count = vegetation ? 880 : street ? 490 : 390;
+  for (let i=0;i<count;i++) {
+    const x=rnd()*size,y=rnd()*size,r=.3+rnd()*(vegetation?1.8:1.4);
+    g.fillStyle = rnd() < .56 ? "rgba(22,24,18,.21)" : "rgba(205,185,151,.18)";
+    g.beginPath();g.ellipse(x,y,r*(.6+rnd()),r*.5,rnd()*6.28,0,6.283);g.fill();
+  }
+  if (vegetation) {
+    for (let i=0;i<850;i++) {
+      const x=rnd()*size,y=rnd()*size;
+      g.strokeStyle = rnd()<.5?"rgba(163,164,101,.18)":"rgba(17,42,23,.24)";
+      g.lineWidth=.6+rnd()*.8;
+      g.beginPath();g.moveTo(x,y);g.lineTo(x+(rnd()-.5)*4,y-1-rnd()*4);g.stroke();
+    }
+    // Pequenas ilhas de terra e desgaste, sem elementos grandes repetidos.
+    for(let i=0;i<13;i++) {
+      const x=rnd()*size,y=rnd()*size;
+      g.fillStyle = "rgba(93,78,53,.10)";
+      g.beginPath();g.ellipse(x,y,8+rnd()*12,3+rnd()*6,rnd()*6.28,0,6.283);g.fill();
+    }
+  } else {
+    for(let i=0;i<(street?20:13);i++) {
+      let x=rnd()*size, y=rnd()*size;
+      g.strokeStyle=street?"rgba(14,17,17,.31)":"rgba(18,20,19,.23)";
+      g.lineWidth=.55+rnd()*.85;g.beginPath();g.moveTo(x,y);
+      for(let n=0;n<2+Math.floor(rnd()*3);n++){
+        x+=(rnd()-.3)*8;y+=(rnd()-.5)*7;g.lineTo(x,y);
+      }g.stroke();
+    }
+    if (street) for(let i=0;i<7;i++){
+      const x=rnd()*size,y=rnd()*size;
+      g.fillStyle="rgba(25,26,22,.09)";
+      g.beginPath();g.ellipse(x,y,11+rnd()*18,3+rnd()*8,rnd()*6.283,0,6.283);g.fill();
+    }
+  }
+  return c;
+}
+// Desgaste de concreto com juntas irregulares e tonalidade neutra.
+function wornConcrete(step) {
+  return (g,size)=>{
+    g.strokeStyle="rgba(26,30,27,.35)";g.lineWidth=1.6;
+    for(let n=0;n<=size;n+=step){
+      g.beginPath();g.moveTo(n+.5,0);g.lineTo(n+.5,size);g.stroke();
+      g.beginPath();g.moveTo(0,n+.5);g.lineTo(size,n+.5);g.stroke();
+    }
+    g.strokeStyle="rgba(196,196,172,.12)";g.lineWidth=1;
+    for(let n=0;n<size;n+=step){
+      g.beginPath();g.moveTo(n+2,0);g.lineTo(n+2,size);g.stroke();
+    }
+    for(let i=0;i<52;i++){
+      const x=Math.random()*size,y=Math.random()*size;
+      g.fillStyle=Math.random()<.5?"rgba(29,35,31,.12)":"rgba(185,179,149,.14)";
+      g.fillRect(x,y,1+Math.random()*5,1+Math.random()*3);
+    }
+  };
+}
+
 function initRender() {
   const P = (c) => ctx.createPattern(c, "repeat");
-  PAT.asphalt = P(tex(256, "#2e3034", [["rgba(255,255,255,0.045)", 1100, 1, 2], ["rgba(0,0,0,0.28)", 800, 1, 3], ["rgba(255,255,255,0.03)", 40, 4, 9]]));
-  PAT.lot = P(tex(256, "#393a3e", [["rgba(255,255,255,0.05)", 900, 1, 2], ["rgba(0,0,0,0.25)", 700, 1, 3]]));
+  PAT.asphalt = P(terrainTexture("asphalt"));
+  PAT.lot = P(terrainTexture("lot"));
   // calçada de cerâmica azul-acinzentada, rachada e com folhas secas
-  PAT.sidewalk = P(tex(192, "#3f5468", [["rgba(0,0,0,0.12)", 500, 1, 2], ["rgba(150,180,210,0.07)", 300, 1, 2]], blueTiles(48)));
-  PAT.grass = P(tex(256, "#34432a", [["rgba(90,120,55,0.35)", 1600, 1, 2], ["rgba(15,25,10,0.35)", 900, 1, 3], ["rgba(140,150,80,0.15)", 180, 2, 3]]));
-  PAT.park = P(tex(256, "#2f4a28", [["rgba(90,140,60,0.35)", 1800, 1, 2], ["rgba(10,25,10,0.35)", 900, 1, 3], ["rgba(220,210,90,0.14)", 70, 2, 3]]));
-  PAT.dirt = P(tex(256, "#4a4636", [["rgba(0,0,0,0.2)", 900, 1, 3], ["rgba(255,240,200,0.06)", 500, 1, 2], ["rgba(70,90,40,0.25)", 300, 1, 3]]));
-  PAT.plaza = P(tex(192, "#46596b", [["rgba(0,0,0,0.12)", 500, 1, 2], ["rgba(150,180,210,0.06)", 300, 1, 2]], blueTiles(32)));
-  PAT.gravel = P(tex(128, "#4c4d4a", [["rgba(0,0,0,0.25)", 900, 1, 2], ["rgba(255,255,255,0.08)", 600, 1, 2]]));
+  PAT.sidewalk = P(tex(192, "#646961", [["rgba(0,0,0,0.1)", 380, 1, 2], ["rgba(180,192,160,0.09)", 250, 1, 2]], wornConcrete(48)));
+  PAT.grass = P(terrainTexture("grass"));
+  PAT.park = P(terrainTexture("park"));
+  PAT.dirt = P(terrainTexture("dirt"));
+  PAT.plaza = P(tex(192, "#657068", [["rgba(0,0,0,0.13)", 420, 1, 2], ["rgba(180,190,166,0.08)", 300, 1, 2]], wornConcrete(32)));
+  PAT.gravel = P(terrainTexture("gravel"));
   PAT.wood = P(tex(128, "#5e4630", [["rgba(0,0,0,0.12)", 300, 1, 2]], (g, s) => {
     for (let y = 0; y < s; y += 16) {
       g.fillStyle = `rgba(0,0,0,${0.06 + ((y / 16) % 3) * 0.04})`; g.fillRect(0, y, s, 16);
