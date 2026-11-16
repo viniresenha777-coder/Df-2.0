@@ -9,6 +9,7 @@ const fmCloud = (() => {
       storageKey: "fronteira-morta-df20-auth" }
   });
   let user = null;
+  let userIsAdmin = false;
   let snapshot = null;
   let revision = null;
   let pending = Promise.resolve();
@@ -38,6 +39,13 @@ const fmCloud = (() => {
     const { data, error } = await db.from("fm_partidas")
       .select("progresso,revisao").eq("jogador", account.id).maybeSingle();
     if (error) throw friendly(error);
+    // A permissão de administrador é atribuída somente no servidor.
+    // Usuários novos não conseguem se promover: a tabela é somente leitura
+    // e cada jogador pode consultar apenas o próprio registro.
+    const adminCheck = await db.from("fm_administradores")
+      .select("jogador").eq("jogador", account.id).maybeSingle();
+    userIsAdmin = !adminCheck.error && !!adminCheck.data;
+    if (adminCheck.error) console.warn("Sem confirmação de privilégio de administrador; acesso administrativo bloqueado.");
     user = account;
     snapshot = data ? JSON.stringify(data.progresso) : null;
     revision = data ? data.revisao : null;
@@ -47,7 +55,7 @@ const fmCloud = (() => {
     const db = requireClient();
     const { data, error } = await db.auth.getSession();
     if (error) throw friendly(error);
-    if (!data.session || !data.session.user) return false;
+    if (!data.session || !data.session.user) { user = null; userIsAdmin = false; return false; }
     await openSession(data.session.user);
     return true;
   }
@@ -99,6 +107,7 @@ const fmCloud = (() => {
       if (error) console.warn("Logout local com erro de servidor:", error.message);
     } finally {
       user = null;
+      userIsAdmin = false;
       snapshot = null;
       revision = null;
     }
@@ -165,5 +174,5 @@ const fmCloud = (() => {
   }
   return { resume, login, logout, resend, ping,
     sendPasswordRecovery, observeAuth, recoverySession, changeRecoveredPassword,
-    write, read: () => snapshot, isActive: () => !!user, hasOnlineSave: () => revision !== null };
+    write, read: () => snapshot, isActive: () => !!user, isAdmin: () => !!user && userIsAdmin, hasOnlineSave: () => revision !== null };
 })();
