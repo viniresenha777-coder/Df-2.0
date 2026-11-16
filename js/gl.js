@@ -42,7 +42,7 @@ const FS_LIT = FS_HEAD + `
 #define MAXL ${MAXL}
 uniform sampler2D uScene; uniform sampler2D uMask; uniform sampler2D uFlashBlocked;
 uniform vec2 uRes; uniform vec2 uMaskTexel; uniform vec2 uCam; uniform vec2 uPlayer;
-uniform float uDark; uniform float uDayShadow; uniform float uTime; uniform float uFog; uniform float uRain; uniform float uFlash;
+uniform float uDark; uniform float uDayShadow; uniform float uSun; uniform float uTime; uniform float uFog; uniform float uRain; uniform float uFlash;
 uniform int uN; uniform vec4 uL[MAXL]; uniform vec4 uC[MAXL]; uniform vec4 uK[MAXL];
 float maskAt(vec2 uv){ vec2 t = uMaskTexel * 1.5;
   return (texture2D(uMask, uv).r * 2.0 + texture2D(uMask, uv + vec2(t.x, 0.0)).r + texture2D(uMask, uv - vec2(t.x, 0.0)).r
@@ -61,7 +61,10 @@ void main(){
   vec3 col = texture2D(uScene, vUv).rgb;
   float m = maskAt(vUv);
   float base = 1.0 - uDark;
+  // Sol de manhã/tarde: ambiente âmbar, céu mais claro e sombras ainda presentes.
   vec3 light = vec3(base * mix(1.0 - uDayShadow, 1.0, m));
+  light *= mix(vec3(1.0), vec3(1.13, 1.055, 0.92), uSun);
+  light += vec3(0.12, 0.072, 0.024) * uSun * mix(0.7, 1.0, m);
   for (int i = 0; i < MAXL; i++){
     if (i >= uN) break;
     vec4 L = uL[i]; vec2 d = p - L.xy; float dist = length(d);
@@ -292,8 +295,12 @@ function gfxLights(dark) {
   const fl = (seed, sp) => 0.82 + 0.18 * Math.sin(t / sp + seed) * Math.sin(t / (sp * 0.37) + seed * 3);
   if (!game.over) {
     const L0 = typeof chestPoint === "function" ? chestPoint() : player, px = L0.x - ox, py = L0.y - oy, a = player.angle;
-    add(px, py, game.inside ? 240 : 150, dark * 1.05, [1, 0.96, 0.9], true);
-    if (dark > 0.12) add(px, py, 460, (dark - 0.08) * 1.7, [1, 0.86, 0.55], true, [Math.cos(a), Math.sin(a), Math.cos(0.5), 0.14]); // lanterna amarelada
+    // Apaga completamente a lanterna no amanhecer. O clarão da arma
+    // continua funcionando, pois não faz parte da lanterna.
+    if (flashlightActive()) {
+      add(px, py, game.inside ? 240 : 150, dark * 1.05, [1, 0.96, 0.9], true);
+      add(px, py, 460, Math.max(0, dark - 0.08) * 1.7, [1, 0.86, 0.55], true, [Math.cos(a), Math.sin(a), Math.cos(0.5), 0.14]);
+    }
     if (player.flashT > 0) add(px + Math.cos(a) * 30, py + Math.sin(a) * 30, 280, 1.1 * glow * (Math.min(1, player.flashT / 60) + 0.4), [1, 0.75, 0.38], true);
   }
   for (const f of game.flashes) {
@@ -409,6 +416,7 @@ function gfxRender() {
   gl.uniform2f(P.u("uRes"), W, H); gl.uniform2f(P.u("uMaskTexel"), 2 / W, 2 / H);
   gl.uniform2f(P.u("uCam"), cam.x, cam.y); gl.uniform2f(P.u("uPlayer"), px, py);
   gl.uniform1f(P.u("uDark"), dark); gl.uniform1f(P.u("uDayShadow"), game.inside ? 0 : 0.32);
+  gl.uniform1f(P.u("uSun"), game.inside ? 0 : sunIntensity());
   gl.uniform1f(P.u("uTime"), tm);
   gl.uniform1f(P.u("uFog"), game.inside ? 0 : GFX.wx.fog); gl.uniform1f(P.u("uRain"), game.inside ? 0 : GFX.wx.rain);
   gl.uniform1f(P.u("uFlash"), GFX.flash * (game.inside ? 0.3 : 0.55));
