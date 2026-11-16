@@ -1101,6 +1101,15 @@ function drawMinimap(x, y, w, h) {
     ctx.fillStyle = z.boss ? "#ff3b2f" : z.state === "chase" ? "#e05a4a" : "rgba(160,60,50,0.8)";
     ctx.fillRect(x + (z.x * MS - sx) * k - (z.boss ? 3 : 1.5), y + (z.y * MS - sy) * k - (z.boss ? 3 : 1.5), z.boss ? 6 : 3, z.boss ? 6 : 3);
   }
+  // Marcadores dos outros sobreviventes conectados nesta área.
+  for (const online of fmSocial.inSector()) {
+    const pxOnline = x + (online.x * MS - sx) * k, pyOnline = y + (online.y * MS - sy) * k;
+    if (pxOnline < x || pxOnline > x + w || pyOnline < y || pyOnline > y + h) continue;
+    ctx.fillStyle = fmSocial.isFriend(online.uid) ? "#8fe0a8" : "#73ceff";
+    circle(pxOnline, pyOnline, 4.5);
+    ctx.strokeStyle = "#0b1415"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(pxOnline, pyOnline, 4.5, 0, 6.283); ctx.stroke();
+  }
   // implante Faro: mostra lugares com saque por perto
   if (player.fx.lootSense > 0 && !game.inside) {
     const R = player.fx.lootSense;
