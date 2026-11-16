@@ -98,6 +98,48 @@ document.getElementById("test-connection").addEventListener("click", async () =>
   }
 });
 
+// Recuperação de senha não solicita a senha atual e não expõe se o e-mail existe.
+const forgotForm = document.getElementById("forgot-form");
+const forgotEmail = document.getElementById("forgot-email");
+const forgotStatus = document.getElementById("forgot-status");
+let forgotBusy = false;
+document.getElementById("forgot-password").addEventListener("click", () => {
+  if (starting || loaded) return;
+  forgotEmail.value = emailEl.value.trim();
+  forgotStatus.textContent = "";
+  forgotStatus.classList.remove("error");
+  loginForm.hidden = true;
+  forgotForm.hidden = false;
+  forgotEmail.focus();
+});
+document.getElementById("forgot-back").addEventListener("click", () => {
+  if (forgotBusy) return;
+  emailEl.value = forgotEmail.value.trim();
+  forgotForm.hidden = true;
+  loginForm.hidden = false;
+  loginStatus("Entre com sua conta ou solicite um novo link de recuperação.");
+  emailEl.focus();
+});
+forgotForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (forgotBusy) return;
+  if (!forgotEmail.reportValidity()) return;
+  forgotBusy = true;
+  for (const button of forgotForm.querySelectorAll("button")) button.disabled = true;
+  forgotStatus.textContent = "Solicitando link de recuperação...";
+  forgotStatus.classList.remove("error");
+  try {
+    await fmCloud.sendPasswordRecovery(forgotEmail.value);
+    forgotStatus.textContent = "Se este e-mail estiver cadastrado, enviaremos um link de recuperação. Abra o link no e-mail para confirmar que a conta é sua e definir uma nova senha. Confira também o spam.";
+  } catch (error) {
+    forgotStatus.classList.add("error");
+    forgotStatus.textContent = displayAuthError(error);
+  } finally {
+    forgotBusy = false;
+    for (const button of forgotForm.querySelectorAll("button")) button.disabled = false;
+  }
+});
+
 document.getElementById("resend-confirmation").addEventListener("click", async () => {
   if (starting) return;
   if (!emailEl.reportValidity()) return;
