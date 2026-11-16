@@ -296,20 +296,18 @@ function posePt(key, pose) {
   const o = spriteOrigin(), k = PSHEET.size / PSHEET.cell, pt = SPRITE_POSES[pose][player.sRow | 0][spriteFrame()][key];
   return { x: o.x + pt[0] * k, y: o.y + pt[1] * k };
 }
-// A direção da arma é calculada a partir da empunhadura da spritesheet,
-// não da ponta do cano. Assim arma, clarão e projétil apontam para o
-// mesmo pixel do mouse, independentemente do ângulo do corpo.
+// A posição do cano usa a empunhadura da spritesheet, porém o
+// ângulo vem EXCLUSIVAMENTE da direção do personagem. Isso evita o
+// tiro inverter ao colocar o cursor atrás ou próximo da empunhadura.
 function gunGripAndLength(w) {
   const pose = weaponPose(w), a = posePt("a", pose), b = posePt("b", pose);
   return { x: a.x, y: a.y, length: Math.hypot(b.x - a.x, b.y - a.y) * weaponMeters(w) };
 }
 function updateWeaponAim() {
-  const w = curW();
+  // Nunca calcular novamente a direção a partir do cano ou da mão.
+  // A origem continua no cano; a direção é sempre a do corpo/mouse,
+  // estabilizada pela zona morta aplicada no movimento.
   player.gunAngle = player.angle;
-  if (!useSpriteChar() || w.melee || w.fists) return;
-  const grip = gunGripAndLength(w);
-  const x = mouse.x + cam.x - grip.x, y = mouse.y + cam.y - grip.y;
-  if (Math.hypot(x, y) > 7) player.gunAngle = Math.atan2(y, x);
 }
 function muzzlePoint() {
   if (!useSpriteChar()) return null;
