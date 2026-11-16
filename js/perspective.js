@@ -79,11 +79,18 @@ function drawBuildingTall(b, e) {
 }
 
 function drawLampTall(l, e) {
-  const top = proj(l.x, l.y, l.big ? 70 : 55, e);
-  ctx.strokeStyle = "#1c1c1c"; ctx.lineWidth = l.big ? 4 : 3; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(top.x, top.y); ctx.stroke();
-  ctx.fillStyle = "#2a2a2a"; circle(top.x, top.y, l.big ? 6 : 4.5);
-  ctx.fillStyle = isNight() ? "#ffe6a0" : "#9a9a90"; circle(top.x, top.y, l.big ? 3.5 : 2.5);
+  // Haste vertical ligada apenas à base: sem deslocamento visual
+  // semelhante a uma sombra longa sobre o asfalto.
+  const height = l.big ? 53 : 40, topY = l.y - height;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "#292c2c"; ctx.lineWidth = l.big ? 4 : 3;
+  ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x, topY); ctx.stroke();
+  ctx.strokeStyle = "#666b6e"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(l.x - 1, l.y - 2); ctx.lineTo(l.x - 1, topY + 2); ctx.stroke();
+  ctx.fillStyle = "#3b4042"; circle(l.x, topY, l.big ? 6 : 4.5);
+  ctx.fillStyle = isNight() ? "#ffe6a0" : "#9a9a90"; circle(l.x, topY, l.big ? 3.5 : 2.5);
+  ctx.restore();
 }
 // pinta de trás (norte) para a frente (sul) pela linha do chão de cada coisa:
 // quem está na frente de um prédio aparece por cima da parede; quem está atrás fica escondido
