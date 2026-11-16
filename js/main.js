@@ -374,6 +374,9 @@ function loop(now) {
   updateCam(dt);
   draw();
   
+
+requestAnimationFrame(loop);
+}
 // O VIP aparece apenas no rodapé HTML, nunca dentro do canvas.
 function refreshVipFooter() {
   const el = document.getElementById("vip-footer");
@@ -391,6 +394,4 @@ function refreshVipFooter() {
 }
 refreshVipFooter();
 setInterval(refreshVipFooter, 1000);
-requestAnimationFrame(loop);
-}
 requestAnimationFrame(loop);
