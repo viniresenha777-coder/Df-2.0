@@ -6,6 +6,8 @@
 function Zs() { return game.inside ? game.inside.zombies : zombies; }
 function curCorpses() { return game.inside ? game.inside.corpses : world.corpses; }
 function nearObs(x, y, r) { return game.inside ? game.inside.interior : world.obs.query(x - r, y - r, x + r, y + r); }
+// Física restrita ao centro da base do poste; nunca ao desenho projetado.
+function lampRadius(l) { return l.big ? 3.5 : 2.5; }
 function pushOut(e, r) {
   for (const o of nearObs(e.x, e.y, r + 2)) {
     const cx = Math.max(o.x, Math.min(e.x, o.x + o.w)), cy = Math.max(o.y, Math.min(e.y, o.y + o.h));
@@ -13,6 +15,14 @@ function pushOut(e, r) {
     if (d < r) {
       if (d > 0) { e.x += (dx / d) * (r - d); e.y += (dy / d) * (r - d); }
       else e.y -= r;
+    }
+  }
+  if (!game.inside && world && world.lamps) for (const l of world.lamps) {
+    const dx = e.x - l.x, dy = e.y - l.y, dist = Math.hypot(dx, dy);
+    const minD = r + lampRadius(l);
+    if (dist < minD) {
+      if (dist > 0) { e.x += dx / dist * (minD - dist); e.y += dy / dist * (minD - dist); }
+      else e.y += minD;
     }
   }
 }
@@ -27,9 +37,9 @@ function hitObstacle(x, y) {
   if (x < 0 || y < 0 || x > WORLD_W || y > WORLD_H) return true;
   const o = world.obs.at(x, y).find((o) => stopsShots(o) && inRect(x, y, o));
   if (o) return o;
-  // Postes e sombras são apenas visuais: não existe volume físico para o
-  // traço projetado no asfalto. Evita que tiros gerem faíscas invisíveis
-  // ou sejam bloqueados ao atravessar a sombra de um poste.
+  // Somente o miolo da base do poste bloqueia tiros.
+  // Projeção e sombra não têm colisão.
+  for (const l of world.lamps) if (Math.hypot(x - l.x, y - l.y) <= lampRadius(l)) return l;
   return null;
 }
 
