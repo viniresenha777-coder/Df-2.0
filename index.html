@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#070b0a">
   <title>Fronteira Morta 2.0 — Entrar</title>
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/auth.css?v=20261116-4">
+  <link rel="stylesheet" href="css/auth.css?v=20261116-5">
 </head>
 <body>
   <form id="login" class="fm-auth">
@@ -31,10 +31,27 @@
         <button type="submit" value="login" class="primary">Entrar</button>
         <button type="submit" value="register" class="secondary">Criar conta</button>
       </div>
+      <button type="button" id="forgot-password" class="textual">Esqueci minha senha</button>
       <button type="button" id="resend-confirmation" class="textual">Reenviar confirmação de e-mail</button>
       <button type="button" id="test-connection" class="textual">Testar conexão com o servidor</button>
       <p id="login-status" role="status" aria-live="polite"></p>
-      <small>A autenticação é protegida pelo Supabase. Seu progresso é armazenado na sua conta. <strong>Conexão v2.0.4</strong></small>
+      <small>A autenticação é protegida pelo Supabase. Seu progresso é armazenado na sua conta. <strong>Conexão v2.0.5</strong></small>
+    </div>
+  </form>
+  <form id="forgot-form" class="fm-auth" hidden>
+    <div class="fm-auth-panel">
+      <p class="fm-auth-kicker">Segurança da conta</p>
+      <h1>RECUPERAR SENHA</h1>
+      <p class="fm-auth-sub">Informe seu e-mail cadastrado. Enviaremos um link que comprova que você tem acesso a essa caixa postal, antes de permitir uma nova senha.</p>
+      <label for="forgot-email">E-mail
+        <input id="forgot-email" type="email" name="email" autocomplete="email" maxlength="254" required placeholder="seu@email.com">
+      </label>
+      <div class="fm-auth-actions">
+        <button class="primary" type="submit">Enviar link de recuperação</button>
+        <button id="forgot-back" class="secondary" type="button">Voltar ao login</button>
+      </div>
+      <p id="forgot-status" role="status" aria-live="polite"></p>
+      <small>Por segurança, não informamos se o e-mail possui cadastro. A nova senha só poderá ser definida através do link recebido.</small>
     </div>
   </form>
   <main class="wrap" hidden>
@@ -75,7 +92,7 @@
     <script src="js/main.js"></script>
   </template>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/cloud.js?v=20261116-4"></script>
-  <script src="js/login.js?v=20261116-4"></script>
+  <script src="js/cloud.js?v=20261116-5"></script>
+  <script src="js/login.js?v=20261116-5"></script>
 </body>
 </html>
