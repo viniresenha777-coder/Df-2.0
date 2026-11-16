@@ -372,34 +372,136 @@ function drawBuilding(b) {
   if (b.roof === "pitched") drawPitched(b); else drawFlat(b);
   drawDoor(b);
 }
+// Padrão de telhas feito uma única vez e reaproveitado em todas as casas.
+// Sem imagens externas: combina com a iluminação dinâmica, sem downloads.
+let HOUSE_ROOF_TEX = null;
+function houseRoofPattern() {
+  if (HOUSE_ROOF_TEX) return HOUSE_ROOF_TEX;
+  const tile = document.createElement("canvas");
+  tile.width = 72; tile.height = 48;
+  const g = tile.getContext("2d");
+  for (let row = 0; row < 6; row++) {
+    const y = row * 8, offset = (row % 2) * 12;
+    g.strokeStyle = "rgba(29,17,15,0.33)"; g.lineWidth = 1.25;
+    g.beginPath(); g.moveTo(0, y + 7.5); g.lineTo(72, y + 7.5); g.stroke();
+    g.strokeStyle = "rgba(246,195,146,0.15)"; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, y + 1); g.lineTo(72, y + 1); g.stroke();
+    for (let x = -24 + offset; x <= 72; x += 24) {
+      g.strokeStyle = "rgba(24,14,13,0.31)";
+      g.beginPath(); g.moveTo(x, y + 1); g.lineTo(x, y + 7); g.stroke();
+      const n = (row * 31 + x * 19 + 931) >>> 0;
+      if (n % 5 === 0) {
+        g.fillStyle = "rgba(248,210,174,0.12)";
+        g.fillRect(x + 3, y + 2, 13, 1);
+      }
+      if (n % 7 === 0) {
+        g.fillStyle = "rgba(17,22,18,0.16)";
+        g.fillRect(x + 5, y + 4, 11, 2);
+      }
+    }
+  }
+  // Manchas e riscos de desgaste, sem granulação excessiva.
+  let seed = 3243185;
+  for (let i = 0; i < 65; i++) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const x = seed % 72;
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const y = seed % 48;
+    g.fillStyle = i % 3 ? "rgba(39,27,20,0.18)" : "rgba(238,202,166,0.19)";
+    g.fillRect(x, y, 1 + (i % 3), 1);
+  }
+  HOUSE_ROOF_TEX = ctx.createPattern(tile, "repeat");
+  return HOUSE_ROOF_TEX;
+}
 function drawPitched(b) {
-  const horiz = b.w >= b.h, L = horiz ? b.w : b.h, S = horiz ? b.h : b.w, rc = typeof roofColor === "function" ? roofColor(b) : b.color;
-  ctx.save(); ctx.translate(b.x + b.w / 2, b.y + b.h / 2); if (!horiz) ctx.rotate(Math.PI / 2);
-  const hl = L / 2, hs = S / 2, inset = Math.min(hs, hl * 0.6);
-  poly([[-hl, -hs], [hl, -hs], [hl - inset, 0], [-hl + inset, 0]], shade(rc, 0.14));
-  poly([[-hl, hs], [hl, hs], [hl - inset, 0], [-hl + inset, 0]], shade(rc, -0.24));
-  poly([[-hl, -hs], [-hl + inset, 0], [-hl, hs]], shade(rc, -0.06));
-  poly([[hl, -hs], [hl - inset, 0], [hl, hs]], shade(rc, 0.04));
-  ctx.strokeStyle = "rgba(60,20,8,0.28)"; ctx.lineWidth = 1;
-  for (let y = -hs + 7; y < hs; y += 7) {
-    if (Math.abs(y) < 3) continue;
-    const xe = hl - inset * (1 - Math.abs(y) / hs);
-    ctx.beginPath(); ctx.moveTo(-xe, y); ctx.lineTo(xe, y); ctx.stroke();
+  const horiz = b.w >= b.h, L = horiz ? b.w : b.h, S = horiz ? b.h : b.w;
+  const rc = typeof roofColor === "function" ? roofColor(b) : b.color;
+  ctx.save();
+  ctx.translate(b.x + b.w / 2, b.y + b.h / 2);
+  if (!horiz) ctx.rotate(Math.PI / 2);
+  const hl = L / 2, hs = S / 2, inset = Math.min(hs * 0.82, hl * 0.67);
+  // Beiral de madeira/zinco escuro avançando além das paredes.
+  ctx.fillStyle = "rgba(14,13,12,0.72)"; ctx.fillRect(-hl - 4, -hs - 4, L + 8, S + 8);
+  ctx.fillStyle = shade(rc, -0.58); ctx.fillRect(-hl - 2, -hs - 2, L + 4, S + 4);
+  const facets = [
+    { p: [[-hl,-hs],[hl,-hs],[hl-inset,0],[-hl+inset,0]], c: shade(rc, 0.13), a: 0.78 },
+    { p: [[-hl,hs],[hl,hs],[hl-inset,0],[-hl+inset,0]], c: shade(rc,-0.27), a: 0.56 },
+    { p: [[-hl,-hs],[-hl+inset,0],[-hl,hs]], c: shade(rc,-0.11), a: 0.61 },
+    { p: [[hl,-hs],[hl-inset,0],[hl,hs]], c: shade(rc,-0.07), a: 0.63 }
+  ];
+  const pattern = houseRoofPattern();
+  for (const facet of facets) {
+    poly(facet.p, facet.c);
+    if (pattern) {
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(facet.p[0][0], facet.p[0][1]);
+      for (let i = 1; i < facet.p.length; i++) ctx.lineTo(facet.p[i][0], facet.p[i][1]);
+      ctx.closePath(); ctx.clip();
+      ctx.globalAlpha = facet.a;
+      ctx.fillStyle = pattern;
+      ctx.fillRect(-hl, -hs, L, S);
+      ctx.restore();
+    }
   }
-  ctx.strokeStyle = shade(rc, -0.45); ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.moveTo(-hl + inset, 0); ctx.lineTo(hl - inset, 0);
-  ctx.moveTo(-hl, -hs); ctx.lineTo(-hl + inset, 0); ctx.lineTo(-hl, hs);
-  ctx.moveTo(hl, -hs); ctx.lineTo(hl - inset, 0); ctx.lineTo(hl, hs);
-  ctx.stroke();
+  // Cantoneiras, beirais e cumeeira realçados, sem contornos chapados.
+  ctx.strokeStyle = "rgba(12,10,10,0.68)"; ctx.lineWidth = 4.2;
+  ctx.strokeRect(-hl, -hs, L, S);
+  ctx.strokeStyle = "rgba(235,180,122,0.28)"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-hl + 2, -hs + 2); ctx.lineTo(hl - 2, -hs + 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-hl + 2, hs - 2); ctx.lineTo(hl - 2, hs - 2); ctx.stroke();
+  ctx.strokeStyle = shade(rc, -0.56); ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(-hl + inset, 0); ctx.lineTo(hl - inset, 0); ctx.stroke();
+  ctx.strokeStyle = "rgba(218,163,118,0.5)"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-hl + inset, -1.3); ctx.lineTo(hl - inset, -1.3); ctx.stroke();
+  for (let x = -hl + inset + 4; x < hl - inset - 3; x += 10) {
+    ctx.strokeStyle = "rgba(40,25,20,0.4)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, -2.6); ctx.lineTo(x + 2, 1.5); ctx.stroke();
+  }
+  ctx.strokeStyle = "rgba(37,22,20,0.5)"; ctx.lineWidth = 2.8;
+  for (const x of [-hl, hl]) {
+    const toward = x < 0 ? -hl + inset : hl - inset;
+    ctx.beginPath(); ctx.moveTo(x, -hs); ctx.lineTo(toward, 0); ctx.lineTo(x, hs); ctx.stroke();
+  }
+  // Lodo e pequenos remendos envelhecidos, determinísticos por residência.
+  ctx.save(); ctx.beginPath(); ctx.rect(-hl, -hs, L, S); ctx.clip();
+  for (let i = 0; i < 13; i++) {
+    const rx = -hl + 8 + (L - 16) * bHash(b, 300 + i);
+    const ry = -hs + 5 + (S - 10) * bHash(b, 350 + i);
+    const rad = 2 + bHash(b, 395 + i) * 6;
+    ctx.fillStyle = i % 3 === 0 ? "rgba(32,45,29,0.22)" : "rgba(29,23,21,0.16)";
+    ctx.beginPath(); ctx.ellipse(rx, ry, rad * 1.6, rad * 0.65, 0.18, 0, Math.PI * 2); ctx.fill();
+  }
+  // Alguns telhados têm uma manta de remendo de piche/metal.
+  if (bHash(b, 450) < 0.33) {
+    const px = (bHash(b, 451) - 0.5) * L * 0.42, py = hs * (0.23 + bHash(b, 452) * 0.24);
+    ctx.fillStyle = "rgba(35,36,34,0.68)"; ctx.fillRect(px - 13, py - 6, 26, 12);
+    ctx.strokeStyle = "rgba(146,151,146,0.4)"; ctx.lineWidth = 1; ctx.strokeRect(px - 12, py - 5, 24, 10);
+  }
   ctx.restore();
-  const d = b.details[0];
-  if (d) {
-    ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(b.x + d.x + 4, b.y + d.y + 4, 13, 13);
-    ctx.fillStyle = "#5a4a42"; ctx.fillRect(b.x + d.x, b.y + d.y, 13, 13);
-    ctx.fillStyle = "#211a18"; ctx.fillRect(b.x + d.x + 3, b.y + d.y + 3, 7, 7);
+  // Antena enferrujada em algumas casas; fica só no telhado.
+  if (bHash(b, 471) < 0.31 && L > 100) {
+    const ax = hl * 0.55, ay = -hs * 0.45;
+    ctx.strokeStyle = "rgba(23,24,23,0.65)"; ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.moveTo(ax, ay + 2); ctx.lineTo(ax, ay - 22); ctx.stroke();
+    ctx.strokeStyle = "rgba(155,155,149,0.85)"; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(ax - 11, ay - 16); ctx.lineTo(ax + 11, ay - 16);
+    ctx.moveTo(ax - 6, ay - 9); ctx.lineTo(ax + 6, ay - 9); ctx.stroke();
+    ctx.fillStyle = "#514b47"; ctx.beginPath(); ctx.arc(ax, ay - 22, 2, 0, Math.PI * 2); ctx.fill();
   }
-  ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 2; ctx.strokeRect(b.x, b.y, b.w, b.h);
+  ctx.restore();
+  // Chaminé curta com profundidade, sujeira e abertura de fumaça.
+  const d = b.details && b.details[0];
+  if (d) {
+    const x = b.x + d.x, y = b.y + d.y;
+    ctx.fillStyle = "rgba(5,4,4,0.38)"; ctx.fillRect(x + 5, y + 6, 14, 13);
+    ctx.fillStyle = "#493c37"; ctx.fillRect(x + 1, y + 1, 13, 13);
+    ctx.fillStyle = "#876858"; ctx.fillRect(x, y - 3, 13, 11);
+    ctx.fillStyle = "#40312c"; ctx.fillRect(x - 2, y - 4, 17, 4);
+    ctx.fillStyle = "#161615"; ctx.fillRect(x + 2, y - 3, 9, 4);
+    ctx.strokeStyle = "rgba(211,177,149,0.25)"; ctx.lineWidth = 0.9;
+    ctx.beginPath(); ctx.moveTo(x + 2, y + 4); ctx.lineTo(x + 11, y + 4);
+    ctx.moveTo(x + 2, y + 8); ctx.lineTo(x + 11, y + 8); ctx.stroke();
+  }
 }
 function drawFlat(b) {
   ctx.fillStyle = shade(b.color, -0.08); ctx.fillRect(b.x, b.y, b.w, b.h);
@@ -441,6 +543,21 @@ function drawFlat(b) {
 function drawDoor(b) {
   if (b.noDoor) return;
   const d = b.door, up = b.facing === "up";
+  if (b.type === "casa") {
+    // Varanda/soleira de entrada com dois degraus gastos.
+    const py = up ? d.y - 15 : d.y + d.h + 2;
+    ctx.fillStyle = "rgba(7,7,6,0.32)"; ctx.fillRect(d.x - 11 + 3, py + 3, d.w + 22, 14);
+    ctx.fillStyle = "#77746b"; ctx.fillRect(d.x - 11, py, d.w + 22, 11);
+    ctx.fillStyle = "#99978d"; ctx.fillRect(d.x - 8, py + 2, d.w + 16, 3);
+    ctx.fillStyle = "#555750"; ctx.fillRect(d.x - 14, up ? py - 4 : py + 10, d.w + 28, 4);
+    if (isNight() && bHash(b, 513) < 0.36) {
+      const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
+      const light = ctx.createRadialGradient(cx, cy, 1, cx, cy, 27);
+      light.addColorStop(0, "rgba(255,216,140,0.28)");
+      light.addColorStop(1, "rgba(255,205,126,0)");
+      ctx.fillStyle = light; ctx.beginPath(); ctx.arc(cx, cy, 27, 0, Math.PI * 2); ctx.fill();
+    }
+  }
   ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(d.x - 3, d.y - 1, d.w + 6, d.h + 2);
   if (b.enter) {
     const searched = b.interior && !b.safe && b.interior.every((f) => f.opened || f.searchable === false || f.kind !== "furniture");
