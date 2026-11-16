@@ -172,10 +172,85 @@ function missionAct(it) {
   game.cur = Math.max(0, Math.min(game.cur, missionItems().length - 1));
 }
 
-// A clínica não vende nem instala implantes desde a remoção do sistema.
-function clinicKey() {}
-// Loja de Créditos: conserva o consumível Trindade, que NÃO é implante.
+// ---------- Clínica de implantes ----------
+function clinicItems() {
+  return [...player.bag.map((im) => ({ src: "bag", im })), ...save.installed.map((im) => ({ src: "inst", im }))];
+}
+function clinicKey(k) {
+  if (allocOpen()) { ALLOC.im = null; return; }
+  if (k === "tab") { game.tab ^= 1; game.cur = 0; return; }
+  const len = game.tab === 0 ? clinicItems().length : game.stock.length;
+  if (k === "w" || k === "arrowup") game.cur = Math.max(0, game.cur - 1);
+  else if (k === "s" || k === "arrowdown") game.cur = Math.max(0, Math.min(len - 1, game.cur + 1));
+  else if (k === "enter") clinicAct();
+  else if (k === "v" && game.tab === 0) sellImplant();
+  else if (k === "a" && game.tab === 0) { const it = clinicItems()[game.cur]; if (it) openAlloc(it.im); }
+  else if ((k === "q" || k === "arrowleft") && game.tab === 0) shiftImplant(-1);
+  else if ((k === "d" || k === "arrowright") && game.tab === 0) shiftImplant(1);
+}
+function clinicAct() {
+  if (game.tab === 1) { buyImplant(game.cur); return; }
+  const it = clinicItems()[game.cur];
+  if (!it) return;
+  if (it.src === "bag") {
+    const why = installBlock(it.im);
+    if (why) { toast(why); return; }
+    player.bag.splice(player.bag.indexOf(it.im), 1); save.installed.push(it.im);
+    toast(`Instalou ${implantName(it.im)}`);
+  } else {
+    if (player.bag.length >= BAG_MAX) { toast("Mochila de implantes cheia"); return; }
+    save.installed.splice(save.installed.indexOf(it.im), 1); player.bag.push(it.im);
+    toast(`Removeu ${implantName(it.im)} (volta para a mochila)`);
+  }
+  persist(); recalcImplants();
+  game.cur = Math.max(0, Math.min(game.cur, clinicItems().length - 1));
+}
+// muda a ordem dos instalados (o Mímico copia quem está à esquerda dele)
+function shiftImplant(dir) {
+  const it = clinicItems()[game.cur];
+  if (!it || it.src !== "inst") { toast("Selecione um implante instalado"); return; }
+  const a = save.installed.indexOf(it.im), b = a + dir;
+  if (b < 0 || b >= save.installed.length) return;
+  save.installed[a] = save.installed[b]; save.installed[b] = it.im;
+  game.cur = player.bag.length + b; persist(); recalcImplants();
+}
+function buyImplant(i) {
+  const st = game.stock[i];
+  if (!st) return;
+  if (player.bag.length >= BAG_MAX) { toast("Mochila de implantes cheia"); return; }
+  if (save.credits < st.price) { toast(`Precisa de ${st.price} créditos (compre no banco)`); return; }
+  save.credits -= st.price; sfx.buy();
+  const im = newImplant(st.id);
+  player.bag.push(im); persist();
+  toast(`Comprou ${implantName(im)}`);
+}
+function sellImplant() {
+  const it = clinicItems()[game.cur];
+  if (!it || it.src !== "bag") { toast("Só dá para vender implantes da mochila"); return; }
+  const v = IMP[it.im.id].scrap;
+  player.bag.splice(player.bag.indexOf(it.im), 1); game.money += v;
+  toast(`Vendeu ${implantName(it.im)} por $${v}`);
+  game.cur = Math.max(0, Math.min(game.cur, clinicItems().length - 1));
+}
+
+
+const CREDIT_IMPLANT_PRICE = 800;
+function buyCreditImplant() {
+  const id = IMP_IDS[game.creditCur | 0];
+  if (!id || !inSafe()) { toast("A Loja de Créditos só funciona na base."); return; }
+  if (player.bag.length >= BAG_MAX) { toast("Mochila de implantes cheia."); return; }
+  if (save.credits < CREDIT_IMPLANT_PRICE) { toast("São necessários 800 créditos."); return; }
+  if (player.bag.some(im => im.id === id) || save.installed.some(im => im.id === id)) {
+    toast("Você já possui esse implante."); return;
+  }
+  save.credits -= CREDIT_IMPLANT_PRICE;
+  player.bag.push(newImplant(id));
+  sfx.buy();
+  checkpoint("compra na Loja de Créditos");
+  toast("Comprou " + IMP[id].name + " por 800 créditos.");
+}
 const TRINDADE_PRICE = 20000000;
+function creditItemId() { return (game.creditCur | 0) === 0 ? "trindade_eterna" : IMP_IDS[(game.creditCur | 0) - 1]; }
 function buyTrindade() {
   if (!inSafe()) { toast("A Trindade só pode ser comprada na base."); return; }
   if (game.money < TRINDADE_PRICE) { toast("Dinheiro insuficiente. Custa $20.000.000."); return; }
@@ -185,37 +260,65 @@ function buyTrindade() {
   checkpoint("compra de Trindade");
   toast("Trindade comprada! Arraste o item no personagem para consumir.");
 }
+function creditConfirmPurchase(id) {
+  if (id === "trindade_eterna") buyTrindade();
+  else {
+    const idx = IMP_IDS.indexOf(id);
+    if (idx < 0) return;
+    const orig = game.creditCur;
+    game.creditCur = orig - 1;
+    try { buyImplant(idx); } finally { game.creditCur = orig; }
+  }
+}
 function creditShopKey(k) {
   if (game.creditConfirm) {
     if (k === "escape" || k === "n") game.creditConfirm = null;
     else if (k === "enter" || k === "s" || k === "y") {
-      game.creditConfirm = null;
-      buyTrindade();
+      const id = game.creditConfirm; game.creditConfirm = null;
+      if (creditItemId() === id) creditConfirmPurchase(id);
     }
     return;
   }
   if (k === "escape" || k === "e" || k === "b") { game.menu = null; return; }
-  if (k === "enter") game.creditConfirm = "trindade_eterna";
+  if (k === "w" || k === "arrowup") game.creditCur = Math.max(0, (game.creditCur | 0) - 1);
+  else if (k === "s" || k === "arrowdown") game.creditCur = Math.min(IMP_IDS.length, (game.creditCur | 0) + 1);
+  else if (k === "enter") game.creditConfirm = creditItemId();
 }
 function drawCreditShop() {
-  menuFrame("Loja de Créditos", "Créditos: " + save.credits + " · Dinheiro: $" + game.money.toLocaleString("pt-BR"));
-  rowBox(48, 106, 864, 324, false, "#d4af37");
-  drawMatIcon("trindade_eterna", 212, 254, 2.4);
-  txt("TRINDADE · CONSUMÍVEL", 370, 160, 23, "#ffd96a", "left", true, 498);
-  txt("Duração: 100 anos após o uso", 370, 196, 15, "#e6d9b5");
-  txtWrap("+35% de dano · +35% de velocidade de corrida · +35% de armadura. Os efeitos são calculados sobre os atributos e equipamentos do personagem. Não exige implantes.", 370, 232, 14, "#c9c4ad", 495, 22, 6);
-  txt("PREÇO: $20.000.000", 370, 348, 22, game.money >= TRINDADE_PRICE ? "#8fd08a" : "#e05a4a", "left", true);
-  if (trindadeActive()) txt("Ativa até " + new Date(save.trindadeUntil).toLocaleDateString("pt-BR"), 370, 378, 13, "#8fd08a");
-  btn(324, 454, 312, 44, "COMPRAR TRINDADE (ENTER)", () => { game.creditConfirm = "trindade_eterna"; }, true);
-  hint("Enter compra · Esc, E ou B fecha · Todos os implantes foram removidos");
+  game.creditCur = Math.max(0, Math.min(IMP_IDS.length, game.creditCur | 0));
+  menuFrame("Loja de Créditos", "Créditos: " + save.credits + " · Dinheiro: $" + game.money.toLocaleString("pt-BR") + " · Implantes: 800 créditos");
+  const top = Math.max(0, Math.min(IMP_IDS.length - 10, game.creditCur - 5));
+  for (let j = 0; j < 11 && j + top <= IMP_IDS.length; j++) {
+    const i = j + top, id = i ? IMP_IDS[i - 1] : "trindade_eterna", special = i === 0;
+    const y = 96 + j * 37, selected = i === game.creditCur;
+    const owned = !special && (player.bag.some(im => im.id === id) || save.installed.some(im => im.id === id));
+    rowBox(38, y, 506, 34, selected, special ? "#b18a42" : owned ? "#5b7547" : "#3d3b30");
+    txt(special ? "★ Trindade · consumível (100 anos)" : IMP[id].name, 52, y + 21, 13, selected ? "#ffdf70" : "#e5e0c8", "left", true, 305);
+    txt(special ? "$20.000.000" : owned ? "ADQUIRIDO" : "800 créditos", 528, y + 21, 12, special ? "#f0bb64" : owned ? "#6fd08a" : "#d4af37", "right", true);
+    rowClick(38, y, 506, 34, selected, () => { game.creditCur = i; }, () => { game.creditCur = i; game.creditConfirm = id; });
+  }
+  const id = creditItemId(), special = id === "trindade_eterna";
+  if (special) {
+    txt("Trindade · 100 anos", 576, 114, 20, "#ffd96a", "left", true, 342);
+    drawMatIcon(id, 752, 206, 1.8);
+    txtWrap("Item consumível (diferente do Implante Trindade). Ao usar, concede +35% dano, +35% velocidade de corrida e +35% proteção, calculados sobre os atributos e equipamentos. Dura 100 anos.", 576, 280, 13, "#c9c4ad", 344, 19, 8);
+    if (trindadeActive()) txt("Válido até " + new Date(save.trindadeUntil).toLocaleDateString("pt-BR"), 576, 421, 12, "#8fd08a");
+  } else if (IMP[id]) {
+    txt(IMP[id].name, 576, 114, 20, "#ffd96a", "left", true, 342);
+    drawEntryIcon({ type: "implant", im: { id, alloc: {} } }, 752, 206, 1.7);
+    txtWrap(implantDesc({ id, alloc: {} }), 576, 280, 13, "#c9c4ad", 344, 19, 7);
+  }
+  btn(607, 447, 272, 40, special ? "Comprar · $20.000.000" : "Comprar · 800 créditos", () => { game.creditConfirm = id; }, true);
+  hint("W/S navega · Enter compra · Esc fecha");
   if (game.creditConfirm) {
+    const confirmId = game.creditConfirm, isSpecial = confirmId === "trindade_eterna";
     ctx.fillStyle = "rgba(0,0,0,.8)"; ctx.fillRect(0, 0, W, H);
     regClick(0, 0, W, H, () => {});
     ctx.fillStyle = "#292317"; rr(238, 191, 484, 188, 10); ctx.fill();
     ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 2; ctx.stroke();
-    txt("Comprar Trindade consumível?", W / 2, 244, 19, "#f2eedc", "center", true);
-    txt("Preço: $20.000.000", W / 2, 276, 13, "#d4af37", "center");
-    btn(275, 313, 184, 42, "Confirmar", () => { game.creditConfirm = null; buyTrindade(); }, true);
+    txt(isSpecial ? "Comprar Trindade consumível?" : "Comprar " + IMP[confirmId].name + "?", W / 2, 244, 19, "#f2eedc", "center", true, 450);
+    txt(isSpecial ? "Preço: $20.000.000" : "Preço: 800 créditos", W / 2, 276, 13, "#d4af37", "center");
+    btn(275, 313, 184, 42, "Confirmar", () => { game.creditConfirm = null; if (creditItemId() === confirmId) creditConfirmPurchase(confirmId); }, true);
     btn(502, 313, 184, 42, "Cancelar", () => { game.creditConfirm = null; });
   }
   menuToast();
@@ -230,7 +333,7 @@ function travelKey(k) {
 
 // ---------- Painel de administrador (F2) ----------
 const adm = { god: false, infAmmo: false, noReq: false, noHunger: false, infStamina: false, freeze: false, dmg: 1, direct: false, shopAnywhere: false };
-const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Armas", "Presentes"];
+const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Armas", "Implantes", "Presentes"];
 function canUseAdmin() {
   return typeof fmCloud !== "undefined" && fmCloud.isActive() && fmCloud.isAdmin();
 }
@@ -273,6 +376,12 @@ function admSetLevel(n) {
 function admGiveWeapon(id) {
   const r = addWeapon(newInst(id));
   toast(r ? `${WDEF[id].name} ${r === "slot" ? "equipada" : "na mochila"}` : "Mochila cheia");
+}
+function admGiveImplant(id) {
+  const im = newImplant(id);
+  if (adm.direct && !installBlock(im)) { save.installed.push(im); persist(); recalcImplants(); toast(`Instalado: ${implantName(im)}`); }
+  else if (player.bag.length < BAG_MAX) { player.bag.push(im); toast(`Na mochila: ${implantName(im)}`); }
+  else toast("Mochila de implantes cheia");
 }
 function admReset() {
   save.bank = 0; save.vault = []; save.installed = []; save.credits = 0; save.gm = false; save.missions = [];
@@ -337,6 +446,11 @@ function admRows() {
       rows.push({ label: `${d.name} · ${CAT_LABEL[d.cat]}${d.legendary ? " (lendária)" : d.special ? " (especial)" : ""}`, val: () => "dar", act: (x, how) => { if (how === "enter") admGiveWeapon(d.id); } });
     });
   } else if (tab === 4) {
+    T("Instalar direto (sem passar pela clínica)", () => adm.direct, (v) => { adm.direct = v; });
+    IMP_IDS.forEach((id) => rows.push({ label: `${IMP[id].name} · ${IMP[id].price} créditos`, val: () => "dar", act: (d, how) => { if (how === "enter") admGiveImplant(id); } }));
+    B("Limpar a mochila de implantes", () => { player.bag.length = 0; toast("Mochila de implantes vazia"); });
+    B("Remover os implantes instalados", () => { save.installed.length = 0; persist(); recalcImplants(); toast("Implantes removidos"); });
+  } else if (tab === 5) {
     const g = game.admGift || (game.admGift = { name: "", type: "dinheiro", qty: 1000, itemIndex: 0, busy: false });
     B("Destinatário: " + (g.name || "(digitar nome in-game)"), () => admAskText("Nome do jogador", name => { g.name = name.slice(0,16); }));
     rows.push({ label: "Tipo de presente (A/D para escolher)", val: () =>
@@ -483,11 +597,48 @@ function drawMissions() {
   hint("W/S move · Enter aceita/entrega · V abandona · M ou E fecha");
 }
 
+function drawImplantRow(x, y, w, im, selected, right, rightColor) {
+  rowBox(x, y, w, 28, selected);
+  txt(implantName(im), x + 10, y + 19, 14, impColor(im), "left", true, w - (right ? 170 : 20));
+  if (right) txt(right, x + w - 10, y + 19, 13, rightColor || "#a9a58f", "right", true);
+}
+// caixa com o nome e a descrição inteira do implante selecionado
+function drawImplantInfo(im) {
+  ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(40, 424, W - 80, 118, 8); ctx.fill();
+  if (!im) { txt("Selecione um implante para ver os efeitos", W / 2, 488, 14, "#6d6a58", "center"); return; }
+  txt(implantName(im), 56, 448, 17, impColor(im), "left", true);
+  txt(`Único (só um instalado) · sucata $${IMP[im.id].scrap}`, W - 56, 448, 12, "#a9a58f", "right");
+  txtWrap(implantDesc(im), 56, 470, 13, "#d8d2ba", W - 112, 17, 4);
+}
 function drawClinic() {
-  menuFrame("Clínica", "Atendimento do refúgio");
-  txt("O sistema de implantes foi retirado do jogo.", W / 2, 252, 20, "#e5e0c8", "center", true);
-  txt("Nenhum implante pode ser adquirido, instalado ou equipado.", W / 2, 291, 14, "#a9a58f", "center");
-  hint("Esc, E ou B fecha");
+  menuFrame("Clínica de implantes", `Créditos: ${save.credits}  ·  Dinheiro: $${game.money}  ·  Instalados: ${save.installed.length}/${IMPL_SLOTS}  ·  Mochila: ${player.bag.length}/${BAG_MAX}`);
+  txt("Meus implantes", W / 2 - 100, 100, 16, game.tab === 0 ? "#ffd96a" : "#6d6a58", "center", true);
+  txt("Loja", W / 2 + 100, 100, 16, game.tab === 1 ? "#ffd96a" : "#6d6a58", "center", true);
+  if (game.tab === 0) {
+    txt("Na mochila (preservados ao morrer)", 40, 126, 13, "#a9a58f");
+    txt("Instalados, na ordem dos slots (permanentes)", 500, 126, 13, "#a9a58f");
+    const pts = (im) => (IMP[im.id].alloc ? `${allocUsed(im)}/${IMP[im.id].alloc.points} pts` : IMP[im.id].mimic ? "copia ←" : "");
+    player.bag.forEach((im, i) => drawImplantRow(40, 134 + i * 32, 440, im, game.cur === i, pts(im)));
+    save.installed.forEach((im, j) => drawImplantRow(500, 134 + j * 32, 420, im, game.cur === player.bag.length + j, `${j + 1}º  ${pts(im)}`));
+    if (!player.bag.length && !save.installed.length) txt("Nenhum implante ainda. Compre na loja (Tab) ou ache em saques raros.", 40, 160, 15, "#6d6a58");
+    const it = clinicItems()[game.cur];
+    drawImplantInfo(it ? it.im : null);
+    hint("W/S move · Enter instala/remove · A distribui pontos · Q/D muda a ordem · V vende · Tab loja · E fecha");
+  } else {
+    const N = 9, first = Math.max(0, Math.min(game.stock.length - N, game.cur - 4));
+    for (let r = 0; r < N && first + r < game.stock.length; r++) {
+      const i = first + r, st = game.stock[i], im = { id: st.id, alloc: {} };
+      const has = save.installed.some((x) => x.id === st.id) ? "instalado · " : player.bag.some((x) => x.id === st.id) ? "na mochila · " : "";
+      drawImplantRow(140, 126 + r * 32, 680, im, game.cur === i, `${has}${st.price} créditos`, save.credits >= st.price ? "#6fae4f" : "#c0392b");
+    }
+    txt(`${game.cur + 1} / ${game.stock.length}`, 830, 144, 12, "#a9a58f");
+    if (first > 0) txt("▲", 830, 164, 12, "#ffd96a");
+    if (first + N < game.stock.length) txt("▼", 830, 400, 12, "#ffd96a");
+    const st = game.stock[game.cur];
+    drawImplantInfo(st ? { id: st.id, alloc: {} } : null);
+    hint("Implantes únicos, pagos com créditos (compre créditos no banco) · W/S move · Enter compra · Tab volta · E fecha");
+  }
+  drawAllocPanel();
 }
 
 function drawTravel() {
