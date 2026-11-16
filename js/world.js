@@ -434,6 +434,18 @@ function darkness() {
   return 0.82 - ((h - 4.5) / 2.5) * 0.74;
 }
 function isNight() { return darkness() > 0.5; }
+ // Intensidade da luz solar: aurora gradual, sol quente entre manhã/tarde,
+ // pôr do sol suave. Mesmo relógio global para todos os jogadores.
+function sunIntensity() {
+  const h = ((game.clock / 60) % 24 + 24) % 24;
+  if (h < 5.5 || h >= 19) return 0;
+  if (h < 8) return (h - 5.5) / 2.5;
+  if (h < 16) return 1;
+  return (19 - h) / 3;
+}
+// A lanterna NÃO fica acesa sob a luz do dia (inclusive no sprite).
+function flashlightActive() { return isNight(); }
+
 
 // ---------- Zumbis da área ----------
 function walkable(x, y, r) {
