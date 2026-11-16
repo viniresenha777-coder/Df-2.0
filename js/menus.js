@@ -234,8 +234,7 @@ function canUseAdmin() {
 function toggleAdmin() {
   if (!canUseAdmin()) {
     if (game.menu === "admin") { game.menu = null; game.input = null; }
-    toast("Painel exclusivo do administrador.");
-    return;
+    return; // Para jogadores comuns, F2 não faz nada e não mostra qualquer aviso.
   }
   if (game.menu === "admin") { game.menu = null; game.input = null; return; }
   if (game.over) return;
