@@ -40,7 +40,7 @@ float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 4; i++){ v += a *
 // 1) luz, sombra, neblina e chuva
 const FS_LIT = FS_HEAD + `
 #define MAXL ${MAXL}
-uniform sampler2D uScene; uniform sampler2D uMask;
+uniform sampler2D uScene; uniform sampler2D uMask; uniform sampler2D uFlashBlocked;
 uniform vec2 uRes; uniform vec2 uMaskTexel; uniform vec2 uCam; uniform vec2 uPlayer;
 uniform float uDark; uniform float uDayShadow; uniform float uTime; uniform float uFog; uniform float uRain; uniform float uFlash;
 uniform int uN; uniform vec4 uL[MAXL]; uniform vec4 uC[MAXL]; uniform vec4 uK[MAXL];
@@ -68,7 +68,12 @@ void main(){
     if (dist >= L.z) continue;
     float att = 1.0 - dist / L.z; att *= att;
     vec4 K = uK[i];
-    if (K.z > -1.5) att *= smoothstep(K.z, K.z + K.w, dot(d / max(dist, 0.001), K.xy));
+    if (K.z > -1.5) {
+      att *= smoothstep(K.z, K.z + K.w, dot(d / max(dist, 0.001), K.xy));
+      // A máscara exclusiva da lanterna interrompe os raios na
+      // parede/copa/haste. Não escurece a iluminação ambiental.
+      att *= 1.0 - texture2D(uFlashBlocked, vUv).a;
+    }
     vec4 C = uC[i];
     if (C.a > 0.5) att *= m;
     light += C.rgb * L.w * att;
@@ -191,7 +196,7 @@ function gfxStart() {
       const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
       gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-      GFX.T.scene = glTex(gl); GFX.T.mask = glTex(gl);
+      GFX.T.scene = glTex(gl); GFX.T.mask = glTex(gl); GFX.T.flashBlocked = glTex(gl);
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
       GFX.cv.addEventListener("webglcontextlost", (e) => { e.preventDefault(); GFX.failed = true; gfxStop(); toast("O WebGL falhou: voltando aos gráficos simples"); });
     }
@@ -386,15 +391,18 @@ function gfxRender() {
   const dark = game.inside ? (game.inside.safe ? 0.12 : 0.26 + darkness() * 0.3) : darkness();
   const px = player.x - cam.x, py = player.y - cam.y;
   gfxMask(px, py);
+  const flashlightShadow = flashlightBlocks();
   const lights = gfxLights(dark);
   // envia a cena e a máscara de sombra
   gl.bindTexture(gl.TEXTURE_2D, GFX.T.scene); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, GFX.scene);
   gl.bindTexture(gl.TEXTURE_2D, GFX.T.mask); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, GFX.mask);
+  gl.bindTexture(gl.TEXTURE_2D, GFX.T.flashBlocked);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, flashlightShadow);
   const tm = (performance.now() / 1000) % 1000;
 
   // 1) luz
   let P = GFX.P.lit; gfxPass(P, GFX.lit);
-  gfxBind(P, "uScene", 0, GFX.T.scene); gfxBind(P, "uMask", 1, GFX.T.mask);
+  gfxBind(P, "uScene", 0, GFX.T.scene); gfxBind(P, "uMask", 1, GFX.T.mask); gfxBind(P, "uFlashBlocked", 2, GFX.T.flashBlocked);
   gl.uniform2f(P.u("uRes"), W, H); gl.uniform2f(P.u("uMaskTexel"), 2 / W, 2 / H);
   gl.uniform2f(P.u("uCam"), cam.x, cam.y); gl.uniform2f(P.u("uPlayer"), px, py);
   gl.uniform1f(P.u("uDark"), dark); gl.uniform1f(P.u("uDayShadow"), game.inside ? 0 : 0.42);
