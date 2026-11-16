@@ -279,15 +279,13 @@ function weaponMeters(w) { return WEAPON_M[w.look] || (w.melee ? 0.6 : 0.85); }
 function useSpriteChar() { return PSHEET.ok && typeof SPRITE_POSES !== "undefined" && !save.classicChar && !game.over; }
 function sheetRow(vx, vy) { const a = Math.atan2(vx, -vy); return ((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8; }
 function angDelta(a, b) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }
-// gira o corpo suavemente atrás da mira e só troca de direção com uma folga (sem tremer na divisa)
+// Oito poses discretas: a direção visual deve trocar no MESMO quadro
+// da mira. Antes havia um atraso de rotação e histerese que fazia o
+// jogador olhar para um lado enquanto as balas saíam para outro.
 function spriteTick(dt) {
   const p = player;
-  if (p.dispAng == null) p.dispAng = p.angle;
-  const d = angDelta(p.dispAng, p.angle), maxStep = 14 * dt / 1000;
-  p.dispAng += Math.abs(d) <= maxStep ? d : Math.sign(d) * maxStep;
-  const center = (r) => -Math.PI / 2 + r * Math.PI / 4;
-  if (p.sRow == null) p.sRow = sheetRow(Math.cos(p.dispAng), Math.sin(p.dispAng));
-  if (Math.abs(angDelta(center(p.sRow), p.dispAng)) > Math.PI / 8 + 0.12) p.sRow = sheetRow(Math.cos(p.dispAng), Math.sin(p.dispAng));
+  p.dispAng = p.angle;
+  p.sRow = sheetRow(Math.cos(p.angle), Math.sin(p.angle));
   if (p.moving) p.stepDist = (p.stepDist || 0) + (p.lastSp || 0) * dt / 16.67;
 }
 function spriteFrame() { const p = player; return p.moving ? Math.floor((p.stepDist || 0) / PSHEET.stride) % 8 : 1; }
@@ -298,12 +296,27 @@ function posePt(key, pose) {
   const o = spriteOrigin(), k = PSHEET.size / PSHEET.cell, pt = SPRITE_POSES[pose][player.sRow | 0][spriteFrame()][key];
   return { x: o.x + pt[0] * k, y: o.y + pt[1] * k };
 }
-// ponta do cano da arma em uso
+// A direção da arma é calculada a partir da empunhadura da spritesheet,
+// não da ponta do cano. Assim arma, clarão e projétil apontam para o
+// mesmo pixel do mouse, independentemente do ângulo do corpo.
+function gunGripAndLength(w) {
+  const pose = weaponPose(w), a = posePt("a", pose), b = posePt("b", pose);
+  return { x: a.x, y: a.y, length: Math.hypot(b.x - a.x, b.y - a.y) * weaponMeters(w) };
+}
+function updateWeaponAim() {
+  const w = curW();
+  player.gunAngle = player.angle;
+  if (!useSpriteChar() || w.melee || w.fists) return;
+  const grip = gunGripAndLength(w);
+  const x = mouse.x + cam.x - grip.x, y = mouse.y + cam.y - grip.y;
+  if (Math.hypot(x, y) > 7) player.gunAngle = Math.atan2(y, x);
+}
 function muzzlePoint() {
   if (!useSpriteChar()) return null;
-  const w = curW(); if (w.melee) return null;
-  const A = posePt("a"), B = posePt("b"), m = weaponMeters(w);
-  return { x: A.x + (B.x - A.x) * m, y: A.y + (B.y - A.y) * m };
+  const w = curW(); if (w.melee || w.fists) return null;
+  const grip = gunGripAndLength(w);
+  const a = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle;
+  return { x: grip.x + Math.cos(a) * grip.length, y: grip.y + Math.sin(a) * grip.length };
 }
 function chestPoint() { return useSpriteChar() ? posePt("c") : { x: player.x, y: player.y }; }
 
@@ -324,7 +337,8 @@ function drawHeldWeapon(w, pose) {
     ctx.scale(Math.max(0.25, lenPx / model), thick); ctx.translate(-8, -6);
     drawWeaponShape(w, 0);
   } else {
-    ctx.rotate(ang);
+    // Rotação contínua da arma 2D enquanto o corpo usa oito poses.
+    ctx.rotate(Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle);
     const model = (w.len || 20) + 20, start = w.look === "pistol" || w.look === "revolver" ? 10 : 0;
     ctx.scale(Math.max(0.2, lenPx / (model - start)), thick); ctx.translate(-start, 0);
     if (w.tint) ctx.filter = w.tint;
@@ -346,7 +360,16 @@ function drawPlayerSprite() {
   const drawW3 = () => {
     const d = WEAPON_3D[w.id];
     ctx.save();
-    if (w.melee && w.look !== "chainsaw" && game.slashT > 0) {           // golpe: gira a camada em volta da mão
+    if (!w.melee) {
+      // Camada da arma 3D: vira em torno da empunhadura sem rodar o
+      // personagem inteiro. A mira e o disparo usam este mesmo ângulo.
+      const A = posePt("a", pose), B = posePt("b", pose);
+      const baseAngle = Math.atan2(B.y - A.y, B.x - A.x);
+      const aim = Number.isFinite(p.gunAngle) ? p.gunAngle : p.angle;
+      ctx.translate(A.x, A.y);
+      ctx.rotate(angDelta(baseAngle, aim));
+      ctx.translate(-A.x, -A.y);
+    } else if (w.look !== "chainsaw" && game.slashT > 0) {
       const A = posePt("a", pose), sw = (-1 + (1 - game.slashT / 200) * 2) * (game.slashA || 0.9) * 0.9;
       ctx.translate(A.x, A.y); ctx.rotate(sw); ctx.translate(-A.x, -A.y);
     }
@@ -377,7 +400,7 @@ function drawPlayerSprite() {
   }
   // clarão do tiro na ponta do cano
   if (p.flashT > 0 && !w.melee) {
-    const m = muzzlePoint(), ang = p.shotAng != null ? p.shotAng : p.angle;
+    const m = muzzlePoint(), ang = p.shotAng != null ? p.shotAng : (p.gunAngle != null ? p.gunAngle : p.angle);
     if (m) {
       ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.translate(m.x, m.y); ctx.rotate(ang);
       ctx.fillStyle = "rgba(255,220,120,0.9)"; ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(18, 0); ctx.lineTo(0, 6); ctx.lineTo(4, 0); ctx.closePath(); ctx.fill();
