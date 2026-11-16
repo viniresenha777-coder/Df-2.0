@@ -422,9 +422,9 @@ function admRows() {
     B("Subir 10 níveis", () => admSetLevel(player.level + 10));
     N("Pontos de atributo livres", () => player.points, (v) => { player.points = v; syncChar(); }, 5, 0, 99999);
     N("Pontos de armas livres", () => player.wpoints, (v) => { player.wpoints = v; syncChar(); }, 5, 0, 99999);
-    B("Todos os atributos no máximo (200)", () => { ATTRS.forEach((d) => { player.attrs[d.id] = ATTR_MAX; }); recalcImplants(); syncChar(); toast("Atributos no máximo"); });
+    B("Atributos no máximo (Stats 100 · Proficiências 120)", () => { ATTRS.forEach((d) => { player.attrs[d.id] = weaponSkillCap(d.id); }); recalcImplants(); syncChar(); toast("Atributos nos limites permitidos"); });
     B("Voltar atributos ao valor inicial", () => { ATTRS.forEach((d) => { player.attrs[d.id] = d.start; }); recalcImplants(); syncChar(); toast("Atributos reiniciados"); });
-    ATTRS.forEach((d) => N(d.name + (CATNAME[d.id] ? " (arma)" : ""), () => player.attrs[d.id], (v) => { player.attrs[d.id] = v; if (d.id === "endurance") recalcImplants(); syncChar(); }, 5, 1, ATTR_MAX));
+    ATTRS.forEach((d) => N(d.name + (CATNAME[d.id] ? " (arma)" : ""), () => player.attrs[d.id], (v) => { player.attrs[d.id] = v; if (d.id === "endurance") recalcImplants(); syncChar(); }, 5, d.start, weaponSkillCap(d.id)));
   } else if (tab === 2) {
     N("Dinheiro na mochila", () => game.money, (v) => { game.money = v; }, 1000, 0, 999999999);
     N("Dinheiro no banco", () => save.bank, (v) => { save.bank = v; persist(); }, 10000, 0, 999999999);
@@ -572,7 +572,7 @@ function drawStats() {
     txt(String(v), 290, y + 19, 15, "#ffd96a", "left", true);
     ctx.fillStyle = "#000"; ctx.fillRect(330, y + 11, 120, 6);
     ctx.fillStyle = WEAPON_SKILL_IDS.includes(d.id) ? "#d08a5a" : "#6d8aa8"; ctx.fillRect(330, y + 11, 120 * Math.min(1, v / weaponSkillCap(d.id)), 6);
-    txt(WEAPON_SKILL_IDS.includes(d.id) ? `arma · máx. ${weaponSkillCap(d.id)}` : "atributo", 460, y + 19, 11, WEAPON_SKILL_IDS.includes(d.id) ? "#d08a5a" : "#6d8aa8");
+    txt(WEAPON_SKILL_IDS.includes(d.id) ? `arma · máx. ${weaponSkillCap(d.id)}` : "stats · máx. 100", 460, y + 19, 11, WEAPON_SKILL_IDS.includes(d.id) ? "#d08a5a" : "#6d8aa8");
     txt(attrEffect(d.id, v), 884, y + 19, 12, "#a9a58f", "right");
   });
   hint("W/S escolhe · Enter +1 · D +5 · pontos de arma: Força + 5 proficiências · Tab: personagem · C ou Esc");
