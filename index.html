@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#070b0a">
   <title>Fronteira Morta 2.0 — Entrar</title>
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/auth.css?v=20261116-3">
 </head>
 <body>
   <form id="login" class="fm-auth">
@@ -32,8 +32,9 @@
         <button type="submit" value="register" class="secondary">Criar conta</button>
       </div>
       <button type="button" id="resend-confirmation" class="textual">Reenviar confirmação de e-mail</button>
+      <button type="button" id="test-connection" class="textual">Testar conexão com o servidor</button>
       <p id="login-status" role="status" aria-live="polite"></p>
-      <small>A autenticação é protegida pelo Supabase. Seu progresso é armazenado na sua conta.</small>
+      <small>A autenticação é protegida pelo Supabase. Seu progresso é armazenado na sua conta. <strong>Conexão v2.0.3</strong></small>
     </div>
   </form>
   <main class="wrap" hidden>
@@ -74,7 +75,7 @@
     <script src="js/main.js"></script>
   </template>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/cloud.js"></script>
-  <script src="js/login.js"></script>
+  <script src="js/cloud.js?v=20261116-3"></script>
+  <script src="js/login.js?v=20261116-3"></script>
 </body>
 </html>
