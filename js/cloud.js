@@ -174,5 +174,6 @@ const fmCloud = (() => {
   }
   return { resume, login, logout, resend, ping,
     sendPasswordRecovery, observeAuth, recoverySession, changeRecoveredPassword,
-    write, read: () => snapshot, isActive: () => !!user, isAdmin: () => !!user && userIsAdmin, hasOnlineSave: () => revision !== null };
+    write, read: () => snapshot, isActive: () => !!user, isAdmin: () => !!user && userIsAdmin, hasOnlineSave: () => revision !== null,
+    userId: () => user ? user.id : null, socialClient: () => client };
 })();
