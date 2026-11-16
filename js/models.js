@@ -216,4 +216,20 @@ function genScenery(wd) {
     if (zone >= 2 && R() < 0.5) tryPlace(wd, R() < 0.5 ? "tank" : "tank_90", a, R, 15, { k: 15, margin: 6 });
   }
   wd.models.sort((a, b) => a.south - b.south);
+  // Os modelos deadbody/bodybag já tinham coordenadas fixas por semente.
+  // Mantemos o gerador e os mesmos RNG calls, mudando somente o desenho.
+  // Alguns corpos decorativos passam a oferecer 1 saque, com chance
+  // determinística (sem alterar loot nem posições existentes).
+  for (const m of wd.models) {
+    if (!SCENERY.bodies.includes(m.id)) continue;
+    m.bodyReplacement = true;
+    const corpse = { x: m.x - 14, y: m.y - 14, w: 28, h: 28,
+      kind: "body", table: "body", name: "Zumbi caído", opened: true,
+      ang: 0, bag: false };
+    wd.bodies.push(corpse);
+    const seed = (Math.imul(Math.floor(m.x), 73856093) ^
+      Math.imul(Math.floor(m.y), 19349663) ^ (wd.cell.seed >>> 0)) >>> 0;
+    const lootChance = Math.max(0.16, 0.36 - diffOf(wd.zone) * 0.03);
+    if (seed / 4294967296 < lootChance) lootable(wd, corpse);
+  }
 }
