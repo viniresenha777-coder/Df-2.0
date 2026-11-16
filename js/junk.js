@@ -168,6 +168,11 @@ function drawJunk() {
   ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 1.5; ctx.stroke();
   txt("★ CARTÃO RESET DE STATS", 547, 468, 16, "#ffdf70", "left", true);
   txt("Recupere seus pontos de atributo · uso único", 547, 488, 11, "#d8d2ba");
+  // Miniatura original no canto superior direito do cartão, como solicitado.
+  if (RESET_CARD_ART.complete && RESET_CARD_ART.naturalWidth) {
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(RESET_CARD_ART, 815, 446, 100, 47);
+  }
   btn(547, 496, 362, 39, "COMPRAR · $" + RESET_STATS_PRICE.toLocaleString("pt-BR") + " (C)", confirmBuyResetStats, true);
 
   hint("C compra cartão de reset · W/S escolhe · Enter vende · T vende tudo · D desmonta · Esc fecha");
