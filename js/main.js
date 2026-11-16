@@ -346,6 +346,7 @@ resetGame();
 loadSprites();
 ensureDaily();
 restoreRun(); // volta do último checkpoint, se houver
+fmGifts.start(); // correio: entrega presentes do ADM quando o jogo está pronto
 fmWorld.start(); // consulta relógio oficial do servidor Supabase
 if (save.name) fmSocial.start(); // publica posição somente após autenticação e nome definitivo
 // rodando pelo servidor local instalado: avisa que o jogo está aberto (o servidor fecha sozinho quando você sai)
