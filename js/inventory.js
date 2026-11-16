@@ -366,7 +366,8 @@ function packAct() {
   } else if (it.kind === "weapon") {
     const e = player.slots.indexOf(null);
     equipTo(e >= 0 ? e : player.cur);
-  } else if (it.id === "reset_stats") toast("Arraste o cartão até o personagem para resetar os atributos.");
+  } else if (it.id === "trindade_eterna") INV.confirm = { trindade: true, name: "Trindade · 100 anos" };
+  else if (it.id === "reset_stats") toast("Arraste o cartão até o personagem para resetar os atributos.");
   else toast(MATS[it.id].cashProtection ? safeDescription(it.id) + " Basta carregar na mochila." : "Materiais ficam na mochila até você usar na oficina");
 }
 function packDiscard() {
