@@ -79,9 +79,9 @@ function statsKey(k) {
   else if (k === "d") addPoint(5);
 }
 function addPoint(n) {
-  const d = ATTRS[game.cur], weapon = !!CATNAME[d.id], pool = weapon ? "wpoints" : "points";
+  const d = ATTRS[game.cur], weapon = WEAPON_SKILL_IDS.includes(d.id), pool = weapon ? "wpoints" : "points";
   if (player[pool] <= 0) { toast(weapon ? "Sem pontos de armas" : "Sem pontos de atributo"); return; }
-  const amt = Math.min(n, player[pool], ATTR_MAX - player.attrs[d.id]);
+  const amt = Math.min(n, player[pool], weaponSkillCap(d.id) - player.attrs[d.id]);
   if (amt <= 0) { toast("Atributo no máximo"); return; }
   const previousMaxHp = player.maxHp;
   player.attrs[d.id] += amt; player[pool] -= amt;
@@ -251,7 +251,7 @@ function toggleAdmin() {
 function admAsk(label, fn) { if (!canUseAdmin()) return; game.input = { mode: "adm", text: "", label, fn }; }
 function admSetLevel(n) {
   n = Math.max(1, Math.min(MAX_LEVEL, n));
-  for (let l = player.level + 1; l <= n; l++) { const pts = l <= 50 ? 5 : 2; player.points += pts; player.wpoints += pts; }
+  for (let l = player.level + 1; l <= n; l++) { player.points += survivalPointsForLevel(l); player.wpoints += weaponPointsForLevel(l); }
   player.level = n; player.xp = 0; recalcImplants(); syncChar();
 }
 function admGiveWeapon(id) {
@@ -427,11 +427,11 @@ function drawStats() {
     txt(d.name, 76, y + 19, 15, "#e5e0c8", "left", true);
     txt(String(v), 290, y + 19, 15, "#ffd96a", "left", true);
     ctx.fillStyle = "#000"; ctx.fillRect(330, y + 11, 120, 6);
-    ctx.fillStyle = CATNAME[d.id] ? "#d08a5a" : "#6d8aa8"; ctx.fillRect(330, y + 11, 120 * (v / ATTR_MAX), 6);
-    txt(CATNAME[d.id] ? "arma" : "atributo", 460, y + 19, 11, CATNAME[d.id] ? "#d08a5a" : "#6d8aa8");
+    ctx.fillStyle = WEAPON_SKILL_IDS.includes(d.id) ? "#d08a5a" : "#6d8aa8"; ctx.fillRect(330, y + 11, 120 * Math.min(1, v / weaponSkillCap(d.id)), 6);
+    txt(WEAPON_SKILL_IDS.includes(d.id) ? `arma · máx. ${weaponSkillCap(d.id)}` : "atributo", 460, y + 19, 11, WEAPON_SKILL_IDS.includes(d.id) ? "#d08a5a" : "#6d8aa8");
     txt(attrEffect(d.id, v), 884, y + 19, 12, "#a9a58f", "right");
   });
-  hint("W/S escolhe · Enter +1 · D +5 · pontos de arma só nas 5 proficiências · Tab: personagem · C ou Esc fecha");
+  hint("W/S escolhe · Enter +1 · D +5 · pontos de arma: Força + 5 proficiências · Tab: personagem · C ou Esc");
 }
 
 function drawMissionRow(x, y, w, m, sel, active) {
