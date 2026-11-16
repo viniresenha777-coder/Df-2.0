@@ -114,7 +114,7 @@ function attrEffect(id, v) {
   }
 }
 function syncChar() {
-  save.char.level = player.level; save.char.xp = player.xp; save.char.points = player.points; save.char.wpoints = player.wpoints;
+  save.char.level = player.level; save.char.xp = player.xp; save.char.points = player.points; save.char.wpoints = player.wpoints; save.char.skillCurve = 2;
   persist();
 }
 function gainXp(n) {
@@ -123,7 +123,9 @@ function gainXp(n) {
   let up = 0;
   while (player.level < MAX_LEVEL && player.xp >= xpNeed(player.level)) {
     player.xp -= xpNeed(player.level); player.level++;
-    const pts = player.level <= 50 ? 5 : 2; player.points += pts; player.wpoints += pts; up++;
+    player.wpoints += weaponPointsForLevel(player.level);
+    player.points += survivalPointsForLevel(player.level);
+    up++;
   }
   if (player.level >= MAX_LEVEL) player.xp = 0;
   if (up) {
