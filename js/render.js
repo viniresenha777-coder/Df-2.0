@@ -777,7 +777,7 @@ function drawPlayer() {
   ctx.fillStyle = "rgba(0,0,0,0.35)"; ellipse(p.x + 4, p.y + 6, 17, 13);
   // ---- pernas: seguem a direção em que você anda, passada alternada ----
   const ma = p.moving && p.moveAng != null ? p.moveAng : p.angle;
-  const ph = Math.sin(p.walk), stride = p.moving ? ph * (p.sprinting ? 15 : 12) : 0;
+  const ph = Math.sin(p.walk), stride = ph * (p.sprinting ? 15 : 12) * (p.walkBlend != null ? p.walkBlend : (p.moving ? 1 : 0));
   ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ma);
   for (const [side, st] of [[-1, stride], [1, -stride]]) {
     ctx.strokeStyle = pal.pants; ctx.lineWidth = 6.5; ctx.lineCap = "round";
