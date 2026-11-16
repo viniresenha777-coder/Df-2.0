@@ -25,6 +25,22 @@ function txt(s, x, y, size, color, align, bold, maxW) {
 }
 function inView(x, y, w, h, m) { m = m || 0; return x + w > cam.x - m && x < cam.x + W + m && y + h > cam.y - m && y < cam.y + H + m; }
 // marca de "dá para vasculhar": um (?) parado, sem piscar
+// Colore somente pontos de saque disponíveis, preservando a textura original.
+const LOOT_YELLOW_FILTER = "grayscale(1) sepia(1) saturate(10) hue-rotate(-7deg) brightness(1.7)";
+function lootSpotActive(o) {
+  return !!o && !o.opened && o.searchable !== false &&
+    o.kind !== "door" && o.kind !== "exit" && o.kind !== "decor" &&
+    o.kind !== "survivor" &&
+    (typeof SAFE_KINDS === "undefined" || !SAFE_KINDS.includes(o.kind));
+}
+function drawLootQuestion(o, x, y) {
+  if (!lootSpotActive(o)) return;
+  ctx.save();
+  ctx.shadowColor = "#ffdc36";
+  ctx.shadowBlur = 9;
+  sparkle(x, y);
+  ctx.restore();
+}
 function sparkle(x, y) {
   ctx.fillStyle = "rgba(10,10,8,0.82)"; circle(x, y, 7.5);
   ctx.strokeStyle = "#ffd96a"; ctx.lineWidth = 1.5;
@@ -128,7 +144,12 @@ function drawWorld() {
   for (const l of world.lamps) if (inView(l.x - 10, l.y - 10, 20, 20)) drawLampPost(l);
   for (const o of world.loot.query(cam.x - 40, cam.y - 40, cam.x + W + 40, cam.y + H + 40)) if (o.kind !== "door" && o.kind !== "car" && !(o.kind === "dumpster" && modelOk("dumpster"))) drawLootObj(o);
   for (const c of world.corpses) if (inView(c.x, c.y, c.w, c.h, 20)) drawCorpse(c);
-  for (const c of world.cars) if (inView(c.x, c.y, c.w, c.h, 20)) { carUnder(c); if (!carModel(c)) drawCar(c); carOver(c); }  // furgões 3D: drawSortedScene
+  for (const c of world.cars) if (inView(c.x, c.y, c.w, c.h, 20)) { carUnder(c); if (!carModel(c)) {
+      if (lootSpotActive(c) && c.searchable) {
+        ctx.save(); ctx.filter = LOOT_YELLOW_FILTER; drawCar(c); ctx.restore();
+        drawLootQuestion(c, c.x + c.w / 2, c.y - 12);
+      } else drawCar(c);
+    } carOver(c); }  // furgões 3D: drawSortedScene
   for (const o of world.bodies) if (inView(o.x, o.y, o.w, o.h, 20)) drawBody(o);
   for (const b of world.buildings) if (inView(b.x, b.y, b.w, b.h, 20)) drawBuildingGround(b); // paredes e telhado: drawTall()
   drawAreaEdges();
@@ -267,6 +288,15 @@ function drawProp(p) {
 }
 
 function drawLootObj(o) {
+  const active = lootSpotActive(o);
+  if (active) { ctx.save(); ctx.filter = LOOT_YELLOW_FILTER; }
+  drawLootObjBase(o);
+  if (active) {
+    ctx.restore();
+    drawLootQuestion(o, o.x + o.w / 2, o.y - 12);
+  }
+}
+function drawLootObjBase(o) {
   const op = o.opened;
   if (o.kind === "trash") {
     ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(o.x + 2, o.y + 3, o.w, o.h);
@@ -283,7 +313,6 @@ function drawLootObj(o) {
     ctx.strokeStyle = "#4a3220"; ctx.lineWidth = 2; ctx.strokeRect(o.x + 1, o.y + 1, o.w - 2, o.h - 2);
     ctx.beginPath(); ctx.moveTo(o.x + 2, o.y + 2); ctx.lineTo(o.x + o.w - 2, o.y + o.h - 2); ctx.moveTo(o.x + o.w - 2, o.y + 2); ctx.lineTo(o.x + 2, o.y + o.h - 2); ctx.stroke();
   } else if (o.kind === "chest") drawChest(o);
-  if (!op) sparkle(o.x + o.w + 2, o.y - 2);
 }
 function drawChest(c) {
   ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(c.x + 3, c.y + 3, c.w, c.h);
@@ -294,6 +323,15 @@ function drawChest(c) {
   if (!c.opened) { ctx.fillStyle = "#d4af37"; ctx.fillRect(c.x + c.w / 2 - 3, c.y + 4, 6, 7); }
 }
 function drawCorpse(c) {
+  const active = lootSpotActive(c);
+  if (active) { ctx.save(); ctx.filter = LOOT_YELLOW_FILTER; }
+  drawCorpseBase(c);
+  if (active) {
+    ctx.restore();
+    drawLootQuestion(c, c.x + c.w / 2, c.y - 12);
+  }
+}
+function drawCorpseBase(c) {
   ctx.save(); ctx.translate(c.x + c.w / 2, c.y + c.h / 2); ctx.rotate(c.ang);
   const s = c.w / 26;
   ctx.fillStyle = "rgba(80,6,6,0.5)"; ellipse(2, 2, 19 * s, 13 * s);
@@ -302,7 +340,6 @@ function drawCorpse(c) {
   ctx.fillStyle = c.opened ? shade(c.cloth || "#4a5e38", -0.4) : c.cloth || "#4a5e38"; ellipse(0, 0, 12 * s, 8 * s);
   ctx.fillStyle = c.skin || "#7a9c55"; circle(13 * s, 1 * s, 6 * s);
   ctx.restore();
-  if (!c.opened) sparkle(c.x + c.w, c.y);
 }
 
 function drawCar(c) {
@@ -326,7 +363,6 @@ function drawCar(c) {
     ctx.fillStyle = "rgba(120,60,20,0.5)"; circle(4, 6, 5); circle(-6, -10, 3);
   }
   ctx.restore();
-  if (c.searchable && !c.opened) sparkle(c.x + c.w / 2, c.y - 6);
 }
 
 function drawBuilding(b) {
@@ -487,6 +523,15 @@ function drawStairs(f) {
 }
 
 function drawFurniture(f) {
+  const active = lootSpotActive(f) && (f.kind === "furniture" || f.kind === "chest");
+  if (active) { ctx.save(); ctx.filter = LOOT_YELLOW_FILTER; }
+  drawFurnitureBase(f);
+  if (active) {
+    ctx.restore();
+    drawLootQuestion(f, f.x + f.w / 2, f.y - 13);
+  }
+}
+function drawFurnitureBase(f) {
   const { x, y, w, h } = f;
   ctx.globalAlpha = f.opened ? 0.6 : 1;
   const n = f.name;
@@ -586,7 +631,6 @@ function drawFurniture(f) {
   ctx.globalAlpha = 1;
   const near = Math.hypot(player.x - (x + w / 2), player.y - (y + h / 2)) < 140;
   if (SAFE_KINDS.includes(f.kind) || near) txt(n, x + w / 2, y + h + 16, 12, SAFE_KINDS.includes(f.kind) ? "#e5e0c8" : "rgba(229,224,200,0.8)", "center", true);
-  if (!f.opened && f.searchable !== false && f.kind !== "exit" && !SAFE_KINDS.includes(f.kind)) sparkle(x + w + 2, y - 2);
 }
 function drawDecor(f) {
   const { x, y, w, h } = f, n = f.name;
