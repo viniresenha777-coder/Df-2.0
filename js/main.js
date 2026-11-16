@@ -256,9 +256,16 @@ function update(dt) {
   // o frame de atraso entre ponteiro, cano da arma e projétil.
   updateCam(dt);
   const ox = cam.x, oy = cam.y;
-  player.angle = Math.atan2(mouse.y + oy - player.y, mouse.x + ox - player.x);
+  // Zona morta da mira em torno do tronco: quando o mouse encosta no
+  // personagem, mantém a última direção válida. O pivô visual fica
+  // acima dos pés, onde o corpo realmente está desenhado.
+  const aimDX = mouse.x + ox - player.x;
+  const aimDY = mouse.y + oy - (player.y - 14);
+  if (Math.hypot(aimDX, aimDY) > 34) {
+    player.angle = Math.atan2(aimDY, aimDX);
+  }
   spriteTick(dt);
-  updateWeaponAim(); // antes de atirar e desenhar: cano, tiro e mouse sincronizados
+  updateWeaponAim(); // arma, clarão e projétil seguem a mesma direção
 
   // tiro e recarga
   const w = curW(), inst = curInst();
