@@ -73,7 +73,7 @@ window.addEventListener("keydown", (e) => {
   if (["tab", " ", "arrowup", "arrowdown", "arrowleft", "arrowright", "backspace", "f2"].includes(k)) e.preventDefault();
   if (e.repeat && !game.menu) return;
   if (k === "f2") { toggleAdmin(); return; }
-  if (game.over) { if (k === "enter") resetGame(); return; }
+  if (game.over) { if (k === "enter") respawnPlayer(); return; }
   if (game.quitting) return;
   if (game.found) { foundKey(k); return; }
   if (k === "u" && !e.repeat && !game.shop && !game.over && !game.menu) {
@@ -248,7 +248,7 @@ function update(dt) {
     game.banner = { text: "Golpe fatal evitado!", sub: "O implante Desafia-Morte te segurou em pé", t: 1800, gold: true };
   }
   lastStandTick();
-  if (player.hp <= 0) { player.hp = 0; game.over = true; game.lost = game.money; mouse.down = false; stat("deaths"); clearRun(); }
+  if (player.hp <= 0) recordDeath();
 }
 
 function updateCam(dt) {

@@ -298,7 +298,7 @@ function packAct() {
   } else if (it.kind === "weapon") {
     const e = player.slots.indexOf(null);
     equipTo(e >= 0 ? e : player.cur);
-  } else toast("Materiais ficam na mochila até você usar na oficina");
+  } else toast(MATS[it.id].cashProtection ? safeDescription(it.id) + " Basta carregar na mochila." : "Materiais ficam na mochila até você usar na oficina");
 }
 function packDiscard() {
   const inv = packSel(), it = selItem(inv.sel);
@@ -368,8 +368,8 @@ function drawPack() {
     drawMatIcon(it.id, px + pw / 2, 160, 1.6);
     txt(MATS[it.id].name, px, 250, 18, "#f2eedc", "left", true);
     txt(`Quantidade: ${it.qty}`, px, 274, 13, "#c9c4ad");
-    txt("Usado na oficina dos postos para criar", px, 300, 12, "#a9a58f");
-    txt("armas especiais e melhorar as suas.", px, 316, 12, "#a9a58f");
+    txt(MATS[it.id].cashProtection ? safeDescription(it.id) : "Usado na oficina dos postos para criar", px, 300, 12, "#a9a58f", "left", false, pw);
+    txt(MATS[it.id].cashProtection ? "Na mochila; vale o maior cofre. Reutilizável." : "armas especiais e melhorar as suas.", px, 316, 12, "#a9a58f", "left", false, pw);
   } else txt("Espaço vazio", px + pw / 2, 280, 15, "#6d6a58", "center");
   const ammoTxt = Object.keys(AMMO).filter((t) => player.reserve[t] > 0).map((t) => `${t}: ${player.reserve[t]}`).join(" · ") || "sem munição de reserva";
   const Q = player.foodQ;
@@ -413,6 +413,7 @@ function vaultMove() {
     toast(`Pegou do baú: ${it.kind === "weapon" ? instName(it) : MATS[it.id].name}`);
     game.vcur = Math.max(0, Math.min(game.vcur, save.vault.length - 1));
   }
+  save.run = runSnapshot();
   persist();
 }
 function stashKey(k) {
@@ -430,7 +431,7 @@ function drawListItem(it, x, y, w, sel, sub) {
 }
 function drawStash() {
   game.vside = game.vside || 0; game.vcur = game.vcur || 0;
-  menuFrame("Baú da base", "O que fica no baú não se perde quando você morre. Armas e materiais da mochila se perdem.");
+  menuFrame("Baú da base", "Armas e itens são preservados ao morrer. Cofres só protegem dinheiro quando estão na mochila.");
   const mine = myList(), cols = [[mine.map((e) => ({ it: e.it, sub: e.where === "slot" ? `slot ${e.i + 1}` : "mochila" })), `Com você (${packUsed()}/${PACK_MAX} na mochila)`],
     [save.vault.map((it) => ({ it, sub: "" })), `Baú (${save.vault.length}/${VAULT_MAX})`]];
   cols.forEach(([list, title], side) => {
@@ -450,7 +451,7 @@ function drawStash() {
 // =====================================================================
 //  Loja dos postos
 // =====================================================================
-const SHOP_TABS = ["Armas", "Munição", "Coletes", "Materiais"];
+const SHOP_TABS = ["Armas", "Munição", "Coletes", "Materiais", "Cofres"];
 const CAT_ORDER = { pistols: 0, machinegun: 1, shotguns: 2, rifles: 3, melee: 4 };
 const SHOP_WEAPONS = WLIST.filter((d) => d.rar <= 3 && !d.craftOnly && !d.fists && d.price > 0).sort((a, b) => CAT_ORDER[a.cat] - CAT_ORDER[b.cat] || a.price - b.price);
 function shopList() {
@@ -458,6 +459,7 @@ function shopList() {
   if (t === 0) return SHOP_WEAPONS;
   if (t === 1) return Object.keys(AMMO);
   if (t === 2) return VESTS.map((v, i) => i);
+  if (t === 4) return SAFE_IDS;
   return ["sucata", "pecas", "eletronicos"];
 }
 function openShop() {
@@ -484,6 +486,7 @@ function shopBuy() {
     if (game.money < m.price) { toast("Dinheiro insuficiente"); return; }
     if (!addMat(item, 1)) { toast("Mochila cheia"); return; }
     game.money -= m.price; sfx.buy(); toast(`+1 ${m.name}`);
+    if (m.cashProtection) checkpoint("compra de cofre");
   }
 }
 function vestText(v) {
@@ -515,7 +518,7 @@ function shopKey(k) {
 function drawShop() {
   menuFrame("Loja do posto", `Dinheiro: $${game.money}  ·  Mochila: ${packUsed()}/${PACK_MAX}  ·  Colete: ${save.vest >= 0 ? VESTS[save.vest].name : "nenhum"}`);
   SHOP_TABS.forEach((t, i) => {
-    const x = 60 + i * 130, sel = game.shopTab === i;
+    const x = 40 + i * 105, sel = game.shopTab === i;
     txt(t, x + 55, 104, 15, sel ? "#ffd96a" : "#6d6a58", "center", true);
     if (sel) { ctx.fillStyle = "#ffd96a"; ctx.fillRect(x + 15, 110, 80, 2); }
     regClick(x, 88, 110, 26, () => { game.shopTab = i; game.shopCur = 0; });
@@ -557,6 +560,14 @@ function drawShop() {
   ctx.fillStyle = "rgba(0,0,0,0.25)"; rr(px - 10, 122, pw + 20, 380, 8); ctx.fill();
   if (t === 0 && sel) weaponDetail(sel, null, px, 130, pw);
   else if (t === 1 && sel) { drawEntryIcon({ type: "ammo", ammo: sel }, px + pw / 2, 200, 1.6); txt(`Munição ${sel}`, px, 290, 18, "#f2eedc", "left", true); txt(`Usada por: ${WLIST.filter((d) => d.ammo === sel).map((d) => d.short || d.name).join(", ")}`, px, 314, 12, "#a9a58f", "left", false, pw); }
+  else if (t === 4 && sel) {
+    drawMatIcon(sel, px + pw / 2, 200, 1.6);
+    txt(MATS[sel].name, px, 290, 18, "#f2eedc", "left", true);
+    txt(safeDescription(sel), px, 314, 12, "#ffd96a", "left", false, pw);
+    txt("Funciona apenas na mochila; no baú não protege.", px, 338, 11, "#a9a58f", "left", false, pw);
+    txt("Vale o maior limite. Não é consumido ao morrer.", px, 358, 11, "#a9a58f", "left", false, pw);
+    txt(`Proteção atual: $${cashProtection().toLocaleString("pt-BR")}`, px, 388, 12, "#6fae4f");
+  }
   else if (t === 3 && sel) { drawMatIcon(sel, px + pw / 2, 200, 1.6); txt(MATS[sel].name, px, 290, 18, "#f2eedc", "left", true); txt("Material da oficina (craft e melhorias)", px, 314, 12, "#a9a58f"); }
   else if (t === 2 && sel != null) {
     const v = VESTS[sel];

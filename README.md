@@ -65,3 +65,19 @@ A oficina tem abas de criação, melhorias de armas e melhorias de coletes. **Me
 Cada sorteio custa 2 sucatas e dinheiro conforme o equipamento (com desconto de Artesão). O preço aparece antes do botão e independe do resultado atual. As melhorias ficam salvas por colete, enquanto armas mantêm suas instâncias individuais. Saves antigos recebem zero pontos de melhoria nos coletes. As linhas mostram números, sem quadradinhos ou seleção de atributo.
 
 Execute também `node tests/upgrades.cjs` para verificar sorteios mínimos/mistos/máximos, custos, falta de recursos, efeitos dos coletes, salvamento, compatibilidade com saves antigos e controles da oficina.
+
+### Morte e cofres
+
+Ao morrer, o personagem mantém armas (com melhorias e munição carregada), itens, munição de reserva, consumíveis, implantes, créditos e saldo bancário. Ele retorna ao Refúgio com a saúde recuperada. Só o dinheiro carregado pode ser perdido. O inventário e o saldo restante são gravados já na tela de morte, para permitir fechar e reabrir o jogo antes de renascer.
+
+A aba **Cofres** da loja oferece:
+
+| Item | Limite protegido | Preço |
+| --- | ---: | ---: |
+| Cofre 10.000 | $10.000 | $1.000 |
+| Cofre 100.000 | $100.000 | $10.000 |
+| Cofre 500.000 | $500.000 | $50.000 |
+
+O cofre precisa estar na mochila. Não é consumido na morte e, se houver vários, vale o maior limite (não se somam). Cofres guardados no baú não protegem o dinheiro carregado. Por exemplo, morrer com $125.000 e um Cofre 100.000 preserva $100.000 e perde $25.000.
+
+Execute `node tests/death.cjs` para verificar limites, excedentes, inventário preservado, renascimento, recarga após a morte, compra e transferência dos cofres para o baú.

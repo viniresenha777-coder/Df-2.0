@@ -104,13 +104,28 @@ function drawQuitScreen() {
   txt(NATIVE ? "Fechando jogo..." : "Voltando à tela de login...", W / 2, H / 2, 16, "#a9a58f", "center");
 }
 
-// morreu: apaga o checkpoint da partida (o que não se perde ao morrer continua salvo)
-function clearRun() {
-  save.run = null;
-  storeWrite(JSON.stringify(save)).catch((error) => {
-    console.error("Erro ao atualizar save após morte:", error);
-    toast("Não foi possível salvar a perda do checkpoint.");
+// Save retained possessions immediately, before the player presses Enter or reloads.
+function recordDeath() {
+  if (game.over) return;
+  const carried = Math.max(0, game.money);
+  game.money = Math.min(carried, cashProtection());
+  game.lost = carried - game.money;
+  player.hp = 0; game.over = true; mouse.down = false;
+  stat("deaths");
+  const r = runSnapshot();
+  r.respawn = true;
+  // Recovery restores health; inventory quantities and loaded ammo stay unchanged.
+  r.p.hp = player.maxHp;
+  r.p.hunger = 100; r.p.thirst = 100; r.p.stamina = 100; r.p.infect = 0;
+  save.run = r;
+  return storeWrite(JSON.stringify(save)).catch((error) => {
+    console.error("Erro ao salvar os itens após morte:", error);
+    toast("Não foi possível salvar o renascimento. Tente novamente ao voltar à base.");
   });
+}
+function respawnPlayer() {
+  resetGame();
+  restoreRun();
 }
 
 function restoreRun() {
@@ -143,9 +158,10 @@ function restoreRun() {
     player.hp = Math.max(1, Math.min(player.maxHp, p.hp || player.maxHp));
     game.money = r.g.money | 0; game.clock = r.g.clock || game.clock; game.kills = r.g.kills | 0; game.best = r.g.best | 0; if (Number.isFinite(r.g.time)) game.time = Math.max(0, r.g.time);
     const c = cellAt(r.cx, r.cy);
-    if (c && !(c.tier === 8 && player.level < GRAY_LEVEL)) { game.restoring = true; gotoCell(c, { x: r.x, y: r.y }); game.restoring = false; }
+    if (!r.respawn && c && !(c.tier === 8 && player.level < GRAY_LEVEL)) { game.restoring = true; gotoCell(c, { x: r.x, y: r.y }); game.restoring = false; }
     game.snapCam = true;
-    toast("Progresso carregado do último checkpoint");
+    toast(r.respawn ? "Você voltou ao Refúgio com seus equipamentos e itens." : "Progresso carregado do último checkpoint");
+    if (r.respawn) checkpoint("renascimento");
   } catch (e) { save.run = null; game.restoring = false; }
 }
 function checkpointTick(dt) {

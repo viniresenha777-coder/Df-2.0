@@ -1309,6 +1309,6 @@ function drawGameOver() {
   ctx.fillStyle = "rgba(20,0,0,0.75)"; ctx.fillRect(0, 0, W, H);
   txt("Você morreu", W / 2, H / 2 - 40, 52, "#e5e0c8", "center", true);
   txt(`Área mais perigosa: ${REGIONS[regionOf(game.best)].name} · ${game.kills} abates · ${game.score} pontos · ${clockText()}`, W / 2, H / 2 + 6, 18, "#c9c4ad", "center");
-  txt(`Dinheiro da mochila perdido: $${game.lost} · Banco protegido: $${save.bank}${player.bag.length ? ` · Implantes não instalados perdidos: ${player.bag.length}` : ""}`, W / 2, H / 2 + 36, 15, "#c9c4ad", "center", false, W - 60);
-  txt("Armas fora do baú também se perdem. Aperte Enter para tentar de novo", W / 2, H / 2 + 76, 17, "#ffd96a", "center", true);
+  txt(`Dinheiro perdido: $${game.lost} · Protegido pelo cofre: $${game.money} · Banco: $${save.bank}`, W / 2, H / 2 + 36, 15, "#c9c4ad", "center", false, W - 60);
+  txt("Armas, itens e créditos preservados. Enter para voltar ao Refúgio", W / 2, H / 2 + 76, 17, "#ffd96a", "center", true);
 }

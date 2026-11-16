@@ -465,7 +465,7 @@ function drawClinic() {
   txt("Meus implantes", W / 2 - 100, 100, 16, game.tab === 0 ? "#ffd96a" : "#6d6a58", "center", true);
   txt("Loja", W / 2 + 100, 100, 16, game.tab === 1 ? "#ffd96a" : "#6d6a58", "center", true);
   if (game.tab === 0) {
-    txt("Na mochila (somem se você morrer)", 40, 126, 13, "#a9a58f");
+    txt("Na mochila (preservados ao morrer)", 40, 126, 13, "#a9a58f");
     txt("Instalados, na ordem dos slots (permanentes)", 500, 126, 13, "#a9a58f");
     const pts = (im) => (IMP[im.id].alloc ? `${allocUsed(im)}/${IMP[im.id].alloc.points} pts` : IMP[im.id].mimic ? "copia ←" : "");
     player.bag.forEach((im, i) => drawImplantRow(40, 134 + i * 32, 440, im, game.cur === i, pts(im)));
