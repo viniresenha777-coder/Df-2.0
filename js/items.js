@@ -141,8 +141,17 @@ const MATS = {
   pecas:       { name: "Peças de arma",            price: 90 },
   eletronicos: { name: "Componentes eletrônicos",  price: 140 },
   nucleo:      { name: "Núcleo raro",              price: 0 },
-  placa:       { name: "Placa de blindagem",       price: 0 }
+  placa:       { name: "Placa de blindagem",       price: 0 },
+  cofre10k:    { name: "Cofre 10.000", price: 1000, cashProtection: 10000 },
+  cofre100k:   { name: "Cofre 100.000", price: 10000, cashProtection: 100000 },
+  cofre500k:   { name: "Cofre 500.000", price: 50000, cashProtection: 500000 }
 };
+const SAFE_IDS = ["cofre10k", "cofre100k", "cofre500k"];
+function cashProtection(pack = player.pack) {
+  return pack.reduce((limit, it) => Math.max(limit,
+    it && it.kind === "mat" && it.qty > 0 ? (MATS[it.id] && MATS[it.id].cashProtection) || 0 : 0), 0);
+}
+function safeDescription(id) { return `Protege até $${MATS[id].cashProtection.toLocaleString("pt-BR")} ao morrer.`; }
 const RECIPES = [
   { id: "besta",       mats: { sucata: 4, pecas: 4 },                     money: 1200, level: 8 },
   { id: "serra",       mats: { sucata: 6, pecas: 3, eletronicos: 3 },     money: 1500, level: 10 },
@@ -168,11 +177,31 @@ function upEffect(d, stat, lv) {
   if (stat === "acc") return d.melee ? `+${lv * 4}% de alcance` : `-${lv * 9}% de dispersão`;
   return d.melee ? `-${lv * 4}% de tempo entre golpes` : `-${lv * 6}% no tempo de recarga`;
 }
-function upgradeCost(inst, stat) {
-  const d = WDEF[inst.id], L = inst.up[stat];
-  const base = 120 + (d.special || d.legendary ? 3000 : d.price) * 0.12;
-  return { money: Math.round(base * (L + 1)), mats: { sucata: L + 1, pecas: Math.max(0, L - 2), eletronicos: L >= 6 ? L - 5 : 0 } };
+// Each roll replaces every stat, including when the old roll was stronger.
+function rollUpgrades(stats, max, random = Math.random) {
+  return Object.fromEntries(stats.map(s => [s.id, 1 + Math.floor(random() * max)]));
 }
+function upgradeCost(inst) {
+  const d = WDEF[inst.id];
+  return { money: Math.round(240 + (d.special || d.legendary ? 3000 : d.price) * 0.24), mats: { sucata: 2 } };
+}
+const VEST_UP_MAX = 24;
+const VEST_UP_STATS = [{ id: "armor", name: "Armadura" }, { id: "speed", name: "Velocidade" }];
+function cleanVestUpgrade(up) {
+  const out = {};
+  for (const s of VEST_UP_STATS) {
+    const n = Number(up && up[s.id]);
+    out[s.id] = Number.isFinite(n) ? clamp(Math.floor(n), 0, VEST_UP_MAX) : 0;
+  }
+  return out;
+}
+function vestUpgrade(i = save.vest) {
+  return cleanVestUpgrade(i >= 0 && save.vestUpgrades ? save.vestUpgrades[i] : null);
+}
+function vestUpgradeCost(i) {
+  return { money: Math.round(240 + VESTS[i].price * 0.24), mats: { sucata: 2 } };
+}
+function vestSpeedBonus() { return vestUpgrade().speed; }
 
 // ---------- Instâncias de armas ----------
 const SLOT_N = 3, PACK_MAX = 20, VAULT_MAX = 40;
@@ -347,7 +376,14 @@ function drawWeaponSide(d, cx, cy, s) {
 }
 function drawMatIcon(id, cx, cy, s) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
-  if (id === "sucata") {
+  if (MATS[id] && MATS[id].cashProtection) {
+    ctx.fillStyle = "#59646b"; rr(-28, -24, 56, 48, 5); ctx.fill();
+    ctx.fillStyle = "#2d373d"; rr(-21, -18, 42, 36, 3); ctx.fill();
+    ctx.strokeStyle = "#b7c3ca"; ctx.lineWidth = 3; ctx.strokeRect(-21, -18, 42, 36);
+    ctx.fillStyle = id === "cofre500k" ? "#e0c341" : id === "cofre100k" ? "#73ceff" : "#b7c3ca";
+    circle(2, 0, 9); ctx.fillStyle = "#2d373d"; circle(2, 0, 3);
+    ctx.fillStyle = "#b7c3ca"; ctx.fillRect(-19, -10, 4, 20);
+  } else if (id === "sucata") {
     poly([[-30, 10], [-10, -14], [4, 2], [-8, 16]], "#7a7d80"); poly([[0, -10], [26, -16], [30, 4], [8, 8]], "#5a5d60"); poly([[-6, 6], [20, 4], [24, 20], [-2, 22]], "#8a6a4a");
   } else if (id === "pecas") {
     ctx.fillStyle = "#8a8f96"; circle(-10, 0, 16); ctx.fillStyle = "#3a3c3e"; circle(-10, 0, 6);

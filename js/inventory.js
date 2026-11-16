@@ -58,17 +58,10 @@ function weaponDetail(d, inst, x, y, w) {
   rows.forEach(([k, v], i) => { txt(k, x, y + 164 + i * rh, 12, "#a9a58f"); txt(v, x + w, y + 164 + i * rh, 12, k === "Efeito" || k === "Especial" ? "#ffb070" : "#e5e0c8", "right", true); });
   const ry = y + 168 + rows.length * rh;
   txt(`Exige: ${reqText(d)}`, x, ry, 12, canUse(d) ? "#6fae4f" : "#e05a4a", "left", true, w);
-  if (inst) drawUpPips(inst, x, ry + 14, w, -1);
+  if (inst) drawUpgradeValues(inst, x, ry + 14, w);
 }
-function drawUpPips(inst, x, y, w, selStat) {
-  UP_STATS.forEach((s, i) => {
-    const yy = y + i * 20, lv = inst.up[s.id];
-    txt(s.name, x, yy + 11, 11, selStat === i ? "#ffd96a" : "#a9a58f", "left", selStat === i);
-    for (let p = 0; p < UP_MAX; p++) {
-      ctx.fillStyle = p < lv ? (s.id === "dmg" ? "#e05a4a" : s.id === "acc" ? "#4aa3df" : "#e0c341") : "rgba(255,255,255,0.1)";
-      rr(x + w - UP_MAX * 13 + p * 13, yy + 2, 10, 10, 2); ctx.fill();
-    }
-  });
+function drawUpgradeValues(inst, x, y, w) {
+  UP_STATS.forEach((s, i) => txt(`${s.name} ${inst.up[s.id]}`, x, y + i * 20 + 11, 11, "#a9a58f", "left", false, w));
 }
 
 // =====================================================================
@@ -93,6 +86,7 @@ function entryName(e) {
 // coletes: guarda os que você tem e equipa o melhor automaticamente
 function gainVest(idx) {
   const had = save.vestsOwned[idx];
+  if (!had) { save.vestUpgrades = save.vestUpgrades || {}; save.vestUpgrades[idx] = cleanVestUpgrade(null); }
   save.vestsOwned[idx] = true;
   if (save.vest < 0 || VESTS[idx].armor > VESTS[save.vest].armor) { save.vest = idx; recalcImplants(); toast(`${VESTS[idx].name} equipado`); }
   else toast(had ? `Você já tem ${VESTS[idx].name}` : `${VESTS[idx].name} guardado (troque na mochila com V)`);
@@ -304,7 +298,7 @@ function packAct() {
   } else if (it.kind === "weapon") {
     const e = player.slots.indexOf(null);
     equipTo(e >= 0 ? e : player.cur);
-  } else toast("Materiais ficam na mochila até você usar na oficina");
+  } else toast(MATS[it.id].cashProtection ? safeDescription(it.id) + " Basta carregar na mochila." : "Materiais ficam na mochila até você usar na oficina");
 }
 function packDiscard() {
   const inv = packSel(), it = selItem(inv.sel);
@@ -374,8 +368,8 @@ function drawPack() {
     drawMatIcon(it.id, px + pw / 2, 160, 1.6);
     txt(MATS[it.id].name, px, 250, 18, "#f2eedc", "left", true);
     txt(`Quantidade: ${it.qty}`, px, 274, 13, "#c9c4ad");
-    txt("Usado na oficina dos postos para criar", px, 300, 12, "#a9a58f");
-    txt("armas especiais e melhorar as suas.", px, 316, 12, "#a9a58f");
+    txt(MATS[it.id].cashProtection ? safeDescription(it.id) : "Usado na oficina dos postos para criar", px, 300, 12, "#a9a58f", "left", false, pw);
+    txt(MATS[it.id].cashProtection ? "Na mochila; vale o maior cofre. Reutilizável." : "armas especiais e melhorar as suas.", px, 316, 12, "#a9a58f", "left", false, pw);
   } else txt("Espaço vazio", px + pw / 2, 280, 15, "#6d6a58", "center");
   const ammoTxt = Object.keys(AMMO).filter((t) => player.reserve[t] > 0).map((t) => `${t}: ${player.reserve[t]}`).join(" · ") || "sem munição de reserva";
   const Q = player.foodQ;
@@ -419,6 +413,7 @@ function vaultMove() {
     toast(`Pegou do baú: ${it.kind === "weapon" ? instName(it) : MATS[it.id].name}`);
     game.vcur = Math.max(0, Math.min(game.vcur, save.vault.length - 1));
   }
+  save.run = runSnapshot();
   persist();
 }
 function stashKey(k) {
@@ -436,7 +431,7 @@ function drawListItem(it, x, y, w, sel, sub) {
 }
 function drawStash() {
   game.vside = game.vside || 0; game.vcur = game.vcur || 0;
-  menuFrame("Baú da base", "O que fica no baú não se perde quando você morre. Armas e materiais da mochila se perdem.");
+  menuFrame("Baú da base", "Armas e itens são preservados ao morrer. Cofres só protegem dinheiro quando estão na mochila.");
   const mine = myList(), cols = [[mine.map((e) => ({ it: e.it, sub: e.where === "slot" ? `slot ${e.i + 1}` : "mochila" })), `Com você (${packUsed()}/${PACK_MAX} na mochila)`],
     [save.vault.map((it) => ({ it, sub: "" })), `Baú (${save.vault.length}/${VAULT_MAX})`]];
   cols.forEach(([list, title], side) => {
@@ -456,7 +451,7 @@ function drawStash() {
 // =====================================================================
 //  Loja dos postos
 // =====================================================================
-const SHOP_TABS = ["Armas", "Munição", "Coletes", "Materiais"];
+const SHOP_TABS = ["Armas", "Munição", "Coletes", "Materiais", "Cofres"];
 const CAT_ORDER = { pistols: 0, machinegun: 1, shotguns: 2, rifles: 3, melee: 4 };
 const SHOP_WEAPONS = WLIST.filter((d) => d.rar <= 3 && !d.craftOnly && !d.fists && d.price > 0).sort((a, b) => CAT_ORDER[a.cat] - CAT_ORDER[b.cat] || a.price - b.price);
 function shopList() {
@@ -464,6 +459,7 @@ function shopList() {
   if (t === 0) return SHOP_WEAPONS;
   if (t === 1) return Object.keys(AMMO);
   if (t === 2) return VESTS.map((v, i) => i);
+  if (t === 4) return SAFE_IDS;
   return ["sucata", "pecas", "eletronicos"];
 }
 function openShop() {
@@ -490,10 +486,12 @@ function shopBuy() {
     if (game.money < m.price) { toast("Dinheiro insuficiente"); return; }
     if (!addMat(item, 1)) { toast("Mochila cheia"); return; }
     game.money -= m.price; sfx.buy(); toast(`+1 ${m.name}`);
+    if (m.cashProtection) checkpoint("compra de cofre");
   }
 }
 function vestText(v) {
-  return `-${v.armor}% dano${v.slow ? ` · -${v.slow}% velocidade` : ""}${v.hp ? ` · +${v.hp} vida` : ""}${v.acid ? ` · -${v.acid}% ácido` : ""}${v.stealth ? ` · +${v.stealth}% furtividade` : ""}`;
+  const up = vestUpgrade(VESTS.indexOf(v));
+  return `-${v.armor + up.armor}% dano${up.speed ? ` · +${up.speed}% velocidade` : ""}${v.slow ? ` · -${v.slow}% velocidade` : ""}${v.hp ? ` · +${v.hp} vida` : ""}${v.acid ? ` · -${v.acid}% ácido` : ""}${v.stealth ? ` · +${v.stealth}% furtividade` : ""}`;
 }
 function buyVest(i) {
   const v = VESTS[i];
@@ -520,7 +518,7 @@ function shopKey(k) {
 function drawShop() {
   menuFrame("Loja do posto", `Dinheiro: $${game.money}  ·  Mochila: ${packUsed()}/${PACK_MAX}  ·  Colete: ${save.vest >= 0 ? VESTS[save.vest].name : "nenhum"}`);
   SHOP_TABS.forEach((t, i) => {
-    const x = 60 + i * 130, sel = game.shopTab === i;
+    const x = 40 + i * 105, sel = game.shopTab === i;
     txt(t, x + 55, 104, 15, sel ? "#ffd96a" : "#6d6a58", "center", true);
     if (sel) { ctx.fillStyle = "#ffd96a"; ctx.fillRect(x + 15, 110, 80, 2); }
     regClick(x, 88, 110, 26, () => { game.shopTab = i; game.shopCur = 0; });
@@ -562,6 +560,14 @@ function drawShop() {
   ctx.fillStyle = "rgba(0,0,0,0.25)"; rr(px - 10, 122, pw + 20, 380, 8); ctx.fill();
   if (t === 0 && sel) weaponDetail(sel, null, px, 130, pw);
   else if (t === 1 && sel) { drawEntryIcon({ type: "ammo", ammo: sel }, px + pw / 2, 200, 1.6); txt(`Munição ${sel}`, px, 290, 18, "#f2eedc", "left", true); txt(`Usada por: ${WLIST.filter((d) => d.ammo === sel).map((d) => d.short || d.name).join(", ")}`, px, 314, 12, "#a9a58f", "left", false, pw); }
+  else if (t === 4 && sel) {
+    drawMatIcon(sel, px + pw / 2, 200, 1.6);
+    txt(MATS[sel].name, px, 290, 18, "#f2eedc", "left", true);
+    txt(safeDescription(sel), px, 314, 12, "#ffd96a", "left", false, pw);
+    txt("Funciona apenas na mochila; no baú não protege.", px, 338, 11, "#a9a58f", "left", false, pw);
+    txt("Vale o maior limite. Não é consumido ao morrer.", px, 358, 11, "#a9a58f", "left", false, pw);
+    txt(`Proteção atual: $${cashProtection().toLocaleString("pt-BR")}`, px, 388, 12, "#6fae4f");
+  }
   else if (t === 3 && sel) { drawMatIcon(sel, px + pw / 2, 200, 1.6); txt(MATS[sel].name, px, 290, 18, "#f2eedc", "left", true); txt("Material da oficina (craft e melhorias)", px, 314, 12, "#a9a58f"); }
   else if (t === 2 && sel != null) {
     const v = VESTS[sel];
@@ -642,14 +648,13 @@ function drawSkins() {
 //  Oficina: criar armas especiais e melhorar armas (até 8)
 // =====================================================================
 function craftWeapons() { return allMyWeapons().filter((it) => !WDEF[it.id].fists); }
+function craftVests() { return VESTS.map((v, i) => i).filter(i => save.vestsOwned[i]); }
 function craftKey(k) {
-  if (k === "tab") { game.ctab ^= 1; game.ccur = 0; game.cstat = 0; return; }
-  const len = game.ctab === 0 ? RECIPES.length : craftWeapons().length;
+  if (k === "tab") { game.ctab = ((game.ctab || 0) + 1) % 3; game.ccur = 0; game.cstat = 0; return; }
+  const len = game.ctab === 0 ? RECIPES.length : game.ctab === 1 ? craftWeapons().length : craftVests().length;
   if (k === "w" || k === "arrowup") game.ccur = Math.max(0, game.ccur - 1);
   else if (k === "s" || k === "arrowdown") game.ccur = Math.max(0, Math.min(len - 1, game.ccur + 1));
-  else if (game.ctab === 1 && (k === "a" || k === "arrowleft")) game.cstat = (game.cstat + 2) % 3;
-  else if (game.ctab === 1 && (k === "d" || k === "arrowright")) game.cstat = (game.cstat + 1) % 3;
-  else if (k === "enter") { if (game.ctab === 0) craftRecipe(); else upgradeWeapon(); }
+  else if (k === "enter") { if (game.ctab === 0) craftRecipe(); else if (game.ctab === 1) upgradeWeapon(); else upgradeVest(); }
   else if (k === "v") repairVest();
 }
 // o implante Artesão dá desconto no dinheiro da oficina
@@ -667,24 +672,40 @@ function craftRecipe() {
   game.money -= cost; stat("crafts");
   if (r.vest != null) {
     save.vestsOwned[r.needVest] = false;
+    if (save.vestUpgrades) delete save.vestUpgrades[r.needVest];
     if (save.vest === r.needVest) save.vest = -1;
     gainVest(r.vest); save.vest = r.vest; recalcImplants();
   } else { addWeapon(newInst(r.id)); registerWeapon(r.id); }
   persist(); sfx.level();
   game.banner = { text: `${recipeName(r)} criado!`, sub: r.vest != null ? "Colete equipado" : "Abra a mochila (B) para equipar", t: 2600, gold: true };
 }
+function payUpgrade(c) {
+  const cost = craftMoney(c.money);
+  if (game.money < cost) { toast(`Precisa de $${cost} na mochila`); return false; }
+  if (!hasMats(c.mats)) { toast("Faltam materiais"); return false; }
+  for (const m in c.mats) takeMat(m, c.mats[m]);
+  game.money -= cost;
+  return true;
+}
+function finishUpgrade(message) {
+  stat("upgrades");
+  // Weapon instances in slots/pack belong to the current run checkpoint.
+  save.run = runSnapshot();
+  persist(); sfx.buy(); toast(message);
+}
 function upgradeWeapon() {
   const it = craftWeapons()[game.ccur];
-  if (!it) return;
-  const s = UP_STATS[game.cstat].id;
-  if (it.up[s] >= UP_MAX) { toast(`${UP_STATS[game.cstat].name} já está no máximo (${UP_MAX})`); return; }
-  const c = upgradeCost(it, s), cost = craftMoney(c.money);
-  if (game.money < cost) { toast(`Precisa de $${cost} na mochila`); return; }
-  const need = {}; for (const m in c.mats) if (c.mats[m] > 0) need[m] = c.mats[m];
-  if (!hasMats(need)) { toast("Faltam materiais"); return; }
-  for (const m in need) takeMat(m, need[m]);
-  game.money -= cost; it.up[s]++; stat("upgrades"); persist(); sfx.buy();
-  toast(`${WDEF[it.id].name}: ${UP_STATS[game.cstat].name} ${it.up[s]}/${UP_MAX}`);
+  if (!it || !payUpgrade(upgradeCost(it))) return;
+  it.up = rollUpgrades(UP_STATS, UP_MAX);
+  finishUpgrade(`${WDEF[it.id].name}: Precisão ${it.up.acc} · Dano ${it.up.dmg} · Recarga ${it.up.rel}`);
+}
+function upgradeVest() {
+  const i = craftVests()[game.ccur];
+  if (i == null || !payUpgrade(vestUpgradeCost(i))) return;
+  save.vestUpgrades = save.vestUpgrades || {};
+  const up = save.vestUpgrades[i] = rollUpgrades(VEST_UP_STATS, VEST_UP_MAX);
+  recalcImplants();
+  finishUpgrade(`${VESTS[i].name}: Armadura ${up.armor} · Velocidade ${up.speed}`);
 }
 function matsLine(mats, x, y) {
   let xx = x;
@@ -704,8 +725,8 @@ function drawCraft() {
     const vd = Math.round(vestDur()), c = repairCost();
     btn(W - 270, 20, 230, 30, vd >= 100 ? `Colete ${vd}% (inteiro)` : `V: consertar colete ${vd}% · $${Math.max(1, c)}`, repairVest, vd < 100, vd >= 100);
   }
-  ["Criar armas especiais", "Melhorar armas"].forEach((t, i) => {
-    const x = 120 + i * 300, sel = game.ctab === i;
+  ["Criar equipamentos", "Melhorar armas", "Melhorar coletes"].forEach((t, i) => {
+    const x = 60 + i * 290, sel = game.ctab === i;
     txt(t, x + 100, 104, 15, sel ? "#ffd96a" : "#6d6a58", "center", true);
     if (sel) { ctx.fillStyle = "#ffd96a"; ctx.fillRect(x + 30, 110, 140, 2); }
     regClick(x, 88, 200, 26, () => { game.ctab = i; game.ccur = 0; game.cstat = 0; });
@@ -737,40 +758,41 @@ function drawCraft() {
     btn(px + 70, 470, 180, 40, "Criar (Enter)", craftRecipe, true);
     hint("W/S escolhe · Enter cria · Tab troca de aba · clique 2x para criar · E ou Esc fecha");
   } else {
-    const list = craftWeapons();
-    if (!list.length) txt("Você não tem armas para melhorar.", 300, 160, 15, "#6d6a58", "center");
+    const isVest = game.ctab === 2, list = isVest ? craftVests() : craftWeapons();
+    if (!list.length) txt(`Você não tem ${isVest ? "coletes" : "armas"} para melhorar.`, 300, 160, 15, "#6d6a58", "center");
     const vis = 9, off = Math.max(0, Math.min(list.length - vis, game.ccur - 4));
     list.slice(off, off + vis).forEach((it, j) => {
       const i = off + j, y = 124 + j * 42, sel = game.ccur === i;
-      drawListItem(it, 40, y, 520, sel, `P${it.up.acc} D${it.up.dmg} R${it.up.rel}`);
+      if (isVest) {
+        const up = vestUpgrade(it);
+        rowBox(40, y, 520, 34, sel);
+        txt(VESTS[it].name, 52, y + 22, 13, "#e5e0c8", "left", true, 330);
+        txt(`A${up.armor} V${up.speed}`, 548, y + 22, 12, "#ffd96a", "right");
+      } else drawListItem(it, 40, y, 520, sel, `P${it.up.acc} D${it.up.dmg} R${it.up.rel}`);
       rowClick(40, y, 520, 34, sel, () => { game.ccur = i; }, () => {});
     });
     const it = list[game.ccur];
-    if (it) {
-      const d = WDEF[it.id];
+    if (it != null) {
+      const d = isVest ? VESTS[it] : WDEF[it.id], up = isVest ? vestUpgrade(it) : it.up;
       ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(px, 130, pw, 90, 8); ctx.fill();
-      drawWeaponSide(d, px + pw / 2, 175, Math.min(1.6, (pw - 30) / 125));
-      txt(instName(it), px, 244, 17, "#f2eedc", "left", true, pw);
-      UP_STATS.forEach((s, i) => {
-        const y = 262 + i * 54, sel = game.cstat === i, lv = it.up[s.id];
-        rowBox(px, y, pw, 48, sel);
-        regClick(px, y, pw, 48, () => { if (game.cstat === i) upgradeWeapon(); else game.cstat = i; });
-        txt(`${s.name}  ${lv}/${UP_MAX}`, px + 10, y + 18, 13, sel ? "#ffd96a" : "#e5e0c8", "left", true);
-        txt(upEffect(d, s.id, lv), px + 10, y + 38, 11, "#a9a58f");
-        for (let p = 0; p < UP_MAX; p++) {
-          ctx.fillStyle = p < lv ? (s.id === "dmg" ? "#e05a4a" : s.id === "acc" ? "#4aa3df" : "#e0c341") : "rgba(255,255,255,0.1)";
-          rr(px + pw - 12 - (UP_MAX - p) * 14, y + 8, 11, 11, 2); ctx.fill();
-        }
+      if (isVest) drawVestIcon(it, px + pw / 2, 175, 1);
+      else drawWeaponSide(d, px + pw / 2, 175, Math.min(1.6, (pw - 30) / 125));
+      txt(isVest ? d.name : instName(it), px, 244, 17, "#f2eedc", "left", true, pw);
+      (isVest ? VEST_UP_STATS : UP_STATS).forEach((s, i) => {
+        const y = 262 + i * 48, lv = up[s.id];
+        rowBox(px, y, pw, 44, false);
+        txt(`${s.name} ${lv}`, px + 10, y + 17, 13, "#e5e0c8", "left", true);
+        const effect = isVest ? (s.id === "armor" ? `+${lv}% de proteção` : `+${lv}% de velocidade`) : upEffect(d, s.id, lv);
+        txt(effect, px + 10, y + 35, 11, "#a9a58f");
       });
-      const s = UP_STATS[game.cstat].id;
-      if (it.up[s] < UP_MAX) {
-        const c = upgradeCost(it, s);
-        txt(`Próximo nível: $${craftMoney(c.money)}`, px, 438, 13, game.money >= craftMoney(c.money) ? "#6fae4f" : "#e05a4a", "left", true);
-        matsLine(c.mats, px + 170, 438);
-        btn(px + 70, 460, 180, 40, "Melhorar (Enter)", upgradeWeapon, true);
-      } else txt("No máximo!", px + pw / 2, 450, 16, "#ffd96a", "center", true);
+      txt(`Sorteia todos: 1 a ${isVest ? VEST_UP_MAX : UP_MAX} por atributo.`, px, 422, 11, "#ffd96a", "left", false, pw);
+      txt("Substitui os valores atuais; pode diminuir.", px, 438, 11, "#a9a58f", "left", false, pw);
+      const c = isVest ? vestUpgradeCost(it) : upgradeCost(it), cost = craftMoney(c.money);
+      txt(`Sorteio: $${cost}`, px, 459, 13, game.money >= cost ? "#6fae4f" : "#e05a4a", "left", true);
+      matsLine(c.mats, px + 180, 459);
+      btn(px + 70, 474, 180, 36, "Melhorar (Enter)", isVest ? upgradeVest : upgradeWeapon, true);
     }
-    hint("W/S escolhe a arma · A/D escolhe o atributo · Enter melhora · Tab troca de aba · E ou Esc fecha");
+    hint("W/S escolhe o equipamento · Enter sorteia todos os atributos · Tab troca de aba · E ou Esc fecha");
   }
   menuToast();
 }

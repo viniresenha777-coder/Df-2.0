@@ -401,7 +401,7 @@ function drawInventory() {
       txt(`Exige: ${reqText(d)}`, 722, 346, 10, canUse(d) ? "#6fae4f" : "#e05a4a", "left", true, 200);
     } else if (info.type === "mat") {
       txt(`Quantidade: ${info.item.qty}`, 722, 314, 10, "#c9c4ad");
-      txt("Material para a oficina", 722, 330, 10, "#a9a58f");
+      txt(MATS[info.item.id].cashProtection ? safeDescription(info.item.id) : "Material para a oficina", 722, 330, 10, "#a9a58f", "left", false, 200);
     } else if (info.type === "vest") {
       const v = VESTS[info.item.i];
       txt(vestText(v), 722, 314, 10, "#c9c4ad", "left", false, 200);

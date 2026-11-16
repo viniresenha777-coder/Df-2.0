@@ -4,7 +4,7 @@
 const fmSocial = (() => {
   let channel = null, timer = null, userId = null, peers = new Map();
   let connected = false, tracking = false;
-  let sectorKey = "", sectorSince = Date.now();
+  let sectorKey = "", sectorSince = Date.now(), lastStateSent = 0;
   let moveChannel = null, moveTopic = "", moveReady = false, sendingMove = false;
   let lastPresenceKey = "", lastPresenceAt = 0, lastMoveKey = "", lastMoveAt = 0;
   const MOVE_INTERVAL = 180; // ~5,5 atualizações por segundo apenas enquanto se move
@@ -63,10 +63,18 @@ const fmSocial = (() => {
     return connecting;
   }
 
+  function location() {
+    const h = game && game.inside;
+    return h ? `house:${h.x}:${h.y}:${h.level | 0}` : "street";
+  }
+  function sameLocation(p) {
+    return !!world && p.cx === world.cell.cx && p.cy === world.cell.cy && p.location === location();
+  }
+  function topicFor(state) { return `fm-area-v2:${state.cx}:${state.cy}:${state.location}`; }
   function ownState() {
     if (!game || !player || !world || !save.name) return null;
-    const pos = game.inside && game.exitPos ? game.exitPos : player;
-    const cellKey = world.cell.cx + ":" + world.cell.cy;
+    const pos = player;
+    const cellKey = world.cell.cx + ":" + world.cell.cy + ":" + location();
     if (cellKey !== sectorKey) {
       sectorKey = cellKey;
       sectorSince = typeof fmWorld !== "undefined" ? fmWorld.nowMs() : Date.now();
@@ -75,9 +83,13 @@ const fmSocial = (() => {
       uid: userId, name: textName(save.name), cx: world.cell.cx, cy: world.cell.cy,
       x: Math.round(pos.x), y: Math.round(pos.y),
       angle: Number.isFinite(player.angle) ? player.angle : 0,
-      skin: save.skin | 0, inside: !!(game.inside || game.hub),
-      moving: !!player.moving, active: !(game.paused || game.menu || game.shop || game.over || game.found || game.hub || game.inside), since: sectorSince, sent: Date.now()
+      skin: save.skin | 0, location: location(), inside: !!(game.inside || game.hub),
+      moving: !!player.moving, active: !(game.paused || game.menu || game.shop || game.over || game.found || game.hub), since: sectorSince, sent: (lastStateSent = Math.max(Date.now(), lastStateSent + 1))
     };
+  }
+  function refreshLocation() {
+    const state = ownState();
+    if (state && topicFor(state) !== moveTopic) tickNetwork();
   }
   function tickNetwork() {
     if (!connected || !channel || !userId || myself() !== userId) return;
@@ -92,7 +104,7 @@ const fmSocial = (() => {
   // track() frequente envia o estado inteiro para todos e causa atraso.
   async function publish(force, state = ownState()) {
     if (!connected || !channel || !userId || tracking || !state || myself() !== userId) return;
-    const key = [state.cx, state.cy, state.inside, state.active, state.skin, state.name].join(":");
+    const key = [state.cx, state.cy, state.location, state.inside, state.active, state.skin, state.name].join(":");
     const now = Date.now();
     if (!force && key === lastPresenceKey && now - lastPresenceAt < 10000) return;
     lastPresenceKey = key;
@@ -110,7 +122,7 @@ const fmSocial = (() => {
 
   // Um canal de movimento por setor impede enviar movimentos a toda a cidade.
   function ensureMovementChannel(state) {
-    const topic = "fm-sector-v1:" + state.cx + ":" + state.cy;
+    const topic = topicFor(state);
     if (moveTopic === topic && moveChannel) return;
     const previous = moveChannel, client = db();
     moveChannel = null;
@@ -123,7 +135,7 @@ const fmSocial = (() => {
     if (!client) return;
     const next = client.channel(topic, { config: { broadcast: { ack: false, self: false } } });
     moveChannel = next;
-    next.on("broadcast", { event: "move" }, receiveMovement);
+    next.on("broadcast", { event: "move" }, event => { if (moveChannel === next) receiveMovement(event); });
     if (typeof fmWorld !== "undefined") fmWorld.onChannel(next);
     next.subscribe((status) => {
       if (moveChannel !== next) return;
@@ -135,10 +147,10 @@ const fmSocial = (() => {
   async function sendMovement(force, state = ownState()) {
     if (!moveReady || !moveChannel || !state || !userId || sendingMove ||
         myself() !== userId || !connected) return;
-    const topic = "fm-sector-v1:" + state.cx + ":" + state.cy;
+    const topic = topicFor(state);
     if (topic !== moveTopic) return;
     const now = Date.now();
-    const key = [state.x, state.y, state.angle.toFixed(2), state.moving, state.inside, state.skin].join(":");
+    const key = [state.x, state.y, state.angle.toFixed(2), state.moving, state.location, state.inside, state.skin].join(":");
     // Parado: nenhuma transmissão contínua; só um pulso periódico para novos vizinhos.
     if (!force && key === lastMoveKey && now - lastMoveAt < 3000) return;
     const active = moveChannel;
@@ -165,19 +177,19 @@ const fmSocial = (() => {
         !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.angle) ||
         !Number.isFinite(p.sent)) return;
     if (p.cx < 0 || p.cx >= MAP_W || p.cy < 0 || p.cy >= MAP_H ||
-        p.x < 0 || p.x > WORLD_W || p.y < 0 || p.y > WORLD_H) return;
+        p.x < 0 || p.x > Math.max(WORLD_W, W * 2) || p.y < 0 || p.y > Math.max(WORLD_H, H * 1.8)) return;
     if (p.sent < (prev.sent || 0)) return; // descarta pacotes antigos
-    if (moveTopic !== "fm-sector-v1:" + p.cx + ":" + p.cy) return;
+    if (moveTopic !== topicFor(p)) return;
     const now = performance.now();
     const pos = interpolate(prev, now);
-    const sameArea = p.cx === prev.cx && p.cy === prev.cy;
+    const sameArea = p.cx === prev.cx && p.cy === prev.cy && p.location === prev.location;
     const teleport = !sameArea || Math.hypot(pos.x - p.x, pos.y - p.y) > 160;
     peers.set(p.uid, {
       ...prev,
       cx: p.cx, cy: p.cy, x: p.x, y: p.y,
       fromX: teleport ? p.x : pos.x, fromY: teleport ? p.y : pos.y,
       at: now, angle: p.angle,
-      moving: !!p.moving, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0,
+      location: p.location, moving: !!p.moving, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0,
       skin: clamp(p.skin | 0, 0, SKINS.length - 1),
       sent: p.sent
     });
@@ -198,15 +210,15 @@ const fmSocial = (() => {
         next.set(p.uid, prev);
         continue;
       }
-      const x = clamp(p.x, 0, WORLD_W), y = clamp(p.y, 0, WORLD_H);
+      const x = clamp(p.x, 0, Math.max(WORLD_W, W * 2)), y = clamp(p.y, 0, Math.max(WORLD_H, H * 1.8));
       const pos = prev ? interpolate(prev, now) : { x, y };
-      const snap = !prev || prev.cx !== p.cx || prev.cy !== p.cy ||
+      const snap = !prev || prev.cx !== p.cx || prev.cy !== p.cy || prev.location !== p.location ||
                    Math.hypot(pos.x - x, pos.y - y) > 160;
       next.set(p.uid, {
         uid: p.uid, name: textName(p.name), cx: p.cx, cy: p.cy,
         x, y, fromX: snap ? x : pos.x, fromY: snap ? y : pos.y,
         at: now, angle: p.angle, skin: clamp(p.skin | 0, 0, SKINS.length - 1),
-        moving: !!p.moving, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0, sent: Number(p.sent) || 0
+        location: p.location, moving: !!p.moving, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0, sent: Number(p.sent) || 0
       });
     }
     peers = next;
@@ -220,7 +232,7 @@ const fmSocial = (() => {
   function inSector() {
     if (!world) return [];
     const now = performance.now();
-    return online().filter(p => !p.inside && p.cx === world.cell.cx && p.cy === world.cell.cy)
+    return online().filter(p => sameLocation(p))
       .map(p => ({ ...p, ...interpolate(p, now) }));
   }
   function isFriend(uid) { return friends.some(f => f.status === "aceito" && (f.solicitante === uid || f.destinatario === uid)); }
@@ -294,7 +306,7 @@ const fmSocial = (() => {
     } catch (_) { /* perder a conexão nunca impede o jogador de sair */ }
   }
   return { start, stop, claimName, online, inSector, friendList, isFriend,
-    refreshFriends, addFriend, acceptFriend, mySectorSince: () => sectorSince };
+    refreshFriends, addFriend, acceptFriend, location, sameLocation, refreshLocation, mySectorSince: () => sectorSince };
 })();
 
 // Jogadores remotos visíveis nas ruas. Personagens desenhados com a aparência

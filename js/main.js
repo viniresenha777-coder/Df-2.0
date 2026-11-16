@@ -73,7 +73,7 @@ window.addEventListener("keydown", (e) => {
   if (["tab", " ", "arrowup", "arrowdown", "arrowleft", "arrowright", "backspace", "f2"].includes(k)) e.preventDefault();
   if (e.repeat && !game.menu) return;
   if (k === "f2") { toggleAdmin(); return; }
-  if (game.over) { if (k === "enter") resetGame(); return; }
+  if (game.over) { if (k === "enter") respawnPlayer(); return; }
   if (game.quitting) return;
   if (game.found) { foundKey(k); return; }
   if (k === "u" && !e.repeat && !game.shop && !game.over && !game.menu) {
@@ -172,12 +172,12 @@ function update(dt) {
   if (adm.infStamina) { player.stamina = 100; player.exhausted = false; }
   game.objT -= dt;
   if (game.objT <= 0) { game.objT = 1000; objectivesTick(); }
-  if (!fmWorld.isFollower() || game.inside) eventsTick(dt);
+  if (!fmWorld.isFollower()) eventsTick(dt);
   gfxTick(dt);
   if (moving) {
     const slow = (player.flags.jugger ? 0 : (save.vest >= 0 ? VESTS[save.vest].slow || 0 : 0) + (curW().slow || 0)) - (player.fx.adren && player.hp / player.maxHp < 0.5 ? player.fx.adren : 0);
     player.moveAng = Math.atan2(dy, dx);
-    const len = Math.hypot(dx, dy), sp = (sprinting ? 3.38 * (1 + profVal("sprint")) : player.speed) * (1 + player.fx.agility / 100) * (1 + (A("agi") - 10) * 0.004) * (1 - slow / 100);
+    const len = Math.hypot(dx, dy), sp = (sprinting ? 3.38 * (1 + profVal("sprint")) : player.speed) * (1 + (player.fx.agility + vestSpeedBonus()) / 100) * (1 + (A("agi") - 10) * 0.004) * (1 - slow / 100);
     player.x += (dx / len) * sp * k; player.y += (dy / len) * sp * k;
     player.animT = (player.animT || 0) + dt; player.lastSp = sp * k / Math.max(0.01, dt / 16.67);
     if (!game.inside) save.stats.dist = S("dist") + sp * k;
@@ -228,7 +228,7 @@ function update(dt) {
   updateFuses(dt);
   updateParts(dt, k);
 
-  if (!fmWorld.isFollower() || game.inside) mapTick(dt);
+  if (!fmWorld.isFollower()) mapTick(dt);
   if (game.trans) return;
   if (!game.inside) {
     manageRows();
@@ -238,7 +238,7 @@ function update(dt) {
     world.corpses = world.corpses.filter((c) => (c.life -= dt) > 0);
   }
 
-  if (!fmWorld.isFollower() || game.inside) updateZombies(dt, k);
+  if (!fmWorld.isFollower()) updateZombies(dt, k);
   else fmWorld.localZombieThreats(dt);
   zombies = zombies.filter((z) => z.hp > 0);
   if (game.inside) game.inside.zombies = game.inside.zombies.filter((z) => z.hp > 0);
@@ -248,7 +248,7 @@ function update(dt) {
     game.banner = { text: "Golpe fatal evitado!", sub: "O implante Desafia-Morte te segurou em pé", t: 1800, gold: true };
   }
   lastStandTick();
-  if (player.hp <= 0) { player.hp = 0; game.over = true; game.lost = game.money; mouse.down = false; stat("deaths"); clearRun(); }
+  if (player.hp <= 0) recordDeath();
 }
 
 function updateCam(dt) {
@@ -292,6 +292,7 @@ function draw() {
   }
   if (game.inside) {
     for (const z of Zs()) { drawZombie(z); drawZombieExtra(z); }
+    for (const online of fmSocial.inSector()) drawOnlinePlayer(online);
     drawProjectiles();
     if (game.escort && !game.over) drawSurvivor(game.escort.x, game.escort.y, game.escort.ang, game.escort.walk, game.escort.moving);
     if (!game.over && !drawPlayerSprite()) drawPlayer();

@@ -46,3 +46,38 @@ https://viniresenha777-coder.github.io/Df-2.0/recuperar.html
 O workflow [.github/workflows/pages.yml](.github/workflows/pages.yml) publica automaticamente mudanças de `index.html`, `css/`, `js/` ou `img/` na `main`. Uma nova Release com um ZIP completo também pode atualizar o jogo.
 
 > A publicação do site é automática, mas a execução do SQL e as configurações de Auth dependem do proprietário do Supabase.
+
+### Regressões de multiplayer, interiores e bônus
+
+Execute `node tests/regressions.cjs` (Node.js 18+). O teste usa dois clientes com transporte Realtime simulado e percorre os setores do mapa, casas, andares, combate compartilhado e limites dos interiores grandes. Também verifica a mobília determinística de todos os tipos de prédio e os totais de bônus.
+
+Os canais identificam setor, prédio e andar. Móveis e decorações mantêm posições fixas; a disponibilidade de saque varia entre os móveis, com loot individual. Colete e implante somam proteção (limitada a 95%, considerando desgaste do colete), e o atributo Armadura aplica sua redução sobre o dano restante. O painel mostra a redução efetiva total. XP e dinheiro aparecem em linhas consecutivas, com os multiplicadores efetivos.
+
+Validação manual antes de publicar: abra duas contas em navegadores separados, atualize ambas para a mesma versão, atravesse áreas, entre na mesma casa e troque de andar. Verifique posições, zumbis e dano; jogadores em casas ou andares diferentes não devem aparecer juntos. Repita em hospital/prisão e após reconectar. Os testes simulados não substituem esta checagem no Supabase real.
+
+### Melhorias aleatórias na oficina
+
+A oficina tem abas de criação, melhorias de armas e melhorias de coletes. **Melhorar** (ou Enter) substitui todos os pontos do equipamento selecionado por um novo sorteio independente, que pode aumentar ou diminuir os valores:
+
+- Armas: Precisão, Dano e Velocidade de recarga, de 1 a 8 cada. Os efeitos por ponto permanecem os mesmos.
+- Coletes: Armadura e Velocidade, de 1 a 24 cada. Cada ponto adiciona 1 ponto percentual de proteção ou 1% de velocidade. A proteção adicional acompanha o desgaste; o bônus de velocidade soma com o dos implantes antes dos modificadores de peso e atributos.
+
+Cada sorteio custa 2 sucatas e dinheiro conforme o equipamento (com desconto de Artesão). O preço aparece antes do botão e independe do resultado atual. As melhorias ficam salvas por colete, enquanto armas mantêm suas instâncias individuais. Saves antigos recebem zero pontos de melhoria nos coletes. As linhas mostram números, sem quadradinhos ou seleção de atributo.
+
+Execute também `node tests/upgrades.cjs` para verificar sorteios mínimos/mistos/máximos, custos, falta de recursos, efeitos dos coletes, salvamento, compatibilidade com saves antigos e controles da oficina.
+
+### Morte e cofres
+
+Ao morrer, o personagem mantém armas (com melhorias e munição carregada), itens, munição de reserva, consumíveis, implantes, créditos e saldo bancário. Ele retorna ao Refúgio com a saúde recuperada. Só o dinheiro carregado pode ser perdido. O inventário e o saldo restante são gravados já na tela de morte, para permitir fechar e reabrir o jogo antes de renascer.
+
+A aba **Cofres** da loja oferece:
+
+| Item | Limite protegido | Preço |
+| --- | ---: | ---: |
+| Cofre 10.000 | $10.000 | $1.000 |
+| Cofre 100.000 | $100.000 | $10.000 |
+| Cofre 500.000 | $500.000 | $50.000 |
+
+O cofre precisa estar na mochila. Não é consumido na morte e, se houver vários, vale o maior limite (não se somam). Cofres guardados no baú não protegem o dinheiro carregado. Por exemplo, morrer com $125.000 e um Cofre 100.000 preserva $100.000 e perde $25.000.
+
+Execute `node tests/death.cjs` para verificar limites, excedentes, inventário preservado, renascimento, recarga após a morte, compra e transferência dos cofres para o baú.
