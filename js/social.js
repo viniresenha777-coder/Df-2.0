@@ -3,6 +3,11 @@
 // combate, economia e saves continuam individuais (não há servidor de combate).
 const fmSocial = (() => {
   let channel = null, timer = null, userId = null, peers = new Map();
+  let connected = false, tracking = false;
+  let moveChannel = null, moveTopic = "", moveReady = false, sendingMove = false;
+  let lastPresenceKey = "", lastPresenceAt = 0, lastMoveKey = "", lastMoveAt = 0;
+  const MOVE_INTERVAL = 180; // ~5,5 atualizações por segundo apenas enquanto se move
+  const BLEND_TIME = 175; // suavização curta, sem os 2 segundos de atraso anteriores
   let friends = [], profiles = new Map(), busy = false, connecting = null;
   const db = () => (typeof fmCloud !== "undefined" && fmCloud.socialClient ? fmCloud.socialClient() : null);
   const myself = () => (typeof fmCloud !== "undefined" && fmCloud.userId ? fmCloud.userId() : null);
@@ -34,15 +39,22 @@ const fmSocial = (() => {
         persist(); // servidor é a fonte de verdade do nome definitivo
       }
       userId = uid;
-      await refreshFriends().catch((error) => console.warn("Amigos não carregados:", error));
+      // Amigos não precisam bloquear a entrada no canal multiplayer.
+      refreshFriends().catch((error) => console.warn("Amigos não carregados:", error));
       if (myself() !== uid) return;
       channel = client.channel("fm-world-online-v1", { config: { presence: { key: uid } } });
       channel.on("presence", { event: "sync" }, syncPresence);
       channel.subscribe((status) => {
-        if (status === "SUBSCRIBED") publish(true);
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") console.warn("Conexão multiplayer temporariamente indisponível.");
+        connected = status === "SUBSCRIBED";
+        if (connected) {
+          publish(true);
+          const state = ownState();
+          if (state) ensureMovementChannel(state);
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("Presença multiplayer temporariamente indisponível.");
+        }
       });
-      timer = setInterval(() => { publish(false); }, 2200);
+      timer = setInterval(tickNetwork, MOVE_INTERVAL);
       window.addEventListener("pagehide", stop, { once: true });
     })().catch((err) => {
       console.warn("Multiplayer não iniciado:", err);
@@ -61,20 +73,109 @@ const fmSocial = (() => {
       moving: !!player.moving, sent: Date.now()
     };
   }
-  let lastSent = "", lastTime = 0, inflight = false;
-  async function publish(force) {
-    if (!channel || !userId || inflight || myself() !== userId) return;
+  function tickNetwork() {
+    if (!connected || !channel || !userId || myself() !== userId) return;
     const state = ownState();
     if (!state) return;
-    const compact = JSON.stringify([state.cx, state.cy, state.x, state.y, state.angle.toFixed(2), state.skin, state.inside, state.moving, state.name]);
-    const now = Date.now();
-    if (!force && compact === lastSent && now - lastTime < 14000) return;
-    lastSent = compact; lastTime = now;
-    inflight = true;
-    try { await channel.track(state); }
-    catch (error) { console.warn("Falha ao publicar posição multiplayer:", error); }
-    finally { inflight = false; }
+    ensureMovementChannel(state);
+    publish(false, state);      // presença online: poucas atualizações
+    sendMovement(false, state); // posição: Broadcast direto e rápido no setor atual
   }
+
+  // Presence é só para entrada/saída, área atual e estado inicial.
+  // track() frequente envia o estado inteiro para todos e causa atraso.
+  async function publish(force, state = ownState()) {
+    if (!connected || !channel || !userId || tracking || !state || myself() !== userId) return;
+    const key = [state.cx, state.cy, state.inside, state.skin, state.name].join(":");
+    const now = Date.now();
+    if (!force && key === lastPresenceKey && now - lastPresenceAt < 10000) return;
+    lastPresenceKey = key;
+    lastPresenceAt = now;
+    tracking = true;
+    try {
+      const status = await channel.track(state);
+      if (status && status !== "ok") throw new Error(String(status));
+    } catch (error) {
+      // Nova tentativa em breve, sem fazer várias chamadas em paralelo.
+      lastPresenceAt = Date.now() - 8000;
+      console.warn("Presença online temporariamente indisponível:", error);
+    } finally { tracking = false; }
+  }
+
+  // Um canal de movimento por setor impede enviar movimentos a toda a cidade.
+  function ensureMovementChannel(state) {
+    const topic = "fm-sector-v1:" + state.cx + ":" + state.cy;
+    if (moveTopic === topic && moveChannel) return;
+    const previous = moveChannel, client = db();
+    moveChannel = null;
+    moveTopic = topic;
+    moveReady = false;
+    sendingMove = false;
+    lastMoveKey = "";
+    lastMoveAt = 0;
+    if (previous && client) client.removeChannel(previous).catch(() => {});
+    if (!client) return;
+    const next = client.channel(topic, { config: { broadcast: { ack: false, self: false } } });
+    moveChannel = next;
+    next.on("broadcast", { event: "move" }, receiveMovement);
+    next.subscribe((status) => {
+      if (moveChannel !== next) return;
+      moveReady = status === "SUBSCRIBED";
+      if (moveReady) sendMovement(true);
+    });
+  }
+
+  async function sendMovement(force, state = ownState()) {
+    if (!moveReady || !moveChannel || !state || !userId || sendingMove ||
+        myself() !== userId || !connected) return;
+    const topic = "fm-sector-v1:" + state.cx + ":" + state.cy;
+    if (topic !== moveTopic) return;
+    const now = Date.now();
+    const key = [state.x, state.y, state.angle.toFixed(2), state.moving, state.inside, state.skin].join(":");
+    // Parado: nenhuma transmissão contínua; só um pulso periódico para novos vizinhos.
+    if (!force && key === lastMoveKey && now - lastMoveAt < 3000) return;
+    const active = moveChannel;
+    lastMoveKey = key;
+    lastMoveAt = now;
+    sendingMove = true;
+    try {
+      const status = await active.send({ type: "broadcast", event: "move", payload: state });
+      if (status && status !== "ok") throw new Error(String(status));
+    } catch (error) {
+      lastMoveAt = Date.now() - 2600;
+      // Reconexão é gerenciada automaticamente pelo cliente Supabase.
+      console.warn("Movimento online temporariamente indisponível:", error);
+    } finally { sendingMove = false; }
+  }
+
+  // Movimentos recebidos em baixa latência; Presence conserva o conjunto online.
+  function receiveMovement(event) {
+    const p = event && event.payload;
+    if (!p || typeof p.uid !== "string" || p.uid === userId) return;
+    const prev = peers.get(p.uid);
+    if (!prev) return; // somente usuários conhecidos via Presence
+    if (!Number.isInteger(p.cx) || !Number.isInteger(p.cy) ||
+        !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.angle) ||
+        !Number.isFinite(p.sent)) return;
+    if (p.cx < 0 || p.cx >= MAP_W || p.cy < 0 || p.cy >= MAP_H ||
+        p.x < 0 || p.x > WORLD_W || p.y < 0 || p.y > WORLD_H) return;
+    if (p.sent < (prev.sent || 0)) return; // descarta pacotes antigos
+    if (moveTopic !== "fm-sector-v1:" + p.cx + ":" + p.cy) return;
+    const now = performance.now();
+    const pos = interpolate(prev, now);
+    const sameArea = p.cx === prev.cx && p.cy === prev.cy;
+    const teleport = !sameArea || Math.hypot(pos.x - p.x, pos.y - p.y) > 160;
+    peers.set(p.uid, {
+      ...prev,
+      cx: p.cx, cy: p.cy, x: p.x, y: p.y,
+      fromX: teleport ? p.x : pos.x, fromY: teleport ? p.y : pos.y,
+      at: now, angle: p.angle,
+      moving: !!p.moving, inside: !!p.inside,
+      skin: clamp(p.skin | 0, 0, SKINS.length - 1),
+      sent: p.sent
+    });
+  }
+
   function syncPresence() {
     if (!channel) return;
     const state = channel.presenceState(), next = new Map(), now = performance.now();
@@ -84,20 +185,28 @@ const fmSocial = (() => {
           !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.angle)) continue;
       if (p.cx < 0 || p.cx >= MAP_W || p.cy < 0 || p.cy >= MAP_H) continue;
       const prev = peers.get(p.uid);
-      const originX = prev ? interpolate(prev, now).x : p.x, originY = prev ? interpolate(prev, now).y : p.y;
+      // Presence periódica não deve voltar a posição para trás quando já recebemos
+      // um movimento mais novo pelo canal Broadcast.
+      if (prev && (prev.sent || 0) >= (Number(p.sent) || 0)) {
+        next.set(p.uid, prev);
+        continue;
+      }
+      const x = clamp(p.x, 0, WORLD_W), y = clamp(p.y, 0, WORLD_H);
+      const pos = prev ? interpolate(prev, now) : { x, y };
+      const snap = !prev || prev.cx !== p.cx || prev.cy !== p.cy ||
+                   Math.hypot(pos.x - x, pos.y - y) > 160;
       next.set(p.uid, {
         uid: p.uid, name: textName(p.name), cx: p.cx, cy: p.cy,
-        x: clamp(p.x, 0, WORLD_W), y: clamp(p.y, 0, WORLD_H),
-        fromX: prev && prev.cx === p.cx && prev.cy === p.cy ? originX : p.x,
-        fromY: prev && prev.cx === p.cx && prev.cy === p.cy ? originY : p.y,
+        x, y, fromX: snap ? x : pos.x, fromY: snap ? y : pos.y,
         at: now, angle: p.angle, skin: clamp(p.skin | 0, 0, SKINS.length - 1),
-        moving: !!p.moving, inside: !!p.inside
+        moving: !!p.moving, inside: !!p.inside, sent: Number(p.sent) || 0
       });
     }
     peers = next;
   }
+
   function interpolate(p, now) {
-    const t = Math.min(1, (now - p.at) / 2000);
+    const t = Math.min(1, Math.max(0, (now - p.at) / BLEND_TIME));
     return { x: p.fromX + (p.x - p.fromX) * t, y: p.fromY + (p.y - p.fromY) * t };
   }
   function online() { return Array.from(peers.values()); }
@@ -164,15 +273,18 @@ const fmSocial = (() => {
   }
   async function stop() {
     if (timer) clearInterval(timer);
-    timer = null; userId = null; peers.clear(); friends = []; profiles.clear(); lastSent = "";
-    if (channel) {
-      const old = channel; channel = null;
-      try {
-        const client = db();
-        await old.untrack();
-        if (client) await client.removeChannel(old);
-      } catch (_) {}
-    }
+    timer = null; connected = false; tracking = false; sendingMove = false;
+    userId = null; peers.clear(); friends = []; profiles.clear();
+    lastPresenceKey = ""; lastPresenceAt = 0; lastMoveKey = ""; lastMoveAt = 0;
+    const client = db(), oldPresence = channel, oldMovement = moveChannel;
+    channel = null; moveChannel = null; moveTopic = ""; moveReady = false;
+    try {
+      if (oldPresence) {
+        await oldPresence.untrack();
+        if (client) await client.removeChannel(oldPresence);
+      }
+      if (oldMovement && client) await client.removeChannel(oldMovement);
+    } catch (_) { /* perder a conexão nunca impede o jogador de sair */ }
   }
   return { start, stop, claimName, online, inSector, friendList, isFriend,
     refreshFriends, addFriend, acceptFriend };
