@@ -105,7 +105,7 @@ window.addEventListener("keydown", (e) => {
     return;
   }
   if (game.menu) { menuKey(k); return; }
-  if (game.shop) { game.shop = false; return; }
+  if (game.shop) { shopKey(k); return; }
   if (game.hub && (k === "escape" || k === "e")) { leaveHouse(); return; }
   if (game.hub && (k === "r" || k === "f" || k === "p" || k === "l")) { if (k === "f") eat(); return; }
   if (game.paused) { if (k === "escape" || k === "p") togglePause(); return; }
@@ -175,8 +175,8 @@ function update(dt) {
   // Horário da cidade sincronizado pelo servidor em fmWorld.tick().
 
   const meta = 1 - Math.min(0.8, player.fx.metabolism / 100);
-  player.hunger = Math.max(0, player.hunger - 0.12 * sec * meta);
-  player.thirst = Math.max(0, player.thirst - 0.17 * sec * meta);
+  player.hunger = Math.max(0, player.hunger - 0.084 * sec * meta);
+  player.thirst = Math.max(0, player.thirst - 0.119 * sec * meta);
   if (adm.noHunger) { player.hunger = 100; player.thirst = 100; }
   const fed = player.hunger > 0 && player.thirst > 0;
   if (fed && player.fx.regen > 0) player.hp = Math.min(player.maxHp, player.hp + player.fx.regen * sec);
