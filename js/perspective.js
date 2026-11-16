@@ -180,7 +180,9 @@ function drawSortedScene() {
   for (const b of world.buildings) if (inView(b.x - 140, b.y - 40, b.w + 280, b.h + 260)) list.push({ y: b.y + b.h, f: () => drawBuildingTall(b, e) });
   for (const l of world.lamps) if (inView(l.x - 80, l.y - 120, 160, 200)) list.push({ y: l.y, f: () => drawLampTall(l, e) });
   // cenário 3D, furgões e caçambas (ordenados pela beirada de baixo, como os prédios)
-  for (const m of world.models || []) if (inView(m.x - 160, m.y - 220, 320, 300)) list.push({ y: m.south, f: () => drawModel(m.id, m.x, m.y, m.k) });
+  for (const m of world.models || []) if (!m.bodyReplacement &&
+      inView(m.x - 160, m.y - 220, 320, 300))
+    list.push({ y: m.south, f: () => drawModel(m.id, m.x, m.y, m.k) });
   for (const c of world.cars) if (carModel(c) && inView(c.x - 20, c.y - 60, c.w + 40, c.h + 80)) list.push({ y: c.y + c.h, f: () => drawCarModel(c) });
   if (modelOk("dumpster")) for (const o of world.loot.query(cam.x - 60, cam.y - 60, cam.x + W + 60, cam.y + H + 100)) if (o.kind === "dumpster") list.push({ y: o.y + o.h, f: () => { if (!drawDumpsterModel(o)) drawLootObj(o); } });
   for (const g of world.guards || []) if (inView(g.x - 32, g.y - 75, 64, 115)) list.push({ y: g.y + 0.2, f: () => drawBaseGuard(g) });
