@@ -367,6 +367,7 @@ function loop(now) {
   game.flashes = game.flashes.filter((f) => (f.t -= dt) > 0);
   game.floats = game.floats.filter((f) => (f.t -= dt) > 0);
   fmWorld.tick(); // relógio global e snapshots dos zumbis, inclusive durante pausas
+  floorPursuitTick(now); // perseguidores atravessam a escada após 2 segundos
   groundDropsTick(now); // o prazo dos itens continua correndo mesmo com menus abertos
   update(dt);
   checkpointTick(dt);
