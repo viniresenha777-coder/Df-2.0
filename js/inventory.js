@@ -463,6 +463,7 @@ function shopList() {
   return ["sucata", "pecas", "eletronicos"];
 }
 function openShop() {
+  return; // Loja removida das interações; preserva a arte.
   if (!inSafe() && !adm.shopAnywhere) { toast("A loja fica no balcão dos postos seguros"); return; }
   game.shop = true; game.shopTab = game.shopTab || 0; game.shopCur = game.shopCur || 0;
 }
