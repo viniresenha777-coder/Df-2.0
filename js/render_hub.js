@@ -156,6 +156,9 @@ fetch("img/loja-creditos.b64")
   .then(encoded => { CREDIT_SHOP_BUTTON_ART.src = "data:image/webp;base64," + encoded.trim(); })
   .catch(error => console.warn("Falha ao carregar botão Loja de Créditos:", error));
 
+const FM_BASE_INTERIOR_BG = new Image();
+FM_BASE_INTERIOR_BG.src = "img/fm_interior.webp?v=20261116-interior2";
+
 const HUB_ART = new Image();
 HUB_ART.onerror = () => { HUB_ART.bad = true; };
 HUB_ART.src = "img/hub.png";
@@ -184,9 +187,17 @@ function drawHubArt() {
 function drawHub() {
   const h = game.inside;
   ctx.fillStyle = "#0b0c0a"; ctx.fillRect(0, 0, W, H);
+  // Arte original do interior do abrigo: atrás dos painéis e das salas.
+  if (FM_BASE_INTERIOR_BG.complete && FM_BASE_INTERIOR_BG.naturalWidth) {
+    ctx.save();
+    ctx.globalAlpha = 0.78;
+    ctx.drawImage(FM_BASE_INTERIOR_BG, 0, 0, W, H);
+    ctx.restore();
+  }
   const vg = ctx.createRadialGradient(610, 300, 60, 610, 300, 520);
-  vg.addColorStop(0, "#22231e"); vg.addColorStop(1, "#0b0c0a");
-  ctx.fillStyle = vg; ctx.fillRect(262, 40, W - 262, H - 40);
+  vg.addColorStop(0, "rgba(32,33,29,0.26)");
+  vg.addColorStop(1, "rgba(7,9,8,0.62)");
+  ctx.fillStyle = vg; ctx.fillRect(0, 39, W, H - 39);
 
   // barra de cima
   ctx.fillStyle = "#17150f"; ctx.fillRect(0, 0, W, 38);
