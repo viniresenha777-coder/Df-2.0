@@ -5,7 +5,7 @@
 // =====================================================================
 const SAVE_KEY = "fronteira-morta";
 const save = {
-  bank: 0, vault: [], installed: [], credits: 0, gm: false, missions: [], receivedGifts: [],
+  bank: 0, vault: [], installed: [], credits: 0, gm: false, vipUntil: 0, missions: [], receivedGifts: [], inbox: [],
   vest: -1, outposts: OUTPOSTS.map((o, i) => i === 0), muted: false, hud: 0, skin: 0, cape: 0, prof: null, name: "", classicChar: false, vestDur: {}, vestUpgrades: {}, music: true, gfx: 2,
   stats: {}, story: 0, ach: {}, daily: null, coll: [], vestsOwned: VESTS.map(() => false), vestVer: 2,
   char: { level: 1, xp: 0, points: 0, wpoints: 0, attrs: defaultAttrs() }
@@ -32,6 +32,11 @@ function loadSave() {
     else if (Array.isArray(s.stash)) save.vault = s.stash.map((v, i) => (v && OLD_IDS[i] ? newInst(OLD_IDS[i]) : null)).filter(Boolean); // save antigo
     { const seen = {}; save.installed = (s.installed || []).map(cleanImplant).filter((im) => im && !seen[im.id] && (seen[im.id] = true)).slice(0, IMPL_SLOTS); }
     save.credits = s.credits || 0; save.gm = !!s.gm;
+    save.vipUntil = Number.isFinite(s.vipUntil) && s.vipUntil > 0 ? Math.floor(s.vipUntil) : 0;
+    save.inbox = Array.isArray(s.inbox)
+      ? s.inbox.filter(x => x && typeof x.id === "string" && typeof x.text === "string")
+        .slice(-100).map(x => ({ id: x.id.slice(0,50), text: x.text.slice(0,200),
+          createdAt: Number(x.createdAt) || Date.now(), read: !!x.read })) : [];
     save.receivedGifts = Array.isArray(s.receivedGifts) ? s.receivedGifts.filter(id => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)).slice(-2000) : [];
     save.missions = (s.missions || []).filter((m) => m && m.type && m.target).slice(0, 3);
     save.vest = typeof s.vest === "number" ? s.vest : -1;
@@ -59,6 +64,28 @@ function loadSave() {
   } catch (e) { /* sem armazenamento: o progresso vale só nesta sessão */ }
 }
 // no .exe o arquivo só é gravado nos checkpoints (troca de área e a cada 1 minuto)
+// VIP adquirido no jogo antigo permanece válido como benefício legado.
+// Presentes novos são temporários: duração em meses de calendário UTC.
+function vipActive() { return !!save.gm || (save.vipUntil || 0) > Date.now(); }
+function addVipMonths(months) {
+  if (![1, 6, 12].includes(months)) throw new Error("Prazo de VIP não permitido.");
+  const start = new Date(Math.max(Date.now(), Number(save.vipUntil) || 0));
+  const targetMonth = start.getUTCMonth() + months;
+  const d = start.getUTCDate(), next = new Date(start.valueOf());
+  next.setUTCDate(1); next.setUTCMonth(targetMonth);
+  const last = new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth()+1, 0)).getUTCDate();
+  next.setUTCDate(Math.min(d, last));
+  save.vipUntil = next.getTime();
+  return save.vipUntil;
+}
+function vipStatus() {
+  if (save.gm) return "VIP legado (sem vencimento)";
+  if ((save.vipUntil || 0) <= Date.now()) return "inativo";
+  return "ativo até " + new Date(save.vipUntil).toLocaleDateString("pt-BR");
+}
+function inboxUnread() { return (save.inbox || []).filter(m => !m.read).length; }
+function markInboxRead() { if (!save.inbox) return; save.inbox.forEach(x => { x.read = true; }); persist(); }
+
 function persist() {
   if (NATIVE) return;
   storeWrite(JSON.stringify(save)).catch((error) => {
