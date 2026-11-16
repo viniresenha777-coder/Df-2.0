@@ -4,6 +4,7 @@
 const fmSocial = (() => {
   let channel = null, timer = null, userId = null, peers = new Map();
   let connected = false, tracking = false;
+  let sectorKey = "", sectorSince = Date.now();
   let moveChannel = null, moveTopic = "", moveReady = false, sendingMove = false;
   let lastPresenceKey = "", lastPresenceAt = 0, lastMoveKey = "", lastMoveAt = 0;
   const MOVE_INTERVAL = 180; // ~5,5 atualizações por segundo apenas enquanto se move
@@ -65,12 +66,17 @@ const fmSocial = (() => {
   function ownState() {
     if (!game || !player || !world || !save.name) return null;
     const pos = game.inside && game.exitPos ? game.exitPos : player;
+    const cellKey = world.cell.cx + ":" + world.cell.cy;
+    if (cellKey !== sectorKey) {
+      sectorKey = cellKey;
+      sectorSince = typeof fmWorld !== "undefined" ? fmWorld.nowMs() : Date.now();
+    }
     return {
       uid: userId, name: textName(save.name), cx: world.cell.cx, cy: world.cell.cy,
       x: Math.round(pos.x), y: Math.round(pos.y),
       angle: Number.isFinite(player.angle) ? player.angle : 0,
       skin: save.skin | 0, inside: !!(game.inside || game.hub),
-      moving: !!player.moving, sent: Date.now()
+      moving: !!player.moving, since: sectorSince, sent: Date.now()
     };
   }
   function tickNetwork() {
@@ -171,7 +177,7 @@ const fmSocial = (() => {
       cx: p.cx, cy: p.cy, x: p.x, y: p.y,
       fromX: teleport ? p.x : pos.x, fromY: teleport ? p.y : pos.y,
       at: now, angle: p.angle,
-      moving: !!p.moving, inside: !!p.inside,
+      moving: !!p.moving, inside: !!p.inside, since: Number(p.since) || 0,
       skin: clamp(p.skin | 0, 0, SKINS.length - 1),
       sent: p.sent
     });
@@ -200,7 +206,7 @@ const fmSocial = (() => {
         uid: p.uid, name: textName(p.name), cx: p.cx, cy: p.cy,
         x, y, fromX: snap ? x : pos.x, fromY: snap ? y : pos.y,
         at: now, angle: p.angle, skin: clamp(p.skin | 0, 0, SKINS.length - 1),
-        moving: !!p.moving, inside: !!p.inside, sent: Number(p.sent) || 0
+        moving: !!p.moving, inside: !!p.inside, since: Number(p.since) || 0, sent: Number(p.sent) || 0
       });
     }
     peers = next;
@@ -275,7 +281,7 @@ const fmSocial = (() => {
   async function stop() {
     if (timer) clearInterval(timer);
     timer = null; connected = false; tracking = false; sendingMove = false;
-    userId = null; peers.clear(); friends = []; profiles.clear();
+    userId = null; peers.clear(); friends = []; profiles.clear(); sectorKey = "";
     lastPresenceKey = ""; lastPresenceAt = 0; lastMoveKey = ""; lastMoveAt = 0;
     const client = db(), oldPresence = channel, oldMovement = moveChannel;
     channel = null; moveChannel = null; moveTopic = ""; moveReady = false;
@@ -288,7 +294,7 @@ const fmSocial = (() => {
     } catch (_) { /* perder a conexão nunca impede o jogador de sair */ }
   }
   return { start, stop, claimName, online, inSector, friendList, isFriend,
-    refreshFriends, addFriend, acceptFriend };
+    refreshFriends, addFriend, acceptFriend, mySectorSince: () => sectorSince };
 })();
 
 // Jogadores remotos visíveis nas ruas. Personagens desenhados com a aparência
