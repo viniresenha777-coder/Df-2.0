@@ -214,6 +214,20 @@ const fmWorld = (() => {
     sendSnapshot(true);
   }
 
+  // O jogador que não é líder ainda pode sofrer dano ao encostar nos
+  // zumbis compartilhados. A IA e as posições não são recalculadas localmente.
+  function localZombieThreats(dt) {
+    if (!isFollower() || game.trans || game.paused || game.menu || game.inside) return;
+    for (const z of zombies) {
+      if (z.hp <= 0) continue;
+      z.netHitCd = Math.max(0, (z.netHitCd || 0) - dt);
+      if (z.netHitCd > 0 || Math.hypot(player.x - z.x, player.y - z.y) >= z.r + player.r + 3) continue;
+      damagePlayer(z.dmg);
+      addInfection(z);
+      z.netHitCd = Math.max(700, z.hitDelay || 900);
+    }
+  }
+
   function tick() {
     worldClockTick();
     if (!started || !game || !world || !channelReady) return;
@@ -228,6 +242,6 @@ const fmWorld = (() => {
   }
   return {
     start, tick, nowMs, clock, weatherKind, isAuthority, isFollower,
-    onChannel, onChannelReady, reportHit, requestSync
+    onChannel, onChannelReady, reportHit, requestSync, localZombieThreats
   };
 })();
