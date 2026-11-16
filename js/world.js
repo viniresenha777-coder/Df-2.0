@@ -82,7 +82,9 @@ function makeArea(cell) {
   }
   genStreets(wd, R);
   genBodies(wd, R);
-  // Reaplica saques anteriores ao reconstruir uma área salva.
+  if (typeof genScenery === "function") genScenery(wd); else wd.models = [];   // cenário 3D (models.js)
+  // Reaplica saques ao reconstruir a área, inclusive novos cadáveres
+  // decorativos. Índices antigos permanecem iguais; os novos são anexados.
   if (Array.isArray(cell._savedLoot)) {
     wd.lootList.forEach((loot, i) => {
       if (cell._savedLoot[i]) {
@@ -92,7 +94,6 @@ function makeArea(cell) {
     });
     cell._savedLoot = null;
   }
-  if (typeof genScenery === "function") genScenery(wd); else wd.models = [];   // cenário 3D (models.js)
   wd.mini = buildMinimap(wd);
   world = prev || wd;
   return wd;
@@ -320,7 +321,7 @@ function genBodies(wd, R) {
   for (let i = 0; i < n; i++) for (let t = 0; t < 25; t++) {
     const x = 40 + R() * (WORLD_W - 80), y = 40 + R() * (WORLD_H - 80);
     if (!free(wd, x - 14, y - 14, 28, 28, 6) || inOpBlock(wd, x, y)) continue;
-    const o = { x: x - 14, y: y - 14, w: 28, h: 28, kind: "body", table: "body", name: "Corpo de sobrevivente", ang: R() * 6.283,
+    const o = { x: x - 14, y: y - 14, w: 28, h: 28, kind: "body", table: "body", name: "Zumbi caído", ang: R() * 6.283,
       cloth: pick(CL, R), pants: pick(["#2e3a4a", "#3a3226", "#2a2a2a", "#4a4a32"], R), skin: pick(["#c9a07a", "#a07850", "#d8b08a", "#7a5a3a"], R), bag: R() < 0.5 };
     wd.bodies.push(o);
     if (R() < lootChance) lootable(wd, o); else o.opened = true;
