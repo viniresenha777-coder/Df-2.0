@@ -2,8 +2,8 @@
 // Conta e progresso online do Fronteira Morta 2.0.
 // Chave publishable: pode estar no navegador; NUNCA usar service_role aqui.
 const fmCloud = (() => {
-  const URL = "https://kvqeewdtectoeqjmirla.supabase.co";
-  const KEY = "sb_publishable_1KZ1w_Mi-oDTJhKb5aR8yA_97uFMVwn";
+  const URL = "https://udoxuzyvyuxrqektdrxf.supabase.co";
+  const KEY = "sb_publishable_8serkqz1z5k9fZLnDxMNlQ_hv_PF88z";
   const client = window.supabase && window.supabase.createClient(URL, KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true,
       storageKey: "fronteira-morta-df20-auth" }
