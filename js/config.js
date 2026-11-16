@@ -55,15 +55,15 @@ const OUTPOSTS = [
 ];
 // Faixas de dificuldade (cores do mapa): hp/dmg = multiplicadores dos zumbis · loot = chance de cada raridade
 const REGIONS = [
-  { name: "Azul",           diff: "Muito fácil",   desc: "para quem está começando",                color: "#4a7ad8", hp: 1,   dmg: 1,   spawn: 0.9,  loot: [75, 22, 3, 0, 0] },
-  { name: "Verde",          diff: "Fácil",         desc: "corredores e os primeiros cães",          color: "#4fae4f", hp: 1.4, dmg: 1.2, spawn: 1,    loot: [62, 29, 8, 1, 0] },
-  { name: "Amarela",        diff: "Médio",         desc: "cuspidores, contaminados e infectados",   color: "#c8c048", hp: 2,   dmg: 1.5, spawn: 1.1,  loot: [46, 33, 16, 5, 0] },
-  { name: "Laranja",        diff: "Médio+",        desc: "brutamontes · leve uma arma melhor",      color: "#e0902f", hp: 2.8, dmg: 1.9, spawn: 1.2,  loot: [30, 35, 24, 9, 2] },
-  { name: "Vermelha",       diff: "Difícil",       desc: "tóxicos e mutantes · para experientes",   color: "#d8443a", hp: 3.8, dmg: 2.3, spawn: 1.3,  loot: [18, 32, 30, 16, 4] },
-  { name: "Vermelho-escura", diff: "Difícil+",     desc: "demônios · precisa de implantes",         color: "#9a2424", hp: 4.8, dmg: 2.7, spawn: 1.35, loot: [10, 26, 34, 23, 7] },
-  { name: "Preta",          diff: "Muito difícil", desc: "abominações · implantes e coletes bons",  color: "#2a2a2e", hp: 6,   dmg: 3.2, spawn: 1.4,  loot: [5, 20, 35, 28, 12] },
-  { name: "Roxa",           diff: "Extrema",       desc: "o pior da cidade · vá preparado",         color: "#7a3ac8", hp: 7.5, dmg: 3.8, spawn: 1.5,  loot: [2, 14, 34, 34, 16] },
-  { name: "Cinza",          diff: "Zona Morta",    desc: `só a partir do nível ${GRAY_LEVEL}`,      color: "#8a8a8a", hp: 9,   dmg: 4.4, spawn: 1.55, loot: [0, 10, 30, 38, 22] }
+  { name: "Azul",           diff: "Muito fácil",   desc: "para quem está começando",                color: "#4a7ad8", hp: 1,   dmg: 0.9, spawn: 0.9,  loot: [75, 22, 3, 0, 0] },
+  { name: "Verde",          diff: "Fácil",         desc: "corredores e os primeiros cães",          color: "#4fae4f", hp: 1.4, dmg: 1,   spawn: 1,    loot: [62, 29, 8, 1, 0] },
+  { name: "Amarela",        diff: "Médio",         desc: "cuspidores, contaminados e infectados",   color: "#c8c048", hp: 2,   dmg: 1.15, spawn: 1.1,  loot: [46, 33, 16, 5, 0] },
+  { name: "Laranja",        diff: "Médio+",        desc: "brutamontes · leve uma arma melhor",      color: "#e0902f", hp: 2.8, dmg: 1.35, spawn: 1.2,  loot: [30, 35, 24, 9, 2] },
+  { name: "Vermelha",       diff: "Difícil",       desc: "tóxicos e mutantes · para experientes",   color: "#d8443a", hp: 3.8, dmg: 1.55, spawn: 1.3,  loot: [18, 32, 30, 16, 4] },
+  { name: "Vermelho-escura", diff: "Difícil+",     desc: "demônios · precisa de implantes",         color: "#9a2424", hp: 4.8, dmg: 1.75, spawn: 1.35, loot: [10, 26, 34, 23, 7] },
+  { name: "Preta",          diff: "Muito difícil", desc: "abominações · implantes e coletes bons",  color: "#2a2a2e", hp: 6,   dmg: 2,   spawn: 1.4,  loot: [5, 20, 35, 28, 12] },
+  { name: "Roxa",           diff: "Extrema",       desc: "o pior da cidade · vá preparado",         color: "#7a3ac8", hp: 7.5, dmg: 2.25, spawn: 1.5,  loot: [2, 14, 34, 34, 16] },
+  { name: "Cinza",          diff: "Zona Morta",    desc: `só a partir do nível ${GRAY_LEVEL}`,      color: "#8a8a8a", hp: 9,   dmg: 2.55, spawn: 1.55, loot: [0, 10, 30, 38, 22] }
 ];
 const REGION_ROWS = 3;                       // cada faixa de cor tem 3 níveis de zona
 const MAX_ZONE = REGIONS.length * REGION_ROWS - 1;
@@ -87,9 +87,9 @@ const VESTS = [
   { name: "Armadura de Combate Pesada",     armor: 24, price: 6000,  color: "#2f4a6a", rar: 2, slow: 8 },
   { name: "Armadura Tática do Deserto",     armor: 22, price: 9000,  color: "#a08458", rar: 2, acid: 40 },
   { name: "Armadura de Combate Urbano",     armor: 22, price: 12000, color: "#3a3a3e", rar: 2, stealth: 20 },
-  { name: "Armadura de Segurança de Elite", armor: 30, credits: 500, color: "#2a2a2c", rar: 3, hp: 40 },
+  { name: "Armadura de Segurança de Elite", armor: 30, credits: 500, color: "#2a2a2c", rar: 3, hp: 15 },
   { name: "Armadura Tática Avançada",       armor: 34, credits: 500, color: "#7a6a4a", rar: 3 },
-  { name: "Armadura de Assalto Pesada",     armor: 45, craft: true,  color: "#3a4a32", rar: 4, slow: 6, hp: 60, acid: 25 }
+  { name: "Armadura de Assalto Pesada",     armor: 45, craft: true,  color: "#3a4a32", rar: 4, slow: 6, hp: 25, acid: 25 }
 ];
 
 // ---------- Zumbis ----------
@@ -312,8 +312,9 @@ const IMP_IDS = Object.keys(IMP);
 const IMP_COLOR = ["#d4af37", "#e07b5a", "#c58bff"];     // comum · com penalidade · especial
 
 // ---------- Personagem: nível (1 a 250) e atributos ----------
-const MAX_LEVEL = 250, ATTR_MAX = 200;
+const MAX_LEVEL = 250, ATTR_MAX = 200, PLAYER_HP_CAP = 200;
 const ATTRS = [
+  { id: "endurance", name: "Endurance (vida)", start: 100 },
   { id: "str",        name: "Força",                 start: 10 },
   { id: "armor",      name: "Armadura",              start: 10 },
   { id: "agi",        name: "Agilidade",             start: 10 },
