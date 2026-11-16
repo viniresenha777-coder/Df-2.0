@@ -373,6 +373,24 @@ function loop(now) {
   checkpointTick(dt);
   updateCam(dt);
   draw();
-  requestAnimationFrame(loop);
+  
+// O VIP aparece apenas no rodapé HTML, nunca dentro do canvas.
+function refreshVipFooter() {
+  const el = document.getElementById("vip-footer");
+  if (!el) return;
+  let label, inactive = false;
+  if (save.gm) label = "★ VIP ATIVO · Sem vencimento";
+  else if (Number(save.vipUntil) > Date.now()) {
+    label = "★ VIP ATIVO · Expira em " + new Date(save.vipUntil).toLocaleDateString("pt-BR");
+  } else {
+    inactive = true;
+    label = Number(save.vipUntil) > 0 ? "VIP EXPIRADO" : "VIP INATIVO";
+  }
+  if (el.textContent !== label) el.textContent = label;
+  el.classList.toggle("inactive", inactive);
+}
+refreshVipFooter();
+setInterval(refreshVipFooter, 1000);
+requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
