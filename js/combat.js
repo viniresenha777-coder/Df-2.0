@@ -361,7 +361,7 @@ function creeperBlast(z) {
 function damagePlayer(dmg) {
   if (adm.god || performance.now() < (player.defyUntil || 0)) return;
   // Teto por ataque evita morte instantânea mesmo na Zona Morta.
-  const d = Math.min(dmg * (1 - armorRed()), Math.max(30, player.maxHp * 0.42));
+  const d = Math.min(dmg * (1 - armorRed()), Math.max(6, player.maxHp * 0.28));
   player.hp -= d;
   wearVest(d);
   game.hurtT = 350; game.shake = Math.min(12, game.shake + 3 + d * 0.15);
