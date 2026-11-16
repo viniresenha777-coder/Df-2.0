@@ -54,3 +54,14 @@ Execute `node tests/regressions.cjs` (Node.js 18+). O teste usa dois clientes co
 Os canais identificam setor, prédio e andar. Móveis e decorações mantêm posições fixas; a disponibilidade de saque varia entre os móveis, com loot individual. Colete e implante somam proteção (limitada a 95%, considerando desgaste do colete), e o atributo Armadura aplica sua redução sobre o dano restante. O painel mostra a redução efetiva total. XP e dinheiro aparecem em linhas consecutivas, com os multiplicadores efetivos.
 
 Validação manual antes de publicar: abra duas contas em navegadores separados, atualize ambas para a mesma versão, atravesse áreas, entre na mesma casa e troque de andar. Verifique posições, zumbis e dano; jogadores em casas ou andares diferentes não devem aparecer juntos. Repita em hospital/prisão e após reconectar. Os testes simulados não substituem esta checagem no Supabase real.
+
+### Melhorias aleatórias na oficina
+
+A oficina tem abas de criação, melhorias de armas e melhorias de coletes. **Melhorar** (ou Enter) substitui todos os pontos do equipamento selecionado por um novo sorteio independente, que pode aumentar ou diminuir os valores:
+
+- Armas: Precisão, Dano e Velocidade de recarga, de 1 a 8 cada. Os efeitos por ponto permanecem os mesmos.
+- Coletes: Armadura e Velocidade, de 1 a 24 cada. Cada ponto adiciona 1 ponto percentual de proteção ou 1% de velocidade. A proteção adicional acompanha o desgaste; o bônus de velocidade soma com o dos implantes antes dos modificadores de peso e atributos.
+
+Cada sorteio custa 2 sucatas e dinheiro conforme o equipamento (com desconto de Artesão). O preço aparece antes do botão e independe do resultado atual. As melhorias ficam salvas por colete, enquanto armas mantêm suas instâncias individuais. Saves antigos recebem zero pontos de melhoria nos coletes. As linhas mostram números, sem quadradinhos ou seleção de atributo.
+
+Execute também `node tests/upgrades.cjs` para verificar sorteios mínimos/mistos/máximos, custos, falta de recursos, efeitos dos coletes, salvamento, compatibilidade com saves antigos e controles da oficina.

@@ -257,7 +257,7 @@ function activeBonuses() {
   fx.exp = (xpMult() - 1) * 100;
   fx.greed = (moneyMult() - 1) * 100;
   const slow = player.flags.jugger ? 0 : (vest ? vest.slow || 0 : 0) + (w.slow || 0);
-  fx.agility = ((1 + (fx.agility || 0) / 100) * (1 - slow / 100) - 1) * 100;
+  fx.agility = ((1 + ((fx.agility || 0) + vestSpeedBonus()) / 100) * (1 - slow / 100) - 1) * 100;
   // de onde vem cada efeito (nomes dos implantes)
   const src = {};
   save.installed.forEach((im, i) => { const f = implantFx(im, i, save.installed); for (const k in f) (src[k] = src[k] || []).push(implantName(im)); });
@@ -266,6 +266,7 @@ function activeBonuses() {
   if (profession && profession.fx) for (const k in profession.fx) source(k, `Profissão: ${profession.name}`);
   if (vest) for (const [field, key] of [["armor", "thick"], ["hp", "vigor"], ["stealth", "stealthImp"], ["slow", "agility"]])
     if (vest[field]) source(key, `Colete: ${vest.name}`);
+  if (vestSpeedBonus()) source("agility", `Melhoria: ${vest.name}`);
   if (A("armor")) source("thick", `Armadura: ${A("armor")}`);
   if (w.crit) source("crit", `Arma: ${w.name}`);
   if (w.slow) source("agility", `Arma: ${w.name}`);

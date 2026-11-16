@@ -62,7 +62,7 @@ function client(bus, uid) {
  // Changing scene before subscription must not follow the former room's host.
  run(b,'world.cell.cx=5');assert.equal(run(b,'fmWorld.isFollower()'),false);
  console.log('PASS multiplayer: sectors, interiors, floors, large rooms, hits, transition isolation');
- const c=vm.createContext({console,Math});load(c,['config','util','interact','character','render_extra']);
+ const c=vm.createContext({console,Math});load(c,['config','util','items','interact','character','render_extra']);
  run(c,`var player={fx:{thick:20,exp:0,greed:0},attrs:{armor:0},hp:100,maxHp:100,hunger:100,thirst:100,flags:{}};var save={installed:[],vest:0,gm:false};function vestEff(){return 1;}function prof(){return null;}function curW(){return {};}function inSafe(){return false;}VESTS[0].armor=10;`);
  assert.ok(Math.abs(run(c,'armorRed()')-0.3)<1e-9,'10 vest + 20 implant = 30');
  assert.equal(run(c,'activeBonuses().filter(x=>x.text.includes("dano recebido")).length'),1);

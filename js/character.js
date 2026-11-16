@@ -85,7 +85,7 @@ function xpNeed(l) { return Math.round(30 + 6 * l + 0.12 * l * l); }
 function A(id) { return player.attrs[id]; }
 // Vest and implant protection stack additively; attribute armor remains a separate layer.
 function equipmentProtection() {
-  const vest = save.vest >= 0 ? VESTS[save.vest].armor * vestEff() : 0;
+  const vest = save.vest >= 0 ? (VESTS[save.vest].armor + vestUpgrade().armor) * vestEff() : 0;
   return Math.max(-50, Math.min(95, vest + (player.fx.thick || 0)));
 }
 function armorRed() {

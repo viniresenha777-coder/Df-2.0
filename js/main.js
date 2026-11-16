@@ -177,7 +177,7 @@ function update(dt) {
   if (moving) {
     const slow = (player.flags.jugger ? 0 : (save.vest >= 0 ? VESTS[save.vest].slow || 0 : 0) + (curW().slow || 0)) - (player.fx.adren && player.hp / player.maxHp < 0.5 ? player.fx.adren : 0);
     player.moveAng = Math.atan2(dy, dx);
-    const len = Math.hypot(dx, dy), sp = (sprinting ? 3.38 * (1 + profVal("sprint")) : player.speed) * (1 + player.fx.agility / 100) * (1 + (A("agi") - 10) * 0.004) * (1 - slow / 100);
+    const len = Math.hypot(dx, dy), sp = (sprinting ? 3.38 * (1 + profVal("sprint")) : player.speed) * (1 + (player.fx.agility + vestSpeedBonus()) / 100) * (1 + (A("agi") - 10) * 0.004) * (1 - slow / 100);
     player.x += (dx / len) * sp * k; player.y += (dy / len) * sp * k;
     player.animT = (player.animT || 0) + dt; player.lastSp = sp * k / Math.max(0.01, dt / 16.67);
     if (!game.inside) save.stats.dist = S("dist") + sp * k;

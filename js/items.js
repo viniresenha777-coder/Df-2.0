@@ -168,11 +168,31 @@ function upEffect(d, stat, lv) {
   if (stat === "acc") return d.melee ? `+${lv * 4}% de alcance` : `-${lv * 9}% de dispersão`;
   return d.melee ? `-${lv * 4}% de tempo entre golpes` : `-${lv * 6}% no tempo de recarga`;
 }
-function upgradeCost(inst, stat) {
-  const d = WDEF[inst.id], L = inst.up[stat];
-  const base = 120 + (d.special || d.legendary ? 3000 : d.price) * 0.12;
-  return { money: Math.round(base * (L + 1)), mats: { sucata: L + 1, pecas: Math.max(0, L - 2), eletronicos: L >= 6 ? L - 5 : 0 } };
+// Each roll replaces every stat, including when the old roll was stronger.
+function rollUpgrades(stats, max, random = Math.random) {
+  return Object.fromEntries(stats.map(s => [s.id, 1 + Math.floor(random() * max)]));
 }
+function upgradeCost(inst) {
+  const d = WDEF[inst.id];
+  return { money: Math.round(240 + (d.special || d.legendary ? 3000 : d.price) * 0.24), mats: { sucata: 2 } };
+}
+const VEST_UP_MAX = 24;
+const VEST_UP_STATS = [{ id: "armor", name: "Armadura" }, { id: "speed", name: "Velocidade" }];
+function cleanVestUpgrade(up) {
+  const out = {};
+  for (const s of VEST_UP_STATS) {
+    const n = Number(up && up[s.id]);
+    out[s.id] = Number.isFinite(n) ? clamp(Math.floor(n), 0, VEST_UP_MAX) : 0;
+  }
+  return out;
+}
+function vestUpgrade(i = save.vest) {
+  return cleanVestUpgrade(i >= 0 && save.vestUpgrades ? save.vestUpgrades[i] : null);
+}
+function vestUpgradeCost(i) {
+  return { money: Math.round(240 + VESTS[i].price * 0.24), mats: { sucata: 2 } };
+}
+function vestSpeedBonus() { return vestUpgrade().speed; }
 
 // ---------- Instâncias de armas ----------
 const SLOT_N = 3, PACK_MAX = 20, VAULT_MAX = 40;
