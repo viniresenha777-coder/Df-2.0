@@ -439,6 +439,21 @@ function drawHeldWeapon(w, pose) {
 function drawPlayerSprite() {
   if (!useSpriteChar()) return false;
   const p = player, w = curW(), pose = weaponPose(w), S = PSHEET.size, c = PSHEET.cell, row = p.sRow | 0, col = spriteFrame();
+  // Sombra ambiental macia no piso, com leve deslocamento de luz direcional.
+  // Dá profundidade ao soldado 3D sem alterar colisão ou posição.
+  if (!game.inside) {
+    ctx.save();
+    ctx.translate(p.x + 12, p.y + 13);
+    ctx.rotate(-0.22);
+    ctx.scale(1.25, 0.62);
+    const shadow = ctx.createRadialGradient(0, 0, 2, 0, 0, 39);
+    shadow.addColorStop(0, "rgba(7,13,9,0.43)");
+    shadow.addColorStop(0.4, "rgba(10,13,9,0.23)");
+    shadow.addColorStop(1, "rgba(10,13,9,0)");
+    ctx.fillStyle = shadow;
+    ctx.beginPath(); ctx.arc(0,0,39,0,6.283); ctx.fill();
+    ctx.restore();
+  }
   const kick = p.flashT > 0 ? 2 : 0, o = spriteOrigin(), info = SPRITE_POSES[pose][row][col];
   const w3 = weapon3dImg(w, pose);
   if (info.bh && !w3) drawHeldWeapon(w, pose);       // arma atrás do corpo (de costas)
