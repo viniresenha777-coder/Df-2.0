@@ -76,9 +76,8 @@ window.addEventListener("keydown", (e) => {
   if (game.over) { if (k === "enter") resetGame(); return; }
   if (game.quitting) return;
   if (game.found) { foundKey(k); return; }
-  if (k === "u" && !e.repeat && !game.shop && !game.over) {
-    if (game.menu === "friends") game.menu = null;
-    else if (!game.menu) openFriends();
+  if (k === "u" && !e.repeat && !game.shop && !game.over && !game.menu) {
+    openFriends();
     return;
   }
   if (game.menu) { menuKey(k); return; }
