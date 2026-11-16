@@ -1055,7 +1055,11 @@ function drawLighting() {
     if (player.flashT > 0) hole(px + Math.cos(player.angle) * 40, py + Math.sin(player.angle) * 40, 230, 0.85);
   }
   const lamps = game.inside ? [] : world.lamps.filter((l) => inView(l.x - 220, l.y - 220, 440, 440));
-  for (const l of lamps) hole(l.x - cam.x, l.y - cam.y, l.big ? 230 : 145, 0.9);
+  for (const l of lamps) hole(l.x - cam.x, l.y - (l.big ? 53 : 40) - cam.y, l.big ? 230 : 145, 0.9);
+  if (!game.inside) for (const m of world.models || []) if (m.id === "worklight" &&
+      inView(m.x - 160, m.y - 170, 320, 300)) {
+    hole(m.x - cam.x, m.y - 29 * (m.k || MODEL_K) / MODEL_K - cam.y, 145, 0.86);
+  }
   if (game.inside && game.inside.safe) hole(W / 2, H / 2, 500, 0.5);
   for (const s of game.spits) hole(s.x - cam.x, s.y - cam.y, 40, 0.6);
   for (const b of bullets) if (b.fire && Math.random() < 0.5) hole(b.x - cam.x, b.y - cam.y, 60, 0.5);
@@ -1064,7 +1068,7 @@ function drawLighting() {
   if (!game.inside && dark > 0.3) {
     ctx.globalCompositeOperation = "lighter";
     for (const l of lamps) {
-      const x = l.x - cam.x, y = l.y - cam.y, r = l.big ? 200 : 125;
+      const x = l.x - cam.x, y = l.y - (l.big ? 53 : 40) - cam.y, r = l.big ? 200 : 125;
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
       g.addColorStop(0, `rgba(255,190,110,${0.16 * dark})`); g.addColorStop(1, "rgba(255,190,110,0)");
       ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
