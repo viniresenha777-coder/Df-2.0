@@ -149,12 +149,9 @@ function drawHubRoom(r) {
 
 // Arte da base (img/hub.png): uma imagem só com os 9 painéis numa grade 3x3, na mesma ordem de HUB_ROOMS
 // (os nomes já vêm escritos na arte). Sem o arquivo, o jogo desenha as salas antigas.
-// A arte fornecida pelo criador está armazenada como WebP compacto em base64.
+// Arte original em alta resolução (sem miniatura em base64).
 const CREDIT_SHOP_BUTTON_ART = new Image();
-fetch("img/loja-creditos.b64")
-  .then(response => { if (!response.ok) throw new Error("Imagem indisponível"); return response.text(); })
-  .then(encoded => { CREDIT_SHOP_BUTTON_ART.src = "data:image/webp;base64," + encoded.trim(); })
-  .catch(error => console.warn("Falha ao carregar botão Loja de Créditos:", error));
+CREDIT_SHOP_BUTTON_ART.src = "img/loja_creditos_highres.webp?v=20261116-crbutton2";
 
 const FM_BASE_INTERIOR_BG = new Image();
 FM_BASE_INTERIOR_BG.src = "img/fm_interior.webp?v=20261116-interior2";
@@ -210,6 +207,7 @@ function drawHub() {
   const cbx = 6, cby = 2, cbw = 144, cbh = 34;
   const creditHover = mouse.x >= cbx && mouse.x <= cbx + cbw && mouse.y >= cby && mouse.y <= cby + cbh;
   if (CREDIT_SHOP_BUTTON_ART.complete && CREDIT_SHOP_BUTTON_ART.naturalWidth) {
+    ctx.imageSmoothingQuality = "high";
     ctx.drawImage(CREDIT_SHOP_BUTTON_ART, cbx, cby, cbw, cbh);
     if (creditHover) {
       ctx.strokeStyle = "#ffd96a"; ctx.lineWidth = 1.5;
