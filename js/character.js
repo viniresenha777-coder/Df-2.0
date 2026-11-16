@@ -93,9 +93,11 @@ function equipmentProtection() {
   const vest = save.vest >= 0 ? (VESTS[save.vest].armor + vestUpgrade().armor) * vestEff() : 0;
   return Math.max(-50, Math.min(95, vest + (player.fx.thick || 0)));
 }
+function trindadeActive() { return (save.trindadeUntil || 0) > Date.now(); }
 function armorRed() {
   const a = A("armor") / (A("armor") + 150);
-  return Math.min(0.78, 1 - (1 - a) * (1 - equipmentProtection() / 100));
+  const baseline = Math.min(0.78, 1 - (1 - a) * (1 - equipmentProtection() / 100));
+  return Math.min(0.95, baseline * (trindadeActive() ? 1.35 : 1));
 }
 function moneyMult() { return (1 + player.fx.greed / 100) * (vipActive() ? 2 : 1); }
 function xpMult() { return (1 + player.fx.exp / 100) * (vipActive() ? 2 : 1); }
