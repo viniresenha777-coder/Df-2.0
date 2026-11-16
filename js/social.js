@@ -76,7 +76,7 @@ const fmSocial = (() => {
       x: Math.round(pos.x), y: Math.round(pos.y),
       angle: Number.isFinite(player.angle) ? player.angle : 0,
       skin: save.skin | 0, inside: !!(game.inside || game.hub),
-      moving: !!player.moving, since: sectorSince, sent: Date.now()
+      moving: !!player.moving, active: !(game.paused || game.menu || game.shop || game.over || game.found || game.hub || game.inside), since: sectorSince, sent: Date.now()
     };
   }
   function tickNetwork() {
@@ -92,7 +92,7 @@ const fmSocial = (() => {
   // track() frequente envia o estado inteiro para todos e causa atraso.
   async function publish(force, state = ownState()) {
     if (!connected || !channel || !userId || tracking || !state || myself() !== userId) return;
-    const key = [state.cx, state.cy, state.inside, state.skin, state.name].join(":");
+    const key = [state.cx, state.cy, state.inside, state.active, state.skin, state.name].join(":");
     const now = Date.now();
     if (!force && key === lastPresenceKey && now - lastPresenceAt < 10000) return;
     lastPresenceKey = key;
@@ -177,7 +177,7 @@ const fmSocial = (() => {
       cx: p.cx, cy: p.cy, x: p.x, y: p.y,
       fromX: teleport ? p.x : pos.x, fromY: teleport ? p.y : pos.y,
       at: now, angle: p.angle,
-      moving: !!p.moving, inside: !!p.inside, since: Number(p.since) || 0,
+      moving: !!p.moving, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0,
       skin: clamp(p.skin | 0, 0, SKINS.length - 1),
       sent: p.sent
     });
@@ -206,7 +206,7 @@ const fmSocial = (() => {
         uid: p.uid, name: textName(p.name), cx: p.cx, cy: p.cy,
         x, y, fromX: snap ? x : pos.x, fromY: snap ? y : pos.y,
         at: now, angle: p.angle, skin: clamp(p.skin | 0, 0, SKINS.length - 1),
-        moving: !!p.moving, inside: !!p.inside, since: Number(p.since) || 0, sent: Number(p.sent) || 0
+        moving: !!p.moving, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0, sent: Number(p.sent) || 0
       });
     }
     peers = next;
