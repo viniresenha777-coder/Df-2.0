@@ -129,7 +129,12 @@ window.addEventListener("keydown", (e) => {
   if (game.shop) { shopKey(k); return; }
   if (game.hub && (k === "escape" || k === "e")) { leaveHouse(); return; }
   if (game.hub && (k === "r" || k === "f" || k === "p" || k === "l")) { if (k === "f") eat(); return; }
-  if (game.paused) { if (k === "escape" || k === "p") togglePause(); return; }
+  if (game.paused) {
+    if ((k === "escape" || k === "p") && game.settingsOpen) {
+      game.settingsOpen = false; game.settingsDrag = null;
+    } else if (k === "escape" || k === "p") togglePause();
+    return;
+  }
   if (k === "escape" && game.sectorMap) { game.sectorMap = false; return; }
   if (k === "escape" || k === "p") { togglePause(); return; }
   if (k === "b") { game.menu = "pack"; mouse.down = false; return; }
@@ -157,6 +162,7 @@ canvas.addEventListener("mousemove", (e) => {
   mouse.x = (e.clientX - r.left) * (W / r.width);
   mouse.y = (e.clientY - r.top) * (H / r.height);
   if (game.menu === "pack") invMouseMove(mouse.x, mouse.y);
+  if (game.paused && game.settingsOpen && game.settingsDrag) pauseSettingsDrag(mouse.x);
   portraitMouseMove(mouse.x);
 });
 canvas.addEventListener("mousedown", (e) => {
@@ -175,6 +181,7 @@ canvas.addEventListener("mousedown", (e) => {
 });
 window.addEventListener("mouseup", () => {
   mouse.down = false;
+  game.settingsDrag = null;
   portraitMouseUp();
   if (INV.drag) { if (game.menu === "pack") invMouseUp(mouse.x, mouse.y); else INV.drag = null; }
 });
@@ -386,6 +393,7 @@ function draw() {
     drawScreenFx();
   }
   drawAtmosphere(); // cone da lanterna, neblina azulada e vinheta
+  applyGameBrightness(); // ajuste do jogador, sem modificar brilho dos menus/HUD
   // números de dano ficam acima da luz, sempre legíveis
   ctx.save();
   ctx.translate(-Math.round(cam.x) + shx, -Math.round(cam.y) + shy);
