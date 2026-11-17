@@ -67,3 +67,9 @@ begin
 end $$;
 
 commit;
+
+-- avisa a API do Supabase que existe tabela nova (senão ela pode demorar a aparecer para o jogo)
+notify pgrst, 'reload schema';
+
+-- conferência: deve mostrar "chat_ok" com 0 (ou o número de mensagens)
+select count(*) as chat_ok from public.fm_chat;
