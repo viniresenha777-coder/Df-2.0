@@ -34,8 +34,47 @@ const fmCloud = (() => {
       return new Error("E-mail ou senha incorretos.");
     return new Error(error.message || "Não foi possível conectar ao Supabase.");
   }
+  // ---- Banimento (a regra vale no servidor: banido não lê nem grava a partida) ----
+  function banMessage(b) {
+    const fim = b.ate ? new Date(b.ate).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : null;
+    return (fim ? `Esta conta está banida até ${fim}.` : "Esta conta foi banida permanentemente.") +
+      (b.motivo ? ` Motivo: ${b.motivo}` : "");
+  }
+  async function activeBan(db, id) {
+    const r = await db.from("fm_banimentos").select("ate,motivo").eq("jogador", id).maybeSingle();
+    if (r.error || !r.data) return null;              // tabela ainda não criada: ninguém banido
+    return !r.data.ate || new Date(r.data.ate) > new Date() ? r.data : null;
+  }
+  let banTimer = null;
+  function watchBan() {
+    clearInterval(banTimer);
+    banTimer = setInterval(async () => {
+      if (!user) { clearInterval(banTimer); return; }
+      const b = await activeBan(requireClient(), user.id).catch(() => null);
+      if (!b) return;
+      clearInterval(banTimer);
+      const msg = banMessage(b);
+      try { await requireClient().auth.signOut({ scope: "local" }); } catch (_) {}
+      user = null; userIsAdmin = false;
+      alert(msg);
+      location.reload();
+    }, 60000);
+  }
+  async function rpc(name, args) {
+    const { data, error } = await requireClient().rpc(name, args);
+    if (error && /could not find the function|schema cache/i.test(error.message || ""))
+      throw new Error("Banimento ainda não ativado no servidor: rode supabase/configurar-banimentos.sql no Supabase.");
+    if (error) throw new Error(error.message || "O servidor recusou.");
+    return data;
+  }
   async function openSession(account) {
     const db = requireClient();
+    const ban = await activeBan(db, account.id);
+    if (ban) {
+      await db.auth.signOut({ scope: "local" }).catch(() => {});
+      throw new Error(banMessage(ban));
+    }
+    watchBan();
     const { data, error } = await db.from("fm_partidas")
       .select("progresso,revisao").eq("jogador", account.id).maybeSingle();
     if (error) throw friendly(error);
@@ -175,5 +214,9 @@ const fmCloud = (() => {
   return { resume, login, logout, resend, ping,
     sendPasswordRecovery, observeAuth, recoverySession, changeRecoveredPassword,
     write, read: () => snapshot, isActive: () => !!user, isAdmin: () => !!user && userIsAdmin, hasOnlineSave: () => revision !== null,
-    userId: () => user ? user.id : null, socialClient: () => client };
+    userId: () => user ? user.id : null, socialClient: () => client,
+    // administrador: o servidor confere a permissão em cada chamada
+    ban: (uid, dias, motivo) => rpc("fm_banir", { alvo: uid, dias: dias || null, motivo: motivo || "" }),
+    unban: (uid) => rpc("fm_desbanir", { alvo: uid }),
+    bannedList: () => rpc("fm_listar_banidos", {}) };
 })();

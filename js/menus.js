@@ -14,6 +14,7 @@ function menuKey(k) {
   if (game.menu === "prof") { profKey(k); return; }
   if (game.menu === "junk") { junkKey(k); return; }
   if (game.menu === "creditshop") { creditShopKey(k); return; }
+  if (game.menu === "map" && game.mapAsk) { if (k === "escape" || k === "e" || k === "n") game.mapAsk = null; return; }   // janela do admin por cima do mapa
   if (k === "escape" || k === "e" || k === "b" || (k === "c" && game.menu === "stats") || (k === "m" && game.menu === "sector") || (k === "n" && game.menu === "map") || (k === "o" && game.menu === "obj")) { game.menu = null; return; }
   if (game.menu === "bank") {
     if (k === "d") game.input = { mode: "deposit", text: "" };
@@ -332,7 +333,7 @@ function travelKey(k) {
 
 // ---------- Painel de administrador (F2) ----------
 const adm = { god: false, infAmmo: false, noReq: false, noHunger: false, infStamina: false, freeze: false, dmg: 1, direct: false, shopAnywhere: false };
-const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Armas", "Implantes", "Presentes"];
+const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Armas", "Implantes", "Presentes", "Banidos"];
 function canUseAdmin() {
   return typeof fmCloud !== "undefined" && fmCloud.isActive() && fmCloud.isAdmin();
 }
@@ -472,6 +473,19 @@ function admRows() {
     B("ENVIAR PRESENTE PARA O JOGADOR", () => admSendGift());
     rows.push({ label: "A entrega é automática e aparece em Mensagens (I).",
       val: () => g.busy ? "enviando..." : "somente ADM", act: () => {} });
+  } else if (tab === 6) {
+    // banidos: lista vem do servidor (só administradores conseguem ler)
+    if (!game.admBans) admLoadBans();
+    const st = game.admBans || { list: [], busy: true };
+    B(st.busy ? "Carregando a lista..." : "Atualizar a lista", () => { game.admBans = null; admLoadBans(); });
+    if (st.err) rows.push({ label: "Erro: " + st.err, val: () => "", act: () => {} });
+    else if (!st.busy && !st.list.length) rows.push({ label: "Nenhum jogador banido.", val: () => "", act: () => {} });
+    st.list.forEach((b) => {
+      const ate = b.ate ? "até " + new Date(b.ate).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "permanente";
+      rows.push({ label: `${b.nome} · ${ate}${b.motivo ? " · " + b.motivo : ""}`, val: () => "DESBANIR (Enter)",
+        act: (d, how) => { if (how === "enter") admUnban(b); } });
+    });
+    rows.push({ label: "Para banir: mapa (N) → clique no jogador na lista de online.", val: () => "", act: () => {} });
   }
   return rows;
 }
@@ -683,7 +697,10 @@ function drawMap() {
     if (c.tier === 8 && player.level < GRAY_LEVEL) txt("🔒", x + cs - 9, y + 12, 9, "#fff", "center");
     if (c === here) { ctx.strokeStyle = "#ffd96a"; ctx.lineWidth = 2.5 + Math.sin(now / 200); ctx.strokeRect(x + 2, y + 2, cs - 4, cs - 4); }
     if (game.mapSel.cx === cx && game.mapSel.cy === cy) { ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.strokeRect(x + 4, y + 4, cs - 8, cs - 8); ctx.setLineDash([]); }
-    regClick(x, y, cs, cs, () => { game.mapSel = { cx, cy }; });
+    regClick(x, y, cs, cs, () => {
+      game.mapSel = { cx, cy };
+      if (canUseAdmin() && c !== here) game.mapAsk = { kind: "cell", cx, cy };   // admin: pergunta se teletransporta
+    });
   }
   // Marcadores de sobreviventes online por setor: azul = jogador, verde = amigo.
   const locations = new Map();
@@ -746,7 +763,125 @@ function drawMap() {
       txt(`${Math.round(pc * 100)}%`, lx + 304, yy + 12, 11, "#c9c4ad");
     });
   }
-  hint("Clique ou WASD/setas escolhem a área · C volta para onde você está · N, E ou Esc fecha");
+  drawMapPlayers(gx, ly + 82);
+  hint(canUseAdmin() ? "Clique numa área para teletransportar · clique num jogador para ir até ele ou banir · N, E ou Esc fecha"
+                     : "Clique ou WASD/setas escolhem a área · C volta para onde você está · N, E ou Esc fecha");
+  drawMapAsk();
+}
+
+// ---------- Mapa: jogadores online (rolagem com a roda do mouse) e ações do administrador ----------
+const MAP_PL = { x: 34, y: 0, w: 470, h: 0, rowH: 19, scroll: 0 };
+function mapPlayers() {
+  const list = fmSocial.online().slice().sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  return [{ uid: null, name: save.name || "Você", cx: world.cell.cx, cy: world.cell.cy, inside: !!game.inside, me: true }, ...list];
+}
+function drawMapPlayers(x, y) {
+  const list = mapPlayers(), P = MAP_PL;
+  P.x = x; P.y = y + 8; P.h = H - 40 - P.y;
+  txt(`JOGADORES ONLINE (${list.length})`, x, y, 12, "#73ceff", "left", true);
+  ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(P.x, P.y, P.w, P.h, 5); ctx.fill();
+  const vis = Math.max(1, Math.floor((P.h - 6) / P.rowH)), max = Math.max(0, list.length - vis);
+  P.scroll = clamp(P.scroll, 0, max);
+  ctx.save(); ctx.beginPath(); ctx.rect(P.x, P.y, P.w, P.h); ctx.clip();
+  list.slice(P.scroll, P.scroll + vis).forEach((p, i) => {
+    const ry = P.y + 3 + i * P.rowH;
+    const hov = !p.me && canUseAdmin() && !game.mapAsk && mouse.x >= P.x && mouse.x <= P.x + P.w - 12 && mouse.y >= ry && mouse.y < ry + P.rowH;
+    if (hov) { ctx.fillStyle = "rgba(115,206,255,0.14)"; ctx.fillRect(P.x + 2, ry, P.w - 14, P.rowH - 1); }
+    const friend = !p.me && fmSocial.isFriend(p.uid), where = cellAt(p.cx, p.cy);
+    txt(p.me ? `${p.name} (você)` : p.name, P.x + 10, ry + 14, 12, p.me ? "#ffd96a" : friend ? "#8fe0a8" : "#e5e0c8", "left", true, 200);
+    txt(`${cellCode(p.cx, p.cy)}${where ? " · " + where.name : ""}${p.inside ? " · em prédio" : ""}`, P.x + 220, ry + 14, 11, "#a9a58f", "left", false, 230);
+    if (!p.me && canUseAdmin()) regClick(P.x, ry, P.w - 12, P.rowH, () => { game.mapAsk = { kind: "player", p }; });
+  });
+  ctx.restore();
+  if (max > 0) {                                        // barra de rolagem
+    const th = Math.max(16, P.h * vis / list.length), ty = P.y + (P.h - th) * (P.scroll / max);
+    ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(P.x + P.w - 8, P.y + 2, 5, P.h - 4);
+    ctx.fillStyle = "#73ceff"; ctx.fillRect(P.x + P.w - 8, ty, 5, th);
+  }
+}
+// roda do mouse em cima da lista: rola só a lista
+function mapWheel(dy) {
+  const P = MAP_PL;
+  if (game.mapAsk || mouse.x < P.x || mouse.x > P.x + P.w || mouse.y < P.y || mouse.y > P.y + P.h) return;
+  P.scroll += dy > 0 ? 1 : -1;
+}
+const BAN_DAYS = [[1, "1 dia"], [7, "7 dias"], [30, "30 dias"], [365, "1 ano"], [0, "Permanente"]];
+// janelas do administrador por cima do mapa (teletransporte, jogador, confirmação do banimento)
+function drawMapAsk() {
+  const a = game.mapAsk;
+  if (!a) return;
+  if (!canUseAdmin()) { game.mapAsk = null; return; }
+  ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, W, H);
+  regClick(0, 0, W, H, () => {});                       // nada atrás da janela recebe clique
+  const box = (pw, ph, stroke) => {
+    const px = W / 2 - pw / 2, py = H / 2 - ph / 2;
+    ctx.fillStyle = "#1a1913"; rr(px, py, pw, ph, 10); ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke();
+    return { px, py, pw, ph };
+  };
+  if (a.kind === "cell") {
+    const c = cellAt(a.cx, a.cy), { px, py, pw, ph } = box(420, 150, "#d4af37");
+    txt("Teletransportar?", W / 2, py + 36, 20, "#e5e0c8", "center", true);
+    txt(`${cellCode(a.cx, a.cy)}${c ? " · " + c.name : ""}`, W / 2, py + 62, 14, "#ffd96a", "center", true, pw - 30);
+    btn(px + 40, py + ph - 52, 150, 34, "Sim", () => { game.mapAsk = null; admTeleportCell(a.cx, a.cy); }, true);
+    btn(px + pw - 190, py + ph - 52, 150, 34, "Não", () => { game.mapAsk = null; });
+  } else if (a.kind === "player") {
+    const p = a.p, { px, py, pw, ph } = box(560, 218, "#d4af37");
+    txt(p.name, W / 2, py + 34, 20, "#e5e0c8", "center", true, pw - 30);
+    txt(`Está em ${cellCode(p.cx, p.cy)}${p.inside ? " (dentro de prédio)" : ""}`, W / 2, py + 56, 12, "#a9a58f", "center");
+    btn(px + 20, py + 70, pw - 40, 32, "Teletransportar até ele", () => { game.mapAsk = null; admTeleportPlayer(p); }, true);
+    txt("Banir por:", px + 20, py + 128, 13, "#e05a4a", "left", true);
+    const bw = (pw - 40 - 4 * 8) / 5;
+    BAN_DAYS.forEach(([d, label], i) => btn(px + 20 + i * (bw + 8), py + 138, bw, 30, label, () => { game.mapAsk = { kind: "ban", p, d, label }; }));
+    btn(px + pw / 2 - 75, py + ph - 42, 150, 30, "Cancelar", () => { game.mapAsk = null; });
+  } else if (a.kind === "ban") {
+    const { px, py, pw, ph } = box(460, 150, "#e05a4a");
+    txt(`Banir ${a.p.name}?`, W / 2, py + 36, 20, "#e5e0c8", "center", true, pw - 30);
+    txt(a.d ? `Por ${a.label}. Ele cai do jogo em até 1 minuto e não entra até lá.` : "Para sempre (até alguém desbanir no F2).",
+      W / 2, py + 62, 12, "#a9a58f", "center", false, pw - 30);
+    btn(px + 40, py + ph - 52, 160, 34, "Banir", () => { game.mapAsk = null; admBan(a.p, a.d, a.label); }, true);
+    btn(px + pw - 200, py + ph - 52, 160, 34, "Cancelar", () => { game.mapAsk = null; });
+  }
+}
+function admTeleportCell(cx, cy) {
+  if (!canUseAdmin()) return;
+  const c = cellAt(cx, cy);
+  if (!c) { toast("Essa área não tem passagem"); return; }
+  game.menu = null;
+  if (game.inside) leaveHouse();
+  gotoCell(c, { x: MID_X, y: MID_Y });
+  toast(`Teletransportado para ${c.code}`);
+}
+function admTeleportPlayer(p) {
+  if (!canUseAdmin()) return;
+  const c = cellAt(p.cx, p.cy);
+  if (!c) { toast("Não foi possível achar a área do jogador"); return; }
+  game.menu = null;
+  if (game.inside) leaveHouse();
+  const m = /^house:(-?[\d.]+):(-?[\d.]+)/.exec(p.location || "");
+  gotoCell(c, m ? (wd) => { const b = wd.buildings.find((b) => b.x === +m[1] && b.y === +m[2]); return b && b.door ? doorFront(b) : { x: MID_X, y: MID_Y }; }
+                : { x: p.x, y: p.y + 30 });
+  toast(m ? `${p.name} está dentro de um prédio: você ficou na porta` : `Teletransportado até ${p.name}`);
+}
+async function admBan(p, days, label) {
+  if (!canUseAdmin()) return;
+  try {
+    await fmCloud.ban(p.uid, days);
+    toast(`${p.name} banido (${label})`);
+    game.admBans = null;
+  } catch (err) { toast(err.message || "Não foi possível banir"); }
+}
+async function admLoadBans() {
+  if (!canUseAdmin() || (game.admBans && game.admBans.busy)) return;
+  game.admBans = { list: game.admBans ? game.admBans.list : [], busy: true, err: null };
+  try { game.admBans.list = (await fmCloud.bannedList()) || []; }
+  catch (err) { game.admBans.err = err.message || "Falha ao carregar"; }
+  finally { game.admBans.busy = false; }
+}
+async function admUnban(b) {
+  if (!canUseAdmin()) return;
+  try { await fmCloud.unban(b.jogador); toast(`${b.nome} desbanido`); }
+  catch (err) { toast(err.message || "Não foi possível desbanir"); }
+  game.admBans = null; admLoadBans();
 }
 
 function drawAdmin() {
@@ -755,7 +890,7 @@ function drawAdmin() {
   game.ac = Math.max(0, Math.min(rows.length - 1, game.ac));
   menuFrame("Painel de administrador");
   ADM_TABS.forEach((t, i) => {
-    const x = 36 + i * 148, w = 148;
+    const w = Math.floor(888 / ADM_TABS.length), x = 36 + i * w;
     ctx.fillStyle = game.at === i ? "rgba(212,175,55,0.16)" : "rgba(0,0,0,0)";
     ctx.fillRect(x, 55, w, 34);
     txt(t, x + w / 2, 78, 14, game.at === i ? "#ffd96a" : "#a9a58f", "center", true);

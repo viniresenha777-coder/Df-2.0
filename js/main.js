@@ -140,7 +140,7 @@ window.addEventListener("keydown", (e) => {
   if (k === "b") { game.menu = "pack"; mouse.down = false; return; }
   // A tecla L não abre mais a loja. O painel visual continua no refúgio.
   if (k === "k") { sndMute(!SND.muted); save.muted = SND.muted; persist(); toast(SND.muted ? "Som desligado" : "Som ligado"); return; }
-  if (k === "n") { game.menu = "map"; game.mapSel = { cx: world.cell.cx, cy: world.cell.cy }; return; }
+  if (k === "n") { game.menu = "map"; game.mapAsk = null; game.mapSel = { cx: world.cell.cx, cy: world.cell.cy }; return; }
   if (k === "o") { game.menu = "obj"; game.oscroll = 0; return; }
   if (k === "j") { save.music = !save.music; musicSetOn(save.music); persist(); toast(save.music ? "Música ligada" : "Música desligada"); return; }
   if (k === "tab") { save.hud = save.hud === 1 ? 0 : 1; persist(); toast(save.hud ? "HUD compacto (Tab volta ao completo)" : "HUD completo"); return; }
@@ -188,6 +188,11 @@ window.addEventListener("mouseup", () => {
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 canvas.addEventListener("wheel", (e) => {
   e.preventDefault();
+  if (game.menu === "map") {                                     // rola a lista de jogadores online
+    const r = canvas.getBoundingClientRect();
+    mouse.x = (e.clientX - r.left) * (W / r.width); mouse.y = (e.clientY - r.top) * (H / r.height);
+    mapWheel(e.deltaY); return;
+  }
   if (game.menu || game.shop || game.over || game.found || game.paused || game.hub) return;
   cycleWeapon(e.deltaY > 0 ? 1 : -1);
 }, { passive: false });

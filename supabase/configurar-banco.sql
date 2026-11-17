@@ -1,6 +1,8 @@
 -- Fronteira Morta 2.0 — execute uma vez no Supabase SQL Editor.
 -- O Supabase Auth gerencia senhas; esta tabela guarda APENAS o save por usuário.
 -- Script seguro para executar novamente: substitui políticas antigas desta tabela.
+-- ATENÇÃO: depois de rodar este, rode de novo configurar-banimentos.sql (ele refaz estas
+-- políticas com o bloqueio de jogadores banidos).
 begin;
 
 create table if not exists public.fm_partidas (
