@@ -320,18 +320,28 @@ function tintedSheet(pose) {
   return (PSHEET.tinted[pose] = clothingTintCanvas(base, mask, skin, save.clothing, false));
 }
 // camadas de equipamento visíveis agora (colete, mochila e o acessório do personagem)
+// acessórios de cabeça que vêm com o personagem e que uma peça do guarda-roupa substitui
+const SKIN_HAT_IDS = ["helmet", "helmet2", "headset"], SKIN_MASK_IDS = ["balaclava", "gasmask", "ballistic", "shemagh"];
 function playerGear() {
-  const list = [];
+  const list = [], wear = (k) => (typeof clothingLayer === "function" ? clothingLayer(k) : null);
+  const hat = wear("hat"), mask = wear("mask");
+  for (const k of ["pants", "boots"]) if (wear(k)) list.push(wear(k));
   if (save.vest >= 0 && VEST_GEAR[save.vest]) list.push(VEST_GEAR[save.vest]);
-  list.push("pack");
+  list.push(wear("pack") || "pack");
   if (CAPE_GEAR[save.cape | 0]) list.push(CAPE_GEAR[save.cape | 0]);
-  for (const id of SKIN_GEAR[save.skin] || []) list.push(id);
+  for (const id of SKIN_GEAR[save.skin] || []) {
+    if ((hat && SKIN_HAT_IDS.includes(id)) || (mask && SKIN_MASK_IDS.includes(id))) continue;
+    list.push(id);
+  }
+  if (mask) list.push(mask);
+  if (hat) list.push(hat);
   return list;
 }
-// ordem das camadas: de frente a capa vai primeiro (fica atrás de tudo); de lado/costas o colete
-// vai antes, depois a capa por cima dele e a mochila por cima da capa. Cabeça sempre por último.
+// ordem das camadas: calça e botas embaixo de tudo; de frente a capa vai primeiro (fica atrás); de
+// lado/costas o colete vai antes, depois a capa por cima dele e a mochila por cima da capa. Cabeça por último.
 function gearOrder(list, back) {
-  const rank = (id) => id.startsWith("cape") ? (back ? 1 : 0) : id.startsWith("vest") ? (back ? 0 : 1) : id === "pack" ? 2 : 3;
+  const rank = (id) => id.startsWith("cl_pants") || id.startsWith("cl_boots") ? -1 : id.startsWith("cape") ? (back ? 1 : 0) :
+    id.startsWith("vest") ? (back ? 0 : 1) : id === "pack" || id.startsWith("cl_pack") ? 2 : 3;
   return list.slice().sort((a, b) => rank(a) - rank(b));
 }
 // qual pose de braços cada arma usa

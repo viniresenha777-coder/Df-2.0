@@ -175,6 +175,7 @@ function invClick(z) {
 
 function equipClothing(item) {
   if (!item || CLOTHING_BY_ID[item.id] !== item || !CLOTHING_KINDS.includes(item.kind)) return;
+  if (save.clothing[item.kind] === item.id) { unequipClothing(item.kind); return; }   // clicar de novo tira (mochila não tem slot)
   save.clothing[item.kind] = item.id;
   persist();
   toast(item.name + " equipada");
@@ -388,10 +389,11 @@ function drawInventory() {
   else txt("⟲ arraste para girar", 480, 361, 9, "#7d7a68", "center");
   if (portraitView() === "back") cape();
   const hp = headPieces();
-  outfitSlot(296, 104, 58, 58, hp.hat ? hp.hat.name : "Chapéu", hp.hat);
+  // chapéu e máscara: peça do guarda-roupa, se houver; senão o acessório que vem com o personagem
+  if (clothingGet("hat")) equippedClothingSlot(296, 104, "hat"); else outfitSlot(296, 104, 58, 58, hp.hat ? hp.hat.name : "Chapéu", hp.hat);
   equippedClothingSlot(296, 186, "jacket");
   equippedClothingSlot(296, 268, "pants");
-  outfitSlot(606, 104, 58, 58, hp.mask ? hp.mask.name : "Máscara", hp.mask);
+  if (clothingGet("mask")) equippedClothingSlot(606, 104, "mask"); else outfitSlot(606, 104, 58, 58, hp.mask ? hp.mask.name : "Máscara", hp.mask);
   slotBox(606, 186, 58, 58, "Colete", { area: "vestslot", type: "vest", item: save.vest >= 0 ? { i: save.vest } : null });
   equippedClothingSlot(606, 268, "boots");
   for (let i = 0; i < SLOT_N; i++) {

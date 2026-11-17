@@ -28,3 +28,26 @@ Assets recolhidos dos ZIPs fornecidos pelo criador; este documento preserva os c
   `cartucho_chao.ogg` (cartucho caindo), `passos.ogg` e `passos_grama.ogg` (passos), `lancagranada_tiro.ogg` e
   `lancagranada_recarga.ogg` (lança-granadas), `amb_bunker.ogg` e `amb_hospital.ogg` (ambiente dentro do bunker e dos hospitais).
   Do pacote JDSherbert: `fuzil_recarga.mp3` (recarga dos fuzis).
+
+## Roupas 3D do guarda-roupa (Sketchfab, CC BY 4.0)
+
+Vestidas no corpo do personagem no Blender e presas ao esqueleto (camadas `img/gear/cl_*`, `img/portrait_cl_*`;
+fotos em `img/clothing/cl_*.png`). Licença: <http://creativecommons.org/licenses/by/4.0/>
+
+| No jogo | Modelo | Autor |
+|---|---|---|
+| Mochila de Couro | [Backpack_part_00001_](https://sketchfab.com/3d-models/backpack-part-00001-204dbf7016e34de8ace4f66dafaf5b1b) | denj666 |
+| Mochila de Trilha Verde | [balo xanh](https://sketchfab.com/3d-models/balo-xanh-b48f88d75b7043e98d6309c91db0a063) | quyetle2432 |
+| Mochila de Trilha Azul | [balo xanh biển](https://sketchfab.com/3d-models/balo-xanh-bien-4f390844ac3e4929a4f07382369e54a7) | quyetle2432 |
+| Mochila Tática | [Tactical Explorer Backpack](https://sketchfab.com/3d-models/tactical-explorer-backpack-adc0e037e7ce458ebd5418ba8f30d22b) | yronthal |
+| Bota de Trilha | [Bota](https://sketchfab.com/3d-models/bota-5a4be383a62c4237b0eadb82f1ec9f8a) | hrabale |
+| Bota de Trilha Gasta | [Bota 2](https://sketchfab.com/3d-models/bota-2-b81a12fbdbbf473e8fbc73873cd1b594) | hrabale |
+| Bota de Couro Preta | [Bota The North Face](https://sketchfab.com/3d-models/bota-the-north-face-44a48d21d1f84ae5bde85847dc05aa00) | Roberto Domínguez (vmmaniac) |
+| Bota de Escalada | [METARETAIL_ BOTA](https://sketchfab.com/3d-models/metaretail--bota-d637c3cc35bf45919f80f1cb9a01c3ff) | vmmaniac |
+| Calça Tática 6 Bolsos Multiforest | [CALÇA TÁTICA 6 BOLSOS F2505 MULTIFOREST](https://sketchfab.com/3d-models/calca-tatica-6-bolsos-f2505-multiforest-e67454efc1da49c98945b2f933d24023) | Leonardo Matias |
+| Capacete Tático com Fone | [Tactical Helmet with Headset (Game-Ready)](https://sketchfab.com/3d-models/tactical-helmet-with-headset-game-ready-82adf376164f4d99a4e0b2949930e2ad) | Exactly |
+| Lenço de Cabeça | [hijab 2.2](https://sketchfab.com/3d-models/hijab-22-73d96cfb751d4ad9a8decae6082c1a07) | JMUHIST |
+| Máscara de Esqui | [Wool Ski Mask / Balaclava](https://sketchfab.com/3d-models/wool-ski-mask-balaclava-55005ed95a974f738d860fc02e30728c) | SKVORSOW |
+
+Recebidos e não usados: **test-calca** (zebra3dfashion) é CC BY-NC (proíbe uso comercial); **raincoat coat** (DEYMAR) e
+**Speaker Harmer Body** (Freaky Gamer), ambos CC BY, ainda não encaixam no corpo (mangas / esqueleto próprio).

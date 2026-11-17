@@ -22,24 +22,41 @@ const CLOTHING_SETS = [
     pants: ["Calça de rastreador", "#3e4d3b", "#85946b", "camo"],
     boots: ["Botas de couro", "#6b4a2e", "#b58c5c", "leather"] }
 ];
-const CLOTHING_KINDS = ["jacket", "pants", "boots"];
-const CLOTHING_LABELS = { jacket: "Jaqueta", pants: "Calça", boots: "Botas" };
+const CLOTHING_KINDS = ["jacket", "pants", "boots", "hat", "mask", "pack"];
+const CLOTHING_LABELS = { jacket: "Jaqueta", pants: "Calça", boots: "Botas", hat: "Chapéu", mask: "Máscara", pack: "Mochila" };
 const CLOTHING_ITEMS = [];
 const CLOTHING_BY_ID = Object.create(null);
 for (const set of CLOTHING_SETS) {
-  for (const kind of CLOTHING_KINDS) {
+  for (const kind of ["jacket", "pants", "boots"]) {
     const info = set[kind];
     const item = { id: set.id + "_" + kind, kind, set: set.id, setName: set.name, name: info[0], color: info[1], accent: info[2], texture: info[3] };
     CLOTHING_ITEMS.push(item);
     CLOTHING_BY_ID[item.id] = item;
   }
 }
-// Modelos fornecidos pelo criador, ajustados à escala Male-High (1,826m).
-// Os PNGs foram renderizados dos glTF originais; equipar usa a máscara animada.
+// Roupas 3D: modelos enviados pelo criador, vestidos no corpo do personagem no Blender
+// (fronteiraMorta_src/blender/player.py, wear_list) e presos ao esqueleto: giram e andam junto.
+// layer = camada img/gear/<layer>_<pose>.png e img/portrait_<layer>.png desenhada por cima do corpo;
+// icon = foto da própria peça. Peças 3D não pintam o corpo (a camada já tem a cor do modelo).
+const W3D = (id, kind, layer, name, setName) => ({ id, kind, set: "3d", setName, name, layer, icon: `img/clothing/${layer}.png`, color: "#6a6658", accent: "#8a8672", texture: "canvas" });
 const IMPORTED_CLOTHING = [
-  { id: "multiforest_pants", kind: "pants", set: "f2505", setName: "Tático Multiforest", name: "Calça Tática 6 Bolsos Multiforest", color: "#a69a77", accent: "#566247", texture: "multiforest", icon: "img/clothing/calca_tatica.png" },
-  { id: "bota_gltf_boots", kind: "boots", set: "bota", setName: "Botas de Sobrevivência", name: "Bota Tática Reforçada", color: "#50464e", accent: "#827581", texture: "leather", icon: "img/clothing/bota.png" }
+  W3D("multiforest_pants", "pants", "cl_pants_multiforest", "Calça Tática 6 Bolsos Multiforest", "Tático Multiforest"),
+  W3D("bota_gltf_boots", "boots", "cl_boots_trilha", "Bota de Trilha", "Botas de Sobrevivência"),
+  W3D("bota_trilha2", "boots", "cl_boots_trilha2", "Bota de Trilha Gasta", "Botas de Sobrevivência"),
+  W3D("bota_tnf", "boots", "cl_boots_tnf", "Bota de Couro Preta", "Botas de Sobrevivência"),
+  W3D("bota_meta", "boots", "cl_boots_meta", "Bota de Escalada", "Botas de Sobrevivência"),
+  W3D("capacete_fone", "hat", "cl_hat_capacete", "Capacete Tático com Fone", "Cabeça"),
+  W3D("lenco_cabeca", "hat", "cl_hat_lenco", "Lenço de Cabeça", "Cabeça"),
+  W3D("mascara_esqui", "mask", "cl_mask_esqui", "Máscara de Esqui", "Cabeça"),
+  W3D("mochila_couro", "pack", "cl_pack_couro", "Mochila de Couro", "Mochilas"),
+  W3D("mochila_trilha", "pack", "cl_pack_trilha", "Mochila de Trilha Verde", "Mochilas"),
+  W3D("mochila_azul", "pack", "cl_pack_azul", "Mochila de Trilha Azul", "Mochilas"),
+  W3D("mochila_tatica", "pack", "cl_pack_tatica", "Mochila Tática", "Mochilas")
 ];
+// camada 3D da peça equipada (ou null)
+function clothingLayer(kind, equipment) { const it = clothingGet(kind, equipment); return it && it.layer ? it.layer : null; }
+// peça que pinta o corpo (as 3D não pintam)
+function clothingTintItem(kind, equipment) { const it = clothingGet(kind, equipment); return it && !it.layer ? it : null; }
 for (const item of IMPORTED_CLOTHING) {
   CLOTHING_ITEMS.push(item);
   CLOTHING_BY_ID[item.id] = item;
@@ -247,7 +264,7 @@ function clothingTintCanvas(base, mask, skin, equipment, portrait) {
     const mg = mCanvas.getContext("2d", { willReadFrequently: true });
     mg.drawImage(mask, 0, 0);
     const m = mg.getImageData(0, 0, w, h).data, image = g.getImageData(0, 0, w, h), p = image.data;
-    const jacket = clothingGet("jacket", equipment), pants = clothingGet("pants", equipment), boots = clothingGet("boots", equipment);
+    const jacket = clothingTintItem("jacket", equipment), pants = clothingTintItem("pants", equipment), boots = clothingTintItem("boots", equipment);
     const J = clothingColor(jacket ? jacket.color : skin.jacket);
     const P = clothingColor(pants ? pants.color : skin.pants);
     const JA = jacket && clothingColor(jacket.accent), PA = pants && clothingColor(pants.accent);
