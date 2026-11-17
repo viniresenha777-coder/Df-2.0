@@ -13,8 +13,27 @@ function pushOut(e, r) {
     const cx = Math.max(o.x, Math.min(e.x, o.x + o.w)), cy = Math.max(o.y, Math.min(e.y, o.y + o.h));
     const dx = e.x - cx, dy = e.y - cy, d = Math.hypot(dx, dy);
     if (d < r) {
-      if (d > 0) { e.x += (dx / d) * (r - d); e.y += (dy / d) * (r - d); }
-      else e.y -= r;
+      if (d > 0) {
+        // Contato circular nas bordas do retângulo, com deslizamento.
+        e.x += dx / d * (r - d); e.y += dy / d * (r - d);
+      } else {
+        // Centro do personagem DENTRO de um carro/parede: o código
+        // antigo movia só r pixels, deixando o jogador preso ou
+        // aparentemente atravessando a carroceria durante vários frames.
+        // Agora sai diretamente pela borda mais próxima.
+        const sides = [
+          [e.x - o.x, 0],
+          [o.x + o.w - e.x, 1],
+          [e.y - o.y, 2],
+          [o.y + o.h - e.y, 3]
+        ];
+        sides.sort((a, b) => a[0] - b[0]);
+        const side = sides[0][1];
+        if (side === 0) e.x = o.x - r - 0.01;
+        else if (side === 1) e.x = o.x + o.w + r + 0.01;
+        else if (side === 2) e.y = o.y - r - 0.01;
+        else e.y = o.y + o.h + r + 0.01;
+      }
     }
   }
   if (!game.inside && world && world.lamps) for (const l of world.lamps) {
