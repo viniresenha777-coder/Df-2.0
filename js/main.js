@@ -100,7 +100,15 @@ function useTrindadeItem() {
   toast("Trindade ativada: +35% de dano, corrida e armadura por 100 anos!");
 }
 // ---------- Controles ----------
-function audioStart() { sndInit(); if (SND.ac) { musicSetOn(save.music); musicStart(); } }
+function audioStart() {
+  sndInit();
+  if (SND.ac) {
+    musicSetOn(save.music);
+    musicStart();
+    fmAudioAssetsStart(); // efeitos sonoros militares e zumbis, carregados sob demanda
+    fmAmbientStart(); // trilha do ZIP Ambiente sond, só após gesto do jogador
+  }
+}
 window.addEventListener("keydown", (e) => {
   audioStart();
   const k = e.key.toLowerCase();
