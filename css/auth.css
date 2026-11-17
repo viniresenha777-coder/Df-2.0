@@ -1,10 +1,13 @@
 /* Identidade visual do acesso online Fronteira Morta */
 [hidden] { display: none !important; }
 html { background: #070b0a; }
-body { background: #070b0a; }
+body {
+  margin: 0;
+  background: #070b0a url("../img/fm_exterior.webp?v=20261116-outside2") center / cover no-repeat fixed;
+}
 .fm-auth {
   min-height: 100svh; display: grid; place-items: center;
-  background: radial-gradient(ellipse at 50% 15%, #26362c 0%, #101914 40%, #070b0a 100%);
+  background: rgba(7, 11, 10, .12);
   padding: 24px; box-sizing: border-box; color: #e9e7d7;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
