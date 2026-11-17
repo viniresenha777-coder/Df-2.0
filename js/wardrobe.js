@@ -34,6 +34,16 @@ for (const set of CLOTHING_SETS) {
     CLOTHING_BY_ID[item.id] = item;
   }
 }
+// Modelos fornecidos pelo criador, ajustados à escala Male-High (1,826m).
+// Os PNGs foram renderizados dos glTF originais; equipar usa a máscara animada.
+const IMPORTED_CLOTHING = [
+  { id: "multiforest_pants", kind: "pants", set: "f2505", setName: "Tático Multiforest", name: "Calça Tática 6 Bolsos Multiforest", color: "#a69a77", accent: "#566247", texture: "camo", icon: "img/clothing/calca_tatica.png" },
+  { id: "bota_gltf_boots", kind: "boots", set: "bota", setName: "Botas de Sobrevivência", name: "Bota Tática Reforçada", color: "#50464e", accent: "#827581", texture: "leather", icon: "img/clothing/bota.png" }
+];
+for (const item of IMPORTED_CLOTHING) {
+  CLOTHING_ITEMS.push(item);
+  CLOTHING_BY_ID[item.id] = item;
+}
 function clothingClean(src) {
   const clean = { jacket: null, pants: null, boots: null };
   for (const kind of CLOTHING_KINDS) {
@@ -140,8 +150,23 @@ function clothingTintCanvas(base, mask, skin, equipment, portrait) {
   }
   return c;
 }
+const CLOTHING_PNG_CACHE = Object.create(null);
 function drawClothingIcon(item, x, y, w, h) {
   if (!item) return;
+  if (item.icon) {
+    let im = CLOTHING_PNG_CACHE[item.icon];
+    if (!im) {
+      im = new Image();
+      im.src = item.icon;
+      CLOTHING_PNG_CACHE[item.icon] = im;
+    }
+    if (im.complete && im.naturalWidth > 0) {
+      const scale = Math.min((w - 5) / im.naturalWidth, (h - 4) / im.naturalHeight);
+      const dw = im.naturalWidth * scale, dh = im.naturalHeight * scale;
+      ctx.drawImage(im, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+      return;
+    }
+  }
   const k = Math.min(w, h) / 60;
   ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.scale(k, k);
   ctx.fillStyle = item.color; ctx.strokeStyle = item.accent; ctx.lineWidth = 2;
