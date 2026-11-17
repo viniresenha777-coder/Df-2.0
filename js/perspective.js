@@ -239,8 +239,8 @@ const POSES = ["longa", "pesada", "pistola", "melee", "punhos"];
   let n = 0;
   const done = () => { if (++n === POSES.length * 2) PSHEET.ok = true; };
   for (const pose of POSES) {
-    const im = new Image(); im.onload = done; im.src = `img/player_${pose}.png`; PSHEET.sheets[pose] = im;
-    const mk = new Image(); mk.onload = done; mk.onerror = done; mk.src = `img/player_${pose}_mask.png`; PSHEET.masks[pose] = mk;
+    const im = new Image(); im.onload = done; im.src = `img/player_${pose}.png${CHAR_V}`; PSHEET.sheets[pose] = im;
+    const mk = new Image(); mk.onload = done; mk.onerror = done; mk.src = `img/player_${pose}_mask.png${CHAR_V}`; PSHEET.masks[pose] = mk;
   }
 })();
 
@@ -254,7 +254,7 @@ const GEAR_IMG = {};
 function gearImg(id, pose) {
   const k = id + "_" + pose;
   let im = GEAR_IMG[k];
-  if (!im) { im = GEAR_IMG[k] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/gear/${k}.png`; }
+  if (!im) { im = GEAR_IMG[k] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/gear/${k}.png${CHAR_V}`; }
   if (!(im.complete && !im.bad && im.naturalWidth)) return null;
   const tint = gearTint(id);
   return tint ? tintedImg(im, k, tint) : im;
@@ -325,7 +325,7 @@ const SKIN_HAT_IDS = ["helmet", "helmet2", "headset"], SKIN_MASK_IDS = ["balacla
 function playerGear() {
   const list = [], wear = (k) => (typeof clothingLayer === "function" ? clothingLayer(k) : null);
   const hat = wear("hat"), mask = wear("mask");
-  for (const k of ["pants", "boots"]) if (wear(k)) list.push(wear(k));
+  for (const k of ["pants", "boots", "jacket"]) if (wear(k)) list.push(wear(k));
   if (save.vest >= 0 && VEST_GEAR[save.vest]) list.push(VEST_GEAR[save.vest]);
   list.push(wear("pack") || "pack");
   if (CAPE_GEAR[save.cape | 0]) list.push(CAPE_GEAR[save.cape | 0]);
@@ -340,7 +340,7 @@ function playerGear() {
 // ordem das camadas: calça e botas embaixo de tudo; de frente a capa vai primeiro (fica atrás); de
 // lado/costas o colete vai antes, depois a capa por cima dele e a mochila por cima da capa. Cabeça por último.
 function gearOrder(list, back) {
-  const rank = (id) => id.startsWith("cl_pants") || id.startsWith("cl_boots") ? -1 : id.startsWith("cape") ? (back ? 1 : 0) :
+  const rank = (id) => id.startsWith("cl_pants") || id.startsWith("cl_boots") ? -1 : id.startsWith("cl_jacket") ? -0.5 : id.startsWith("cape") ? (back ? 1 : 0) :
     id.startsWith("vest") ? (back ? 0 : 1) : id === "pack" || id.startsWith("cl_pack") ? 2 : 3;
   return list.slice().sort((a, b) => rank(a) - rank(b));
 }

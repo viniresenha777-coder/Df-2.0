@@ -38,7 +38,9 @@ for (const set of CLOTHING_SETS) {
 // (fronteiraMorta_src/blender/player.py, wear_list) e presos ao esqueleto: giram e andam junto.
 // layer = camada img/gear/<layer>_<pose>.png e img/portrait_<layer>.png desenhada por cima do corpo;
 // icon = foto da própria peça. Peças 3D não pintam o corpo (a camada já tem a cor do modelo).
-const W3D = (id, kind, layer, name, setName) => ({ id, kind, set: "3d", setName, name, layer, icon: `img/clothing/${layer}.png`, color: "#6a6658", accent: "#8a8672", texture: "canvas" });
+// versão das imagens do personagem (corpo, camadas, retrato, fotos): troca quando o personagem é renderizado de novo
+const CHAR_V = "?v=mpfb01";
+const W3D = (id, kind, layer, name, setName) => ({ id, kind, set: "3d", setName, name, layer, icon: `img/clothing/${layer}.png${CHAR_V}`, color: "#6a6658", accent: "#8a8672", texture: "canvas" });
 const IMPORTED_CLOTHING = [
   W3D("multiforest_pants", "pants", "cl_pants_multiforest", "Calça Tática 6 Bolsos Multiforest", "Tático Multiforest"),
   W3D("bota_gltf_boots", "boots", "cl_boots_trilha", "Bota de Trilha", "Botas de Sobrevivência"),
@@ -51,7 +53,18 @@ const IMPORTED_CLOTHING = [
   W3D("mochila_couro", "pack", "cl_pack_couro", "Mochila de Couro", "Mochilas"),
   W3D("mochila_trilha", "pack", "cl_pack_trilha", "Mochila de Trilha Verde", "Mochilas"),
   W3D("mochila_azul", "pack", "cl_pack_azul", "Mochila de Trilha Azul", "Mochilas"),
-  W3D("mochila_tatica", "pack", "cl_pack_tatica", "Mochila Tática", "Mochilas")
+  W3D("mochila_tatica", "pack", "cl_pack_tatica", "Mochila Tática", "Mochilas"),
+  // roupas da biblioteca do MPFB (CC0): feitas para o mesmo corpo do personagem, encaixam sem ajuste
+  W3D("mp_macacao", "jacket", "cl_jacket_macacao", "Macacão de Trabalho", "Roupas Encaixadas"),
+  W3D("mp_sueter", "jacket", "cl_jacket_sueter", "Suéter de Pescador", "Roupas Encaixadas"),
+  W3D("mp_polo", "jacket", "cl_jacket_polo", "Camisa Polo", "Roupas Encaixadas"),
+  W3D("mp_camiseta", "jacket", "cl_jacket_camiseta", "Camiseta Justa", "Roupas Encaixadas"),
+  W3D("mp_calca_la", "pants", "cl_pants_la", "Calça de Lã", "Roupas Encaixadas"),
+  W3D("mp_bota_couro", "boots", "cl_boots_couro", "Bota de Cano Alto", "Roupas Encaixadas"),
+  W3D("mp_bota_heroi", "boots", "cl_boots_heroi", "Bota Reforçada Azul", "Roupas Encaixadas"),
+  W3D("mp_capacete_m1", "hat", "cl_hat_m1", "Capacete M1", "Roupas Encaixadas"),
+  W3D("mp_boina", "hat", "cl_hat_boina", "Boina de Jornaleiro", "Roupas Encaixadas"),
+  W3D("mp_mascara_medica", "mask", "cl_mask_medica", "Máscara Médica", "Roupas Encaixadas")
 ];
 // camada 3D da peça equipada (ou null)
 function clothingLayer(kind, equipment) { const it = clothingGet(kind, equipment); return it && it.layer ? it.layer : null; }

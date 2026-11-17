@@ -51,3 +51,24 @@ fotos em `img/clothing/cl_*.png`). Licença: <http://creativecommons.org/license
 
 Recebidos e não usados: **test-calca** (zebra3dfashion) é CC BY-NC (proíbe uso comercial); **raincoat coat** (DEYMAR) e
 **Speaker Harmer Body** (Freaky Gamer), ambos CC BY, ainda não encaixam no corpo (mangas / esqueleto próprio).
+
+## Corpo do personagem e roupas encaixadas (MPFB / MakeHuman)
+
+Desde a versão MPFB-01 o corpo do jogador é gerado no Blender com o **MPFB 2** (MakeHuman para Blender) e vestido com
+roupas da biblioteca oficial do MakeHuman, que já vêm feitas para esse corpo. Os modelos gerados pelo MakeHuman são
+CC0 (exceção de licença da MakeHuman para os assets do sistema); as roupas da comunidade abaixo são CC0.
+
+| No jogo | Asset MPFB | Autor |
+|---|---|---|
+| Corpo, pele, olhos, sobrancelhas, cílios, cabelo | makehuman_system_assets | MakeHuman team |
+| Camiseta e calça padrão | elvs_crude_t-shirt_male, cortu_cargo_pants | Elvaerwyn, Cortu Johnstone |
+| Bota padrão | toigo_ankle_boots_male | Toigo |
+| Macacão de Trabalho | male_worksuit01 | MakeHuman team |
+| Suéter de Pescador | toigo_fisherman_sweater | Toigo |
+| Camisa Polo | namuhekam_male_polo_shirt | Namuhekam |
+| Camiseta Justa | toigo_basic_tucked_t-shirt | Toigo |
+| Calça de Lã | toigo_wool_pants | Toigo |
+| Bota de Cano Alto, Bota Reforçada Azul | culturalibre_male_boots, culturalibre_hero_boots_2 | culturalibre |
+| Capacete M1 | mrgreaterthan_m1_helmet | MrGreaterThan |
+| Boina de Jornaleiro | jujube_newsboy_cap | Jujube |
+| Máscara Médica | joepal_medical_mouth_protection | Joel Palmius |

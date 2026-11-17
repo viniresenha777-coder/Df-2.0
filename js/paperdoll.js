@@ -12,7 +12,7 @@
 const PORTRAIT = { base: null, mask: null, gear: {}, cache: null, key: "" };
 function portraitImg(name) {
   const im = new Image();
-  im.src = `img/${name}.png`;
+  im.src = `img/${name}.png${CHAR_V}`;
   return im;
 }
 function portraitReady(im) { return im && im.complete && im.naturalWidth > 0; }
