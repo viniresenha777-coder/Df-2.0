@@ -349,14 +349,20 @@ function genStreets(wd, R) {
   const [hy0, hy1] = H_STREETS[1], [vx0, vx1] = V_STREETS[1];
   const nh = 2 + Math.floor(R() * 3);
   for (let i = 0; i < nh; i++) for (let t = 0; t < 15; t++) {
-    const w = 78, h = 38, x = AREA_EDGE + R() * (WORLD_W - 2 * AREA_EDGE - w), y = hy0 + 18 + R() * (ST_W - h - 36);
-    if (!free(wd, x, y, w, h, 34)) continue;
+    const w = 78, h = 38, x = AREA_EDGE + R() * (WORLD_W - 2 * AREA_EDGE - w);
+    // Veículos abandonados no acostamento, perto do meio-fio, nunca
+    // atravessados no centro da avenida. Mantém a semente por setor.
+    const lane = R();
+    const y = lane < 0.5 ? hy0 + 6 + lane * 14 : hy1 - h - 6 - (lane - 0.5) * 14;
+    if (!free(wd, x, y, w, h, 24)) continue;
     addCar(wd, x, y, w, h, false, R); break;
   }
   const nv = 1 + Math.floor(R() * 3);
   for (let i = 0; i < nv; i++) for (let t = 0; t < 15; t++) {
-    const w = 38, h = 78, x = vx0 + 14 + R() * (ST_W - w - 28), y = AREA_EDGE + R() * (WORLD_H - 2 * AREA_EDGE - h);
-    if (!free(wd, x, y, w, h, 30)) continue;
+    const w = 38, h = 78, lane = R(), y = AREA_EDGE + R() * (WORLD_H - 2 * AREA_EDGE - h);
+    // Mesmo alinhamento junto ao meio-fio nas vias verticais.
+    const x = lane < 0.5 ? vx0 + 6 + lane * 14 : vx1 - w - 6 - (lane - 0.5) * 14;
+    if (!free(wd, x, y, w, h, 24)) continue;
     addCar(wd, x, y, w, h, true, R); break;
   }
   // Iluminação pública exclusivamente na calçada (faixa de concreto das
