@@ -136,3 +136,118 @@ function fmInstallAudioSamples() {
   sfx.empty = function() {if(!fmPlaySample("walther",{volume:.2}))prev.empty();};
 }
 fmInstallAudioSamples();
+// =====================================================================
+//  Sons enviados pelo criador (pacote Modern Weapons & Military - AHTu20 e
+//  FirearmFX Walther P38 - JDSherbert), cada um no seu lugar:
+//  tiro e recarga dos fuzis, facas, cartucho caindo no chão, passos (chão
+//  duro e grama), lança-granadas (tiro e recarga) e ambiente do bunker e dos hospitais.
+// =====================================================================
+const FM_EXTRA_FILES = {
+  fuzil_tiro: "audio/fuzil_tiro.ogg", fuzil_recarga: "audio/fuzil_recarga.mp3", faca: "audio/faca.ogg",
+  cartucho: "audio/cartucho_chao.ogg", passos: "audio/passos.ogg", passos_grama: "audio/passos_grama.ogg",
+  granada_tiro: "audio/lancagranada_tiro.ogg", granada_recarga: "audio/lancagranada_recarga.ogg",
+  amb_bunker: "audio/amb_bunker.ogg", amb_hospital: "audio/amb_hospital.ogg"
+};
+const FM_EXTRA = { buf: {}, loading: false, lastShell: 0, steps: null, amb: null };
+function fmExtraLoad() {
+  if (!SND.ac || FM_EXTRA.loading) return;
+  FM_EXTRA.loading = true;
+  for (const [k, url] of Object.entries(FM_EXTRA_FILES)) {
+    fetch(url + "?v=20261117-sons01")
+      .then(r => { if (!r.ok) throw new Error(url); return r.arrayBuffer(); })
+      .then(b => SND.ac.decodeAudioData(b))
+      .then(b => { FM_EXTRA.buf[k] = b; })
+      .catch(err => console.warn("Som não carregado:", err));
+  }
+}
+// toca um dos sons extras; devolve false se ainda não carregou (o jogo usa o som antigo)
+function fmPlayExtra(key, opt) {
+  const ac = SND.ac, buf = FM_EXTRA.buf[key];
+  if (!ac || SND.muted || !buf) return false;
+  opt = opt || {};
+  const src = ac.createBufferSource(), gain = ac.createGain();
+  src.buffer = buf;
+  src.playbackRate.value = opt.rate || 1;
+  gain.gain.value = opt.volume != null ? opt.volume : 1;
+  src.connect(gain); gain.connect(SND.master);
+  src.start(ac.currentTime + (opt.delay || 0));
+  return true;
+}
+// grupos de armas pelo jeito (look) de cada uma
+const FM_RIFLE_LOOKS = new Set(["ar", "lmg"]);                        // fuzis de assalto e metralhadoras de fuzil
+const FM_RIFLE_RELOAD_LOOKS = new Set(["ar", "lmg", "rifle"]);        // todos os fuzis (inclui os de precisão)
+const FM_BLADE_LOOKS = new Set(["knife", "machete", "katana", "sword", "axe"]);
+function fmIsGrenadeLauncher(w) { return !!w && w.ammo === "granada"; }
+
+(function fmInstallExtraSounds() {
+  const prevShot = sfx.shot, prevReload = sfx.reload;
+  sfx.shot = function (w) {
+    w = w || {};
+    if (fmIsGrenadeLauncher(w) && fmPlayExtra("granada_tiro", { volume: .75 })) return;
+    if (FM_RIFLE_LOOKS.has(w.look) && fmPlayExtra("fuzil_tiro", { volume: .72, rate: .96 + Math.random() * .08 })) { fmShellDrop(w); return; }
+    if (w.melee && FM_BLADE_LOOKS.has(w.look) && fmPlayExtra("faca", { volume: .55, rate: .94 + Math.random() * .12 })) return;
+    prevShot(w);
+    if (!w.melee && !w.fists) fmShellDrop(w);
+  };
+  sfx.reload = function () {
+    const w = typeof curW === "function" ? curW() : {};
+    if (fmIsGrenadeLauncher(w) && fmPlayExtra("granada_recarga", { volume: .7 })) return;
+    if (FM_RIFLE_RELOAD_LOOKS.has(w.look) && fmPlayExtra("fuzil_recarga", { volume: .7 })) return;
+    prevReload();
+  };
+})();
+// cartucho vazio caindo no chão logo depois do tiro (rajadas não empilham o som)
+function fmShellDrop(w) {
+  if (!w || w.melee || w.fists || w.infinite || w.look === "crossbow" || w.look === "flamer" || fmIsGrenadeLauncher(w)) return;
+  const now = performance.now();
+  if (now - FM_EXTRA.lastShell < 220) return;
+  FM_EXTRA.lastShell = now;
+  fmPlayExtra("cartucho", { volume: .22, delay: .28 + Math.random() * .12, rate: .9 + Math.random() * .2 });
+}
+
+// ---- som contínuo (passos e ambiente): um laço que só aumenta ou diminui o volume ----
+function fmLoop(key) {
+  const ac = SND.ac, buf = FM_EXTRA.buf[key];
+  if (!ac || !buf) return null;
+  const src = ac.createBufferSource(), gain = ac.createGain();
+  src.buffer = buf; src.loop = true; gain.gain.value = 0;
+  src.connect(gain); gain.connect(SND.master); src.start();
+  return { key, src, gain };
+}
+function fmLoopTo(l, vol) { if (l) l.gain.gain.setTargetAtTime(SND.muted ? 0 : vol, SND.ac.currentTime, .08); }
+function fmLoopStop(l) { if (!l) return; fmLoopTo(l, 0); setTimeout(() => { try { l.src.stop(); } catch (_) {} l.src.disconnect(); l.gain.disconnect(); }, 400); }
+// chão debaixo do personagem: grama nos quintais e praças; o resto (rua, calçada, dentro de prédio) é chão duro
+function fmOnGrass() {
+  if (!world || game.inside || game.hub) return false;
+  const b = typeof blockAt === "function" ? blockAt(player.x, player.y) : null;
+  if (!b || b.ground !== "grass") return false;
+  const m = 26;                                                     // a calçada fica na borda da quadra
+  return player.x > b.x + m && player.x < b.x + b.w - m && player.y > b.y + m && player.y < b.y + b.h - m;
+}
+function fmStepsTick() {
+  if (!SND.ac || typeof game === "undefined" || !game || !player) return;
+  const walking = !!player.moving && !game.menu && !game.paused && !game.over && !game.trans && !game.hub;
+  const key = fmOnGrass() ? "passos_grama" : "passos";
+  if (FM_EXTRA.steps && (FM_EXTRA.steps.key !== key || !walking)) { fmLoopStop(FM_EXTRA.steps); FM_EXTRA.steps = null; }
+  if (!walking) return;
+  if (!FM_EXTRA.steps) FM_EXTRA.steps = fmLoop(key);
+  const s = FM_EXTRA.steps;
+  if (!s) return;
+  s.src.playbackRate.value = player.sprinting ? 1.45 : 1;          // correndo, os passos ficam mais rápidos
+  fmLoopTo(s, player.sprinting ? .34 : .26);
+}
+function fmAmbTick() {
+  if (!SND.ac || typeof game === "undefined" || !game) return;
+  const t = game.inside && game.inside.type;
+  const key = t === "bunker" ? "amb_bunker" : t === "hospital" ? "amb_hospital" : null;
+  if (FM_EXTRA.amb && FM_EXTRA.amb.key !== key) { fmLoopStop(FM_EXTRA.amb); FM_EXTRA.amb = null; }
+  if (!key) return;
+  if (!FM_EXTRA.amb) FM_EXTRA.amb = fmLoop(key);
+  fmLoopTo(FM_EXTRA.amb, fmAmbientVolume() * .8);
+}
+setInterval(() => {
+  if (!SND.ac) return;
+  fmExtraLoad();
+  fmStepsTick();
+  fmAmbTick();
+}, 100);

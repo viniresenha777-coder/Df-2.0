@@ -21,3 +21,7 @@ As miniaturas são imagens derivadas dos respectivos modelos 3D. A geometria ori
 
 Assets recolhidos dos ZIPs fornecidos pelo criador; este documento preserva os créditos e requisitos presentes nos LICENSE/README originais.
 - **Rifle de Caça (recarga individual)** — arquivo `JDSherbert - Firearm FX - Weapon SFX Pack - Walther P38 - Aim - 1.mp3` enviado pelo criador, usado como clique mecânico a cada cartucho. A licença original deve ser confirmada antes de distribuição comercial.
+- **Sons por situação (audio/)** — do pacote AHTu20: `fuzil_tiro.ogg` (tiro dos fuzis), `faca.ogg` (golpe das lâminas),
+  `cartucho_chao.ogg` (cartucho caindo), `passos.ogg` e `passos_grama.ogg` (passos), `lancagranada_tiro.ogg` e
+  `lancagranada_recarga.ogg` (lança-granadas), `amb_bunker.ogg` e `amb_hospital.ogg` (ambiente dentro do bunker e dos hospitais).
+  Do pacote JDSherbert: `fuzil_recarga.mp3` (recarga dos fuzis).
