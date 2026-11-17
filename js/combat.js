@@ -125,17 +125,47 @@ function cycleWeapon(dir) {
     if (player.slots[i]) { player.cur = i; player.reloading = 0; return; }
   }
 }
+// Rifles recebem +15% no wStat(). Rifle de Caça usa o tempo total
+// dividido pelos 5 cartuchos, para uma recarga progressiva e interruptível.
 function startReload() {
   const w = curW(), it = curInst();
   if (game.over || w.melee || !it || player.reloading > 0 || it.ammo >= w.mag) return;
   if (!w.infinite && player.reserve[w.ammo] <= 0) { toast("Sem munição de reserva"); sfx.empty(); return; }
-  player.reloading = player.reloadMax = wStat(it).reload * (1 - Math.max(-0.5, Math.min(0.6, player.fx.reload / 100))) / (1 + (A("reload") - 10) * 0.012);
-  sfx.reload();
+  const reloadTime = wStat(it).reload *
+    (1 - Math.max(-0.5, Math.min(0.6, player.fx.reload / 100))) /
+    (1 + (A("reload") - 10) * 0.012);
+  player.reloadRound = w.id === "caca";
+  player.reloadWeapon = it;
+  player.reloadMax = player.reloading = player.reloadRound ? reloadTime / w.mag : reloadTime;
+  if (player.reloadRound) sfx.reloadRound();
+  else sfx.reload();
 }
 function finishReload() {
   const w = curW(), it = curInst();
+  // Trocou de arma durante a recarga: não transfere cartuchos para outra arma.
+  if (!it || it !== player.reloadWeapon || w.melee) {
+    player.reloading = 0;
+    player.reloadRound = false;
+    player.reloadWeapon = null;
+    return;
+  }
+  if (player.reloadRound) {
+    if (it.ammo < w.mag && player.reserve[w.ammo] > 0) {
+      it.ammo += 1;
+      player.reserve[w.ammo] -= 1;
+    }
+    if (it.ammo < w.mag && player.reserve[w.ammo] > 0) {
+      player.reloading = player.reloadMax;
+      sfx.reloadRound();
+    } else {
+      player.reloading = 0;
+      player.reloadRound = false;
+      player.reloadWeapon = null;
+    }
+    return;
+  }
   player.reloading = 0;
-  if (!it || w.melee) return;
+  player.reloadWeapon = null;
   if (w.infinite) { it.ammo = w.mag; return; }
   const take = Math.min(w.mag - it.ammo, player.reserve[w.ammo]);
   it.ammo += take; player.reserve[w.ammo] -= take;
