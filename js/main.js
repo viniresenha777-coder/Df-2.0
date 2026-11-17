@@ -246,7 +246,17 @@ function update(dt) {
   player.moving = actualSpeed > 0.08;
   if (actualSpeed > 0.01) {
     player.moveAng = Math.atan2(player.moveVY, player.moveVX);
-    player.x += player.moveVX * k; player.y += player.moveVY * k;
+    // Movimento em passos curtos e por eixo: impede cruzar a hitbox
+    // de carros, paredes e contêineres em corridas rápidas ou lag.
+    // Ao encostar, o corpo desliza pelo obstáculo em vez de atravessá-lo.
+    const mvX = player.moveVX * k, mvY = player.moveVY * k;
+    const steps = Math.max(1, Math.ceil(Math.max(Math.abs(mvX), Math.abs(mvY)) / 7));
+    for (let step = 0; step < steps; step++) {
+      player.x += mvX / steps;
+      pushOut(player, player.r);
+      player.y += mvY / steps;
+      pushOut(player, player.r);
+    }
     player.animT = (player.animT || 0) + dt;
     player.lastSp = actualSpeed;
     if (!game.inside) save.stats.dist = S("dist") + actualSpeed * k;
