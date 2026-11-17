@@ -335,7 +335,7 @@ function killZombie(z) {
   if (zt0.acidDeath && !z.boss) { addHazard(z.x, z.y, 60, 5000, 8 + diffOf(z.zone) * 4, "acid"); acidSplash(z.x, z.y); if (Math.hypot(player.x - z.x, player.y - z.y) < 70) damagePlayer(z.dmg * 0.8); }
   if (z.bossId === "matriarca" || z.bossId === "pestilento") addHazard(z.x, z.y, 120, 8000, 15 + diffOf(z.zone) * 5, "acid");
   missionProgress("kill", 1); missionProgress("killcat", 1, curW().cat); missionProgress("killtype", 1, z.type);
-  sfx.kill();
+  sfx.kill(z); // morte com distância, panorâmica e abafamento
   bloodSpray(z.x, z.y, Math.random() * 6.283, 14);
   addBlood(z.x, z.y, z.r * 1.4);
   const corpses = curCorpses(), zx = ZTYPES[z.type].xp;
@@ -392,6 +392,9 @@ function updateBullets(dt, k) {
       if (ob) {
         b.life = 0;
         if (ob.kind === "car") carHit(ob, b.dmg);
+        if (!b.fire && Math.random() < 0.32)
+          fmPlaySample(ob.kind === "car" || ob.kind === "fence" ? "hit_metal" : "hit_concrete",
+            { x:b.x, y:b.y, volume:.26 });
         if (b.explode) explode(b.x, b.y, b.explode, b.dmg * (b.grenade ? 1 : 0.5)); else if (!b.fire) sparks(b.x, b.y);
         break;
       }
@@ -567,7 +570,7 @@ function updateZombies(dt, k) {
       z.angle = Math.atan2(dy, dx);
       z.lose = d > 560 ? z.lose + dt : 0;
       if (z.lose > 6000) { z.state = "idle"; z.wt = 0; }
-      if (Math.random() < dt / 5000) sfx.groan(clamp(1 - d / 700, 0, 1));
+      if (Math.random() < dt / 5000) sfx.groan(clamp(1 - d / 700, 0, 1), z);
     } else step = wander(z, k, dt);
     pushOut(z, z.r);
     if (game.inside) { z.x = clamp(z.x, 56, IW() - 56); z.y = clamp(z.y, 56, IH() - 56); }
