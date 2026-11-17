@@ -54,3 +54,18 @@ canvas {
 .help { color:#e0d3b3; text-shadow:0 1px 3px #000, 0 0 9px #000; }
 #game { box-shadow: inset 0 0 0 1px rgba(212,175,55,.22); }
 @media(max-width:980px){ body { background-attachment:scroll; } .wrap { padding:4px; } }
+
+/* Chat global (js/chat.js): por cima do jogo, no canto esquerdo, acima das armas. */
+#fm-chat { position: absolute; left: 1.4%; bottom: 25%; width: 42%; z-index: 5; pointer-events: none;
+  font: 13px/1.35 "Trebuchet MS", "Segoe UI", sans-serif; }
+#fm-chat .fm-chat-log { display: flex; flex-direction: column; gap: 2px; max-height: 15.5em; overflow: hidden; }
+#fm-chat .fm-chat-line { color: #ece6d2; text-shadow: 0 1px 2px #000, 0 0 6px #000; word-break: break-word; }
+#fm-chat .fm-chat-line b { color: #8fd0ff; }
+#fm-chat .fm-chat-line b.me { color: #ffd96a; }
+#fm-chat .fm-chat-line.sys { color: #ff9a7a; font-style: italic; }
+#fm-chat .fm-chat-input { display: none; width: 100%; box-sizing: border-box; margin-top: 5px; padding: 5px 8px;
+  font: inherit; color: #f2eedc; background: rgba(10,11,9,.82); border: 1px solid #8a7a4a; border-radius: 4px; outline: none; }
+#fm-chat.open { pointer-events: auto; }
+#fm-chat.open .fm-chat-log { background: rgba(8,9,7,.62); border-radius: 4px; padding: 6px 8px; }
+#fm-chat.open .fm-chat-input { display: block; }
+#fm-chat.open .fm-chat-input:focus { border-color: #d4af37; }

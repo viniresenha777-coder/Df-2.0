@@ -58,6 +58,7 @@ async function confirmName() {
     game.menu = save.prof ? null : "prof";
     toast(`Bem-vindo, ${registered}!`);
     fmSocial.start().catch(console.warn);
+    fmChat.start();
   } catch (err) {
     toast(err.message || "Não foi possível registrar esse nome.");
   } finally { game.nameBusy = false; }

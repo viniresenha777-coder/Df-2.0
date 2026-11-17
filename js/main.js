@@ -113,6 +113,7 @@ window.addEventListener("keydown", (e) => {
   audioStart();
   const k = e.key.toLowerCase();
   if (game) game.rawKey = e.key;
+  if (typeof fmChat !== "undefined" && fmChat.typing()) return;   // digitando no chat: o jogo não recebe as teclas
   keys[k] = true;
   if (["tab", " ", "arrowup", "arrowdown", "arrowleft", "arrowright", "backspace", "f2"].includes(k)) e.preventDefault();
   if (e.repeat && !game.menu) return;
@@ -127,6 +128,7 @@ window.addEventListener("keydown", (e) => {
   }
   if (game.menu) { menuKey(k); return; }
   if (game.shop) { shopKey(k); return; }
+  if (k === "enter" && !game.paused && typeof fmChat !== "undefined") { fmChat.open(); return; }   // chat global
   if (game.hub && (k === "escape" || k === "e")) { leaveHouse(); return; }
   if (game.hub && (k === "r" || k === "f" || k === "p" || k === "l")) { if (k === "f") eat(); return; }
   if (game.paused) {
@@ -445,6 +447,7 @@ restoreRun(); // volta do último checkpoint, se houver
 fmGifts.start(); // correio: entrega presentes do ADM quando o jogo está pronto
 fmWorld.start(); // consulta relógio oficial do servidor Supabase
 if (save.name) fmSocial.start(); // publica posição somente após autenticação e nome definitivo
+if (save.name) fmChat.start();   // chat global
 // rodando pelo servidor local instalado: avisa que o jogo está aberto (o servidor fecha sozinho quando você sai)
 if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
   setInterval(() => { fetch("/__ping", { cache: "no-store" }).catch(() => {}); }, 15000);
