@@ -148,7 +148,8 @@ function explode(x, y, r, dmg) {
   embers(x, y, 14); scorch(x, y, r * 0.55);
   game.shake = Math.min(14, game.shake + 6);
   makeNoise(x, y, NOISE_R, 1);
-  sfx.shot({ cat: "shotguns" });
+  // Explosão espacial do pacote Military_Free; fallback ao som original.
+  if (!fmPlaySample("explosion", {x,y,volume:.90})) sfx.shot({cat:"shotguns"});
 }
 function hurt(z, dmg, ang, quiet, fx) {
   z.lastMelee = !!(fx && fx.melee);   // o Rastejante só não explode quando morre no corpo a corpo
