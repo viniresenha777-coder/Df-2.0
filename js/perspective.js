@@ -311,31 +311,13 @@ function weapon3dImg(w, pose) { const d = w && WEAPON_3D[w.id]; return d ? gearI
 function hexRgb(h) { const n = parseInt((h || "#808080").slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
 // pinta a roupa cinza com as cores do personagem escolhido (uma vez por troca de personagem)
 function tintedSheet(pose) {
-  const s = SKINS[save.skin] || SKINS[0], key = `${save.skin}`;
+  const skin = SKINS[save.skin] || SKINS[0];
+  const key = save.skin + "|" + clothingKey(save.clothing);
   if (PSHEET.tintKey !== key) { PSHEET.tinted = {}; PSHEET.tintKey = key; }
   if (PSHEET.tinted[pose]) return PSHEET.tinted[pose];
   const base = PSHEET.sheets[pose], mask = PSHEET.masks[pose];
   if (!mask || !mask.naturalWidth) return (PSHEET.tinted[pose] = base);
-  const w = base.naturalWidth, h = base.naturalHeight;
-  const c = document.createElement("canvas"); c.width = w; c.height = h;
-  const g = c.getContext("2d", { willReadFrequently: true });
-  try {
-    g.drawImage(mask, 0, 0); const m = g.getImageData(0, 0, w, h).data;
-    g.clearRect(0, 0, w, h); g.drawImage(base, 0, 0);
-    const img = g.getImageData(0, 0, w, h), d = img.data;
-    const J = hexRgb(s.jacket), P = hexRgb(s.pants), K = 1.7 / 255;   // cinza da roupa (~0.6) vira a cor escolhida
-    for (let i = 0; i < d.length; i += 4) {
-      if (!d[i + 3]) continue;
-      const mj = m[i] / 255, mp = m[i + 1] / 255;
-      if (mj + mp < 0.02) continue;
-      for (let ch = 0; ch < 3; ch++) {
-        const v = d[i + ch], tj = Math.min(255, v * J[ch] * K), tp = Math.min(255, v * P[ch] * K);
-        d[i + ch] = v * (1 - mj - mp) + tj * mj + tp * mp;
-      }
-    }
-    g.putImageData(img, 0, 0);
-  } catch (e) { return (PSHEET.tinted[pose] = base); }   // aberto direto do disco (sem servidor): usa sem pintar
-  return (PSHEET.tinted[pose] = c);
+  return (PSHEET.tinted[pose] = clothingTintCanvas(base, mask, skin, save.clothing, false));
 }
 // camadas de equipamento visíveis agora (colete, mochila e o acessório do personagem)
 function playerGear() {
