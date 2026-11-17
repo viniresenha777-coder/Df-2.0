@@ -5,8 +5,28 @@
 // Este algoritmo isola cada bota pela cor neutra escura do sprite BASE, apaga
 // somente a parte sem mascara de calca e redesenha um coturno estruturado.
 // Nao altera posicao do jogador, hitbox, armadura, balas ou animacao.
+
+// Imagens extraidas diretamente do modelo glTF da bota enviado pelo criador.
+// O atlas contem 8 vistas reais com textura, cadarcos e sola do modelo.
+const BOOT_REAL_VIEW_BOX = [
+  [11,1,37,47], [2,1,46,47], [1,6,47,42], [1,2,47,46],
+  [12,1,36,47], [3,1,45,47], [1,6,47,42], [1,3,47,44]
+];
+const BOOT_REAL_ATLAS = new Image();
+BOOT_REAL_ATLAS.onload = () => {
+  // Atualiza a composicao quando a textura terminar de carregar.
+  if (typeof PSHEET !== "undefined") { PSHEET.tintKey = ""; PSHEET.tinted = {}; }
+  if (typeof PORTRAIT !== "undefined") { PORTRAIT.key = ""; PORTRAIT.cache = null; }
+  if (typeof REMOTE_PLAYER_SHEETS !== "undefined") REMOTE_PLAYER_SHEETS.clear();
+};
+BOOT_REAL_ATLAS.onerror = () => console.warn("Bota glTF: atlas indisponivel, mantendo o sprite original.");
+BOOT_REAL_ATLAS.src = "img/clothing/boot_real_8views.png?v=20261117-real-model04";
+function clothingBootImageReady() {
+  return BOOT_REAL_ATLAS.complete && BOOT_REAL_ATLAS.naturalWidth === 384;
+}
+
 function clothingReplaceBoots(target, original, mask, boots, portrait) {
-  if (!boots || !target || !original) return false;
+  if (!boots || !target || !original || !clothingBootImageReady()) return false;
   const w = target.width, h = target.height;
   const fw = portrait ? 240 : 128, fh = portrait ? h : 128;
   if (!w || !h || w % fw !== 0 || h % fh !== 0) return false;
@@ -100,86 +120,29 @@ function clothingReplaceBoots(target, original, mask, boots, portrait) {
     return false;
   }
 }
+
 function clothingDrawReplacementBoot(ctx, d, item, portrait) {
-  const {ox,oy,fw,fh,frame,row,columns,foot:f} = d;
-  const rawW = f.x1-f.x0+1, rawH=f.y1-f.y0+1;
-  const fine = portrait ? 1 : 0;
-  const extraX = portrait ? 2.4 : 0.75;
-  const extraY = portrait ? 4.2 : 1.6;
-  const x = ox+f.x0-extraX, y = oy+f.y0-extraY;
-  const bw = Math.max(portrait?13:4,rawW+extraX*2);
-  const bh = Math.max(portrait?17:6,rawH+extraY+1);
-  const a = portrait ? 2*Math.PI*frame/columns : row*Math.PI/4;
-  const side = Math.sin(a), profile = Math.abs(side) > 0.64;
-  const base = item.color || "#51494a", trim = item.accent || "#938b83";
+  const { ox, oy, fw, fh, frame, row, foot } = d;
+  // Personagem de frente no retrato = angulo 0 da bota.
+  // No jogo a linha 4 = frente; a linha 0 = de costas.
+  const view = portrait ? Math.round(frame / 2) % 8 : (row + 4) % 8;
+  const rect = BOOT_REAL_VIEW_BOX[view], sx = view * 48 + rect[0], sy = rect[1];
+  const sw = rect[2] - rect[0], sh = rect[3] - rect[1];
+  if (sw < 1 || sh < 1) return;
+  const fw0 = foot.x1 - foot.x0 + 1, fh0 = foot.y1 - foot.y0 + 1;
+  // Medidas relativas ao calçado original naquele quadro: sem dimensoes
+  // fixas que façam a bota flutuar ao correr, pisar ou virar.
+  const width = Math.max(portrait ? 11 : 3, fw0 * (portrait ? 1.08 : 1.10));
+  const height = Math.max(fh0 * (portrait ? 1.14 : 1.10),
+    width * (sh / sw) * (portrait ? 0.63 : 0.72));
+  const x = ox + (foot.x0 + foot.x1) * 0.5 - width * 0.5;
+  const y = oy + foot.y1 + (portrait ? 1 : 0.6) - height;
   ctx.save();
-  ctx.beginPath();ctx.rect(ox,oy,fw,fh);ctx.clip();
-  ctx.translate(x,y);
-  // Inverta a direcao da biqueira nos perfis laterais sem mexer na pisada.
-  if (profile && side < 0) {ctx.translate(bw,0);ctx.scale(-1,1);}
-  const grad=ctx.createLinearGradient(0,0,bw,bh);
-  grad.addColorStop(0,trim);
-  grad.addColorStop(0.22,base);
-  grad.addColorStop(0.72,base);
-  grad.addColorStop(1,"#242527");
-  const toe=profile ? 0.42 : 0.22;
-  ctx.fillStyle=grad;
-  ctx.strokeStyle="#1b1c1e";
-  ctx.lineWidth=portrait?1.4:0.7;
   ctx.beginPath();
-  if (profile) {
-    // Cano atras, biqueira reta e alongada na frente.
-    ctx.moveTo(bw*.11,bh*.10);
-    ctx.lineTo(bw*.50,bh*.05);
-    ctx.lineTo(bw*.60,bh*.50);
-    ctx.lineTo(bw*.87,bh*.58);
-    ctx.lineTo(bw*.99,bh*.76);
-    ctx.lineTo(bw*.98,bh*.91);
-    ctx.lineTo(bw*.80,bh*.94);
-    ctx.lineTo(bw*.04,bh*.96);
-    ctx.lineTo(bw*.01,bh*.80);
-    ctx.lineTo(bw*.12,bh*.55);
-  } else {
-    // Frente e costas: tornozelo justo e biqueira quadrada, sem "bola".
-    ctx.moveTo(bw*.22,bh*.06);
-    ctx.lineTo(bw*.75,bh*.06);
-    ctx.lineTo(bw*.83,bh*.57);
-    ctx.lineTo(bw*.97,bh*.76);
-    ctx.lineTo(bw*.97,bh*.91);
-    ctx.lineTo(bw*.04,bh*.91);
-    ctx.lineTo(bw*.04,bh*.76);
-    ctx.lineTo(bw*.17,bh*.57);
-  }
-  ctx.closePath();ctx.fill();ctx.stroke();
-  // Sola firme, reta, com borda de borracha e salto definido.
-  ctx.fillStyle="#222325";
-  ctx.fillRect(bw*.04,bh*.86,bw*.92,bh*.105);
-  ctx.fillStyle=trim;ctx.globalAlpha=.58;
-  ctx.fillRect(bw*.06,bh*.85,bw*.87,Math.max(.6,bh*.025));
-  ctx.globalAlpha=1;
-  if (portrait) {
-    // Plaquetas no cano, costura e cadarco.
-    ctx.strokeStyle="#252628";ctx.lineWidth=1.2;
-    const xlace = profile ? bw*.34 : bw*.50;
-    ctx.beginPath();
-    ctx.moveTo(xlace-bw*.085,bh*.16);
-    ctx.lineTo(xlace-bw*.10,bh*.61);
-    ctx.moveTo(xlace+bw*.085,bh*.16);
-    ctx.lineTo(xlace+bw*.10,bh*.61);
-    ctx.stroke();
-    ctx.strokeStyle=trim;ctx.lineWidth=.9;
-    for (let i=0;i<4;i++) {
-      const yy=bh*(.23+i*.095);
-      ctx.beginPath();ctx.moveTo(xlace-bw*.09,yy);ctx.lineTo(xlace+bw*.09,yy+1.4);ctx.stroke();
-    }
-    ctx.strokeStyle="#b1a9a0";ctx.globalAlpha=.28;ctx.lineWidth=.85;
-    ctx.beginPath();ctx.moveTo(bw*(profile?.59:.17),bh*.72);
-    ctx.lineTo(bw*.82,bh*.72);ctx.stroke();
-    ctx.globalAlpha=1;
-  } else {
-    ctx.strokeStyle=trim;ctx.lineWidth=.85;ctx.globalAlpha=.58;
-    ctx.beginPath();ctx.moveTo(bw*.30,bh*.28);ctx.lineTo(bw*.61,bh*.43);ctx.stroke();
-    ctx.globalAlpha=1;
-  }
+  ctx.rect(ox, oy, fw, fh);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = true;
+  // Sem polígonos ou cores inventadas: copia pixels do GLTF original.
+  ctx.drawImage(BOOT_REAL_ATLAS, sx, sy, sw, sh, x, y, width, height);
   ctx.restore();
 }
