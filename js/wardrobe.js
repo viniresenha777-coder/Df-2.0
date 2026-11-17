@@ -34,6 +34,16 @@ for (const set of CLOTHING_SETS) {
     CLOTHING_BY_ID[item.id] = item;
   }
 }
+// Modelos fornecidos pelo criador, ajustados à escala Male-High (1,826m).
+// Os PNGs foram renderizados dos glTF originais; equipar usa a máscara animada.
+const IMPORTED_CLOTHING = [
+  { id: "multiforest_pants", kind: "pants", set: "f2505", setName: "Tático Multiforest", name: "Calça Tática 6 Bolsos Multiforest", color: "#a69a77", accent: "#566247", texture: "multiforest", icon: "img/clothing/calca_tatica.png" },
+  { id: "bota_gltf_boots", kind: "boots", set: "bota", setName: "Botas de Sobrevivência", name: "Bota Tática Reforçada", color: "#50464e", accent: "#827581", texture: "leather", icon: "img/clothing/bota.png" }
+];
+for (const item of IMPORTED_CLOTHING) {
+  CLOTHING_ITEMS.push(item);
+  CLOTHING_BY_ID[item.id] = item;
+}
 function clothingClean(src) {
   const clean = { jacket: null, pants: null, boots: null };
   for (const kind of CLOTHING_KINDS) {
@@ -56,6 +66,26 @@ function clothingColor(hex) {
 }
 // Texturas discretas preservam o sombreamento original dos personagens e nao
 // mudam o volume, a pose, o centro dos pes ou os pontos de empunhadura.
+const CLOTHING_FABRICS = Object.create(null);
+function clothingFabricPixels(path) {
+  let entry = CLOTHING_FABRICS[path];
+  if (!entry) {
+    const im = new Image();
+    entry = CLOTHING_FABRICS[path] = { im, data: null };
+    im.onload = () => {
+      try {
+        const c = document.createElement("canvas"); c.width = im.naturalWidth; c.height = im.naturalHeight;
+        const g = c.getContext("2d"); g.drawImage(im, 0, 0);
+        entry.data = g.getImageData(0, 0, c.width, c.height);
+        if (typeof PSHEET !== "undefined") { PSHEET.tintKey = ""; PSHEET.tinted = {}; }
+        if (typeof PORTRAIT !== "undefined") PORTRAIT.key = "";
+        if (typeof REMOTE_PLAYER_SHEETS !== "undefined") REMOTE_PLAYER_SHEETS.clear();
+      } catch (err) { entry.data = null; }
+    };
+    im.src = path;
+  }
+  return entry.data;
+}
 function clothingFabric(texture, x, y) {
   const n = ((Math.imul((x | 0) + 31, 92821) ^ Math.imul((y | 0) + 19, 68917)) >>> 0) % 19;
   const fiber = 0.95 + n / 190;
@@ -86,6 +116,8 @@ function clothingTintCanvas(base, mask, skin, equipment, portrait) {
     const P = clothingColor(pants ? pants.color : skin.pants);
     const B = boots && clothingColor(boots.color);
     const JA = jacket && clothingColor(jacket.accent), PA = pants && clothingColor(pants.accent);
+    const multiforest = pants && pants.texture === "multiforest"
+      ? clothingFabricPixels("img/clothing/multiforest_fabric.png") : null;
     const frameW = portrait ? 240 : 128, frameH = portrait ? h : 128;
     const K = 1.7 / 255;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -128,7 +160,15 @@ function clothingTintCanvas(base, mask, skin, equipment, portrait) {
       for (let ch = 0; ch < 3; ch++) {
         const v = p[i + ch];
         const jv = Math.min(255, v * (J[ch] * (1 - ja) + (JA ? JA[ch] : J[ch]) * ja) * K * jf);
-        const pv = Math.min(255, v * (P[ch] * (1 - pa) + (PA ? PA[ch] : P[ch]) * pa) * K * pf);
+        let pv;
+        if (multiforest && mp > 0.01) {
+          const tx = Math.floor(x * (portrait ? 1.4 : 2.0)) % multiforest.width;
+          const ty = Math.floor(y * (portrait ? 1.4 : 2.0)) % multiforest.height;
+          const sample = multiforest.data[(ty * multiforest.width + tx) * 4 + ch];
+          pv = Math.min(255, v * sample * K * 0.92);
+        } else {
+          pv = Math.min(255, v * (P[ch] * (1 - pa) + (PA ? PA[ch] : P[ch]) * pa) * K * pf);
+        }
         const bv = B ? Math.min(255, v * B[ch] * K * bf * 1.28) : v;
         p[i + ch] = Math.min(255, Math.max(0, v * (1 - amt) + jv * mj + pv * mp + bv * b));
       }
@@ -140,8 +180,23 @@ function clothingTintCanvas(base, mask, skin, equipment, portrait) {
   }
   return c;
 }
+const CLOTHING_PNG_CACHE = Object.create(null);
 function drawClothingIcon(item, x, y, w, h) {
   if (!item) return;
+  if (item.icon) {
+    let im = CLOTHING_PNG_CACHE[item.icon];
+    if (!im) {
+      im = new Image();
+      im.src = item.icon;
+      CLOTHING_PNG_CACHE[item.icon] = im;
+    }
+    if (im.complete && im.naturalWidth > 0) {
+      const scale = Math.min((w - 5) / im.naturalWidth, (h - 4) / im.naturalHeight);
+      const dw = im.naturalWidth * scale, dh = im.naturalHeight * scale;
+      ctx.drawImage(im, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+      return;
+    }
+  }
   const k = Math.min(w, h) / 60;
   ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.scale(k, k);
   ctx.fillStyle = item.color; ctx.strokeStyle = item.accent; ctx.lineWidth = 2;

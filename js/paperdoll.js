@@ -304,7 +304,7 @@ function invIcon(z, x, y, w, h) {
   if (z.type === "weapon" || z.type === "mat") { drawItemCell(z.item, x, y, w, h, false); return; }
   if (z.type === "clothing") {
     drawClothingIcon(z.item, x, y, w, h);
-    txt(z.item.kind === "jacket" ? "JAQ" : z.item.kind === "pants" ? "CAL" : "BOT", x + w / 2, y + h - 3, 8, "#e5dbc4", "center", true);
+    if (!z.item.icon) txt(z.item.kind === "jacket" ? "JAQ" : z.item.kind === "pants" ? "CAL" : "BOT", x + w / 2, y + h - 3, 8, "#e5dbc4", "center", true);
     return;
   }
   if (z.type === "vest") {
