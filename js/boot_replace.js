@@ -8,21 +8,27 @@
 
 // Imagens extraidas diretamente do modelo glTF da bota enviado pelo criador.
 // O atlas contem 8 vistas reais com textura, cadarcos e sola do modelo.
-const BOOT_REAL_VIEW_BOX = [
-  [11,1,37,47], [2,1,46,47], [1,6,47,42], [1,2,47,46],
-  [12,1,36,47], [3,1,45,47], [1,6,47,42], [1,3,47,44]
-];
-const BOOT_REAL_ATLAS = new Image();
-BOOT_REAL_ATLAS.onload = () => {
-  // Atualiza a composicao quando a textura terminar de carregar.
+const BOOT_REAL_VIEW_BOX = {
+  portrait: [[15,3,49,61],[4,3,59,61],[3,10,61,55],[3,4,61,59],
+             [16,3,48,61],[6,3,58,61],[3,9,61,55],[3,6,61,58]],
+  world:    [[18,4,45,61],[7,3,57,61],[3,13,61,50],[3,7,61,57],
+             [17,3,47,61],[5,3,59,61],[3,12,61,51],[3,4,61,60]]
+};
+const BOOT_REAL_ATLAS = { portrait: new Image(), world: new Image() };
+const reloadBootCaches = () => {
   if (typeof PSHEET !== "undefined") { PSHEET.tintKey = ""; PSHEET.tinted = {}; }
   if (typeof PORTRAIT !== "undefined") { PORTRAIT.key = ""; PORTRAIT.cache = null; }
   if (typeof REMOTE_PLAYER_SHEETS !== "undefined") REMOTE_PLAYER_SHEETS.clear();
 };
-BOOT_REAL_ATLAS.onerror = () => console.warn("Bota glTF: atlas indisponivel, mantendo o sprite original.");
-BOOT_REAL_ATLAS.src = "img/clothing/boot_real_8views.png?v=20261117-real-model04";
-function clothingBootImageReady() {
-  return BOOT_REAL_ATLAS.complete && BOOT_REAL_ATLAS.naturalWidth === 384;
+for (const a of Object.values(BOOT_REAL_ATLAS)) {
+  a.onload = reloadBootCaches;
+  a.onerror = () => console.warn("Bota glTF: atlas indisponivel, mantendo sprite original.");
+}
+BOOT_REAL_ATLAS.portrait.src = "img/clothing/boot_real_portrait_8views.png?v=20261117-ankle05";
+BOOT_REAL_ATLAS.world.src = "img/clothing/boot_real_world_8views.png?v=20261117-ankle05";
+function clothingBootImageReady(portrait) {
+  const atlas = portrait ? BOOT_REAL_ATLAS.portrait : BOOT_REAL_ATLAS.world;
+  return atlas.complete && atlas.naturalWidth === 512 && atlas.naturalHeight === 64;
 }
 
 // As marcas verdes nas máscaras originais indicam exatamente a calça.
@@ -117,7 +123,7 @@ function clothingFindOriginalFoot(base, maskData, sw, ox, oy, fw, fh, hem, portr
   return best;
 }
 function clothingReplaceBoots(target, original, mask, boots, portrait) {
-  if (!boots || !target || !original || !mask || !clothingBootImageReady()) return false;
+  if (!boots || !target || !original || !mask || !clothingBootImageReady(portrait)) return false;
   const w = target.width, h = target.height, fw = portrait ? 240 : 128;
   const fh = portrait ? h : 128;
   if (!w || !h || w % fw || h % fh) return false;
@@ -168,7 +174,8 @@ function clothingReplaceBoots(target, original, mask, boots, portrait) {
 function clothingDrawReplacementBoot(ctx, placement, item, portrait) {
   const {ox,oy,fw,fh,frame,row,foot}=placement;
   const view = portrait ? Math.round(frame/2)%8 : (row+4)%8;
-  const box = BOOT_REAL_VIEW_BOX[view];
+  const box = (portrait ? BOOT_REAL_VIEW_BOX.portrait : BOOT_REAL_VIEW_BOX.world)[view];
+  const atlas = portrait ? BOOT_REAL_ATLAS.portrait : BOOT_REAL_ATLAS.world;
   const sw=box[2]-box[0],sh=box[3]-box[1];
   if(sw<2||sh<2)return;
   const oldW=foot.x1-foot.x0+1;
@@ -184,6 +191,6 @@ function clothingDrawReplacementBoot(ctx, placement, item, portrait) {
   ctx.save();ctx.beginPath();ctx.rect(ox,oy,fw,fh);ctx.clip();
   ctx.imageSmoothingEnabled=true;
   ctx.imageSmoothingQuality='high';
-  ctx.drawImage(BOOT_REAL_ATLAS,view*48+box[0],box[1],sw,sh,x,y,width,height);
+  ctx.drawImage(atlas,view*64+box[0],box[1],sw,sh,x,y,width,height);
   ctx.restore();
 }
