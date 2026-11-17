@@ -187,7 +187,7 @@ function drawHub() {
   // Arte original do interior do abrigo: atrás dos painéis e das salas.
   if (FM_BASE_INTERIOR_BG.complete && FM_BASE_INTERIOR_BG.naturalWidth) {
     ctx.save();
-    ctx.globalAlpha = 0.78;
+    ctx.globalAlpha = 1;
     ctx.drawImage(FM_BASE_INTERIOR_BG, 0, 0, W, H);
     ctx.restore();
   }
@@ -233,7 +233,8 @@ function drawHub() {
 
   // painel do personagem (esquerda)
   const px = 8, pw = 248;
-  ctx.fillStyle = "#14130f"; rr(px, 44, pw, H - 52, 8); ctx.fill();
+  // O interior continua visível atrás do retrato; textos e barras ficam por cima.
+  ctx.fillStyle = "rgba(20,19,15,0.22)"; rr(px, 44, pw, H - 52, 8); ctx.fill();
   ctx.strokeStyle = "#5a4a2a"; ctx.lineWidth = 2; ctx.stroke();
   const links = [["Mochila e equipamento", "pack"], ["Atributos", "stats"], ["Objetivos", "obj"], ["Mapa", "map"]];
   links.forEach(([label, m], i) => {
