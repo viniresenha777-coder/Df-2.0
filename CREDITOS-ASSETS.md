@@ -9,6 +9,9 @@
 - **Destroyed Car 06 (Raw Scan)**, por Renafox — https://sketchfab.com/3d-models/destroyed-car-06-raw-scan-222688561ba74a638c51a8af36ad0255 — CC BY 4.0.
 - **Destroyed Car 03 / Backrooms Car (Gameready ver)**, por Renafox — https://sketchfab.com/3d-models/destroyed-car-03-backrooms-car-gameready-ver-efc4dfe2c7284a64bc9281eb4f61d402 — CC BY 4.0.
 
+- **Bota**, por hrabale — https://sketchfab.com/3d-models/bota-5a4be383a62c4237b0eadb82f1ec9f8a — CC BY 4.0. Miniatura PNG renderizada do modelo, além de ajuste de escala no pacote glTF separado.
+- **CALÇA TÁTICA 6 BOLSOS F2505 MULTIFOREST**, por Leonardo Matias — https://sketchfab.com/3d-models/calca-tatica-6-bolsos-f2505-multiforest-e67454efc1da49c98945b2f933d24023 — CC BY 4.0. Miniatura PNG e amostra de tecido derivadas do modelo, além de ajuste de escala no pacote glTF separado.
+
 As miniaturas são imagens derivadas dos respectivos modelos 3D. A geometria original não é incluída no jogo, para reduzir o carregamento e preservar o desempenho do navegador.
 
 ## Áudio
