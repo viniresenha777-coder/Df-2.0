@@ -1575,9 +1575,14 @@ function drawHUD() {
   else { ammoTxt = `${inst.ammo} / ${player.reserve[w.ammo]}`; if (inst.ammo === 0) ammoCol = "#e05a4a"; }
   hudT(ammoTxt, 122, H - 20, 18, ammoCol, "left", true);
   if (player.reloading > 0) {
-    hudT("RECARREGANDO", 122, H - 42, 10, "#ffd96a", "left", true);
+    const oneByOne = w.id === "caca" && player.reloadRound;
+    hudT(oneByOne ? `RECARREGANDO ${inst.ammo}/${w.mag}` : "RECARREGANDO",
+      122, H - 42, 10, "#ffd96a", "left", true);
     ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(122, H - 38, 90, 4);
-    ctx.fillStyle = "#ffd96a"; ctx.fillRect(122, H - 38, 90 * (1 - player.reloading / (player.reloadMax || 1)), 4);
+    const progress = oneByOne
+      ? (inst.ammo + (1 - player.reloading / (player.reloadMax || 1))) / w.mag
+      : (1 - player.reloading / (player.reloadMax || 1));
+    ctx.fillStyle = "#ffd96a"; ctx.fillRect(122, H - 38, 90 * Math.max(0, Math.min(1, progress)), 4);
   } else if (w.infinite && player.spin > 0) { ctx.fillStyle = "#e0c341"; ctx.fillRect(122, H - 38, 90 * player.spin, 4); }
 
   // ---- baixo esquerdo (acima das armas): últimas mensagens ----
