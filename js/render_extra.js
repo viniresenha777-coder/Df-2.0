@@ -151,14 +151,8 @@ function drawDemon(z) {
 // detalhes por cima dos zumbis humanos especiais
 function drawZombieExtra(z) {
   if (z.hp <= 0 || z.boss) return;
-  const s = z.r / 13;
-  if (z.type === "hazmat") {
-    ctx.save(); ctx.translate(z.x, z.y); ctx.rotate(z.angle);
-    ctx.fillStyle = "#c9a820"; circle(2 * s, 0, 7.5 * s);
-    ctx.fillStyle = "#2a2a2a"; circle(7 * s, -2.8 * s, 2.4 * s); circle(7 * s, 2.8 * s, 2.4 * s);
-    ctx.fillStyle = "#4a4a4a"; ctx.fillRect(8 * s, -2 * s, 4 * s, 4 * s);
-    ctx.restore();
-  } else if (z.type === "toxic") {
+  // A máscara do hazmat já faz parte do sprite; não sobrepor o desenho antigo.
+  if (z.type === "toxic") {
     ctx.globalCompositeOperation = "lighter";
     ctx.fillStyle = `rgba(110,220,60,${0.18 + 0.08 * Math.sin(game.time / 200 + z.x)})`; circle(z.x, z.y, z.r * 1.8);
     ctx.globalCompositeOperation = "source-over";
