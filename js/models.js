@@ -48,20 +48,47 @@ function modelRect(id, gx, gy, k) {
   const d = PROP_SPR[id]; k = k || MODEL_K;
   return { x: gx - d.fw * k / 2, y: gy - d.fd * k / 2, w: d.fw * k, h: d.fd * k };
 }
-// carro: furgão blindado em parte dos carros (escolhido pela posição, sem mexer no sorteio do mapa)
-function carModel(c) {
-  if (c.model === undefined) {
-    const h = (Math.floor(c.x * 7.13) * 73856093 ^ Math.floor(c.y * 3.71) * 19349663) >>> 0;
-    c.model = h % 100 < 22 && modelOk("van") ? (c.vert ? "van_90" : "van") : null;
-  }
-  return c.model;
+// Oito carros REAIS renderizados a partir dos modelos 3D fornecidos:
+// 4 Zhiguli soviéticos + 4 carros destruídos. As posições, colisões,
+// explosões e pontos de loot seguem usando os objetos originais do mapa.
+const FM_CAR_ART = new Image();
+FM_CAR_ART.src = "img/fm_cars_3d_atlas.webp?v=20261117-cars1";
+const FM_CAR_CELL_W = 320, FM_CAR_CELL_H = 270;
+function carVariant(c) {
+  const h = (Math.imul(Math.floor(c.x * 7.13), 73856093) ^
+    Math.imul(Math.floor(c.y * 3.71), 19349663)) >>> 0;
+  // Carros já destruídos ou incendiados sempre usam um modelo de sucata.
+  return c.burnt || c.wreck || c.chp <= 0 ? 4 + (h % 4) : h % 4;
 }
+function carModel(c) { return "fm_car_" + carVariant(c); }
 function drawCarModel(c) {
-  const id = carModel(c); if (!id) return false;
-  const d = PROP_SPR[id], k = Math.max(c.w, c.h) / Math.max(d.fw, d.fd);
-  const f = lootSpotActive(c) ? LOOT_YELLOW_FILTER : c.burnt ? "brightness(0.35) sepia(0.5)" : c.wreck ? "brightness(0.6) saturate(0.5)" : null;
-  if (!drawModel(id, c.x + c.w / 2, c.y + c.h / 2, k, f)) return false;
-  if (lootSpotActive(c)) drawLootQuestion(c, c.x + c.w / 2, c.y - 11);
+  if (!FM_CAR_ART.complete || !FM_CAR_ART.naturalWidth) {
+    drawCar(c); // fallback sem carros invisíveis enquanto a arte carrega
+    return true;
+  }
+  const id = carVariant(c), L = Math.max(c.w, c.h), active = lootSpotActive(c);
+  const centerX = c.x + c.w / 2, centerY = c.y + c.h / 2;
+  ctx.save();
+  // Brilho só no carro com loot efetivamente disponível.
+  if (active) {
+    const glow = ctx.createRadialGradient(centerX, centerY, 3, centerX, centerY, L * 0.78);
+    glow.addColorStop(0, "rgba(255,217,107,0.22)");
+    glow.addColorStop(1, "rgba(255,217,107,0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(centerX, centerY, L * .78, 0, 6.283); ctx.fill();
+  }
+  ctx.translate(centerX, centerY);
+  ctx.rotate((c.vert ? 0 : Math.PI / 2) + (c.dir ? Math.PI : 0) + c.rot);
+  if (active) {
+    ctx.shadowColor = "rgba(255,218,105,.63)"; ctx.shadowBlur = 8;
+    ctx.filter = "brightness(1.18) contrast(1.09)";
+  } else if (c.burnt) ctx.filter = "brightness(.78) contrast(1.15)";
+  ctx.imageSmoothingEnabled = true;ctx.imageSmoothingQuality = "high";
+  const dw=L*1.88,dh=L*1.58;
+  ctx.drawImage(FM_CAR_ART,(id%4)*FM_CAR_CELL_W,Math.floor(id/4)*FM_CAR_CELL_H,
+    FM_CAR_CELL_W,FM_CAR_CELL_H,-dw/2,-dh/2,dw,dh);
+  ctx.restore();
+  if (active) drawLootQuestion(c,centerX,c.y-14);
   return true;
 }
 function drawDumpsterModel(o) {
