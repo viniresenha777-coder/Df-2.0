@@ -6,7 +6,7 @@
 const SAVE_KEY = "fronteira-morta";
 const save = {
   bank: 0, vault: [], installed: [], credits: 0, gm: false, vipUntil: 0, trindadeUntil: 0, missions: [], receivedGifts: [], inbox: [],
-  vest: -1, outposts: OUTPOSTS.map((o, i) => i === 0), muted: false, hud: 0, skin: 0, cape: 0, prof: null, name: "", classicChar: false, vestDur: {}, vestUpgrades: {}, music: true, gfx: 2,
+  vest: -1, outposts: OUTPOSTS.map((o, i) => i === 0), muted: false, hud: 0, skin: 0, cape: 0, prof: null, name: "", classicChar: false, vestDur: {}, vestUpgrades: {}, music: true, gfx: 2, ambientVolume: 0.55, brightness: 1.0,
   stats: {}, story: 0, ach: {}, daily: null, coll: [], vestsOwned: VESTS.map(() => false), vestVer: 2,
   char: { level: 1, xp: 0, points: 0, wpoints: 0, attrs: defaultAttrs() }
 };
@@ -51,6 +51,9 @@ function loadSave() {
     save.muted = !!s.muted; save.hud = s.hud === 1 ? 1 : 0; save.skin = clamp(s.skin | 0, 0, SKINS.length - 1); save.cape = clamp(s.cape | 0, 0, CAPES.length - 1); save.prof = typeof s.prof === "string" ? s.prof : null; save.name = typeof s.name === "string" ? s.name.slice(0, 16) : ""; save.classicChar = false; // Somente o novo boneco está disponível.
     save.vestDur = s.vestDur && typeof s.vestDur === "object" ? s.vestDur : {};
     save.music = s.music !== false;
+    // sliders do menu: dados antigos recebem padrões seguros
+    save.ambientVolume = Number.isFinite(s.ambientVolume) ? clamp(s.ambientVolume, 0, 1) : 0.55;
+    save.brightness = Number.isFinite(s.brightness) ? clamp(s.brightness, 0.55, 1.6) : 1;
     save.gfx = s.gfx === 0 || s.gfx === 1 ? s.gfx : 2;
     save.stats = s.stats && typeof s.stats === "object" ? s.stats : {};
     save.story = s.story | 0; save.ach = s.ach && typeof s.ach === "object" ? s.ach : {};
