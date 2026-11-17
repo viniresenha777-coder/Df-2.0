@@ -61,34 +61,72 @@ function carVariant(c) {
   return c.burnt || c.wreck || c.chp <= 0 ? 4 + (h % 4) : h % 4;
 }
 function carModel(c) { return "fm_car_" + carVariant(c); }
+// Limites reais (alpha > 40) de cada arte dentro do atlas 320 x 270.
+// Os carros anteriores eram desenhados ~2,5x mais largos que a hitbox.
+// Essas frações alinham a carroceria visível ao retângulo físico do mapa.
+const FM_CAR_BOUNDS = [
+  [216/320,240/270],[216/320,240/270],[222/320,240/270],[216/320,240/270],
+  [290/320,213/270],[290/320,203/270],[259/320,240/270],[209/320,240/270]
+];
+function carSpriteGeometry(c, id) {
+  const [visibleW,visibleH] = FM_CAR_BOUNDS[id];
+  // O atlas é vertical no seu eixo local; girá-lo 90° nos veículos
+  // estacionados na horizontal preserva a orientação da colisão.
+  const cross = c.vert ? c.w : c.h;
+  const length = c.vert ? c.h : c.w;
+  return {
+    angle: (c.vert ? 0 : Math.PI / 2) + (c.dir ? Math.PI : 0) + (c.rot || 0),
+    drawW: cross * 0.93 / visibleW,
+    drawH: length * 0.96 / visibleH,
+    cross, length
+  };
+}
 function drawCarModel(c) {
   if (!FM_CAR_ART.complete || !FM_CAR_ART.naturalWidth) {
-    drawCar(c); // fallback sem carros invisíveis enquanto a arte carrega
+    drawCar(c); // fallback até o atlas carregar
     return true;
   }
-  const id = carVariant(c), L = Math.max(c.w, c.h), active = lootSpotActive(c);
-  const centerX = c.x + c.w / 2, centerY = c.y + c.h / 2;
+  const id = carVariant(c), g = carSpriteGeometry(c, id), active = lootSpotActive(c);
+  const cx = c.x + c.w / 2, cy = c.y + c.h / 2;
+
+  // Primeiro a sombra de contato NO CHÃO, centrada na hitbox. Ela não
+  // é uma sombra projetada e não participa de física nem de tiros.
   ctx.save();
-  // Brilho só no carro com loot efetivamente disponível.
-  if (active) {
-    const glow = ctx.createRadialGradient(centerX, centerY, 3, centerX, centerY, L * 0.78);
-    glow.addColorStop(0, "rgba(255,217,107,0.22)");
-    glow.addColorStop(1, "rgba(255,217,107,0)");
-    ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(centerX, centerY, L * .78, 0, 6.283); ctx.fill();
-  }
-  ctx.translate(centerX, centerY);
-  ctx.rotate((c.vert ? 0 : Math.PI / 2) + (c.dir ? Math.PI : 0) + c.rot);
-  if (active) {
-    ctx.shadowColor = "rgba(255,218,105,.63)"; ctx.shadowBlur = 8;
-    ctx.filter = "brightness(1.18) contrast(1.09)";
-  } else if (c.burnt) ctx.filter = "brightness(.78) contrast(1.15)";
-  ctx.imageSmoothingEnabled = true;ctx.imageSmoothingQuality = "high";
-  const dw=L*1.88,dh=L*1.58;
-  ctx.drawImage(FM_CAR_ART,(id%4)*FM_CAR_CELL_W,Math.floor(id/4)*FM_CAR_CELL_H,
-    FM_CAR_CELL_W,FM_CAR_CELL_H,-dw/2,-dh/2,dw,dh);
+  ctx.translate(cx, cy + 3);
+  ctx.rotate(g.angle);
+  const shadow = ctx.createRadialGradient(0, 0, 1, 0, 0, g.length * .62);
+  shadow.addColorStop(0, "rgba(4,7,7,0.37)");
+  shadow.addColorStop(.62, "rgba(5,8,7,0.24)");
+  shadow.addColorStop(1, "rgba(5,8,7,0)");
+  ctx.fillStyle = shadow;
+  ctx.beginPath(); ctx.ellipse(0,0,g.cross*.56,g.length*.59,0,0,6.283);ctx.fill();
   ctx.restore();
-  if (active) drawLootQuestion(c,centerX,c.y-14);
+
+  if (active) {
+    ctx.save();
+    const glow = ctx.createRadialGradient(cx,cy,5,cx,cy,g.length*.73);
+    glow.addColorStop(0,"rgba(255,215,101,0.20)");
+    glow.addColorStop(1,"rgba(255,205,94,0)");
+    ctx.fillStyle=glow;
+    ctx.beginPath();ctx.arc(cx,cy,g.length*.73,0,6.283);ctx.fill();
+    ctx.restore();
+  }
+  ctx.save();
+  // Apenas 2px de assentamento visual para casar as rodas com o asfalto.
+  ctx.translate(cx, cy + 2);
+  ctx.rotate(g.angle);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  if (active) {
+    ctx.shadowColor = "rgba(255,221,130,.43)";
+    ctx.shadowBlur = 5;
+    ctx.filter = "brightness(1.12) contrast(1.06)";
+  } else if (c.burnt) ctx.filter = "brightness(.83) contrast(1.10)";
+  ctx.drawImage(FM_CAR_ART,
+    (id % 4) * FM_CAR_CELL_W, Math.floor(id / 4) * FM_CAR_CELL_H,
+    FM_CAR_CELL_W,FM_CAR_CELL_H,-g.drawW/2,-g.drawH/2,g.drawW,g.drawH);
+  ctx.restore();
+  if (active) drawLootQuestion(c,cx,c.y-15);
   return true;
 }
 function drawDumpsterModel(o) {
