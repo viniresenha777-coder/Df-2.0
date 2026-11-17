@@ -176,7 +176,7 @@ function clothingTintCanvas(base, mask, skin, equipment, portrait) {
     g.putImageData(image, 0, 0);
     // Diferente do tint antigo, substitui o contorno arredondado por um
     // coturno desenhado a partir da posicao real de cada pe neste quadro.
-    if (boots && typeof clothingReplaceBoots === "function")
+    if (boots && boots.id === "bota_gltf_boots" && typeof clothingReplaceBoots === "function")
       clothingReplaceBoots(c, base, mask, boots, !!portrait);
   } catch (error) {
     // Em canvas protegido ou imagem incompleta, conserva a arte original.
