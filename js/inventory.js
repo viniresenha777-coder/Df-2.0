@@ -286,8 +286,67 @@ function drawFound() {
 // =====================================================================
 //  Pausa (Esc)
 // =====================================================================
-function togglePause() { game.paused = !game.paused; mouse.down = false; }
+// ---------- Configurações: áudio ambiente e exposição visual ----------
+function pauseSettingSlider(label, field, x, y, w, min, max, suffix) {
+  const val = Math.max(min, Math.min(max, Number(save[field]) || 0));
+  const t = (val - min) / (max - min), line = y + 29;
+  txt(label, x, y + 8, 19, "#eee0b9", "left", true);
+  txt(suffix === "percent" ? `${Math.round(val * 100)}%` : String(Math.round(val)), x + w, y + 8, 17, "#ffd36c", "right", true);
+  ctx.fillStyle = "rgba(19,19,18,.9)";rr(x, line - 5, w, 12, 5);ctx.fill();
+  ctx.fillStyle = "#b99544";rr(x, line - 3, w * t, 8, 4);ctx.fill();
+  ctx.fillStyle = "#fff4be";circle(x + w * t, line + 1, 9);
+  ctx.strokeStyle = "#a68035";ctx.lineWidth = 2;
+  ctx.beginPath();ctx.arc(x + w * t,line + 1,9,0,6.283);ctx.stroke();
+  regClick(x - 12, line - 18, w + 24, 38, () => {
+    game.settingsDrag = {field,x,w,min,max};
+    pauseSettingsDrag(mouse.x);
+  });
+}
+function pauseSettingsDrag(x) {
+  const d = game.settingsDrag;
+  if (!d || !game.settingsOpen) return;
+  save[d.field] = Math.round((d.min + Math.max(0, Math.min(1, (x - d.x) / d.w)) * (d.max-d.min)) * 100) / 100;
+  if (d.field === "ambientVolume") {
+    fmAmbientSetVolume();
+    // Permite reativar o ambiente após subir o volume de zero.
+    if (save.ambientVolume > 0 && SND.ac) fmAmbientStart();
+  }
+  persist();
+}
+function drawPauseSettings() {
+  ctx.fillStyle = "rgba(6,8,7,.96)";ctx.fillRect(0,0,W,H);
+  txt("ÁUDIO E VÍDEO", W/2, 90, 41, "#e7d5a8", "center", true);
+  txt("Configurações pessoais salvas automaticamente", W/2, 123, 13, "#9d9a8b", "center");
+  const x=260, w=440;
+  pauseSettingSlider("Volume do som ambiente", "ambientVolume", x, 180, w, 0, 1, "percent");
+  txt("Trilha de fundo do arquivo Ambiente sond · independente da música", W/2, 245, 13, "#b1a99a", "center");
+  pauseSettingSlider("Brilho da imagem", "brightness", x, 293, w, .55, 1.6, "percent");
+  txt("Ajusta a luminosidade do cenário sem clarear o HUD ou os menus", W/2, 355, 13, "#b1a99a", "center");
+  btn(225,403,240,38,`Efeitos sonoros: ${SND.muted?"desligados":"ligados"}`,()=>{sndMute(!SND.muted);save.muted=SND.muted;persist();});
+  btn(500,403,240,38,`Música dinâmica: ${save.music?"ligada":"desligada"}`,()=>{save.music=!save.music;musicSetOn(save.music);persist();});
+  btn(W/2-130,465,260,42,"Voltar (Esc)",()=>{game.settingsOpen=false;game.settingsDrag=null;},true);
+  txt("Aperte o botão e arraste para regular cada opção",W/2,H-44,13,"#b1a99a","center");
+}
+function applyGameBrightness() {
+  const value = Math.max(.55,Math.min(1.6,Number(save.brightness)||1));
+  if (Math.abs(value-1)<.01) return;
+  ctx.save();ctx.setTransform(DPR,0,0,DPR,0,0);
+  if (value>1) {
+    ctx.globalCompositeOperation="screen";
+    ctx.fillStyle=`rgba(255,238,205,${Math.min(.35,(value-1)*.48)})`;
+  } else {
+    ctx.globalCompositeOperation="source-over";
+    ctx.fillStyle=`rgba(6,7,10,${Math.min(.54,(1-value)*.86)})`;
+  }
+  ctx.fillRect(0,0,W,H);ctx.restore();
+}
+function togglePause() {
+  game.paused = !game.paused;
+  if (!game.paused) { game.settingsOpen = false; game.settingsDrag = null; }
+  mouse.down = false;
+}
 function drawPause() {
+  if (game.settingsOpen) { drawPauseSettings(); return; }
   ctx.fillStyle = "rgba(6,7,5,0.82)"; ctx.fillRect(0, 0, W, H);
   txt("PAUSADO", W / 2, 100, 46, "#f2eedc", "center", true);
   txt(`${playerName()}${prof() ? ` · ${prof().name}` : ""}`, W / 2, 124, 14, "#ffd96a", "center", true);
@@ -301,7 +360,7 @@ function drawPause() {
   txt(`${clockText()} · Área ${world.cell.code} (${REGIONS[world.cell.tier].name}) · $${econ().bounty} por abate · ${game.kills} abates`, W / 2, 140, 14, "#a9a58f", "center");
   btn(W / 2 - 110, 170, 220, 42, "Continuar (Esc)", togglePause, true);
   btn(W / 2 - 110, 220, 220, 38, `Som: ${SND.muted ? "desligado" : "ligado"}`, () => { sndMute(!SND.muted); save.muted = SND.muted; persist(); });
-  btn(W / 2 - 110, 266, 220, 38, `HUD: ${save.hud ? "compacto" : "completo"}`, () => { save.hud = save.hud ? 0 : 1; persist(); });
+  btn(W / 2 - 110, 266, 220, 38, "Áudio, ambiente e brilho", () => { game.settingsOpen = true; game.settingsDrag = null; });
   btn(W / 2 + 120, 220, 150, 38, `Música: ${save.music ? "ligada" : "desligada"}`, () => { save.music = !save.music; musicSetOn(save.music); persist(); });
   btn(W / 2 + 120, 266, 150, 38, "Objetivos (O)", () => { game.paused = false; game.menu = "obj"; });
   btn(W / 2 + 120, 170, 150, 42, "Missões", () => { game.paused = false; game.menu = "missions"; game.cur = 0; game.atBase = inSafe(); }, true);
