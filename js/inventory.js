@@ -34,14 +34,16 @@ function weaponDetail(d, inst, x, y, w) {
   txt(inst ? instName(inst) : d.name, x, y + 122, 18, rarColor(d), "left", true, w);
   txt(`${RARITY[d.rar].name} · ${CAT_LABEL[d.cat]}${d.craftOnly ? " · feita na oficina" : ""}`, x, y + 141, 12, rarColor(d), "left", false, w);
   const st = wStat(inst || null), rows = [];
-  if (!inst) { st.dmg = d.dmg; st.delay = d.delay; st.reload = d.reload || 0; st.range = d.range || 0; st.spread = d.spread || 0.03; }
+  if (!inst) { st.dmg = d.dmg; st.delay = d.delay; st.reload = (d.reload || 0) * (d.cat === "rifles" ? 1.15 : 1); st.range = d.range || 0; st.spread = d.spread || 0.03; }
   rows.push(["Dano", d.pellets ? `${Math.round(st.dmg)} x${d.pellets}` : `${Math.round(st.dmg)}`]);
   rows.push([d.melee ? "Golpes/s" : "Tiros/s", (1000 / st.delay).toFixed(1)]);
   if (d.melee) rows.push(["Alcance", `${Math.round(st.range)}`]);
   else if (d.infinite) { rows.push(["Munição", "infinita · pente de 600"]); rows.push(["Recarga", `${(st.reload / 1000).toFixed(2)} s`]); rows.push(["Crítico", "nunca"]); rows.push(["Precisão", `${Math.round(100 - st.spread * 250)}%`]); }
   else {
     rows.push(["Carregador", `${d.mag} · ${d.ammo}`]);
-    rows.push(["Recarga", `${(st.reload / 1000).toFixed(1)} s`]);
+    rows.push(["Recarga", d.id === "caca"
+      ? `${(st.reload / d.mag / 1000).toFixed(2)} s por munição`
+      : `${(st.reload / 1000).toFixed(1)} s`]);
     rows.push(["Precisão", `${Math.round(100 - st.spread * 250)}%`]);
   }
   rows.push(["Ruído", d.sound === 0 ? "nenhum" : d.sound <= 0.1 ? "baixo" : d.sound < 1 ? "médio" : "alto"]);
