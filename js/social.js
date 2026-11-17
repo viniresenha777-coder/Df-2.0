@@ -56,6 +56,13 @@ const fmSocial = (() => {
         }
       });
       timer = setInterval(tickNetwork, MOVE_INTERVAL);
+      // ao minimizar ou voltar para a aba, avisa na hora (os outros assumem os zumbis sem esperar)
+      document.addEventListener("visibilitychange", () => {
+        const state = ownState();
+        if (!state || !connected) return;
+        publish(true, state);
+        sendMovement(true, state);
+      });
       window.addEventListener("pagehide", stop, { once: true });
     })().catch((err) => {
       console.warn("Multiplayer não iniciado:", err);
@@ -84,7 +91,8 @@ const fmSocial = (() => {
       x: Math.round(pos.x), y: Math.round(pos.y),
       angle: Number.isFinite(player.angle) ? player.angle : 0,
       skin: save.skin | 0, location: location(), inside: !!(game.inside || game.hub),
-      moving: !!player.moving, active: !(game.paused || game.menu || game.shop || game.over || game.found || game.hub), since: sectorSince, sent: (lastStateSent = Math.max(Date.now(), lastStateSent + 1))
+      // aba minimizada ou em segundo plano: o navegador quase para o jogo, então não pode coordenar os zumbis
+      moving: !!player.moving, active: !(document.hidden || game.paused || game.menu || game.shop || game.over || game.found || game.hub), since: sectorSince, sent: (lastStateSent = Math.max(Date.now(), lastStateSent + 1))
     };
   }
   function refreshLocation() {

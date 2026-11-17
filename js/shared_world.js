@@ -11,6 +11,8 @@ const fmWorld = (() => {
   let lastSnapshot = 0, lastReceived = 0, lastLeader = "", seq = 0;
   let channelLocation = "", stream = "", lastStream = "";
   let started = false, snapshotBusy = false;
+  // coordenador mudo: se quem deveria mover os zumbis não manda nada por 4 s, é ignorado
+  const heard = new Map(), waiting = new Map(), MUTE_MS = 4000;
   const id = () => typeof fmCloud !== "undefined" && fmCloud.userId ? fmCloud.userId() : null;
   const db = () => typeof fmCloud !== "undefined" && fmCloud.socialClient ? fmCloud.socialClient() : null;
   const nowMs = () => Date.now() + offsetMs;
@@ -73,15 +75,27 @@ const fmWorld = (() => {
   function leader() {
     const mine = id();
     if (!mine || !world || !game || game.hub) return null;
-    const mineActive = !(game.paused || game.menu || game.shop || game.over || game.found);
+    const mineActive = !(document.hidden || game.paused || game.menu || game.shop || game.over || game.found);
     const players = mineActive ? [{ uid: mine, since: typeof fmSocial !== "undefined" ? fmSocial.mySectorSince() : 0 }] : [];
-    // O jogador que entrou primeiro na rua coordena o setor.
+    // O jogador que entrou primeiro na rua coordena o setor. Quem está com o jogo parado
+    // (aba minimizada, menu aberto) ou sem dar sinal há mais de 7 s não coordena: senão os
+    // zumbis ficam congelados para todos na área.
+    const now = performance.now();
     if (typeof fmSocial !== "undefined") for (const p of fmSocial.online()) {
-      if (fmSocial.sameLocation(p) && p.active !== false && p.uid)
+      if (fmSocial.sameLocation(p) && p.active !== false && p.uid && now - (p.at || 0) < 7000)
         players.push({ uid: p.uid, since: p.since || 0 });
     }
     players.sort((a, b) => (a.since || Infinity) - (b.since || Infinity) || a.uid.localeCompare(b.uid));
-    return players[0] ? players[0].uid : mine;
+    for (const p of players) {
+      if (p.uid === mine) return mine;
+      let w = waiting.get(p.uid);
+      if (!w || now - w.seen > 1500) waiting.set(p.uid, w = { since: now, seen: now });   // começa a contar agora
+      w.seen = now;
+      // eleito, mas sem mandar zumbis há mais de 4 s (aba travada, mesma conta aberta em dois lugares...)
+      if (now - w.since > MUTE_MS && now - (heard.get(p.uid) || 0) > MUTE_MS) continue;
+      return p.uid;
+    }
+    return mine;
   }
   function isAuthority() {
     if (!channelReady || !channel || channelLocation !== sectorKey() || !world || game.hub) return true;
@@ -156,6 +170,7 @@ const fmWorld = (() => {
   }
   function receiveZombies(event) {
     const data = event && event.payload;
+    if (data && typeof data.host === "string" && world && fmSocial.sameLocation(data)) heard.set(data.host, performance.now());
     if (!data || !isFollower() || !world || !Array.isArray(data.zombies) ||
         !fmSocial.sameLocation(data) || data.host !== leader()) return;
     if (data.zombies.length > 100) return;
