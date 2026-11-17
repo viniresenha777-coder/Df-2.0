@@ -4,26 +4,26 @@
 // Na fase inicial os 18 itens estao disponiveis para teste, sem custo ou atributos.
 const CLOTHING_SETS = [
   { id: "civil", name: "Sobrevivente civil", jacket: ["Jaqueta verde de campo", "#526444", "#a36a44", "canvas"],
-    pants: ["Calca jeans reforcada", "#36474b", "#84908e", "denim"],
+    pants: ["Calça jeans reforçada", "#36474b", "#84908e", "denim"],
     boots: ["Botas de trilha", "#71513b", "#c39a69", "leather"] },
   { id: "scav", name: "Catador", jacket: ["Moletom vermelho gasto", "#7a4040", "#b08b73", "worn"],
     pants: ["Cargo de catador", "#71684d", "#c3a26c", "canvas"],
     boots: ["Coturnos de sucata", "#454342", "#a18d70", "leather"] },
-  { id: "militia", name: "Milicia", jacket: ["Casaco de vigia", "#344b60", "#a76c56", "reinforced"],
-    pants: ["Calca tatica escura", "#353a39", "#6c7776", "reinforced"],
+  { id: "militia", name: "Milícia", jacket: ["Casaco de vigia", "#344b60", "#a76c56", "reinforced"],
+    pants: ["Calça tática escura", "#353a39", "#6c7776", "reinforced"],
     boots: ["Botas militares", "#282b2b", "#747b78", "leather"] },
   { id: "medic", name: "Socorrista", jacket: ["Casaco de socorrista", "#b9afa0", "#b75a56", "medical"],
-    pants: ["Calca de paramedico", "#4a585b", "#a7a79d", "canvas"],
+    pants: ["Calça de paramédico", "#4a585b", "#a7a79d", "canvas"],
     boots: ["Botas impermeaveis", "#4b413a", "#aa9277", "leather"] },
   { id: "raider", name: "Invasor", jacket: ["Jaqueta de couro remendada", "#4b3539", "#a45248", "worn"],
-    pants: ["Calca com joelheiras", "#383532", "#836b58", "reinforced"],
+    pants: ["Calça com joelheiras", "#383532", "#836b58", "reinforced"],
     boots: ["Botas de combate", "#333233", "#a07968", "leather"] },
-  { id: "hunter", name: "Cacador", jacket: ["Casaco de cacador", "#726449", "#a49876", "canvas"],
-    pants: ["Calca de rastreador", "#3e4d3b", "#85946b", "camo"],
+  { id: "hunter", name: "Caçador", jacket: ["Casaco de cacador", "#726449", "#a49876", "canvas"],
+    pants: ["Calça de rastreador", "#3e4d3b", "#85946b", "camo"],
     boots: ["Botas de couro", "#6b4a2e", "#b58c5c", "leather"] }
 ];
 const CLOTHING_KINDS = ["jacket", "pants", "boots"];
-const CLOTHING_LABELS = { jacket: "Jaqueta", pants: "Calca", boots: "Botas" };
+const CLOTHING_LABELS = { jacket: "Jaqueta", pants: "Calça", boots: "Botas" };
 const CLOTHING_ITEMS = [];
 const CLOTHING_BY_ID = Object.create(null);
 for (const set of CLOTHING_SETS) {
@@ -85,6 +85,7 @@ function clothingTintCanvas(base, mask, skin, equipment, portrait) {
     const J = clothingColor(jacket ? jacket.color : skin.jacket);
     const P = clothingColor(pants ? pants.color : skin.pants);
     const B = boots && clothingColor(boots.color);
+    const JA = jacket && clothingColor(jacket.accent), PA = pants && clothingColor(pants.accent);
     const frameW = portrait ? 240 : 128, frameH = portrait ? h : 128;
     const K = 1.7 / 255;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -104,10 +105,30 @@ function clothingTintCanvas(base, mask, skin, equipment, portrait) {
       const jf = jacket ? clothingFabric(jacket.texture, x, y) : 1;
       const pf = pants ? clothingFabric(pants.texture, x, y) : 1;
       const bf = boots ? clothingFabric(boots.texture, x, y) : 1;
+      const xf = (x % frameW) / frameW, yf = (y % frameH) / frameH;
+      const front = portrait || (Math.floor(y / frameH) % 8 === 4);
+      // Faixas, remendos, painéis de joelho e identificação de socorrista.
+      // As marcas respeitam os canais da máscara e acompanham os 64 quadros.
+      let ja = 0, pa = 0;
+      if (jacket && mj > 0.15) {
+        if (jacket.texture === "medical" && front &&
+            xf > 0.48 && xf < 0.56 && yf > 0.34 && yf < 0.42 &&
+            (Math.abs(xf - 0.52) < 0.014 || Math.abs(yf - 0.38) < 0.013)) ja = 0.85;
+        else if (jacket.texture === "reinforced" && yf > 0.40 && yf < 0.45 &&
+            ((xf > 0.27 && xf < 0.35) || (xf > 0.65 && xf < 0.73))) ja = 0.58;
+        else if (jacket.texture === "canvas" && yf > 0.38 && yf < 0.42 &&
+            ((xf > 0.29 && xf < 0.36) || (xf > 0.64 && xf < 0.71))) ja = 0.33;
+        else if (jacket.texture === "worn" && ((Math.floor(x / 7) + Math.floor(y / 11)) % 17 === 0)) ja = 0.38;
+      }
+      if (pants && mp > 0.15) {
+        if (pants.texture === "reinforced" && yf > 0.64 && yf < 0.72 &&
+            ((xf > 0.34 && xf < 0.46) || (xf > 0.54 && xf < 0.66))) pa = 0.35;
+        if (pants.texture === "camo" && (Math.floor(x / 9) * 3 + Math.floor(y / 13)) % 7 < 2) pa = 0.30;
+      }
       for (let ch = 0; ch < 3; ch++) {
         const v = p[i + ch];
-        const jv = Math.min(255, v * J[ch] * K * jf);
-        const pv = Math.min(255, v * P[ch] * K * pf);
+        const jv = Math.min(255, v * (J[ch] * (1 - ja) + (JA ? JA[ch] : J[ch]) * ja) * K * jf);
+        const pv = Math.min(255, v * (P[ch] * (1 - pa) + (PA ? PA[ch] : P[ch]) * pa) * K * pf);
         const bv = B ? Math.min(255, v * B[ch] * K * bf * 1.28) : v;
         p[i + ch] = Math.min(255, Math.max(0, v * (1 - amt) + jv * mj + pv * mp + bv * b));
       }
