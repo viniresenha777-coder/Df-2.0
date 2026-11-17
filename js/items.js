@@ -58,7 +58,7 @@ const WLIST = [
   { id: "aa12",     name: "AA-12",         cat: "shotguns", look: "shotgun", dmg: 20, delay: 220, mag: 20, reload: 3000, ammo: "cartucho", price: 4500, req: [50, 110], len: 28, color: "#3a3d40", pellets: 5, spread: 0.3, life: 380, drum: true },
   // rifles
   { id: "caca",     name: "Rifle de Caça", cat: "rifles", look: "rifle",   dmg: 90,  delay: 900,  mag: 5,  reload: 2200, ammo: "7.62", price: 900,  req: [15, 35],  len: 34, color: "#6b4a2b", pierce: true, speed: 17, life: 1200 },
-  { id: "sniper",   name: "Sniper",        cat: "rifles", look: "rifle",   dmg: 120, delay: 1100, mag: 5,  reload: 2400, ammo: "7.62", price: 1500, req: [25, 70],  len: 36, color: "#2f3b2a", pierce: true, speed: 18, life: 1300, sound: [0.1, 0.15] },
+  { id: "sniper",   name: "Rifle Básico",        cat: "rifles", look: "rifle",   dmg: 120, delay: 1100, mag: 5,  reload: 2400, ammo: "7.62", price: 1500, req: [25, 70],  len: 36, color: "#2f3b2a", pierce: true, speed: 18, life: 1300, sound: [0.1, 0.15] },
   { id: "barrett",  name: "Barrett .50",   cat: "rifles", look: "rifle",   dmg: 260, delay: 1400, mag: 10, reload: 3200, ammo: ".50",  price: 6500, req: [60, 120], len: 40, color: "#3a3d32", pierce: true, speed: 20, life: 1500, sound: [1, 1] },
   // corpo a corpo
   { id: "faca",     name: "Faca",          cat: "melee", look: "knife",   dmg: 18,  delay: 250,  range: 42, arc: 0.7,  price: 100,  req: [0, 5],  len: 16, color: "#c9ced2" },
@@ -213,7 +213,8 @@ function wStat(inst) {
   return {
     dmg: d.dmg * (1 + 0.06 * u.dmg),
     spread: (d.spread || 0.03) * (1 - 0.09 * u.acc),
-    reload: (d.reload || 0) * (1 - 0.06 * u.rel),
+    // Rifles: recarga 15% mais lenta, mantendo upgrades e atributos ativos.
+    reload: (d.reload || 0) * (1 - 0.06 * u.rel) * (d.cat === "rifles" ? 1.15 : 1),
     delay: d.melee ? d.delay * (1 - 0.04 * u.rel) : d.delay,
     range: d.melee ? d.range * (1 + 0.04 * u.acc) : 0
   };
