@@ -97,6 +97,142 @@ function clothingFabric(texture, x, y) {
   if (texture === "leather") return fiber * 0.97;
   return fiber;
 }
+function wardrobeFindPantHems(maskData, sheetWidth, ox, oy, fw, fh, portrait) {
+  if (!maskData) return [];
+  const yStart = Math.floor(fh * (portrait ? 0.65 : 0.57));
+  const left = Math.floor(fw * 0.16), right = Math.ceil(fw * 0.84);
+  const eligible = new Uint8Array(fw * fh);
+  for (let y = yStart; y < fh; y++) for (let x = left; x < right; x++) {
+    const i = ((oy + y) * sheetWidth + ox + x) * 4;
+    if (maskData[i + 1] > 90 && maskData[i] < 85 && maskData[i + 3] > 30)
+      eligible[y * fw + x] = 1;
+  }
+  const seen = new Uint8Array(fw * fh), queue = new Int32Array(fw * fh), comps = [];
+  for (let y = yStart; y < fh; y++) for (let x = left; x < right; x++) {
+    const start = y * fw + x;
+    if (!eligible[start] || seen[start]) continue;
+    let head = 0, tail = 1, x0 = fw, x1 = 0, y0 = fh, y1 = 0;
+    queue[0] = start; seen[start] = 1;
+    while (head < tail) {
+      const p = queue[head++], px = p % fw, py = Math.floor(p / fw);
+      x0 = Math.min(x0, px); x1 = Math.max(x1, px);
+      y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const nx = px + dx, ny = py + dy;
+        if (nx < left || nx >= right || ny < yStart || ny >= fh) continue;
+        const n = ny * fw + nx;
+        if (eligible[n] && !seen[n]) {seen[n] = 1; queue[tail++] = n;}
+      }
+    }
+    const compWidth = x1 - x0 + 1;
+    if (tail < (portrait ? 45 : 5) || compWidth > fw * (portrait ? 0.30 : 0.36) ||
+        y1 < fh * (portrait ? 0.74 : 0.61)) continue;
+    let total = 0, count = 0, minX = fw, maxX = 0;
+    for (let yy = Math.max(y0, y1 - (portrait ? 6 : 2)); yy <= y1; yy++)
+      for (let xx = x0; xx <= x1; xx++) {
+        if (!eligible[yy * fw + xx]) continue;
+        total += xx; count++; minX = Math.min(minX, xx); maxX = Math.max(maxX, xx);
+      }
+    if (!count) continue;
+    comps.push({cx: total / count, hemY: y1, hemWidth: maxX - minX + 1, area: tail});
+  }
+  // A máscara separa as pernas; se elas se cruzarem, conservamos o pé
+  // original naquele quadro em vez de colar botas soltas em locais errados.
+  return comps.sort((a,b)=>b.area-a.area).slice(0,2).sort((a,b)=>a.cx-b.cx);
+}
+
+function wardrobeFindOriginalFoot(base, maskData, sw, ox, oy, fw, fh, hem, portrait) {
+  const radius = Math.max(portrait ? 15 : 6,
+    Math.min(portrait ? 24 : 12, hem.hemWidth * (portrait ? 1.05 : 1.3) + 5));
+  const x0 = Math.max(0, Math.floor(hem.cx - radius));
+  const x1 = Math.min(fw - 1, Math.ceil(hem.cx + radius));
+  const y0 = Math.max(0, hem.hemY - (portrait ? 4 : 2));
+  const y1 = Math.min(fh - 1, hem.hemY + (portrait ? 38 : 17));
+  const pixel = (x,y) => {
+    const i = ((oy + y) * sw + ox + x) * 4;
+    if (base[i + 3] < 20 ||
+        (maskData && (maskData[i] > 65 || maskData[i + 1] > 65))) return false;
+    const r = base[i], g = base[i + 1], b = base[i + 2];
+    return (r+g+b) < 3 * 181 && Math.max(r,g,b)-Math.min(r,g,b) < 69;
+  };
+  const visited = new Uint8Array(fw * fh), queue = new Int32Array(fw * fh);
+  let best = null, bestScore = -1e9;
+  for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) {
+    const seed = yy * fw + xx;
+    if (visited[seed] || !pixel(xx, yy)) continue;
+    let h = 0, t = 1, minX = xx, maxX = xx, minY = yy, maxY = yy;
+    visited[seed] = 1; queue[0] = seed;
+    while (h < t) {
+      const p = queue[h++], px = p % fw, py = Math.floor(p / fw);
+      minX = Math.min(minX,px); maxX = Math.max(maxX,px);
+      minY = Math.min(minY,py); maxY = Math.max(maxY,py);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const nx = px+dx, ny = py+dy;
+        if (nx < x0 || nx > x1 || ny < y0 || ny > y1) continue;
+        const ni = ny * fw + nx;
+        if (!visited[ni] && pixel(nx,ny)) {visited[ni] = 1; queue[t++] = ni;}
+      }
+    }
+    const bw = maxX-minX+1, bh=maxY-minY+1;
+    if (t < (portrait ? 14 : 3) || maxY < hem.hemY + (portrait ? 1 : 0) ||
+        bw > (portrait ? 37 : 21) || bh > (portrait ? 38 : 22)) continue;
+    const score = t * 0.85 + maxY * 0.45 - Math.abs((minX+maxX)*0.5 - hem.cx)*2.4;
+    if (score > bestScore) {
+      bestScore = score;
+      best = {x0:minX,x1:maxX,y0:minY,y1:maxY,hemX:hem.cx,hemY:hem.hemY};
+    }
+  }
+  return best;
+}
+
+// A bota funciona como a calça: recolorimos somente pixels que já existem
+// no personagem, identificando os calçados na região em que a calça termina.
+// Não usamos drawImage de uma bota extra, não movemos os pés nem alteramos alfa.
+function wardrobeTintBoots(pixels, mask, w, h, boots, portrait) {
+  if (!boots) return 0;
+  const fw = portrait ? 240 : 128, fh = portrait ? h : 128;
+  if (!w || !h || w % fw || h % fh) return 0;
+  const color = clothingColor(boots.color), accent = clothingColor(boots.accent);
+  let tinted = 0;
+  for (let row = 0; row < h / fh; row++) for (let col = 0; col < w / fw; col++) {
+    const ox = col * fw, oy = row * fh;
+    const hems = wardrobeFindPantHems(mask, w, ox, oy, fw, fh, portrait);
+    const used = [];
+    for (const hem of hems) {
+      const foot = wardrobeFindOriginalFoot(pixels, mask, w, ox, oy, fw, fh, hem, portrait);
+      if (!foot) continue;
+      if (used.some(old => Math.abs(old.x0 - foot.x0) < 2 && Math.abs(old.y0 - foot.y0) < 2)) continue;
+      used.push(foot);
+      // Borda de 1 pixel para incluir a costura clara do modelo antigo.
+      for (let y = Math.max(0, foot.y0 - 1); y <= Math.min(fh - 1, foot.y1 + 1); y++) {
+        for (let x = Math.max(0, foot.x0 - 1); x <= Math.min(fw - 1, foot.x1 + 1); x++) {
+          const i = ((oy + y) * w + ox + x) * 4;
+          if (pixels[i + 3] < 20 || mask[i] > 65 || mask[i + 1] > 65) continue;
+          const lum = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+          const spread = Math.max(pixels[i], pixels[i + 1], pixels[i + 2])
+                       - Math.min(pixels[i], pixels[i + 1], pixels[i + 2]);
+          if (lum > 200 || spread > 80) continue;
+          const roughness = clothingFabric(boots.texture, ox + x, oy + y);
+          const lighting = Math.max(0.55, Math.min(1.45, 0.50 + lum / 125));
+          // Sola e costuras sutis respeitam a forma atual do pé.
+          const sole = y >= foot.y1 - (portrait ? 2 : 0);
+          const seam = !sole && y <= foot.y0 + (portrait ? 3 : 1)
+                    && (Math.floor(x / (portrait ? 4 : 2)) % 3 === 0);
+          for (let ch = 0; ch < 3; ch++) {
+            const material = sole ? color[ch] * 0.55 :
+              seam ? color[ch] * 0.78 + accent[ch] * 0.22 : color[ch];
+            pixels[i + ch] = Math.min(255, material * lighting * roughness * 0.87 + pixels[i + ch] * 0.13);
+          }
+          tinted++;
+        }
+      }
+    }
+  }
+  return tinted;
+}
+
 // Pinta os canais da mascara 3D existente: vermelho=tronco/mangas,
 // verde=calca. As botas usam a parte escura inferior do sprite, sem
 // redimensionar o corpo. Funciona nas 5 poses e no retrato giratorio.
@@ -114,7 +250,6 @@ function clothingTintCanvas(base, mask, skin, equipment, portrait) {
     const jacket = clothingGet("jacket", equipment), pants = clothingGet("pants", equipment), boots = clothingGet("boots", equipment);
     const J = clothingColor(jacket ? jacket.color : skin.jacket);
     const P = clothingColor(pants ? pants.color : skin.pants);
-    const B = boots && clothingColor(boots.color);
     const JA = jacket && clothingColor(jacket.accent), PA = pants && clothingColor(pants.accent);
     const multiforest = pants && pants.texture === "multiforest"
       ? clothingFabricPixels("img/clothing/multiforest_fabric.png") : null;
@@ -124,19 +259,10 @@ function clothingTintCanvas(base, mask, skin, equipment, portrait) {
       const i = (y * w + x) * 4;
       if (p[i + 3] < 8) continue;
       const mj = m[i] / 255, mp = m[i + 1] / 255;
-      let b = 0;
-      // Botas pretas sem canal na mascara original. Limita aos pes e aos
-      // pixels ja existentes: nao colore terreno ou altera a hitbox.
-      if (B && mj + mp < 0.09) {
-        const fx = (x % frameW) / frameW, fy = (y % frameH) / frameH;
-        const value = (p[i] + p[i + 1] + p[i + 2]) / 3;
-        if (fy > (portrait ? 0.79 : 0.76) && fx > 0.27 && fx < 0.73 && value < 135) b = 0.76;
-      }
-      const amt = Math.min(1, mj + mp + b);
+      const amt = Math.min(1, mj + mp);
       if (amt < 0.015) continue;
       const jf = jacket ? clothingFabric(jacket.texture, x, y) : 1;
       const pf = pants ? clothingFabric(pants.texture, x, y) : 1;
-      const bf = boots ? clothingFabric(boots.texture, x, y) : 1;
       const xf = (x % frameW) / frameW, yf = (y % frameH) / frameH;
       const front = portrait || (Math.floor(y / frameH) % 8 === 4);
       // Faixas, remendos, painéis de joelho e identificação de socorrista.
@@ -169,15 +295,13 @@ function clothingTintCanvas(base, mask, skin, equipment, portrait) {
         } else {
           pv = Math.min(255, v * (P[ch] * (1 - pa) + (PA ? PA[ch] : P[ch]) * pa) * K * pf);
         }
-        const bv = B ? Math.min(255, v * B[ch] * K * bf * 1.28) : v;
-        p[i + ch] = Math.min(255, Math.max(0, v * (1 - amt) + jv * mj + pv * mp + bv * b));
+        p[i + ch] = Math.min(255, Math.max(0, v * (1 - amt) + jv * mj + pv * mp));
       }
     }
+    // Mesmo tratamento da calça: modificar apenas a textura dos calçados existentes.
+    // Os pixels alpha são mantidos: silhueta, dimensão e posição permanecem originais.
+    if (boots) wardrobeTintBoots(p, m, w, h, boots, !!portrait);
     g.putImageData(image, 0, 0);
-    // Diferente do tint antigo, substitui o contorno arredondado por um
-    // coturno desenhado a partir da posicao real de cada pe neste quadro.
-    if (boots && boots.id === "bota_gltf_boots" && typeof clothingReplaceBoots === "function")
-      clothingReplaceBoots(c, base, mask, boots, !!portrait);
   } catch (error) {
     // Em canvas protegido ou imagem incompleta, conserva a arte original.
     return c;
