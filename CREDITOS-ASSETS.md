@@ -20,3 +20,4 @@ As miniaturas são imagens derivadas dos respectivos modelos 3D. A geometria ori
 - **JDSherbert – Walther P38 SFX Pack (FREE)** — efeito de arma fornecido pelo usuário. Confirmar licença original para redistribuição.
 
 Assets recolhidos dos ZIPs fornecidos pelo criador; este documento preserva os créditos e requisitos presentes nos LICENSE/README originais.
+- **Rifle de Caça (recarga individual)** — arquivo `JDSherbert - Firearm FX - Weapon SFX Pack - Walther P38 - Aim - 1.mp3` enviado pelo criador, usado como clique mecânico a cada cartucho. A licença original deve ser confirmada antes de distribuição comercial.
