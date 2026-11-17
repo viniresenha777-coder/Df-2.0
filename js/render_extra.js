@@ -220,9 +220,11 @@ function drawBody(o) {
 // ---------- Carros explosivos ----------
 function carUnder(c) {
   if (!c.explosive || c.burnt) return;
+  // Marca discreta de óleo no chão. A mancha roxa deslocada da versão
+  // anterior fazia carros abandonados parecerem suspensos.
   const cx = c.x + c.w / 2, cy = c.y + c.h / 2;
-  ctx.fillStyle = "rgba(20,20,30,0.55)"; ellipse(cx + 8, cy + 12, 22, 12);
-  ctx.fillStyle = `rgba(120,90,200,${0.12 + 0.06 * Math.sin(game.time / 500 + cx)})`; ellipse(cx + 12, cy + 14, 10, 5);
+  ctx.fillStyle = "rgba(16,18,16,0.18)";
+  ellipse(cx + 1, cy + 1, c.w * 0.28, c.h * 0.28);
 }
 function carOver(c) {
   const cx = c.x + c.w / 2, cy = c.y + c.h / 2;
