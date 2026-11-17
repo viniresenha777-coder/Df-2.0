@@ -1019,7 +1019,10 @@ function drawCape(cp, p) {
   if (cp.trim) { ctx.strokeStyle = cp.trim; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-len + 3, -9 + sw); ctx.lineTo(-len + 2, 9 + sw); ctx.stroke(); }
 }
 function drawPlayer() {
-  const w = curW(), p = player, pal = SKINS[save.skin] || SKINS[0];
+  const w = curW(), p = player, basePal = SKINS[save.skin] || SKINS[0];
+  const pal = { ...basePal, jacket: (clothingGet("jacket") || {}).color || basePal.jacket,
+    pants: (clothingGet("pants") || {}).color || basePal.pants };
+  const bootColor = (clothingGet("boots") || {}).color || "#1e1a16";
   const skinC = pal.mask || pal.helmet || pal.skin === "#141414" ? "#2e2e2e" : pal.skin;
   const glove = pal.mask || pal.helmet || pal.hood ? "#2a2826" : skinC;
   ctx.fillStyle = "rgba(0,0,0,0.35)"; ellipse(p.x + 4, p.y + 6, 17, 13);
@@ -1030,7 +1033,7 @@ function drawPlayer() {
   for (const [side, st] of [[-1, stride], [1, -stride]]) {
     ctx.strokeStyle = pal.pants; ctx.lineWidth = 6.5; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(0, side * 4.5); ctx.lineTo(st, side * 5.5); ctx.stroke();
-    ctx.fillStyle = "#1e1a16"; ellipse(st + 2.5 * Math.sign(st || 1), side * 5.5, 4.6, 3.4);
+    ctx.fillStyle = bootColor; ellipse(st + 2.5 * Math.sign(st || 1), side * 5.5, 4.6, 3.4);
   }
   ctx.restore();
   // ---- tronco, capa, braços e arma: seguem a mira ----

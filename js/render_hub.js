@@ -37,12 +37,15 @@ function hubBar(x, y, w, label, v, max, color) {
 
 // personagem de frente (desenhado com as cores da roupa escolhida)
 function drawHero(cx, cy, s) {
-  const pal = SKINS[save.skin] || SKINS[0];
+  const basePal = SKINS[save.skin] || SKINS[0];
+  const pal = { ...basePal, jacket: (clothingGet("jacket") || {}).color || basePal.jacket,
+    pants: (clothingGet("pants") || {}).color || basePal.pants };
+  const bootColor = (clothingGet("boots") || {}).color || "#1e1a16";
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
   ctx.fillStyle = "rgba(0,0,0,0.45)"; ellipse(0, 92, 46, 10);
   // pernas e botas
   ctx.fillStyle = pal.pants; rr(-20, 20, 17, 66, 5); ctx.fill(); rr(3, 20, 17, 66, 5); ctx.fill();
-  ctx.fillStyle = "#1e1a16"; rr(-22, 80, 21, 12, 4); ctx.fill(); rr(1, 80, 21, 12, 4); ctx.fill();
+  ctx.fillStyle = bootColor; rr(-22, 80, 21, 12, 4); ctx.fill(); rr(1, 80, 21, 12, 4); ctx.fill();
   ctx.fillStyle = "#4a3a26"; ctx.fillRect(-22, 18, 44, 6);
   // braços
   ctx.fillStyle = pal.jacket; rr(-36, -38, 13, 58, 6); ctx.fill(); rr(23, -38, 13, 58, 6); ctx.fill();

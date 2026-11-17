@@ -90,7 +90,7 @@ const fmSocial = (() => {
       uid: userId, name: textName(save.name), cx: world.cell.cx, cy: world.cell.cy,
       x: Math.round(pos.x), y: Math.round(pos.y),
       angle: Number.isFinite(player.angle) ? player.angle : 0,
-      skin: save.skin | 0, location: location(), inside: !!(game.inside || game.hub),
+      skin: save.skin | 0, clothing: clothingClean(save.clothing), location: location(), inside: !!(game.inside || game.hub),
       // aba minimizada ou em segundo plano: o navegador quase para o jogo, então não pode coordenar os zumbis
       moving: !!player.moving, active: !(document.hidden || game.paused || game.menu || game.shop || game.over || game.found || game.hub), since: sectorSince, sent: (lastStateSent = Math.max(Date.now(), lastStateSent + 1))
     };
@@ -112,7 +112,7 @@ const fmSocial = (() => {
   // track() frequente envia o estado inteiro para todos e causa atraso.
   async function publish(force, state = ownState()) {
     if (!connected || !channel || !userId || tracking || !state || myself() !== userId) return;
-    const key = [state.cx, state.cy, state.location, state.inside, state.active, state.skin, state.name].join(":");
+    const key = [state.cx, state.cy, state.location, state.inside, state.active, state.skin, clothingKey(state.clothing), state.name].join(":");
     const now = Date.now();
     if (!force && key === lastPresenceKey && now - lastPresenceAt < 10000) return;
     lastPresenceKey = key;
@@ -158,7 +158,7 @@ const fmSocial = (() => {
     const topic = topicFor(state);
     if (topic !== moveTopic) return;
     const now = Date.now();
-    const key = [state.x, state.y, state.angle.toFixed(2), state.moving, state.location, state.inside, state.skin].join(":");
+    const key = [state.x, state.y, state.angle.toFixed(2), state.moving, state.location, state.inside, state.skin, clothingKey(state.clothing)].join(":");
     // Parado: nenhuma transmissão contínua; só um pulso periódico para novos vizinhos.
     if (!force && key === lastMoveKey && now - lastMoveAt < 3000) return;
     const active = moveChannel;
@@ -198,7 +198,7 @@ const fmSocial = (() => {
       fromX: teleport ? p.x : pos.x, fromY: teleport ? p.y : pos.y,
       at: now, angle: p.angle,
       location: p.location, moving: !!p.moving, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0,
-      skin: clamp(p.skin | 0, 0, SKINS.length - 1),
+      skin: clamp(p.skin | 0, 0, SKINS.length - 1), clothing: clothingClean(p.clothing),
       sent: p.sent
     });
   }
@@ -225,7 +225,7 @@ const fmSocial = (() => {
       next.set(p.uid, {
         uid: p.uid, name: textName(p.name), cx: p.cx, cy: p.cy,
         x, y, fromX: snap ? x : pos.x, fromY: snap ? y : pos.y,
-        at: now, angle: p.angle, skin: clamp(p.skin | 0, 0, SKINS.length - 1),
+        at: now, angle: p.angle, skin: clamp(p.skin | 0, 0, SKINS.length - 1), clothing: clothingClean(p.clothing),
         location: p.location, moving: !!p.moving, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0, sent: Number(p.sent) || 0
       });
     }
@@ -322,19 +322,19 @@ const fmSocial = (() => {
 // Renderização dos outros jogadores com a MESMA spritesheet nova do jogador local.
 // Usa cache separado para que trocar cores no multiplayer não reprocessa a sua roupa.
 const REMOTE_PLAYER_SHEETS = new Map();
-function remotePlayerSheet(skin, pose) {
+function remotePlayerSheet(skin, pose, clothing) {
   if (!PSHEET.ok || !PSHEET.sheets[pose]) return null;
-  const key = skin + ":" + pose;
+  const key = skin + ":" + pose + ":" + clothingKey(clothing);
   if (REMOTE_PLAYER_SHEETS.has(key)) return REMOTE_PLAYER_SHEETS.get(key);
   const base = PSHEET.sheets[pose], mask = PSHEET.masks[pose];
-  const img = mask && mask.naturalWidth ? tintWithMask(base, mask, SKINS[skin] || SKINS[0]) : base;
+  const img = mask && mask.naturalWidth ? tintWithMask(base, mask, SKINS[skin] || SKINS[0], clothing, false) : base;
   REMOTE_PLAYER_SHEETS.set(key, img);
   return img;
 }
 function drawOnlinePlayer(p) {
   const S = PSHEET.size, cell = PSHEET.cell, pose = "punhos";
   const skin = clamp(p.skin | 0, 0, SKINS.length - 1);
-  const sprite = remotePlayerSheet(skin, pose);
+  const sprite = remotePlayerSheet(skin, pose, p.clothing);
   if (sprite) {
     const row = sheetRow(Math.cos(p.angle || 0), Math.sin(p.angle || 0));
     const col = p.moving ? (Math.floor(performance.now() / 110 + p.x * 0.05) % 8) : 1;

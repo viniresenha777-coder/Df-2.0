@@ -26,29 +26,8 @@ function portraitGearImg(id) {
   return PORTRAIT.gear[id];
 }
 // pinta a roupa (cinza) com as cores do personagem usando a máscara (vermelho = jaqueta, verde = calça)
-function tintWithMask(base, mask, skin) {
-  const w = base.naturalWidth || base.width, h = base.naturalHeight || base.height;
-  const c = document.createElement("canvas"); c.width = w; c.height = h;
-  const g = c.getContext("2d", { willReadFrequently: true });
-  g.drawImage(base, 0, 0);
-  try {
-    const t = document.createElement("canvas"); t.width = w; t.height = h;
-    const tg = t.getContext("2d", { willReadFrequently: true });
-    tg.drawImage(mask, 0, 0);
-    const m = tg.getImageData(0, 0, w, h).data, img = g.getImageData(0, 0, w, h), d = img.data;
-    const J = hexRgb(skin.jacket), P = hexRgb(skin.pants), K = 1.7 / 255;
-    for (let i = 0; i < d.length; i += 4) {
-      if (!d[i + 3]) continue;
-      const mj = m[i] / 255, mp = m[i + 1] / 255;
-      if (mj + mp < 0.02) continue;
-      for (let ch = 0; ch < 3; ch++) {
-        const v = d[i + ch];
-        d[i + ch] = v * (1 - mj - mp) + Math.min(255, v * J[ch] * K) * mj + Math.min(255, v * P[ch] * K) * mp;
-      }
-    }
-    g.putImageData(img, 0, 0);
-  } catch (e) { /* aberto direto do disco: fica sem pintar */ }
-  return c;
+function tintWithMask(base, mask, skin, equipment, portrait) {
+  return clothingTintCanvas(base, mask, skin, equipment, !!portrait);
 }
 // imagem pronta do retrato (cache por roupa + equipamento); null se ainda não carregou
 function portraitCanvas() {
@@ -56,10 +35,10 @@ function portraitCanvas() {
   if (!portraitReady(PORTRAIT.base)) return null;
   const gear = playerGear();
   const imgs = gear.map(portraitGearImg);
-  const key = `${save.skin}|${save.cape | 0}|${gear.join(",")}|${imgs.map(portraitReady).join("")}|${portraitReady(PORTRAIT.mask)}`;
+  const key = `${save.skin}|${clothingKey()}|${save.cape | 0}|${gear.join(",")}|${imgs.map(portraitReady).join("")}|${portraitReady(PORTRAIT.mask)}`;
   if (PORTRAIT.key === key && PORTRAIT.cache) return PORTRAIT.cache;
   const skin = SKINS[save.skin] || SKINS[0];
-  const body = portraitReady(PORTRAIT.mask) ? tintWithMask(PORTRAIT.base, PORTRAIT.mask, skin) : PORTRAIT.base;
+  const body = portraitReady(PORTRAIT.mask) ? tintWithMask(PORTRAIT.base, PORTRAIT.mask, skin, save.clothing, true) : PORTRAIT.base;
   const c = document.createElement("canvas"); c.width = PORTRAIT.base.naturalWidth; c.height = PORTRAIT.base.naturalHeight;
   const g = c.getContext("2d");
   // cada camada já vem com o corpo escondendo o que fica atrás dele: tudo vai por cima.
@@ -139,7 +118,7 @@ function portraitMouseUp() {
 
 // ---------------------------------------------------------------- inventário: zonas de arrastar
 // cada quadro registra as zonas (onde soltar) e o que pode ser arrastado
-const INV = { zones: [], drag: null, hover: null, confirm: null };
+const INV = { zones: [], drag: null, hover: null, confirm: null, wardrobe: false, wardrobePage: 0 };
 
 function invZone(z) { INV.zones.push(z); return z; }
 function invZoneAt(x, y) {
@@ -154,6 +133,7 @@ function invItemName(z) {
   if (z.type === "weapon") return instName(z.item);
   if (z.type === "mat") return MATS[z.item.id].name;
   if (z.type === "vest") return VESTS[z.item.i].name;
+  if (z.type === "clothing") return z.item.name;
   if (z.type === "implant") return implantName(z.item);
   return "";
 }
@@ -184,10 +164,38 @@ function invClick(z) {
     if (inv.sel === z.sel) packAct(); else inv.sel = z.sel;
     return;
   }
+  if (z.type === "clothing") {
+    if (z.area === "clothes-slot") unequipClothing(z.kind);
+    else equipClothing(z.item);
+    return;
+  }
   if (z.type === "vest") { if (z.area === "vestslot") unequipVest(); else equipVest(z.item.i); return; }
   if (z.type === "implant") { if (z.area === "installed") moveImplant(z.item, "bag"); else moveImplant(z.item, "installed"); }
 }
 
+function equipClothing(item) {
+  if (!item || CLOTHING_BY_ID[item.id] !== item || !CLOTHING_KINDS.includes(item.kind)) return;
+  save.clothing[item.kind] = item.id;
+  persist();
+  toast(item.name + " equipada");
+}
+function unequipClothing(kind) {
+  if (!CLOTHING_KINDS.includes(kind) || !save.clothing[kind]) return;
+  save.clothing[kind] = null; persist();
+  toast(CLOTHING_LABELS[kind] + " retirada");
+}
+function equippedClothingSlot(x, y, kind) {
+  const item = clothingGet(kind);
+  slotBox(x, y, 58, 58, CLOTHING_LABELS[kind], {
+    area: "clothes-slot", kind, type: "clothing", item
+  });
+  if (!item) {
+    ctx.strokeStyle = "#54534b"; ctx.lineWidth = 1.2;
+    ctx.strokeRect(x + 15, y + 16, 28, 25);
+    txt("+", x + 29, y + 34, 18, "#9b956e", "center", true);
+    regClick(x, y, 58, 58, () => { INV.wardrobe = true; });
+  }
+}
 function equipVest(i) {
   if (!save.vestsOwned[i]) return;
   save.vest = i; recalcImplants(); persist(); toast(`${VESTS[i].name} equipado`);
@@ -225,6 +233,16 @@ function invDrop(src, dst) {
   if (src.type === "mat" && src.item.id === "trindade_eterna" && dst.area === "doll") { INV.confirm = { trindade: true, name: "Trindade · 100 anos" }; return; }
   if (src.type === "mat" && src.item.id === "reset_stats" && dst.area === "doll") {
     INV.confirm = { resetStats: true, name: "Cartão Reset de Stats" };
+    return;
+  }
+  if (src.type === "clothing") {
+    if (src.area === "clothes-list" && dst.area === "clothes-slot") {
+      if (src.item.kind === dst.kind) equipClothing(src.item);
+      else toast("Essa roupa nao serve nesse slot");
+    } else if (src.area === "clothes-slot" && (dst.area === "clothes-list" || dst.area === "clothes-slot")) {
+      if (dst.area === "clothes-slot" && dst.kind !== src.kind) toast("Essa roupa nao serve nesse slot");
+      else unequipClothing(src.kind);
+    }
     return;
   }
   if (src.type === "vest") {
@@ -284,6 +302,11 @@ function invAmmoCell(st, x, y, w, h) {
 function invIcon(z, x, y, w, h) {
   if (!z.item) return;
   if (z.type === "weapon" || z.type === "mat") { drawItemCell(z.item, x, y, w, h, false); return; }
+  if (z.type === "clothing") {
+    drawClothingIcon(z.item, x, y, w, h);
+    txt(z.item.kind === "jacket" ? "JAQ" : z.item.kind === "pants" ? "CAL" : "BOT", x + w / 2, y + h - 3, 8, "#e5dbc4", "center", true);
+    return;
+  }
   if (z.type === "vest") {
     const v = VESTS[z.item.i];
     drawVestIcon(z.item.i, x + w / 2, y + h / 2 - 2, Math.min(w, h) / 70);
@@ -366,14 +389,11 @@ function drawInventory() {
   if (portraitView() === "back") cape();
   const hp = headPieces();
   outfitSlot(296, 104, 58, 58, hp.hat ? hp.hat.name : "Chapéu", hp.hat);
-  outfitSlot(296, 186, 58, 58, "Jaqueta", "jacket");
-  outfitSlot(296, 268, 58, 58, "Calça", "pants");
+  equippedClothingSlot(296, 186, "jacket");
+  equippedClothingSlot(296, 268, "pants");
   outfitSlot(606, 104, 58, 58, hp.mask ? hp.mask.name : "Máscara", hp.mask);
   slotBox(606, 186, 58, 58, "Colete", { area: "vestslot", type: "vest", item: save.vest >= 0 ? { i: save.vest } : null });
-  const bpH = invCell(606, 268, 58, 58, { label: "Mochila" });
-  ctx.fillStyle = "#4e5a2e"; rr(621, 278, 28, 36, 6); ctx.fill(); ctx.fillStyle = "#3a4422"; ctx.fillRect(625, 298, 20, 10);
-  txt(`${packUsed()}/${PACK_MAX}`, 635, 323, 9, "#ffd96a", "center", true);
-  if (bpH) INV.hover = { type: "outfit", label: "Mochila militar", piece: null };
+  equippedClothingSlot(606, 268, "boots");
   for (let i = 0; i < SLOT_N; i++) {
     const x = 300 + i * 124, y = 370;
     slotBox(x, y, 112, 52, null, { area: "wslot", i, sel: i, type: "weapon", item: player.slots[i] || null });
@@ -381,11 +401,27 @@ function drawInventory() {
   }
 
   // ---- coletes (direita)
-  txt("Coletes", 716, 100, 14, "#e5e0c8", "left", true);
-  const owned = VESTS.map((v, i) => i).filter((i) => save.vestsOwned[i]);
-  for (let k = 0; k < 12; k++) {
-    const x = 716 + (k % 4) * 54, y = 110 + Math.floor(k / 4) * 54, i = owned[k];
-    slotBox(x, y, 50, 50, null, { area: "vests", i: k, type: "vest", item: i != null && i !== save.vest ? { i } : null });
+  // Duas abas no painel direito: coletes antigos e roupas independentes.
+  btn(716, 84, 103, 22, "Coletes", () => { INV.wardrobe = false; }, !INV.wardrobe);
+  btn(824, 84, 108, 22, "Roupas", () => { INV.wardrobe = true; }, INV.wardrobe);
+  if (INV.wardrobe) {
+    const pages = Math.ceil(CLOTHING_ITEMS.length / 9);
+    INV.wardrobePage = Math.max(0, Math.min(pages - 1, INV.wardrobePage));
+    const visible = CLOTHING_ITEMS.slice(INV.wardrobePage * 9, INV.wardrobePage * 9 + 9);
+    for (let k = 0; k < 9; k++) {
+      const item = visible[k], x = 716 + (k % 3) * 54, y = 110 + Math.floor(k / 3) * 54;
+      slotBox(x, y, 50, 50, null, { area: "clothes-list", i: k, type: "clothing", item: item || null });
+    }
+    btn(878, 112, 50, 30, "◀", () => { INV.wardrobePage = (INV.wardrobePage + pages - 1) % pages; }, false);
+    btn(878, 150, 50, 30, "▶", () => { INV.wardrobePage = (INV.wardrobePage + 1) % pages; }, false);
+    txt((INV.wardrobePage + 1) + "/" + pages, 903, 204, 13, "#ffd96a", "center", true);
+    txt("Clique ou arraste", 826, 260, 10, "#b8ad8d", "center");
+  } else {
+    const owned = VESTS.map((v, i) => i).filter((i) => save.vestsOwned[i]);
+    for (let k = 0; k < 12; k++) {
+      const x = 716 + (k % 4) * 54, y = 110 + Math.floor(k / 4) * 54, i = owned[k];
+      slotBox(x, y, 50, 50, null, { area: "vests", i: k, type: "vest", item: i != null && i !== save.vest ? { i } : null });
+    }
   }
   // detalhes do item sob o mouse (ou selecionado)
   const hz = INV.hover && INV.hover.item ? INV.hover : null;
@@ -399,7 +435,10 @@ function drawInventory() {
   } else if (info) {
     const nm = invItemName(info);
     txt(nm, 722, 296, 13, info.type === "weapon" ? rarColor(WDEF[info.item.id]) : "#f2eedc", "left", true, 200);
-    if (info.type === "weapon") {
+    if (info.type === "clothing") {
+      txt(info.item.setName + " · " + CLOTHING_LABELS[info.item.kind], 722, 314, 10, "#ffd96a", "left", false, 200);
+      txt(info.item.id === save.clothing[info.item.kind] ? "Equipado · clique para remover" : "Arraste para o slot ou clique", 722, 330, 10, "#a9a58f", "left", false, 200);
+    } else if (info.type === "weapon") {
       const d = WDEF[info.item.id], st = wStat(info.item);
       txt(`${CAT_LABEL[d.cat]} · dano ${Math.round(st.dmg)}${d.pellets ? ` x${d.pellets}` : ""} · ${(1000 / st.delay).toFixed(1)}/s`, 722, 314, 10, "#c9c4ad", "left", false, 200);
       txt(d.melee ? "corpo a corpo" : d.infinite ? "munição infinita" : `${d.ammo} · reserva ${player.reserve[d.ammo] || 0}`, 722, 330, 10, "#a9a58f", "left", false, 200);
@@ -448,7 +487,7 @@ function drawInventory() {
     btn(W / 2 + 10, H / 2 + 16, 140, 30, "Cancelar", () => { INV.confirm = null; });
   }
   drawAllocPanel();
-  hint("Arraste o cartão no personagem para resetar stats · arraste armas para equipar · B ou Esc fecha");
+  hint("Roupas: clique para equipar ou arraste ao slot · arraste armas para equipar · B/Esc fecha");
 }
 
 // ---------------------------------------------------------------- texto em várias linhas
