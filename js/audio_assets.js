@@ -5,7 +5,19 @@
 const FM_AUDIO = { buffer: null, loading: false, failed: false, voices: 0,
   amb: null, ambNode: null, ambGain: null, lastGroan: 0, lastKill: 0 };
 const FM_AUDIO_CUES = {"pistol":[0.0,0.5571],"pistol_silenced":[0.6371,0.3871],"rifle":[1.1042,0.3271],"rifle_burst":[1.5113,0.4971],"shotgun":[2.0884,0.3871],"sniper":[2.5556,0.1271],"reload_pistol":[2.7627,1.465],"reload_rifle":[4.3077,1.125],"pump":[5.5127,0.3421],"hit_metal":[5.9347,0.3171],"hit_concrete":[6.3318,0.5071],"ricochet":[6.919,1.3003],"knife":[8.2993,0.3821],"explosion":[8.7614,1.74],"zombie_groan1":[10.5814,1.3],"zombie_groan2":[11.9614,1.35],"zombie_die1":[13.3913,1.4],"zombie_die2":[14.8713,1.3],"zombie_die3":[16.2513,1.2],"gore1":[17.5313,0.4286],"gore2":[18.0399,0.8571],"walther":[18.977,0.9896]};
+// Arquivo .mp3 enviado pelo criador: clique mecânico curto a cada cartucho.
+function fmLoadRifleRound() {
+  if (!SND.ac || FM_AUDIO.rifleRoundBuffer || FM_AUDIO.rifleRoundLoading || FM_AUDIO.rifleRoundFailed) return;
+  FM_AUDIO.rifleRoundLoading = true;
+  fetch("audio/rifle_reload_round.mp3?v=20261117-rifle-reload1")
+    .then(r => { if (!r.ok) throw new Error("Som de recarga não disponível"); return r.arrayBuffer(); })
+    .then(buf => SND.ac.decodeAudioData(buf))
+    .then(buf => { FM_AUDIO.rifleRoundBuffer = buf; })
+    .catch(err => { FM_AUDIO.rifleRoundFailed = true; console.warn("Som individual de recarga indisponível", err); })
+    .finally(() => { FM_AUDIO.rifleRoundLoading = false; });
+}
 function fmAudioAssetsStart() {
+  fmLoadRifleRound();
   if (!SND.ac || FM_AUDIO.loading || FM_AUDIO.buffer || FM_AUDIO.failed) return;
   FM_AUDIO.loading = true;
   fetch("audio/fm_sfx_pack.ogg?v=20261117-1")
@@ -89,6 +101,23 @@ function fmInstallAudioSamples() {
     const w = typeof curW === "function" ? curW() : {};
     const key = w.cat === "rifles" ? "reload_rifle" : "reload_pistol";
     if (!fmPlaySample(key,{volume:.55})) prev.reload();
+  };
+  // Som único do Rifle de Caça: tocar no R e em cada próxima inserção.
+  sfx.reloadRound = function() {
+    const ac = SND.ac;
+    if (!ac || SND.muted) return;
+    if (!FM_AUDIO.rifleRoundBuffer) {
+      fmLoadRifleRound();
+      if (!fmPlaySample("pump", {volume:.28})) prev.reload();
+      return;
+    }
+    const src = ac.createBufferSource(), gain = ac.createGain();
+    src.buffer = FM_AUDIO.rifleRoundBuffer;
+    // 0,648s originais, acelerados para acompanhar o cartucho (~0,5s).
+    src.playbackRate.value = 1.30;
+    gain.gain.value = .62;
+    src.connect(gain);gain.connect(SND.master);
+    src.start();
   };
   sfx.hit = function() { if (!fmPlaySample("gore1",{volume:.30})) prev.hit(); };
   sfx.kill = function(z) {
