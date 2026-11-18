@@ -243,7 +243,7 @@ let ch49Ready = false;
       const image = new Image();
       image.onload = () => { CH49_SHEETS[pose] = image; resolve(true); };
       image.onerror = () => resolve(false);
-      image.src = `img/ch49_${pose === "pesada" ? "longa" : pose}.webp?v=1`;
+      image.src = `img/ch49_${pose === "pesada" ? "longa" : pose}.webp?v=2`;
     }))).then((loaded) => { ch49Ready = loaded.every(Boolean); });
   }
   let n = 0;

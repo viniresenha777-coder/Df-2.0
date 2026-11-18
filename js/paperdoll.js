@@ -35,7 +35,7 @@ function portraitCanvas() {
   if (!PORTRAIT.base) { PORTRAIT.base = portraitImg("portrait"); PORTRAIT.mask = portraitImg("portrait_mask"); }
   if (!PORTRAIT.ch49) {
     PORTRAIT.ch49 = new Image();
-    PORTRAIT.ch49.src = "img/ch49_portrait.webp?v=1";
+    PORTRAIT.ch49.src = "img/ch49_portrait.webp?v=2";
   }
   const useCh49 = portraitReady(PORTRAIT.ch49);
   const base = useCh49 ? PORTRAIT.ch49 : PORTRAIT.base;
