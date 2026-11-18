@@ -72,3 +72,7 @@ CC0 (exceção de licença da MakeHuman para os assets do sistema); as roupas da
 | Capacete M1 | mrgreaterthan_m1_helmet | MrGreaterThan |
 | Boina de Jornaleiro | jujube_newsboy_cap | Jujube |
 | Máscara Médica | joepal_medical_mouth_protection | Joel Palmius |
+
+## Animações do personagem Ch49
+
+As animações de repouso, caminhada e corrida foram adaptadas da Universal Animation Library (Standard), de Quaternius, sob CC0 1.0.

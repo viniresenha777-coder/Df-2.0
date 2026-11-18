@@ -18,6 +18,7 @@ function portraitImg(name) {
 function portraitReady(im) { return im && im.complete && im.naturalWidth > 0; }
 // a capa 3D já está no retrato? (então o desenho 2D antigo da capa não aparece)
 function cape3d() {
+  if (portraitReady(PORTRAIT.ch49)) return true;
   const id = CAPE_GEAR[save.cape | 0];
   return !!(id && PORTRAIT.cache && portraitReady(PORTRAIT.gear[id]));
 }
@@ -32,14 +33,20 @@ function tintWithMask(base, mask, skin, equipment, portrait) {
 // imagem pronta do retrato (cache por roupa + equipamento); null se ainda não carregou
 function portraitCanvas() {
   if (!PORTRAIT.base) { PORTRAIT.base = portraitImg("portrait"); PORTRAIT.mask = portraitImg("portrait_mask"); }
-  if (!portraitReady(PORTRAIT.base)) return null;
-  const gear = playerGear();
+  if (!PORTRAIT.ch49) {
+    PORTRAIT.ch49 = new Image();
+    PORTRAIT.ch49.src = "img/ch49_portrait.webp?v=1";
+  }
+  const useCh49 = portraitReady(PORTRAIT.ch49);
+  const base = useCh49 ? PORTRAIT.ch49 : PORTRAIT.base;
+  if (!portraitReady(base)) return null;
+  const gear = useCh49 ? [] : playerGear();
   const imgs = gear.map(portraitGearImg);
-  const key = `${save.skin}|${clothingKey()}|${save.cape | 0}|${gear.join(",")}|${imgs.map(portraitReady).join("")}|${portraitReady(PORTRAIT.mask)}`;
+  const key = `${useCh49}|${save.skin}|${clothingKey()}|${save.cape | 0}|${gear.join(",")}|${imgs.map(portraitReady).join("")}|${portraitReady(PORTRAIT.mask)}`;
   if (PORTRAIT.key === key && PORTRAIT.cache) return PORTRAIT.cache;
   const skin = SKINS[save.skin] || SKINS[0];
-  const body = portraitReady(PORTRAIT.mask) ? tintWithMask(PORTRAIT.base, PORTRAIT.mask, skin, save.clothing, true) : PORTRAIT.base;
-  const c = document.createElement("canvas"); c.width = PORTRAIT.base.naturalWidth; c.height = PORTRAIT.base.naturalHeight;
+  const body = !useCh49 && portraitReady(PORTRAIT.mask) ? tintWithMask(base, PORTRAIT.mask, skin, save.clothing, true) : base;
+  const c = document.createElement("canvas"); c.width = base.naturalWidth; c.height = base.naturalHeight;
   const g = c.getContext("2d");
   // cada camada já vem com o corpo escondendo o que fica atrás dele: tudo vai por cima.
   // Quadro k = giro de -18° + 360°·k/n; de frente a mochila vai antes do colete, de lado/costas por último.
