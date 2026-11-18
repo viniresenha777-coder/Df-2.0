@@ -233,7 +233,7 @@ function drawCanopiesP() {
 // ---------- Personagem: uma spritesheet por pose de arma (8 direções × 8 quadros, 128 px) ----------
 // O corpo vem sem arma; cada arma do jogo é desenhada nas mãos usando os pontos de
 // SPRITE_POSES (empunhadura, eixo da arma, mãos e lanterna), gerados em tools/gerar_variantes.py.
-const PSHEET = { ok: false, cell: 128, size: 72, footY: 0.82, stride: 12.5, sheets: {}, masks: {}, tinted: {}, tintKey: "" };
+const PSHEET = { ok: false, cell: 128, size: 88, footY: 0.82, stride: 15.3, sheets: {}, masks: {}, tinted: {}, tintKey: "" };
 const POSES = ["longa", "pesada", "pistola", "melee", "punhos"];
 (function loadPlayerSheets() {
   let n = 0;
@@ -321,8 +321,12 @@ function tintedSheet(pose) {
 }
 // camadas de equipamento visíveis agora (colete, mochila e o acessório do personagem)
 // acessórios de cabeça que vêm com o personagem e que uma peça do guarda-roupa substitui
+const STEVE_ONLY = true;
 const SKIN_HAT_IDS = ["helmet", "helmet2", "headset"], SKIN_MASK_IDS = ["balaclava", "gasmask", "ballistic", "shemagh"];
 function playerGear() {
+  // personagem Steve (Mixamo) só com a roupa dele: sem camadas de roupa/colete/mochila/acessório
+  // enquanto o sistema de roupas é refeito (as listas abaixo continuam para a reconstrução)
+  if (STEVE_ONLY) return [];
   const list = [], wear = (k) => (typeof clothingLayer === "function" ? clothingLayer(k) : null);
   const hat = wear("hat"), mask = wear("mask");
   for (const k of ["pants", "boots", "jacket"]) if (wear(k)) list.push(wear(k));

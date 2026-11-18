@@ -30,20 +30,39 @@ function tintWithMask(base, mask, skin, equipment, portrait) {
   return clothingTintCanvas(base, mask, skin, equipment, !!portrait);
 }
 // imagem pronta do retrato (cache por roupa + equipamento); null se ainda não carregou
+// arma do slot 1 no retrato: o corpo na pose de mira dessa arma (portrait_<pose>.png) e a arma por cima
+// (portrait_<modelo>.png, já com o corpo escondendo o que fica atrás). Sem arma no slot 1: retrato descansado.
+function portraitWeapon() {
+  const it = typeof player !== "undefined" && player.slots ? player.slots[0] : null;
+  const w = it && typeof WDEF !== "undefined" ? WDEF[it.id] : null;
+  if (!w) return null;
+  const d = typeof WEAPON_3D !== "undefined" ? WEAPON_3D[it.id] : null;
+  return { pose: weaponPose(w), m: d ? d.m : null, f: d && d.f ? d.f : "" };
+}
 function portraitCanvas() {
   if (!PORTRAIT.base) { PORTRAIT.base = portraitImg("portrait"); PORTRAIT.mask = portraitImg("portrait_mask"); }
-  if (!portraitReady(PORTRAIT.base)) return null;
+  const pw = portraitWeapon();
+  // arma sem modelo 3D: retrato descansado (não fica mirando com a mão vazia); punhos: guarda de luta
+  const aim = pw && (pw.m || pw.pose === "punhos");
+  const poseImg = aim ? portraitGearImg(pw.pose) : null, wImg = aim && pw.m ? portraitGearImg(pw.m) : null;
+  const base = portraitReady(poseImg) ? poseImg : PORTRAIT.base;
+  if (!portraitReady(base)) return null;
   const gear = playerGear();
   const imgs = gear.map(portraitGearImg);
-  const key = `${save.skin}|${clothingKey()}|${save.cape | 0}|${gear.join(",")}|${imgs.map(portraitReady).join("")}|${portraitReady(PORTRAIT.mask)}`;
+  const key = `${save.skin}|${clothingKey()}|${save.cape | 0}|${gear.join(",")}|${imgs.map(portraitReady).join("")}|${portraitReady(PORTRAIT.mask)}|${pw ? pw.pose + pw.m + pw.f : "-"}|${portraitReady(poseImg)}${portraitReady(wImg)}`;
   if (PORTRAIT.key === key && PORTRAIT.cache) return PORTRAIT.cache;
   const skin = SKINS[save.skin] || SKINS[0];
-  const body = portraitReady(PORTRAIT.mask) ? tintWithMask(PORTRAIT.base, PORTRAIT.mask, skin, save.clothing, true) : PORTRAIT.base;
-  const c = document.createElement("canvas"); c.width = PORTRAIT.base.naturalWidth; c.height = PORTRAIT.base.naturalHeight;
+  const body = base === PORTRAIT.base && portraitReady(PORTRAIT.mask) ? tintWithMask(PORTRAIT.base, PORTRAIT.mask, skin, save.clothing, true) : base;
+  const c = document.createElement("canvas"); c.width = base.naturalWidth; c.height = base.naturalHeight;
   const g = c.getContext("2d");
   // cada camada já vem com o corpo escondendo o que fica atrás dele: tudo vai por cima.
   // Quadro k = giro de -18° + 360°·k/n; de frente a mochila vai antes do colete, de lado/costas por último.
   g.drawImage(body, 0, 0);
+  if (base === poseImg && portraitReady(wImg)) {
+    if (pw.f) g.filter = pw.f;
+    g.drawImage(wImg, 0, 0);
+    g.filter = "none";
+  }
   const n = Math.max(1, Math.round(c.width / PORTRAIT_FW)), fw = c.width / n;
   for (let k = 0; k < n; k++) {
     const yaw = ((-18 + 360 * k / n) % 360 + 360) % 360, front = yaw <= 80 || yaw >= 280;
@@ -407,7 +426,7 @@ function drawInventory() {
   btn(716, 84, 103, 22, "Coletes", () => { INV.wardrobe = false; }, !INV.wardrobe);
   btn(824, 84, 108, 22, "Roupas", () => { INV.wardrobe = true; }, INV.wardrobe);
   if (INV.wardrobe) {
-    const pages = Math.ceil(CLOTHING_ITEMS.length / 9);
+    const pages = Math.max(1, Math.ceil(CLOTHING_ITEMS.length / 9));
     INV.wardrobePage = Math.max(0, Math.min(pages - 1, INV.wardrobePage));
     const visible = CLOTHING_ITEMS.slice(INV.wardrobePage * 9, INV.wardrobePage * 9 + 9);
     for (let k = 0; k < 9; k++) {
@@ -417,7 +436,7 @@ function drawInventory() {
     btn(878, 112, 50, 30, "◀", () => { INV.wardrobePage = (INV.wardrobePage + pages - 1) % pages; }, false);
     btn(878, 150, 50, 30, "▶", () => { INV.wardrobePage = (INV.wardrobePage + 1) % pages; }, false);
     txt((INV.wardrobePage + 1) + "/" + pages, 903, 204, 13, "#ffd96a", "center", true);
-    txt("Clique ou arraste", 826, 260, 10, "#b8ad8d", "center");
+    txt(CLOTHING_ITEMS.length ? "Clique ou arraste" : "Roupas novas em breve", 826, 260, 10, "#b8ad8d", "center");
   } else {
     const owned = VESTS.map((v, i) => i).filter((i) => save.vestsOwned[i]);
     for (let k = 0; k < 12; k++) {

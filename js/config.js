@@ -362,19 +362,10 @@ const SKINS = [
   { spr: "p9", name: "Sentinela",      lvl: 80, jacket: "#2a2a2c", pants: "#2a2a2c", hood: "#1e1e20", accent: "#c8c8c8", skin: "#141414" }
 ];
 
-// ---------- Capas (só aparência; aparecem nas costas do boneco) ----------
+// ---------- Capas: removidas do jogo ----------
+// Fica só "Sem capa" para que saves antigos (save.cape) continuem válidos; ao carregar, viram 0.
 const CAPES = [
-  { name: "Sem capa", lvl: 1 },
-  { name: "Capa de lona", lvl: 1, color: "#6b5a3a" },
-  { name: "Capa vermelha", lvl: 8, color: "#8a2a24" },
-  { name: "Capa de couro", lvl: 15, color: "#3e2c20", trim: "#8a6a45" },
-  { name: "Manto da noite", lvl: 30, color: "#1e2230", trim: "#6a7aa0" },
-  { name: "Capa de guerra", lvl: 50, color: "#5a1a1a", trim: "#c9a040" },
-  { name: "Manto do sentinela", lvl: 80, color: "#d8d4c8", trim: "#4a4a4a" },
-  { name: "Capa preta", lvl: 5, color: "#1c1c1f" },
-  { name: "Capa verde-escura", lvl: 10, color: "#25381f" },
-  { name: "Capa azul", lvl: 20, color: "#26457a" },
-  { name: "Capa branca", lvl: 25, color: "#c9c7bf" }
+  { name: "Sem capa", lvl: 1 }
 ];
 
 // ---------- Créditos e VIP ----------

@@ -694,25 +694,6 @@ function drawSkins() {
   txt(s.name, 250, 360, 24, "#f2eedc", "left", true);
   txt(player.level >= s.lvl ? "Disponível" : `Libera no nível ${s.lvl}`, 250, 386, 14, player.level >= s.lvl ? "#6fae4f" : "#e05a4a", "left", true);
   txt("A aparência muda o boneco no mapa e o retrato. Não muda atributos.", 250, 408, 13, "#a9a58f");
-  // capas: clique para vestir (aparecem nas costas do boneco)
-  txt("CAPA", 250, 432, 11, "#c9c4ad", "left", true);
-  CAPES.forEach((c, i) => {
-    const bx = 250 + i * 46, by = 440, bw = 42, bh = 56, lock = player.level < c.lvl && !adm.noReq, on = (save.cape | 0) === i;
-    const hov = mouse.x >= bx && mouse.x <= bx + bw && mouse.y >= by && mouse.y <= by + bh;
-    ctx.fillStyle = hov ? "rgba(60,52,30,0.8)" : "rgba(0,0,0,0.35)"; rr(bx, by, bw, bh, 6); ctx.fill();
-    ctx.strokeStyle = on ? "#6fae4f" : hov ? "#ffd96a" : "rgba(229,224,200,0.2)"; ctx.lineWidth = on ? 2 : 1; ctx.stroke();
-    if (lock) ctx.globalAlpha = 0.35;
-    if (c.color) {
-      ctx.fillStyle = c.color; ctx.beginPath(); ctx.moveTo(bx + 20, by + 8); ctx.lineTo(bx + 38, by + 8); ctx.lineTo(bx + 46, by + 36); ctx.lineTo(bx + 12, by + 36); ctx.closePath(); ctx.fill();
-      if (c.trim) { ctx.fillStyle = c.trim; ctx.fillRect(bx + 12, by + 34, 34, 3); }
-    } else txt("—", bx + bw / 2, by + 28, 16, "#6d6a58", "center", true);
-    ctx.globalAlpha = 1;
-    txt(lock ? `nível ${c.lvl}` : c.name.replace("Capa ", "").replace("Manto ", ""), bx + bw / 2, by + 50, 9, lock ? "#e05a4a" : on ? "#6fae4f" : "#e5e0c8", "center", true, bw - 4);
-    regClick(bx, by, bw, bh, () => {
-      if (lock) { toast(`${c.name} libera no nível ${c.lvl}`); return; }
-      save.cape = i; persist(); toast(i ? `Vestiu: ${c.name}` : "Sem capa");
-    });
-  });
   // prévia de cima
   ctx.save(); ctx.translate(800, 420); ctx.scale(2.6, 2.6);
   const keep = save.skin, px = player.x, py = player.y, pa = player.angle; save.skin = game.skc;

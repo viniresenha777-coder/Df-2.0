@@ -2,26 +2,8 @@
 // Fronteira Morta — guarda-roupa de sobrevivencia.
 // Itens cosmeticos independentes, com a geometria alinhada aos sprites existentes.
 // Na fase inicial os 18 itens estao disponiveis para teste, sem custo ou atributos.
-const CLOTHING_SETS = [
-  { id: "civil", name: "Sobrevivente civil", jacket: ["Jaqueta verde de campo", "#526444", "#a36a44", "canvas"],
-    pants: ["Calça jeans reforçada", "#36474b", "#84908e", "denim"],
-    boots: ["Botas de trilha", "#71513b", "#c39a69", "leather"] },
-  { id: "scav", name: "Catador", jacket: ["Moletom vermelho gasto", "#7a4040", "#b08b73", "worn"],
-    pants: ["Cargo de catador", "#71684d", "#c3a26c", "canvas"],
-    boots: ["Coturnos de sucata", "#454342", "#a18d70", "leather"] },
-  { id: "militia", name: "Milícia", jacket: ["Casaco de vigia", "#344b60", "#a76c56", "reinforced"],
-    pants: ["Calça tática escura", "#353a39", "#6c7776", "reinforced"],
-    boots: ["Botas militares", "#282b2b", "#747b78", "leather"] },
-  { id: "medic", name: "Socorrista", jacket: ["Casaco de socorrista", "#b9afa0", "#b75a56", "medical"],
-    pants: ["Calça de paramédico", "#4a585b", "#a7a79d", "canvas"],
-    boots: ["Botas impermeaveis", "#4b413a", "#aa9277", "leather"] },
-  { id: "raider", name: "Invasor", jacket: ["Jaqueta de couro remendada", "#4b3539", "#a45248", "worn"],
-    pants: ["Calça com joelheiras", "#383532", "#836b58", "reinforced"],
-    boots: ["Botas de combate", "#333233", "#a07968", "leather"] },
-  { id: "hunter", name: "Caçador", jacket: ["Casaco de cacador", "#726449", "#a49876", "canvas"],
-    pants: ["Calça de rastreador", "#3e4d3b", "#85946b", "camo"],
-    boots: ["Botas de couro", "#6b4a2e", "#b58c5c", "leather"] }
-];
+// Sistema de roupas em reconstrução: sem peças por enquanto (a aba Roupas continua, vazia).
+const CLOTHING_SETS = [];
 const CLOTHING_KINDS = ["jacket", "pants", "boots", "hat", "mask", "pack"];
 const CLOTHING_LABELS = { jacket: "Jaqueta", pants: "Calça", boots: "Botas", hat: "Chapéu", mask: "Máscara", pack: "Mochila" };
 const CLOTHING_ITEMS = [];
@@ -39,33 +21,9 @@ for (const set of CLOTHING_SETS) {
 // layer = camada img/gear/<layer>_<pose>.png e img/portrait_<layer>.png desenhada por cima do corpo;
 // icon = foto da própria peça. Peças 3D não pintam o corpo (a camada já tem a cor do modelo).
 // versão das imagens do personagem (corpo, camadas, retrato, fotos): troca quando o personagem é renderizado de novo
-const CHAR_V = "?v=mpfb01";
+const CHAR_V = "?v=steve04";
 const W3D = (id, kind, layer, name, setName) => ({ id, kind, set: "3d", setName, name, layer, icon: `img/clothing/${layer}.png${CHAR_V}`, color: "#6a6658", accent: "#8a8672", texture: "canvas" });
-const IMPORTED_CLOTHING = [
-  W3D("multiforest_pants", "pants", "cl_pants_multiforest", "Calça Tática 6 Bolsos Multiforest", "Tático Multiforest"),
-  W3D("bota_gltf_boots", "boots", "cl_boots_trilha", "Bota de Trilha", "Botas de Sobrevivência"),
-  W3D("bota_trilha2", "boots", "cl_boots_trilha2", "Bota de Trilha Gasta", "Botas de Sobrevivência"),
-  W3D("bota_tnf", "boots", "cl_boots_tnf", "Bota de Couro Preta", "Botas de Sobrevivência"),
-  W3D("bota_meta", "boots", "cl_boots_meta", "Bota de Escalada", "Botas de Sobrevivência"),
-  W3D("capacete_fone", "hat", "cl_hat_capacete", "Capacete Tático com Fone", "Cabeça"),
-  W3D("lenco_cabeca", "hat", "cl_hat_lenco", "Lenço de Cabeça", "Cabeça"),
-  W3D("mascara_esqui", "mask", "cl_mask_esqui", "Máscara de Esqui", "Cabeça"),
-  W3D("mochila_couro", "pack", "cl_pack_couro", "Mochila de Couro", "Mochilas"),
-  W3D("mochila_trilha", "pack", "cl_pack_trilha", "Mochila de Trilha Verde", "Mochilas"),
-  W3D("mochila_azul", "pack", "cl_pack_azul", "Mochila de Trilha Azul", "Mochilas"),
-  W3D("mochila_tatica", "pack", "cl_pack_tatica", "Mochila Tática", "Mochilas"),
-  // roupas da biblioteca do MPFB (CC0): feitas para o mesmo corpo do personagem, encaixam sem ajuste
-  W3D("mp_macacao", "jacket", "cl_jacket_macacao", "Macacão de Trabalho", "Roupas Encaixadas"),
-  W3D("mp_sueter", "jacket", "cl_jacket_sueter", "Suéter de Pescador", "Roupas Encaixadas"),
-  W3D("mp_polo", "jacket", "cl_jacket_polo", "Camisa Polo", "Roupas Encaixadas"),
-  W3D("mp_camiseta", "jacket", "cl_jacket_camiseta", "Camiseta Justa", "Roupas Encaixadas"),
-  W3D("mp_calca_la", "pants", "cl_pants_la", "Calça de Lã", "Roupas Encaixadas"),
-  W3D("mp_bota_couro", "boots", "cl_boots_couro", "Bota de Cano Alto", "Roupas Encaixadas"),
-  W3D("mp_bota_heroi", "boots", "cl_boots_heroi", "Bota Reforçada Azul", "Roupas Encaixadas"),
-  W3D("mp_capacete_m1", "hat", "cl_hat_m1", "Capacete M1", "Roupas Encaixadas"),
-  W3D("mp_boina", "hat", "cl_hat_boina", "Boina de Jornaleiro", "Roupas Encaixadas"),
-  W3D("mp_mascara_medica", "mask", "cl_mask_medica", "Máscara Médica", "Roupas Encaixadas")
-];
+const IMPORTED_CLOTHING = [];
 // camada 3D da peça equipada (ou null)
 function clothingLayer(kind, equipment) { const it = clothingGet(kind, equipment); return it && it.layer ? it.layer : null; }
 // peça que pinta o corpo (as 3D não pintam)
