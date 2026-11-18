@@ -235,7 +235,17 @@ function drawCanopiesP() {
 // SPRITE_POSES (empunhadura, eixo da arma, mãos e lanterna), gerados em tools/gerar_variantes.py.
 const PSHEET = { ok: false, cell: 128, size: 72, footY: 0.82, stride: 12.5, sheets: {}, masks: {}, tinted: {}, tintKey: "" };
 const POSES = ["longa", "pesada", "pistola", "melee", "punhos"];
+const CH49_SHEETS = {};
+let ch49Ready = false;
 (function loadPlayerSheets() {
+  if (typeof CH49_POSES !== "undefined") {
+    Promise.all(POSES.map((pose) => new Promise((resolve) => {
+      const image = new Image();
+      image.onload = () => { CH49_SHEETS[pose] = image; resolve(true); };
+      image.onerror = () => resolve(false);
+      image.src = `img/ch49_${pose === "pesada" ? "longa" : pose}.webp?v=1`;
+    }))).then((loaded) => { ch49Ready = loaded.every(Boolean); });
+  }
   let n = 0;
   const done = () => { if (++n === POSES.length * 2) PSHEET.ok = true; };
   for (const pose of POSES) {
@@ -358,7 +368,7 @@ const WEAPON_M = { pistol: 0.24, revolver: 0.27, smg: 0.5, ar: 0.82, rifle: 1.0,
   crossbow: 0.72, knife: 0.32, machete: 0.58, katana: 0.98, sword: 0.92, bat: 0.82, axe: 0.78, hammer: 0.82, chainsaw: 0.9 };
 function weaponMeters(w) { return WEAPON_M[w.look] || (w.melee ? 0.6 : 0.85); }
 
-function useSpriteChar() { return PSHEET.ok && typeof SPRITE_POSES !== "undefined" && !save.classicChar && !game.over; }
+function useSpriteChar() { return (ch49Ready || (PSHEET.ok && typeof SPRITE_POSES !== "undefined")) && !save.classicChar && !game.over; }
 function sheetRow(vx, vy) { const a = Math.atan2(vx, -vy); return ((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8; }
 function angDelta(a, b) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }
 // Oito poses discretas: a direção visual deve trocar no MESMO quadro
@@ -368,14 +378,19 @@ function spriteTick(dt) {
   const p = player;
   p.dispAng = p.angle;
   p.sRow = sheetRow(Math.cos(p.angle), Math.sin(p.angle));
-  if (p.moving) p.stepDist = (p.stepDist || 0) + (p.lastSp || 0) * dt / 16.67;
+  if (p.moving) p.stepDist = (p.stepDist || 0) + (p.lastSp || 0) * dt / 16.67 / (ch49Ready && p.sprinting ? 1.3 : 1);
 }
-function spriteFrame() { const p = player; return p.moving ? Math.floor((p.stepDist || 0) / PSHEET.stride) % 8 : 1; }
+function spriteFrame() {
+  if (!player.moving) return ch49Ready ? 16 : 1;
+  const frame = Math.floor((player.stepDist || 0) / PSHEET.stride) % 8;
+  return ch49Ready && player.sprinting ? 8 + frame : frame;
+}
 function spriteOrigin() { const S = PSHEET.size; return { x: player.x - S / 2, y: player.y + 6 - S * PSHEET.footY }; }
 // ponto do quadro atual (px de 0 a 128) -> mundo
+function playerPoseData() { return ch49Ready ? CH49_POSES : SPRITE_POSES; }
 function posePt(key, pose) {
   pose = pose || weaponPose(curW());
-  const o = spriteOrigin(), k = PSHEET.size / PSHEET.cell, pt = SPRITE_POSES[pose][player.sRow | 0][spriteFrame()][key];
+  const o = spriteOrigin(), k = PSHEET.size / PSHEET.cell, pt = playerPoseData()[pose][player.sRow | 0][spriteFrame()][key];
   return { x: o.x + pt[0] * k, y: o.y + pt[1] * k };
 }
 // A posição do cano usa a empunhadura da spritesheet, porém o
@@ -446,11 +461,11 @@ function drawPlayerSprite() {
     ctx.beginPath(); ctx.arc(0,0,39,0,6.283); ctx.fill();
     ctx.restore();
   }
-  const kick = p.flashT > 0 ? 2 : 0, o = spriteOrigin(), info = SPRITE_POSES[pose][row][col];
-  const w3 = weapon3dImg(w, pose);
+  const kick = p.flashT > 0 ? 2 : 0, o = spriteOrigin(), info = playerPoseData()[pose][row][col];
+  const w3 = ch49Ready ? null : weapon3dImg(w, pose);
   if (info.bh && !w3) drawHeldWeapon(w, pose);       // arma atrás do corpo (de costas)
   const ox = o.x - Math.cos(p.angle) * kick, oy = o.y - Math.sin(p.angle) * kick;
-  ctx.drawImage(tintedSheet(pose), col * c, row * c, c, c, ox, oy, S, S);
+  ctx.drawImage(ch49Ready ? CH49_SHEETS[pose] : tintedSheet(pose), col * c, row * c, c, c, ox, oy, S, S);
   // arma 3D: a camada já vem recortada pelo corpo; atrás do corpo vai antes do colete/mochila
   const drawW3 = () => {
     const d = WEAPON_3D[w.id];
@@ -475,7 +490,7 @@ function drawPlayerSprite() {
   if (w3 && info.bh) drawW3();
   // colete, mochila, capacete/máscara; de frente a mochila vai antes (o colete a cobre),
   // de lado e de costas ela vai depois do colete (fica por cima dele)
-  const gearList = gearOrder(playerGear(), row !== 3 && row !== 4 && row !== 5);
+  const gearList = ch49Ready ? [] : gearOrder(playerGear(), row !== 3 && row !== 4 && row !== 5);
   for (const id of gearList) {
     const g = gearImg(id, pose);
     if (g) ctx.drawImage(g, col * c, row * c, c, c, ox, oy, S, S);

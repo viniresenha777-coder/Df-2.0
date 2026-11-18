@@ -92,7 +92,7 @@ const fmSocial = (() => {
       angle: Number.isFinite(player.angle) ? player.angle : 0,
       skin: save.skin | 0, clothing: clothingClean(save.clothing), location: location(), inside: !!(game.inside || game.hub),
       // aba minimizada ou em segundo plano: o navegador quase para o jogo, então não pode coordenar os zumbis
-      moving: !!player.moving, active: !(document.hidden || game.paused || game.menu || game.shop || game.over || game.found || game.hub), since: sectorSince, sent: (lastStateSent = Math.max(Date.now(), lastStateSent + 1))
+      moving: !!player.moving, sprinting: !!player.sprinting, active: !(document.hidden || game.paused || game.menu || game.shop || game.over || game.found || game.hub), since: sectorSince, sent: (lastStateSent = Math.max(Date.now(), lastStateSent + 1))
     };
   }
   function refreshLocation() {
@@ -158,7 +158,7 @@ const fmSocial = (() => {
     const topic = topicFor(state);
     if (topic !== moveTopic) return;
     const now = Date.now();
-    const key = [state.x, state.y, state.angle.toFixed(2), state.moving, state.location, state.inside, state.skin, clothingKey(state.clothing)].join(":");
+    const key = [state.x, state.y, state.angle.toFixed(2), state.moving, state.sprinting, state.location, state.inside, state.skin, clothingKey(state.clothing)].join(":");
     // Parado: nenhuma transmissão contínua; só um pulso periódico para novos vizinhos.
     if (!force && key === lastMoveKey && now - lastMoveAt < 3000) return;
     const active = moveChannel;
@@ -197,7 +197,7 @@ const fmSocial = (() => {
       cx: p.cx, cy: p.cy, x: p.x, y: p.y,
       fromX: teleport ? p.x : pos.x, fromY: teleport ? p.y : pos.y,
       at: now, angle: p.angle,
-      location: p.location, moving: !!p.moving, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0,
+      location: p.location, moving: !!p.moving, sprinting: !!p.sprinting, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0,
       skin: clamp(p.skin | 0, 0, SKINS.length - 1), clothing: clothingClean(p.clothing),
       sent: p.sent
     });
@@ -226,7 +226,7 @@ const fmSocial = (() => {
         uid: p.uid, name: textName(p.name), cx: p.cx, cy: p.cy,
         x, y, fromX: snap ? x : pos.x, fromY: snap ? y : pos.y,
         at: now, angle: p.angle, skin: clamp(p.skin | 0, 0, SKINS.length - 1), clothing: clothingClean(p.clothing),
-        location: p.location, moving: !!p.moving, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0, sent: Number(p.sent) || 0
+        location: p.location, moving: !!p.moving, sprinting: !!p.sprinting, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0, sent: Number(p.sent) || 0
       });
     }
     peers = next;
@@ -323,6 +323,7 @@ const fmSocial = (() => {
 // Usa cache separado para que trocar cores no multiplayer não reprocessa a sua roupa.
 const REMOTE_PLAYER_SHEETS = new Map();
 function remotePlayerSheet(skin, pose, clothing) {
+  if (ch49Ready) return CH49_SHEETS[pose];
   if (!PSHEET.ok || !PSHEET.sheets[pose]) return null;
   const key = skin + ":" + pose + ":" + clothingKey(clothing);
   if (REMOTE_PLAYER_SHEETS.has(key)) return REMOTE_PLAYER_SHEETS.get(key);
@@ -337,11 +338,14 @@ function drawOnlinePlayer(p) {
   const sprite = remotePlayerSheet(skin, pose, p.clothing);
   if (sprite) {
     const row = sheetRow(Math.cos(p.angle || 0), Math.sin(p.angle || 0));
-    const col = p.moving ? (Math.floor(performance.now() / 110 + p.x * 0.05) % 8) : 1;
+    const sprint = ch49Ready && p.sprinting;
+    const frame = Math.floor(performance.now() / (sprint ? 82 : 110) + p.x * 0.05);
+    const col = p.moving ? ((frame % 8 + 8) % 8) + (sprint ? 8 : 0) : (ch49Ready ? 16 : 1);
     const x = p.x - S / 2, y = p.y + 6 - S * PSHEET.footY;
     ctx.drawImage(sprite, col * cell, row * cell, cell, cell, x, y, S, S);
     // Mochila e acessórios do boneco novo (sem copiar o equipamento da nossa conta).
-    for (const id of gearOrder(["pack", ...(SKIN_GEAR[skin] || [])], row !== 3 && row !== 4 && row !== 5)) {
+    const gear = ch49Ready ? [] : gearOrder(["pack", ...(SKIN_GEAR[skin] || [])], row !== 3 && row !== 4 && row !== 5);
+    for (const id of gear) {
       const layer = gearImg(id, pose);
       if (layer) ctx.drawImage(layer, col * cell, row * cell, cell, cell, x, y, S, S);
     }
