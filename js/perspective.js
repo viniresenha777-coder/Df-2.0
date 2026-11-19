@@ -234,7 +234,7 @@ function drawCanopiesP() {
 // O corpo vem sem arma; cada arma do jogo é desenhada nas mãos usando os pontos de
 // SPRITE_POSES (empunhadura, eixo da arma, mãos e lanterna), gerados em tools/gerar_variantes.py.
 const PSHEET = { ok: false, cell: 128, size: 88, footY: 0.82, stride: 15.3, sheets: {}, masks: {}, tinted: {}, tintKey: "" };
-const POSES = ["longa", "pesada", "pistola", "melee", "punhos"];
+const POSES = ["longa", "pesada", "pistola", "melee", "punhos", "lancachamas", "m249"];
 (function loadPlayerSheets() {
   let n = 0;
   const done = () => { if (++n === POSES.length * 2) PSHEET.ok = true; };
@@ -289,6 +289,7 @@ const WEAPON_3D = {
   ak47: { m: "w_ak" }, ak_ouro: { m: "w_ak", f: "sepia(1) saturate(4) hue-rotate(-12deg) brightness(1.25)" },
   m4: { m: "w_m4" }, baioneta: { m: "w_m4" }, fal: { m: "w_fal" }, scar: { m: "w_scar" },
   uzi: { m: "w_uzi" }, vector: { m: "w_vector" }, m249: { m: "w_m249" },
+  minigun: { m: "w_minigun" }, minigun_inf: { m: "w_minigun", f: "sepia(0.7) saturate(2) hue-rotate(-15deg) brightness(1.15)" },
   canoduplo: { m: "w_canoduplo" }, spas: { m: "w_spas" }, aa12: { m: "w_aa12" },
   caca: { m: "w_caca" }, sniper: { m: "w_sniper" }, barrett: { m: "w_barrett" },
   pistola: { m: "w_g17" }, glock: { m: "w_g17" }, silenciada: { m: "w_g17" }, colt: { m: "w_g17" }, deagle: { m: "w_deagle" },
@@ -297,6 +298,7 @@ const WEAPON_3D = {
   lamina: { m: "w_katana", f: "sepia(1) saturate(4) hue-rotate(220deg)" },
   espada: { m: "w_espada" }, espadafogo: { m: "w_glory" },
   marreta: { m: "w_marreta" }, machado: { m: "w_machado" }, facao: { m: "w_facao" }, serra: { m: "w_serra" },
+  lancachamas: { m: "w_flamer" },
 };
 // foto de cada arma 3D para a loja e o inventário (img/weapons/<m>.png: de lado, cano para a direita)
 const WEAPON_ICON = {};
@@ -324,10 +326,11 @@ function tintedSheet(pose) {
 const STEVE_ONLY = true;
 const SKIN_HAT_IDS = ["helmet", "helmet2", "headset"], SKIN_MASK_IDS = ["balaclava", "gasmask", "ballistic", "shemagh"];
 function playerGear() {
-  // personagem Steve (Mixamo) só com a roupa dele: sem camadas de roupa/colete/mochila/acessório
-  // enquanto o sistema de roupas é refeito (as listas abaixo continuam para a reconstrução)
-  if (STEVE_ONLY) return [];
-  const list = [], wear = (k) => (typeof clothingLayer === "function" ? clothingLayer(k) : null);
+  // personagem único (Mixamo/Character Creator) só com a roupa dele: sem camadas de roupa/colete/mochila/acessório
+  // enquanto o sistema de roupas é refeito; só a capa 3D da aba Roupas (as listas abaixo continuam para a reconstrução)
+  const wear = (k) => (typeof clothingLayer === "function" ? clothingLayer(k) : null);
+  if (STEVE_ONLY) return wear("cape") ? [wear("cape")] : [];
+  const list = [];
   const hat = wear("hat"), mask = wear("mask");
   for (const k of ["pants", "boots", "jacket"]) if (wear(k)) list.push(wear(k));
   if (save.vest >= 0 && VEST_GEAR[save.vest]) list.push(VEST_GEAR[save.vest]);
@@ -354,7 +357,9 @@ function weaponPose(w) {
   if (w.look === "chainsaw") return "pesada";
   if (w.melee) return "melee";
   if (w.look === "pistol" || w.look === "revolver") return "pistola";
-  if (w.look === "minigun" || w.look === "lmg" || w.look === "flamer") return "pesada";
+  if (w.look === "flamer") return "lancachamas";     // pose só do lança-chamas (mão esquerda na barra lateral)
+  if (w.look === "lmg") return "m249";               // pose só da M249 (mão no punho, indicador no gatilho)
+  if (w.look === "minigun") return "pesada";
   return "longa";
 }
 // tamanho de verdade (metros) de cada tipo de arma, para ficar proporcional ao corpo

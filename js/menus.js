@@ -14,6 +14,7 @@ function menuKey(k) {
   if (game.menu === "prof") { profKey(k); return; }
   if (game.menu === "junk") { junkKey(k); return; }
   if (game.menu === "creditshop") { creditShopKey(k); return; }
+  if (game.menu === "library") { libraryKey(k); return; }
   if (game.menu === "map" && game.mapAsk) { if (k === "escape" || k === "e" || k === "n") game.mapAsk = null; return; }   // janela do admin por cima do mapa
   if (k === "escape" || k === "e" || k === "b" || (k === "c" && game.menu === "stats") || (k === "m" && game.menu === "sector") || (k === "n" && game.menu === "map") || (k === "o" && game.menu === "obj")) { game.menu = null; return; }
   if (game.menu === "bank") {
@@ -79,16 +80,31 @@ function buyGM() {
 }
 
 // ---------- Atributos ----------
+// tela em duas colunas: Stats (esquerda) e Proficiências de armas (direita)
+const PROF_IDS = ["melee", "pistols", "rifles", "shotguns", "machinegun"];
+const PROF_NAMES = { melee: "Corpo a corpo", pistols: "Pistolas", rifles: "Rifles", shotguns: "Escopetas", machinegun: "Metralhadoras" };
+const STATS_LEFT = ATTRS.filter((a) => !PROF_IDS.includes(a.id)).map((a) => a.id);
+const STATS_ORDER = STATS_LEFT.concat(PROF_IDS);
 function statsKey(k) {
+  if (game.sconfirm) {                     // confirmação do reset por créditos
+    if (k === "enter") { game.sconfirm = false; resetStatsWithCredits(); }
+    else if (k === "escape" || k === "n") game.sconfirm = false;
+    return;
+  }
   if (k === "tab") { game.stab = game.stab ? 0 : 1; game.skc = save.skin; return; }
   if (game.stab === 1) { skinsKey(k); return; }
+  const n = STATS_ORDER.length, col = game.cur >= STATS_LEFT.length;
   if (k === "w" || k === "arrowup") game.cur = Math.max(0, game.cur - 1);
-  else if (k === "s" || k === "arrowdown") game.cur = Math.min(ATTRS.length - 1, game.cur + 1);
-  else if (k === "enter" || k === "arrowright") addPoint(1);
+  else if (k === "s" || k === "arrowdown") game.cur = Math.min(n - 1, game.cur + 1);
+  else if (k === "a" || k === "arrowleft") { if (col) game.cur = Math.min(STATS_LEFT.length - 1, game.cur - STATS_LEFT.length); }
+  else if (k === "arrowright") { if (!col) game.cur = STATS_LEFT.length + Math.min(PROF_IDS.length - 1, game.cur); }
+  else if (k === "enter") addPoint(1);
   else if (k === "d") addPoint(5);
+  else if (k === "r") game.sconfirm = true;
 }
-function addPoint(n) {
-  const d = ATTRS[game.cur], weapon = WEAPON_SKILL_IDS.includes(d.id), pool = weapon ? "wpoints" : "points";
+function addPoint(n, id) {
+  const d = ATTRS.find((a) => a.id === (id || STATS_ORDER[game.cur] || STATS_ORDER[0]));
+  const weapon = WEAPON_SKILL_IDS.includes(d.id), pool = weapon ? "wpoints" : "points";
   if (player[pool] <= 0) { toast(weapon ? "Sem pontos de armas" : "Sem pontos de atributo"); return; }
   const amt = Math.min(n, player[pool], weaponSkillCap(d.id) - player.attrs[d.id]);
   if (amt <= 0) { toast("Atributo no máximo"); return; }
@@ -539,6 +555,7 @@ function drawMenu() {
   else if (game.menu === "pack") drawInventory();
   else if (game.menu === "craft") drawCraft();
   else if (game.menu === "obj") drawObjectives();
+  else if (game.menu === "library") drawLibrary();
   else drawStash();
   if (game.menu !== "admin" && game.menu !== "craft") menuToast();
 }
@@ -576,19 +593,57 @@ function drawStats() {
     regClick(50 + i * 120, 24, 110, 24, () => { game.stab = i; game.skc = save.skin; });
   });
   if (game.stab === 1) { drawSkins(); hint("A/D escolhe · Enter usa · Tab volta aos atributos · C ou Esc fecha"); return; }
-  txt(`HP ${Math.ceil(player.hp)}/${Math.ceil(player.maxHp)} (máx. 200)  ·  Pontos de atributo: ${player.points}  ·  Armas: ${player.wpoints}   ·   XP ${Math.floor(player.xp)}/${player.level >= MAX_LEVEL ? "máx" : xpNeed(player.level)}`,
-    W / 2, 74, 16, player.points + player.wpoints > 0 ? "#ffd96a" : "#a9a58f", "center");
-  ATTRS.forEach((d, i) => {
-    const y = 90 + i * 31, sel = game.cur === i, v = player.attrs[d.id];
-    rowBox(60, y, 840, 28, sel);
-    txt(d.name, 76, y + 19, 15, "#e5e0c8", "left", true);
-    txt(String(v), 290, y + 19, 15, "#ffd96a", "left", true);
-    ctx.fillStyle = "#000"; ctx.fillRect(330, y + 11, 120, 6);
-    ctx.fillStyle = WEAPON_SKILL_IDS.includes(d.id) ? "#d08a5a" : "#6d8aa8"; ctx.fillRect(330, y + 11, 120 * Math.min(1, v / weaponSkillCap(d.id)), 6);
-    txt(WEAPON_SKILL_IDS.includes(d.id) ? `arma · máx. ${weaponSkillCap(d.id)}` : "stats · máx. 100", 460, y + 19, 11, WEAPON_SKILL_IDS.includes(d.id) ? "#d08a5a" : "#6d8aa8");
-    txt(attrEffect(d.id, v), 884, y + 19, 12, "#a9a58f", "right");
-  });
-  hint("W/S escolhe · Enter +1 · D +5 · pontos de arma: Força + 5 proficiências · Tab: personagem · C ou Esc");
+  game.cur = Math.max(0, Math.min(STATS_ORDER.length - 1, game.cur | 0));
+  txt(`HP ${Math.ceil(player.hp)}/${Math.ceil(player.maxHp)}  ·  XP ${Math.floor(player.xp)}/${player.level >= MAX_LEVEL ? "máx" : xpNeed(player.level)}`, W / 2, 72, 14, "#a9a58f", "center");
+  // uma coluna (Stats ou Proficiências): linhas com valor, barra e botão +
+  const column = (x, y, w, title, ids, first, pool, poolName) => {
+    ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(x, y, w, 300, 8); ctx.fill();
+    ctx.strokeStyle = "rgba(192,57,43,0.55)"; ctx.lineWidth = 1.5; ctx.stroke();
+    txt(title, x + 14, y + 24, 17, "#e05a4a", "left", true);
+    txt(`${poolName}: ${player[pool]}`, x + w - 14, y + 24, 13, player[pool] > 0 ? "#ffd96a" : "#6d6a58", "right", true);
+    ids.forEach((id, j) => {
+      const d = ATTRS.find((a) => a.id === id), i = first + j, ry = y + 34 + j * 29, sel = game.cur === i, v = player.attrs[id];
+      const cap = weaponSkillCap(id), full = v >= cap, can = player[pool] > 0 && !full;
+      rowBox(x + 8, ry, w - 16, 26, sel);
+      regClick(x + 8, ry, w - 60, 26, () => { game.cur = i; });
+      txt(PROF_NAMES[id] || d.name, x + 18, ry + 18, 14, "#e5e0c8", "left", true, 170);
+      txt(String(v), x + 210, ry + 18, 14, full ? "#6fae4f" : "#e05a4a", "right", true);
+      ctx.fillStyle = "#000"; ctx.fillRect(x + 220, ry + 10, w - 290, 6);
+      ctx.fillStyle = WEAPON_SKILL_IDS.includes(id) ? "#d08a5a" : "#6d8aa8"; ctx.fillRect(x + 220, ry + 10, (w - 290) * Math.min(1, v / cap), 6);
+      // botão +: clique soma 1 (Shift + clique soma 5)
+      const bx = x + w - 44, by = ry + 2, hov = mouse.x >= bx && mouse.x <= bx + 28 && mouse.y >= by && mouse.y <= by + 22;
+      ctx.fillStyle = !can ? "#1f1e19" : hov ? "#5a4a2a" : "#352d1a"; rr(bx, by, 28, 22, 4); ctx.fill();
+      ctx.strokeStyle = can ? "#d4af37" : "#3d3b30"; ctx.lineWidth = 1; ctx.stroke();
+      txt("+", bx + 14, by + 17, 17, can ? "#f2eedc" : "#4a4840", "center", true);
+      if (can) regClick(bx, by, 28, 22, () => { game.cur = i; addPoint(keys && keys.shift ? 5 : 1, id); });
+    });
+  };
+  column(40, 86, 430, "Stats", STATS_LEFT, 0, "points", "Pontos");
+  column(490, 86, 430, "Proficiências", PROF_IDS, STATS_LEFT.length, "wpoints", "Pontos de arma");
+  // efeito do atributo escolhido (embaixo das proficiências)
+  const sid = STATS_ORDER[game.cur], sd = ATTRS.find((a) => a.id === sid);
+  ctx.strokeStyle = "rgba(192,57,43,0.35)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(500, 276); ctx.lineTo(910, 276); ctx.stroke();
+  txt(PROF_NAMES[sid] || sd.name, 506, 298, 15, "#f2eedc", "left", true);
+  txtWrap(attrEffect(sid, player.attrs[sid]), 506, 318, 12, "#a9a58f", 398, 15, 2);
+  txt(WEAPON_SKILL_IDS.includes(sid) ? `Usa pontos de arma · máx. ${weaponSkillCap(sid)}` : `Usa pontos de atributo · máx. ${weaponSkillCap(sid)}`, 506, 356, 11, WEAPON_SKILL_IDS.includes(sid) ? "#d08a5a" : "#6d8aa8");
+  txt("Força conta como ponto de arma (exigência das armas).", 506, 372, 11, "#6d6a58");
+  // reset de atributos pago com créditos
+  ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(40, 398, 880, 110, 8); ctx.fill();
+  ctx.strokeStyle = "rgba(192,57,43,0.55)"; ctx.lineWidth = 1.5; ctx.stroke();
+  txt("Reset de atributos", W / 2, 424, 18, "#f2eedc", "center", true);
+  txt("Devolve todos os pontos investidos em stats e proficiências para você distribuir de novo.", W / 2, 446, 13, "#a9a58f", "center");
+  const ok = save.credits >= RESET_STATS_CREDITS;
+  txt(`${RESET_STATS_CREDITS} créditos · você tem ${save.credits}`, W / 2, 466, 14, ok ? "#e05a4a" : "#6d6a58", "center", true);
+  btn(W / 2 - 90, 474, 180, 28, ok ? "Resetar (R)" : "Créditos insuficientes", () => { game.sconfirm = true; }, true, !ok);
+  if (game.sconfirm) {
+    ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#1a1913"; rr(W / 2 - 210, H / 2 - 64, 420, 128, 10); ctx.fill(); ctx.strokeStyle = "#e05a4a"; ctx.lineWidth = 2; ctx.stroke();
+    txt(`Resetar atributos por ${RESET_STATS_CREDITS} créditos?`, W / 2, H / 2 - 26, 17, "#f2eedc", "center", true);
+    txt("Todos os pontos voltam para você distribuir de novo.", W / 2, H / 2 - 4, 13, "#a9a58f", "center");
+    btn(W / 2 - 150, H / 2 + 16, 140, 32, "Resetar", () => { game.sconfirm = false; resetStatsWithCredits(); }, true);
+    btn(W / 2 + 10, H / 2 + 16, 140, 32, "Cancelar", () => { game.sconfirm = false; });
+  }
+  hint("W/S escolhe · A/→ troca de coluna · Enter +1 · D +5 · clique no + (Shift soma 5) · R reset · Tab: personagem · C ou Esc");
 }
 
 function drawMissionRow(x, y, w, m, sel, active) {

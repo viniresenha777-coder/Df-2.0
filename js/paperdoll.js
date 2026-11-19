@@ -33,6 +33,7 @@ function tintWithMask(base, mask, skin, equipment, portrait) {
 // arma do slot 1 no retrato: o corpo na pose de mira dessa arma (portrait_<pose>.png) e a arma por cima
 // (portrait_<modelo>.png, já com o corpo escondendo o que fica atrás). Sem arma no slot 1: retrato descansado.
 function portraitWeapon() {
+  if (true) return null;   // retrato do inventário: personagem girando parado, sem arma
   const it = typeof player !== "undefined" && player.slots ? player.slots[0] : null;
   const w = it && typeof WDEF !== "undefined" ? WDEF[it.id] : null;
   if (!w) return null;
@@ -48,8 +49,11 @@ function portraitCanvas() {
   const base = portraitReady(poseImg) ? poseImg : PORTRAIT.base;
   if (!portraitReady(base)) return null;
   const gear = playerGear();
-  const imgs = gear.map(portraitGearImg);
-  const key = `${save.skin}|${clothingKey()}|${save.cape | 0}|${gear.join(",")}|${imgs.map(portraitReady).join("")}|${portraitReady(PORTRAIT.mask)}|${pw ? pw.pose + pw.m + pw.f : "-"}|${portraitReady(poseImg)}${portraitReady(wImg)}`;
+  // mirando: a camada da peça feita naquela pose (portrait_<peça>_<pose>.png), se existir
+  const aimGear = (id) => { const p = base === poseImg ? portraitGearImg(id + "_" + pw.pose) : null; return p && portraitReady(p) ? p : portraitGearImg(id); };
+  if (base === poseImg) for (const id of gear) portraitGearImg(id + "_" + pw.pose);
+  const imgs = gear.map(aimGear);
+  const key = `${save.skin}|${clothingKey()}|${save.cape | 0}|${gear.join(",")}|${imgs.map((im) => (portraitReady(im) ? im.src.length : 0)).join("")}|${portraitReady(PORTRAIT.mask)}|${pw ? pw.pose + pw.m + pw.f : "-"}|${portraitReady(poseImg)}${portraitReady(wImg)}`;
   if (PORTRAIT.key === key && PORTRAIT.cache) return PORTRAIT.cache;
   const skin = SKINS[save.skin] || SKINS[0];
   const body = base === PORTRAIT.base && portraitReady(PORTRAIT.mask) ? tintWithMask(PORTRAIT.base, PORTRAIT.mask, skin, save.clothing, true) : base;

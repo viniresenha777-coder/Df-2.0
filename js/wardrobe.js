@@ -4,8 +4,8 @@
 // Na fase inicial os 18 itens estao disponiveis para teste, sem custo ou atributos.
 // Sistema de roupas em reconstrução: sem peças por enquanto (a aba Roupas continua, vazia).
 const CLOTHING_SETS = [];
-const CLOTHING_KINDS = ["jacket", "pants", "boots", "hat", "mask", "pack"];
-const CLOTHING_LABELS = { jacket: "Jaqueta", pants: "Calça", boots: "Botas", hat: "Chapéu", mask: "Máscara", pack: "Mochila" };
+const CLOTHING_KINDS = ["jacket", "pants", "boots", "hat", "mask", "pack", "cape"];
+const CLOTHING_LABELS = { jacket: "Jaqueta", pants: "Calça", boots: "Botas", hat: "Chapéu", mask: "Máscara", pack: "Mochila", cape: "Capa" };
 const CLOTHING_ITEMS = [];
 const CLOTHING_BY_ID = Object.create(null);
 for (const set of CLOTHING_SETS) {
@@ -21,9 +21,10 @@ for (const set of CLOTHING_SETS) {
 // layer = camada img/gear/<layer>_<pose>.png e img/portrait_<layer>.png desenhada por cima do corpo;
 // icon = foto da própria peça. Peças 3D não pintam o corpo (a camada já tem a cor do modelo).
 // versão das imagens do personagem (corpo, camadas, retrato, fotos): troca quando o personagem é renderizado de novo
-const CHAR_V = "?v=steve04";
+const CHAR_V = "?v=roger06";
 const W3D = (id, kind, layer, name, setName) => ({ id, kind, set: "3d", setName, name, layer, icon: `img/clothing/${layer}.png${CHAR_V}`, color: "#6a6658", accent: "#8a8672", texture: "canvas" });
-const IMPORTED_CLOTHING = [];
+// capa com capuz (manto medieval) vestida no Roger, com física de pano na caminhada
+const IMPORTED_CLOTHING = [W3D("cape_hood", "cape", "cape_hood", "Capa com capuz", "Medieval")];
 // camada 3D da peça equipada (ou null)
 function clothingLayer(kind, equipment) { const it = clothingGet(kind, equipment); return it && it.layer ? it.layer : null; }
 // peça que pinta o corpo (as 3D não pintam)

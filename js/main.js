@@ -64,9 +64,8 @@ function resetGame() {
 }
 
 
-function useResetStatsCard() {
-  const it = player.pack.find(x => x && x.kind === "mat" && x.id === "reset_stats" && x.qty > 0);
-  if (!it) { toast("Você não possui um cartão de reset."); return; }
+// devolve todos os pontos investidos em atributos e proficiências (cartão ou créditos)
+function resetAttrsCore(reason) {
   let normal = 0, weapons = 0;
   ATTRS.forEach(a => {
     const invested = Math.max(0, Math.round((player.attrs[a.id] || a.start) - a.start));
@@ -76,14 +75,27 @@ function useResetStatsCard() {
   });
   player.points += normal;
   player.wpoints += weapons;
-  it.qty--;
-  if (!it.qty) player.pack.splice(player.pack.indexOf(it), 1);
   recalcImplants();
   player.hp = Math.min(player.hp, player.maxHp);
   syncChar();
-  checkpoint("uso do cartão de reset de stats");
+  checkpoint(reason);
   game.menu = "stats"; game.stab = 0; game.cur = 0;
   toast("Atributos resetados! Redistribua seus pontos.");
+}
+function useResetStatsCard() {
+  const it = player.pack.find(x => x && x.kind === "mat" && x.id === "reset_stats" && x.qty > 0);
+  if (!it) { toast("Você não possui um cartão de reset."); return; }
+  it.qty--;
+  if (!it.qty) player.pack.splice(player.pack.indexOf(it), 1);
+  resetAttrsCore("uso do cartão de reset de stats");
+}
+// reset pela tela de atributos, pago com créditos
+const RESET_STATS_CREDITS = 200;
+function resetStatsWithCredits() {
+  if (save.credits < RESET_STATS_CREDITS) { toast(`Precisa de ${RESET_STATS_CREDITS} créditos (compre no banco)`); return; }
+  save.credits -= RESET_STATS_CREDITS;
+  persist();
+  resetAttrsCore("reset de atributos com créditos");
 }
 
 // Consumo da Trindade: 100 anos de calendário desde a ativação.
@@ -130,7 +142,8 @@ window.addEventListener("keydown", (e) => {
   if (game.shop) { shopKey(k); return; }
   if (k === "enter" && !game.paused && typeof fmChat !== "undefined") { fmChat.open(); return; }   // chat global
   if (game.hub && (k === "escape" || k === "e")) { leaveHouse(); return; }
-  if (game.hub && (k === "r" || k === "f" || k === "p" || k === "l")) { if (k === "f") eat(); return; }
+  if (k === "l" && !game.paused) { openLibrary(); return; }   // biblioteca de armas (só para ver)
+  if (game.hub && (k === "r" || k === "f" || k === "p")) { if (k === "f") eat(); return; }
   if (game.paused) {
     if ((k === "escape" || k === "p") && game.settingsOpen) {
       game.settingsOpen = false; game.settingsDrag = null;
@@ -295,6 +308,15 @@ function update(dt) {
   const aimDY = mouse.y + oy - (player.y - 14);
   if (Math.hypot(aimDX, aimDY) > 34) {
     player.angle = Math.atan2(aimDY, aimDX);
+  }
+  // quadril: o tronco gira com a mira até 60° para cada lado; passando disso o quadril gira junto e o
+  // limite recomeça do zero (o tronco e a arma continuam na mira). Pernas: direção do corpo ou da passada.
+  {
+    const LIM = Math.PI / 3, angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+    if (player.bodyAng == null) player.bodyAng = player.angle;
+    const d = angDiff(player.angle, player.bodyAng);
+    if (Math.abs(d) > LIM) player.bodyAng += d - Math.sign(d) * LIM;
+    player.bodyAng = Math.atan2(Math.sin(player.bodyAng), Math.cos(player.bodyAng));
   }
   spriteTick(dt);
   updateWeaponAim(); // arma, clarão e projétil seguem a mesma direção
