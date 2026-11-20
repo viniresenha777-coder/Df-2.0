@@ -329,7 +329,12 @@ function playerGear() {
   // personagem único (Mixamo/Character Creator) só com a roupa dele: sem camadas de roupa/colete/mochila/acessório
   // enquanto o sistema de roupas é refeito; só a capa 3D da aba Roupas (as listas abaixo continuam para a reconstrução)
   const wear = (k) => (typeof clothingLayer === "function" ? clothingLayer(k) : null);
-  if (STEVE_ONLY) return wear("cape") ? [wear("cape")] : [];
+  if (STEVE_ONLY) {
+    // máscara + capa com capuz: camada da máscara já recortada pelo capuz (gear/<máscara>_capuz_<pose>.png)
+    const cape = wear("cape"), mask = wear("mask");
+    // moletom (jaqueta 3D) por baixo da capa e da máscara
+    return [wear("jacket"), cape, mask && cape === "cape_hood" ? mask + "_capuz" : mask].filter(Boolean);
+  }
   const list = [];
   const hat = wear("hat"), mask = wear("mask");
   for (const k of ["pants", "boots", "jacket"]) if (wear(k)) list.push(wear(k));
@@ -347,7 +352,7 @@ function playerGear() {
 // ordem das camadas: calça e botas embaixo de tudo; de frente a capa vai primeiro (fica atrás); de
 // lado/costas o colete vai antes, depois a capa por cima dele e a mochila por cima da capa. Cabeça por último.
 function gearOrder(list, back) {
-  const rank = (id) => id.startsWith("cl_pants") || id.startsWith("cl_boots") ? -1 : id.startsWith("cl_jacket") ? -0.5 : id.startsWith("cape") ? (back ? 1 : 0) :
+  const rank = (id) => id.startsWith("cl_pants") || id.startsWith("cl_boots") ? -1 : id.startsWith("cl_jacket") || id.startsWith("cl_moletom") ? -0.5 : id.startsWith("cape") ? (back ? 1 : 0) :
     id.startsWith("vest") ? (back ? 0 : 1) : id === "pack" || id.startsWith("cl_pack") ? 2 : 3;
   return list.slice().sort((a, b) => rank(a) - rank(b));
 }
@@ -378,12 +383,51 @@ function spriteTick(dt) {
   p.dispAng = p.angle;
   p.sRow = sheetRow(Math.cos(p.angle), Math.sin(p.angle));
   if (p.moving) p.stepDist = (p.stepDist || 0) + (p.lastSp || 0) * dt / 16.67;
+  TW.suf = pickTwistSuffix(weaponPose(curW()));
+}
+// ---------- Tronco girando com a mira ----------
+// Além das 8 direções, cada pose tem variantes com o tronco torcido 15° para cada lado (_tm15 / _tp15),
+// geradas no Blender (--twist). A variante escolhida é a que deixa a arma apontando mais perto da mira,
+// então a arma só gira o resto (no máximo ~7,5°). As variantes carregam sob demanda, sem travar o jogo.
+const TW = { suf: "" };
+const TWIST_SUFS = [];   // desligado: a torção de 15° quase não muda o eixo da arma (2–3°); variantes ficam em out/twist_*
+function ensureTwistSheet(key) {
+  if (PSHEET.sheets[key]) return;
+  const im = new Image(); im.src = `img/player_${key}.png${CHAR_V}`; PSHEET.sheets[key] = im;
+  const mk = new Image(); mk.src = `img/player_${key}_mask.png${CHAR_V}`; PSHEET.masks[key] = mk;
+}
+function twistBaseAngle(pose, row, col) {
+  const set = SPRITE_POSES[pose], info = set && set[row] && set[row][col];
+  return info ? Math.atan2(info.b[1] - info.a[1], info.b[0] - info.a[0]) : null;
+}
+// a variante só é usada quando o corpo, a máscara e as camadas de roupa/arma dela já carregaram
+function twistReady(key, w) {
+  const im = PSHEET.sheets[key], mk = PSHEET.masks[key];
+  if (!(im && im.complete && im.naturalWidth && mk && mk.complete && mk.naturalWidth) || !SPRITE_POSES[key]) return false;
+  for (const id of playerGear()) if (!gearImg(id, key)) return false;
+  const d = w && WEAPON_3D[w.id];
+  return !(d && !gearImg(d.m, key));
+}
+function pickTwistSuffix(pose) {
+  const p = player, row = p.sRow | 0, col = spriteFrame(), aim = p.angle, w = curW();
+  let best = "", bestD = Infinity;
+  const b0 = twistBaseAngle(pose, row, col);
+  if (b0 != null) bestD = Math.abs(angDelta(b0, aim));
+  for (const suf of TWIST_SUFS) {
+    ensureTwistSheet(pose + suf);
+    if (!twistReady(pose + suf, w)) continue;
+    const a = twistBaseAngle(pose + suf, row, col);
+    if (a == null) continue;
+    const d = Math.abs(angDelta(a, aim));
+    if (d < bestD) { bestD = d; best = suf; }
+  }
+  return best;
 }
 function spriteFrame() { const p = player; return p.moving ? Math.floor((p.stepDist || 0) / PSHEET.stride) % 8 : 1; }
 function spriteOrigin() { const S = PSHEET.size; return { x: player.x - S / 2, y: player.y + 6 - S * PSHEET.footY }; }
 // ponto do quadro atual (px de 0 a 128) -> mundo
 function posePt(key, pose) {
-  pose = pose || weaponPose(curW());
+  pose = pose || weaponPose(curW()) + TW.suf;
   const o = spriteOrigin(), k = PSHEET.size / PSHEET.cell, pt = SPRITE_POSES[pose][player.sRow | 0][spriteFrame()][key];
   return { x: o.x + pt[0] * k, y: o.y + pt[1] * k };
 }
@@ -391,7 +435,7 @@ function posePt(key, pose) {
 // ângulo vem EXCLUSIVAMENTE da direção do personagem. Isso evita o
 // tiro inverter ao colocar o cursor atrás ou próximo da empunhadura.
 function gunGripAndLength(w) {
-  const pose = weaponPose(w), a = posePt("a", pose), b = posePt("b", pose);
+  const pose = weaponPose(w) + TW.suf, a = posePt("a", pose), b = posePt("b", pose);
   return { x: a.x, y: a.y, length: Math.hypot(b.x - a.x, b.y - a.y) * weaponMeters(w) };
 }
 function updateWeaponAim() {
@@ -437,9 +481,43 @@ function drawHeldWeapon(w, pose) {
   ctx.restore();
 }
 
+// ---------- Rastro dos olhos da máscara HOPE ----------
+// Andando com a máscara, cada olho deixa uma linha de brilho ciano para trás que some aos poucos.
+// Os pontos dos olhos (eL/eR) vêm do SPRITE_POSES (gerados no Blender junto com o resto da pose).
+const EYE_TRAIL = { L: [], R: [], life: 700, color: [90, 235, 255] };
+function eyeTrailOn() { return typeof clothingLayer === "function" && clothingLayer("mask") === "mask_hope"; }
+function eyeTrailTick() {
+  const now = game.time, T = EYE_TRAIL;
+  for (const k of ["L", "R"]) while (T[k].length && now - T[k][0].t > T.life) T[k].shift();
+  if (!eyeTrailOn() || !player.moving) return;
+  const pose = weaponPose(curW()) + TW.suf, info = SPRITE_POSES[pose] && SPRITE_POSES[pose][player.sRow | 0][spriteFrame()];
+  if (!info || !info.eL) return;
+  for (const k of ["L", "R"]) {
+    const p = posePt("e" + k, pose), a = T[k], last = a[a.length - 1];
+    if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 1.5) a.push({ x: p.x, y: p.y, t: now });
+  }
+}
+function drawEyeTrails() {
+  const T = EYE_TRAIL, now = game.time, [r, g, b] = T.color;
+  if (!T.L.length && !T.R.length) return;
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round";
+  ctx.shadowColor = `rgb(${r},${g},${b})`; ctx.shadowBlur = 8;
+  for (const k of ["L", "R"]) {
+    const a = T[k];
+    for (let i = 1; i < a.length; i++) {
+      const f = 1 - (now - a[i].t) / T.life;              // 1 = acabou de sair do olho, 0 = sumiu
+      if (f <= 0) continue;
+      ctx.strokeStyle = `rgba(${r},${g},${b},${0.75 * f})`; ctx.lineWidth = 0.8 + 1.6 * f;
+      ctx.beginPath(); ctx.moveTo(a[i - 1].x, a[i - 1].y); ctx.lineTo(a[i].x, a[i].y); ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
 function drawPlayerSprite() {
   if (!useSpriteChar()) return false;
-  const p = player, w = curW(), pose = weaponPose(w), S = PSHEET.size, c = PSHEET.cell, row = p.sRow | 0, col = spriteFrame();
+  eyeTrailTick();
+  const p = player, w = curW(), pose = weaponPose(w) + TW.suf, S = PSHEET.size, c = PSHEET.cell, row = p.sRow | 0, col = spriteFrame();
   // Sombra ambiental macia no piso, com leve deslocamento de luz direcional.
   // Dá profundidade ao soldado 3D sem alterar colisão ou posição.
   if (!game.inside) {
@@ -458,6 +536,7 @@ function drawPlayerSprite() {
   const kick = p.flashT > 0 ? 2 : 0, o = spriteOrigin(), info = SPRITE_POSES[pose][row][col];
   const w3 = weapon3dImg(w, pose);
   if (info.bh && !w3) drawHeldWeapon(w, pose);       // arma atrás do corpo (de costas)
+  drawEyeTrails();                                    // rastro dos olhos fica atrás do corpo
   const ox = o.x - Math.cos(p.angle) * kick, oy = o.y - Math.sin(p.angle) * kick;
   ctx.drawImage(tintedSheet(pose), col * c, row * c, c, c, ox, oy, S, S);
   // arma 3D: a camada já vem recortada pelo corpo; atrás do corpo vai antes do colete/mochila
@@ -571,6 +650,13 @@ function drawZombieDeath(c) {
   ctx.restore();
   return true;
 }
+// ---------- Golpe: img/<nome>_attack.png (8 direções x 8 quadros, mesmo quadro do andar) ----------
+const ZATTACK = {};
+function zombieAttackImg(nm) {
+  let im = ZATTACK[nm];
+  if (!im) { im = ZATTACK[nm] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/${nm}_attack.png?v=20261119-ataque01`; }
+  return im.bad || !im.complete || !im.naturalWidth ? null : im;
+}
 // tamanho do quadro na tela: todos os modelos 3D foram fotografados na mesma escala
 function zSpriteSize(z, nm) {
   if (nm === "z_dog") return ZSHEET.base * (z.r / 11);
@@ -597,13 +683,17 @@ function drawZombieSprite(z) {
   const nm = zombieSheet(z); if (!nm) return false;
   const S = zSpriteSize(z, nm);
   const row = sheetRow(Math.cos(z.angle), Math.sin(z.angle));
-  const TAU = Math.PI * 2, col = Math.floor((((z.anim || 0) % TAU) + TAU) % TAU / TAU * 8) % 8;
-  const lunge = z.lunge > 0 ? 5 : 0, x = z.x - S / 2 + Math.cos(z.angle) * lunge, y = z.y + 6 - S * 0.82 + Math.sin(z.angle) * lunge;
+  const TAU = Math.PI * 2;
+  let col = Math.floor((((z.anim || 0) % TAU) + TAU) % TAU / TAU * 8) % 8, sheet = ZSHEET.sheets[nm];
+  const atkIm = zombieAttackImg(nm);                      // carrega já, para estar pronta no primeiro golpe
+  if (z.atkT > 0 && atkIm) { sheet = atkIm; col = Math.min(7, Math.floor((1 - z.atkT / ZATK_MS) * 8)); }
+  const lunge = z.lunge > 0 && sheet === ZSHEET.sheets[nm] ? 5 : 0;   // sem a folha de golpe: o tranco antigo
+  const x = z.x - S / 2 + Math.cos(z.angle) * lunge, y = z.y + 6 - S * 0.82 + Math.sin(z.angle) * lunge;
   if (z.type === "toxic") ctx.filter = "hue-rotate(55deg) saturate(1.5)";
   else if (z.type === "infected") ctx.filter = "brightness(0.8) contrast(1.15)";
-  ctx.drawImage(ZSHEET.sheets[nm], col * 128, row * 128, 128, 128, x, y, S, S);
+  ctx.drawImage(sheet, col * 128, row * 128, 128, 128, x, y, S, S);
   ctx.filter = "none";
-  if (z.flash > 0) { ctx.save(); ctx.globalAlpha = 0.55; ctx.globalCompositeOperation = "lighter"; ctx.drawImage(ZSHEET.sheets[nm], col * 128, row * 128, 128, 128, x, y, S, S); ctx.restore(); }
+  if (z.flash > 0) { ctx.save(); ctx.globalAlpha = 0.55; ctx.globalCompositeOperation = "lighter"; ctx.drawImage(sheet, col * 128, row * 128, 128, 128, x, y, S, S); ctx.restore(); }
   if (z.type === "creeper") {                   // brasa no peito: aviso de que explode
     const low = 1 - Math.max(0, z.hp / z.maxHp), pulse = 0.6 + 0.4 * Math.sin(game.time / (220 - 120 * low));
     const cx = z.x - Math.cos(z.angle) * 2, cy = z.y - S * 0.48, rr = (5 + 4 * low) * S / 86;

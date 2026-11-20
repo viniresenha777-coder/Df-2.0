@@ -382,9 +382,16 @@ const RESET_CARD_ART = new Image();
 RESET_CARD_ART.src = "img/fm_reset_card.webp?v=20261116-reset-final";
 const TRINDADE_ICON = new Image();
 TRINDADE_ICON.src = "img/trindade_icon.webp?v=20261116-highres1";
+// foto de alguns materiais (img/mats/<id>.png, 160x120); sem a imagem carregada, usa o desenho em código
+const MAT_ART = {};
+for (const id of ["sucata", "pecas"]) { const im = new Image(); im.src = `img/mats/${id}.png?v=20261120-mats03`; MAT_ART[id] = im; }
 function drawMatIcon(id, cx, cy, s) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
-  if (id === "reset_stats" && RESET_CARD_ART.complete && RESET_CARD_ART.naturalWidth) {
+  const art = MAT_ART[id];
+  if (art && art.complete && art.naturalWidth) {
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(art, -32, -24, 64, 48);
+  } else if (id === "reset_stats" && RESET_CARD_ART.complete && RESET_CARD_ART.naturalWidth) {
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(RESET_CARD_ART, -31, -23, 62, 46);
   } else if (id === "trindade_eterna") {

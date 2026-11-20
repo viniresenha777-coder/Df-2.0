@@ -520,6 +520,11 @@ function bossAbility(z, d, dt, k) {
   }
   return false;
 }
+// Ataque corpo a corpo dos zumbis: param a uma distância (não entram no personagem), fazem o golpe
+// (folha img/z_*_attack.png, 8 quadros) e o dano sai no meio dele, se você ainda estiver ao alcance.
+const ZATK_MS = 560, ZATK_HIT = 0.45;
+function zReach(z) { return z.r + player.r + (z.type === "dog" ? 12 : 18) * Math.max(1, z.r / 13); }
+
 function updateZombies(dt, k) {
   const list = Zs();
   for (const z of list) {
@@ -536,7 +541,7 @@ function updateZombies(dt, k) {
       if (Math.random() < dt / 300) addBlood(z.x + rand(-6, 6), z.y + rand(-6, 6), rand(2, 4));
     }
     if (z.hp <= 0) { if (!z.dead) killZombie(z); continue; }
-    if (z.stun > 0) { z.stun -= dt; continue; }
+    if (z.stun > 0) { z.stun -= dt; z.atkT = 0; continue; }
     const dx = player.x - z.x, dy = player.y - z.y, d = Math.hypot(dx, dy) || 1;
     if (adm.freeze) continue;
     const zt = ZTYPES[z.type];
@@ -618,7 +623,11 @@ function updateZombies(dt, k) {
           if (z.spitCd <= 0) { spit(z); z.spitCd = z.boss ? 900 : 2200 + Math.random() * 1200; }
         }
       }
+      // já ao alcance ou no meio do golpe: fica parado na distância do ataque, sem entrar no personagem
+      if (step > 0 && (z.atkT > 0 || d < zReach(z) - 6)) step = 0;
       if (step !== 0) moveZ(z, ang, step);
+      const touch = z.r + player.r + 8;
+      if (d < touch) { z.x -= (dx / d) * (touch - d) * 0.5; z.y -= (dy / d) * (touch - d) * 0.5; }
       z.angle = Math.atan2(dy, dx);
       z.lose = d > 560 ? z.lose + dt : 0;
       if (z.lose > 6000) { z.state = "idle"; z.wt = 0; }
@@ -641,7 +650,20 @@ function updateZombies(dt, k) {
       z.x -= (dx / d) * 3; z.y -= (dy / d) * 3;
       if (player.sprinting) { z.stun = 700; z.spitCd = Math.max(z.spitCd || 0, 1500); z.hitCd = Math.max(z.hitCd, 400); continue; }
     }
-    if (d < z.r + player.r + 2 && z.hitCd <= 0) { alertZombie(z); damagePlayer(z.dmg); addInfection(z); z.hitCd = z.hitDelay; z.lunge = 160; if (z.type === "dog") z.recoilT = 400; }
+    const reach = zReach(z);
+    if (z.atkT > 0) {                    // golpe em andamento: o dano sai no meio dele
+      z.atkT -= dt;
+      z.angle = Math.atan2(dy, dx);
+      if (!z.atkHit && z.atkT <= ZATK_MS * (1 - ZATK_HIT)) {
+        z.atkHit = true;
+        if (Math.hypot(player.x - z.x, player.y - z.y) < reach + 10) {
+          damagePlayer(z.dmg); addInfection(z); z.lunge = 160;
+          if (z.type === "dog") z.recoilT = 400;
+        }
+      }
+    } else if (d < reach && z.hitCd <= 0) {
+      alertZombie(z); z.atkT = ZATK_MS; z.atkHit = false; z.hitCd = Math.max(z.hitDelay, ZATK_MS + 150);
+    }
   }
   for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
     const a = list[i], b = list[j], d = Math.hypot(a.x - b.x, a.y - b.y) || 1, min = a.r + b.r;

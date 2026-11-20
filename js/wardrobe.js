@@ -21,10 +21,15 @@ for (const set of CLOTHING_SETS) {
 // layer = camada img/gear/<layer>_<pose>.png e img/portrait_<layer>.png desenhada por cima do corpo;
 // icon = foto da própria peça. Peças 3D não pintam o corpo (a camada já tem a cor do modelo).
 // versão das imagens do personagem (corpo, camadas, retrato, fotos): troca quando o personagem é renderizado de novo
-const CHAR_V = "?v=roger06";
+const CHAR_V = "?v=roger10";
 const W3D = (id, kind, layer, name, setName) => ({ id, kind, set: "3d", setName, name, layer, icon: `img/clothing/${layer}.png${CHAR_V}`, color: "#6a6658", accent: "#8a8672", texture: "canvas" });
 // capa com capuz (manto medieval) vestida no Roger, com física de pano na caminhada
-const IMPORTED_CLOTHING = [W3D("cape_hood", "cape", "cape_hood", "Capa com capuz", "Medieval")];
+// máscara HOPE // The Last Face (CC-BY, Atahan.Danaci): andando, os olhos deixam rastros de brilho (perspective.js)
+const IMPORTED_CLOTHING = [W3D("cape_hood", "cape", "cape_hood", "Capa com capuz", "Medieval"),
+  W3D("mask_hope", "mask", "mask_hope", "Máscara HOPE", "The Last Face"),
+  W3D("mask_vendetta", "mask", "mask_vendetta", "Máscara Vendetta", "Vendetta"),   // sem brilho nos olhos
+  // moletom com capuz (CC-BY, harb-ayyad): encaixado à mão no Roger e preso ao esqueleto
+  W3D("cl_moletom", "jacket", "cl_moletom", "Moletom com capuz", "Moletom")];
 // camada 3D da peça equipada (ou null)
 function clothingLayer(kind, equipment) { const it = clothingGet(kind, equipment); return it && it.layer ? it.layer : null; }
 // peça que pinta o corpo (as 3D não pintam)

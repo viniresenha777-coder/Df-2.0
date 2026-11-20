@@ -48,6 +48,9 @@ fotos em `img/clothing/cl_*.png`). Licença: <http://creativecommons.org/license
 | Capacete Tático com Fone | [Tactical Helmet with Headset (Game-Ready)](https://sketchfab.com/3d-models/tactical-helmet-with-headset-game-ready-82adf376164f4d99a4e0b2949930e2ad) | Exactly |
 | Lenço de Cabeça | [hijab 2.2](https://sketchfab.com/3d-models/hijab-22-73d96cfb751d4ad9a8decae6082c1a07) | JMUHIST |
 | Máscara de Esqui | [Wool Ski Mask / Balaclava](https://sketchfab.com/3d-models/wool-ski-mask-balaclava-55005ed95a974f738d860fc02e30728c) | SKVORSOW |
+| Máscara HOPE | [HOPE MASK // The Last Face](https://sketchfab.com/3d-models/hope-mask-the-last-face-8fdaf40c84c748ea90403bddd95dd839) | 6 ([Atahan.Danaci](https://sketchfab.com/Atahan.Danaci)) |
+| Máscara Vendetta | [Vendetta Mask](https://sketchfab.com/3d-models/vendetta-mask-3f7f3d843930459aad28bb790c9ed9a8) | [mathewdc](https://sketchfab.com/mathewdc) |
+| Moletom com capuz | [t shirt hoodie 3d model](https://sketchfab.com/3d-models/t-shirt-hoodie-3d-model-fd8d10eb5f5748e581ca6bd0db2abcce) | [harb-ayyad](https://sketchfab.com/harb-ayyad) |
 
 Recebidos e não usados: **test-calca** (zebra3dfashion) é CC BY-NC (proíbe uso comercial); **raincoat coat** (DEYMAR) e
 **Speaker Harmer Body** (Freaky Gamer), ambos CC BY, ainda não encaixam no corpo (mangas / esqueleto próprio).
