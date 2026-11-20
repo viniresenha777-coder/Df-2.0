@@ -29,7 +29,8 @@ const IMPORTED_CLOTHING = [W3D("cape_hood", "cape", "cape_hood", "Capa com capuz
   W3D("mask_hope", "mask", "mask_hope", "Máscara HOPE", "The Last Face"),
   W3D("mask_vendetta", "mask", "mask_vendetta", "Máscara Vendetta", "Vendetta"),   // sem brilho nos olhos
   // moletom com capuz (CC-BY, harb-ayyad): encaixado à mão no Roger e preso ao esqueleto
-  W3D("cl_moletom", "jacket", "cl_moletom", "Moletom com capuz", "Moletom")];
+  W3D("cl_moletom", "jacket", "cl_moletom", "Moletom com capuz", "Moletom"),
+  W3D("cl_pants_cargo_futurista", "pants", "cl_pants_cargo_futurista", "Calça Cargo Futurista", "Cargo")];
 // camada 3D da peça equipada (ou null)
 function clothingLayer(kind, equipment) { const it = clothingGet(kind, equipment); return it && it.layer ? it.layer : null; }
 // peça que pinta o corpo (as 3D não pintam)

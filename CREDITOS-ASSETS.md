@@ -79,3 +79,5 @@ CC0 (exceção de licença da MakeHuman para os assets do sistema); as roupas da
 ## Animações do personagem Ch49
 
 As animações de repouso, caminhada e corrida foram adaptadas da Universal Animation Library (Standard), de Quaternius, sob CC0 1.0.
+
+A **Calça Cargo Futurista** usa o modelo e as texturas de Alexander Kurmanin, fornecidos no pacote `futuristic-apocalypse-female-cargo-pants.zip`.

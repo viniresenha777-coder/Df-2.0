@@ -333,7 +333,7 @@ function playerGear() {
     // máscara + capa com capuz: camada da máscara já recortada pelo capuz (gear/<máscara>_capuz_<pose>.png)
     const cape = wear("cape"), mask = wear("mask");
     // moletom (jaqueta 3D) por baixo da capa e da máscara
-    return [wear("jacket"), cape, mask && cape === "cape_hood" ? mask + "_capuz" : mask].filter(Boolean);
+    return [wear("pants"), wear("jacket"), cape, mask && cape === "cape_hood" ? mask + "_capuz" : mask].filter(Boolean);
   }
   const list = [];
   const hat = wear("hat"), mask = wear("mask");
