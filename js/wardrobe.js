@@ -21,7 +21,7 @@ for (const set of CLOTHING_SETS) {
 // layer = camada img/gear/<layer>_<pose>.png e img/portrait_<layer>.png desenhada por cima do corpo;
 // icon = foto da própria peça. Peças 3D não pintam o corpo (a camada já tem a cor do modelo).
 // versão das imagens do personagem (corpo, camadas, retrato, fotos): troca quando o personagem é renderizado de novo
-const CHAR_V = "?v=roger12";
+const CHAR_V = "?v=roger13";
 const W3D = (id, kind, layer, name, setName) => ({ id, kind, set: "3d", setName, name, layer, icon: `img/clothing/${layer}.png${CHAR_V}`, color: "#6a6658", accent: "#8a8672", texture: "canvas" });
 // capa com capuz (manto medieval) vestida no Roger, com física de pano na caminhada
 // máscara HOPE // The Last Face (CC-BY, Atahan.Danaci): andando, os olhos deixam rastros de brilho (perspective.js)
@@ -34,7 +34,13 @@ const IMPORTED_CLOTHING = [W3D("cape_hood", "cape", "cape_hood", "Capa com capuz
   W3D("cl_boots_tenis_brancos", "boots", "cl_boots_tenis_brancos", "Tênis Brancos", "Calçados"),
   W3D("cl_boots_sapatos_couro", "boots", "cl_boots_sapatos_couro", "Sapatos de Couro", "Calçados")];
 // camada 3D da peça equipada (ou null)
-function clothingLayer(kind, equipment) { const it = clothingGet(kind, equipment); return it && it.layer ? it.layer : null; }
+function clothingLayer(kind, equipment) {
+  const item = clothingGet(kind, equipment);
+  if (item?.id === "cl_pants_cargo_futurista" && clothingGet("boots", equipment)?.id === "cl_boots_sapatos_couro") {
+    return "cl_pants_cargo_futurista_couro";
+  }
+  return item?.layer || null;
+}
 // peça que pinta o corpo (as 3D não pintam)
 function clothingTintItem(kind, equipment) { const it = clothingGet(kind, equipment); return it && !it.layer ? it : null; }
 for (const item of IMPORTED_CLOTHING) {
