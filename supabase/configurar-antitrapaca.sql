@@ -119,14 +119,14 @@ begin
 
   -- 4) dinheiro (banco + mochila): ganho máximo por salvamento
   ganho := (banco1 + mochila1) - (banco0 + mochila0);
-  permitido := 5000000 + 10000000 * horas + presente_dinheiro;
+  permitido := floor(5000000 + 10000000 * horas + presente_dinheiro);
   if ganho > permitido then
     corte := ganho - permitido;                      -- tira o excesso: primeiro da mochila, depois do banco
     if mochila1 >= corte then
-      depois := jsonb_set(depois, '{run,g,money}', to_jsonb(mochila1 - corte));
+      depois := jsonb_set(depois, '{run,g,money}', to_jsonb(floor(mochila1 - corte)));
     else
       depois := jsonb_set(depois, '{run,g,money}', to_jsonb(0));
-      depois := jsonb_set(depois, '{bank}', to_jsonb(greatest(banco1 - (corte - mochila1), 0)));
+      depois := jsonb_set(depois, '{bank}', to_jsonb(floor(greatest(banco1 - (corte - mochila1), 0))));
     end if;
     motivos := motivos || format('dinheiro +%s em %s h (máximo +%s)', ganho, round(horas, 2), permitido);
   end if;
