@@ -1519,7 +1519,6 @@ function drawHUD() {
   hudStat(3, "mochila", l, used, PACK_MAX, c);
   const inf = player.infect || 0;
   [l, c] = inf < 30 ? ["LIMPO", "#6fd06a"] : inf < 70 ? ["INFECTADO", "#e0c341"] : inf < 100 ? ["GRAVE", "#e05a4a"] : ["TERMINAL", "#ff3b2f"];
-  hudStat(4, "infec", l, inf, 100, c);
   // ---- linhas de texto embaixo das barras ----
   let ny = 64;
   hudT(playerName().toUpperCase(), 12, ny, 12, "#ffd96a", "left", true); ny += 15;
