@@ -203,7 +203,6 @@ function drawHub() {
   ctx.fillStyle = "#17150f"; ctx.fillRect(0, 0, W, 38);
   ctx.fillStyle = "#3d3220"; ctx.fillRect(0, 37, W, 2);
   shadowTxt(h.name.toUpperCase(), 272, 26, 20, "#c8483a", "left", true);
-  txt(`Mochila $${game.money}  ·  Banco $${save.bank}  ·  Créditos ${save.credits}`, W - 140, 24, 12, "#c9c4ad", "right", true);
   btn(W - 128, 6, 118, 26, "Sair (E)", () => leaveHouse());
   // Acesso à Loja de Créditos no canto superior esquerdo da base.
   // Imagem original do botão no mesmo ponto do cabeçalho (não criar novo link lateral).
