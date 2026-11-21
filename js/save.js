@@ -18,6 +18,7 @@ function validItem(it) {
     it.up = it.up || {};
     for (const s of UP_STATS) it.up[s.id] = clamp(Math.floor(it.up[s.id] || 0), 0, UP_MAX);
     it.ammo = clamp(it.ammo || 0, 0, WDEF[it.id].mag || 0);
+    it.tokenAmmo = tokenAmmoCount(it.tokenAmmo, it.ammo);
     return true;
   }
   return it.kind === "mat" && !!MATS[it.id] && it.qty > 0;
