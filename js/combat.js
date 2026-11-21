@@ -170,8 +170,7 @@ function finishReload() {
   }
   if (player.reloadRound) {
     if (it.ammo < w.mag && player.reserve[w.ammo] > 0) {
-      it.ammo += 1;
-      player.reserve[w.ammo] -= 1;
+      loadAmmoFromReserve(it, w.ammo, 1);
     }
     if (it.ammo < w.mag && player.reserve[w.ammo] > 0) {
       player.reloading = player.reloadMax;
@@ -187,7 +186,15 @@ function finishReload() {
   player.reloadWeapon = null;
   if (w.infinite) { it.ammo = w.mag; return; }
   const take = Math.min(w.mag - it.ammo, player.reserve[w.ammo]);
-  it.ammo += take; player.reserve[w.ammo] -= take;
+  loadAmmoFromReserve(it, w.ammo, take);
+}
+function loadAmmoFromReserve(it, type, amount) {
+  const bound = tokenAmmoInReserve(type);
+  const fromToken = Math.min(bound, amount);
+  it.tokenAmmo = tokenAmmoCount(it.tokenAmmo, it.ammo) + fromToken;
+  it.ammo += amount;
+  player.tokenReserve[type] = bound - fromToken;
+  player.reserve[type] -= amount;
 }
 function explode(x, y, r, dmg) {
   for (const z of Zs()) if (z.hp > 0 && Math.hypot(z.x - x, z.y - y) < r + z.r) hurt(z, dmg, Math.atan2(z.y - y, z.x - x), true);
@@ -281,7 +288,10 @@ function attack() {
   if (w.sound > 0) makeNoise(player.x, player.y, NOISE_R * w.sound * (1 - Math.min(0.9, player.fx.silence / 100)), w.hear);
   // munição infinita: o pente de 600 só precisa ser recarregado
   if (w.infinite) { if (!adm.infAmmo) it.ammo--; }
-  else if (!adm.infAmmo && Math.random() * 100 >= player.fx.saver) it.ammo--;
+  else if (!adm.infAmmo && Math.random() * 100 >= player.fx.saver) {
+    it.tokenAmmo = Math.max(0, tokenAmmoCount(it.tokenAmmo, it.ammo) - 1);
+    it.ammo--;
+  }
   if (it.ammo <= 0) { it.ammo = 0; startReload(); }
 }
 
