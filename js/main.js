@@ -211,6 +211,11 @@ window.addEventListener("mouseup", () => {
 });
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 canvas.addEventListener("wheel", (e) => {
+  if (game.menu === "market" && market.filterOpen) {
+    e.preventDefault();
+    market.filterOffset = clamp(market.filterOffset + Math.sign(e.deltaY), 0, MARKET_FILTERS.length - MARKET_VISIBLE);
+    return;
+  }
   e.preventDefault();
   if (game.menu === "map") {                                     // rola a lista de jogadores online
     const r = canvas.getBoundingClientRect();

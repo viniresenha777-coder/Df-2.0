@@ -241,7 +241,8 @@ function drawHub() {
   // O interior continua visível atrás do retrato; textos e barras ficam por cima.
   ctx.fillStyle = "rgba(20,19,15,0.22)"; rr(px, 44, pw, H - 52, 8); ctx.fill();
   ctx.strokeStyle = "#5a4a2a"; ctx.lineWidth = 2; ctx.stroke();
-  const links = [["Mochila e equipamento", "pack"], ["Atributos", "stats"], ["Objetivos", "obj"]];   // o mapa continua na tecla N
+  pollSaleMail();
+  const links = [["Mochila e equipamento", "pack"], ["Atributos", "stats"], ["Objetivos", "obj"], ["Correio", "saleMail"]];   // o mapa continua na tecla N
   links.forEach(([label, m], i) => {
     const ly = 64 + i * 17, hov = mouse.x >= px + 10 && mouse.x <= px + 180 && mouse.y >= ly - 12 && mouse.y <= ly + 4;
     txt(label, px + 12, ly, 12, hov ? "#ffd96a" : "#f2eedc", "left", true);

@@ -1,6 +1,6 @@
 "use strict";
 
-const market = { rows: [], tab: "comprar", page: 0, filter: "all", error: "", loading: false, confirm: null };
+const market = { rows: [], tab: "comprar", page: 0, filter: "all", filterOpen: false, filterOffset: 0, error: "", loading: false, confirm: null };
 
 const MARKET_FILTERS = [
   ["all", "Todos"], ["ammo", "Munição"], ["vest", "Coletes"], ["machinegun", "Metralhadoras"],
@@ -75,6 +75,7 @@ function openMarket() {
   game.clicks = [];
   market.tab = "comprar";
   market.filter = "all";
+  market.filterOpen = false;
   market.page = 0;
   market.confirm = null;
   marketRefresh();
@@ -146,13 +147,11 @@ function drawMarket() {
   btn(W - 300, 84, 118, 34, "Atualizar", marketRefresh, false, locked || market.loading);
   btn(W - 170, 84, 110, 34, "Voltar", () => { game.menu = null; }, false, locked);
 
-  MARKET_FILTERS.forEach(([key, label], i) => {
-    const x = 60 + (i % 6) * 140, y = 126 + Math.floor(i / 6) * 32;
-    btn(x, y, 132, 27, label, () => {
-      market.filter = key;
-      market.page = 0;
-    }, market.filter === key, locked);
-  });
+  const selected = MARKET_FILTERS.findIndex(([key]) => key === market.filter);
+  btn(60, 127, 230, 32, "Categoria · " + MARKET_FILTERS[selected][1] + " ▾", () => {
+    market.filterOpen = true;
+    market.filterOffset = Math.min(selected, MARKET_FILTERS.length - MARKET_VISIBLE);
+  }, false, locked);
   const available = market.tab === "vender" ? marketInventory()
     : market.rows.filter(row => market.tab === "meus" ? row.meu : !row.meu);
   const entries = available.filter(({ item }) => market.filter === "all" || marketCategory(item) === market.filter);
@@ -183,6 +182,10 @@ function drawMarket() {
   txt(`Página ${market.page + 1} de ${last + 1}`, W / 2, 514, 13, "#c9c4ad", "center");
 
   if (game.marketBusy) txt("Processando operação…", W / 2, 550, 14, "#ffd96a", "center");
+  if (market.filterOpen) {
+    drawMarketDropdown();
+    return;
+  }
   if (!game.input && !market.confirm) return;
   ctx.fillStyle = "rgba(7,7,5,0.9)";
   ctx.fillRect(W / 2 - 210, 196, 420, 170);
@@ -198,4 +201,69 @@ function drawMarket() {
     btn(W / 2 - 155, 310, 140, 33, "Voltar", () => { market.confirm = null; });
     btn(W / 2 + 15, 310, 140, 33, "Confirmar", () => marketTrade(action, { anuncio: row.id }), true);
   }
+}
+
+const MARKET_VISIBLE = 5;
+
+function drawMarketDropdown() {
+  const x = 60, y = 162, width = 230, row = 32;
+  regClick(0, 0, W, H, () => { market.filterOpen = false; });
+  ctx.fillStyle = "#211f19";
+  ctx.fillRect(x, y, width, row * MARKET_VISIBLE);
+  MARKET_FILTERS.slice(market.filterOffset, market.filterOffset + MARKET_VISIBLE).forEach(([key, label], i) => {
+    btn(x, y + i * row, width - 8, row, label, () => {
+      market.filter = key;
+      market.page = 0;
+      market.filterOpen = false;
+    }, market.filter === key);
+  });
+  const unit = row * MARKET_VISIBLE / MARKET_FILTERS.length;
+  ctx.fillStyle = "#baa46c";
+  ctx.fillRect(x + width - 6, y + market.filterOffset * unit, 4, MARKET_VISIBLE * unit);
+}
+
+const saleMailState = { rows: [], next: 0, busy: false, loaded: false, error: false };
+window.addEventListener("fm-sales", ({ detail }) => {
+  const extra = detail.total - (Number(save.saleTotal) || 0);
+  save.bank += extra;
+  save.saleTotal = detail.total;
+  if (extra > 0) toast("Mercado Negro · venda creditada no banco: " + bankMoney(extra));
+  saleMailState.rows = detail.rows;
+  saleMailState.loaded = true;
+  saleMailState.error = false;
+});
+function pollSaleMail() {
+  if (!fmCloud.isActive() || saleMailState.busy || Date.now() < saleMailState.next) return;
+  saleMailState.busy = true;
+  saleMailState.next = Date.now() + 15000;
+  fmCloud.saleMail().catch(() => { saleMailState.error = true; }).finally(() => { saleMailState.busy = false; });
+}
+function saleMailEmpty() {
+  if (saleMailState.error) return "Correio indisponível";
+  return saleMailState.loaded ? "Nenhuma venda registrada" : "Buscando vendas…";
+}
+function drawSaleMail() {
+  pollSaleMail();
+  menuFrame("Caixa de correio", "Avisos de venda do Mercado Negro");
+  btn(W - 158, 74, 100, 32, "Voltar", () => { game.menu = null; });
+  if (!saleMailState.rows.length) txt(saleMailEmpty(), W / 2, 225, 16, "#c9c4ad", "center");
+  saleMailState.rows.forEach((row, i) => {
+    const y = 139 + 39 * i;
+    txt(marketItemName(row.item) + " vendido", 55, y, 15, "#eee5cb", "left", true, 355);
+    txt(bankMoney(row.price) + " no banco", 440, y, 14, "#a5c481", "left");
+    txt(new Date(row.sold_at).toLocaleString("pt-BR"), W - 60, y, 12, "#b6af9a", "right");
+  });
+}
+function drawSaleStatement() {
+  pollSaleMail();
+  const x = W - 202, y = 364;
+  ctx.fillStyle = "rgba(15,14,11,0.88)";
+  ctx.fillRect(x, y, 188, 186);
+  txt("Últimas 10 vendas", x + 9, y + 18, 13, "#dec180", "left", true);
+  if (!saleMailState.rows.length) txt(saleMailEmpty(), x + 9, y + 45, 11, "#b6af9a", "left");
+  saleMailState.rows.forEach((row, i) => {
+    const line = y + 38 + 15 * i;
+    txt(marketItemName(row.item), x + 9, line, 11, "#e4ddcd", "left", false, 98);
+    txt("+" + bankMoney(row.price), x + 180, line, 11, "#a5c481", "right", true, 72);
+  });
 }

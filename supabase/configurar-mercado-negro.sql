@@ -226,4 +226,53 @@ grant execute on function fm_market.listar(), public.fm_mercado_listar() to auth
 grant execute on function fm_market.operar(text, uuid, text, integer, integer, uuid, uuid),
   public.fm_mercado_operar(text, uuid, text, integer, integer, uuid, uuid) to authenticated;
 
+-- A compra, o depósito e o recibo são confirmados na mesma transação.
+alter table fm_market.listings add column if not exists sold_at timestamptz;
+create index if not exists fm_market_statement_idx on fm_market.listings(seller, sold_at desc) where sold_at is not null;
+create table if not exists fm_market.bank_sync(
+  seller uuid primary key references auth.users(id) on delete cascade,
+  previous_revisions uuid[] not null, credited_revision uuid not null
+);
+alter table fm_market.bank_sync enable row level security;
+
+create or replace function fm_market.deposit_sale() returns trigger
+language plpgsql security definer set search_path='' as $$
+declare
+  current_save public.fm_partidas%rowtype;
+  next_revision uuid := gen_random_uuid();
+  new_bank numeric;
+begin
+  select * into strict current_save from public.fm_partidas where jogador=new.seller for update;
+  new_bank := coalesce((current_save.progresso->>'bank')::numeric,0) + new.price;
+  update public.fm_partidas set progresso = current_save.progresso || jsonb_build_object(
+    'bank',new_bank,'saleTotal',coalesce((current_save.progresso->>'saleTotal')::numeric,0)+new.price
+  ), revisao=next_revision where jogador=new.seller;
+  insert into fm_market.bank_sync as b values(new.seller,array[current_save.revisao],next_revision)
+    on conflict(seller) do update set previous_revisions=case when b.credited_revision=current_save.revisao
+      then array_append(b.previous_revisions,current_save.revisao) else array[current_save.revisao] end, credited_revision=next_revision;
+  new.sold_at := clock_timestamp();
+  new.state := 'closed';
+  return new;
+end $$;
+revoke all on function fm_market.deposit_sale() from public, anon, authenticated;
+drop trigger if exists deposit_sale on fm_market.listings;
+create trigger deposit_sale before update on fm_market.listings for each row
+when (old.state='open' and new.state='sold' and old.sold_at is null) execute function fm_market.deposit_sale();
+
+create or replace function fm_market.mail(client_revision uuid) returns jsonb
+language sql stable security definer set search_path='' as $$
+select jsonb_build_object('revision',p.revisao,'related',coalesce(b.credited_revision=p.revisao and client_revision=any(b.previous_revisions),false),
+  'total',coalesce(p.progresso->'saleTotal','0'::jsonb),'rows',coalesce((
+    select jsonb_agg(to_jsonb(s) order by s.sold_at desc,s.id desc) from (
+      select id,item,price,sold_at from fm_market.listings where seller=p.jogador and sold_at is not null
+      order by sold_at desc,id desc limit 10
+    ) s), '[]'::jsonb))
+from public.fm_partidas p left join fm_market.bank_sync b on b.seller=p.jogador
+where p.jogador=auth.uid() and not public.fm_esta_banido(p.jogador)
+$$;
+create or replace function public.fm_correio_vendas(client_revision uuid) returns jsonb language sql stable security invoker
+set search_path='' as $$ select fm_market.mail(client_revision) $$;
+revoke all on function fm_market.mail(uuid),public.fm_correio_vendas(uuid) from public,anon;
+grant execute on function fm_market.mail(uuid),public.fm_correio_vendas(uuid) to authenticated;
+
 commit;

@@ -27,6 +27,7 @@ function loadSave() {
     const s = JSON.parse(storeGet());
     if (!s) return;
     save.bank = s.bank || 0;
+    save.saleTotal = Number(s.saleTotal) || 0;
     save.run = s.run && s.run.v === 1 ? s.run : null; // checkpoint da partida
     if (Array.isArray(s.vault)) save.vault = s.vault.filter(validItem).slice(0, VAULT_MAX);
     else if (Array.isArray(s.stash)) save.vault = s.stash.map((v, i) => (v && OLD_IDS[i] ? newInst(OLD_IDS[i]) : null)).filter(Boolean); // save antigo

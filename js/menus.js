@@ -547,6 +547,7 @@ function drawMenu() {
   else if (game.menu === "sector") drawSector();
   else if (game.menu === "junk") drawJunk();
   else if (game.menu === "market") drawMarket();
+  else if (game.menu === "saleMail") drawSaleMail();
   else if (game.menu === "creditshop") drawCreditShop();
   else if (game.menu === "admin") drawAdmin();
   else if (game.menu === "travel") drawTravel();
@@ -627,6 +628,7 @@ function drawBank() {
     link(c.act, c.x, 418, () => { game.input = null; c.go(amount); }, typing && amount > 0);
     link(c.all, c.x, 456, () => { game.input = null; c.allFn(); }, c.val > 0);
   });
+  drawSaleStatement();
   hint("Clique no campo, digite o valor e Enter  ·  D/S digitar · A/T tudo  ·  E, B ou Esc fecha");
   if (game.input && game.input.mode === "credits") {
     const mode = game.input.mode, dep = mode === "deposit";

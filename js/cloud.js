@@ -88,6 +88,7 @@ const fmCloud = (() => {
     user = account;
     snapshot = data ? JSON.stringify(data.progresso) : null;
     revision = data ? data.revisao : null;
+    saleTotal = Number(data?.progresso?.saleTotal) || 0;
     pending = Promise.resolve();
   }
   async function resume() {
@@ -109,6 +110,24 @@ const fmCloud = (() => {
     await openSession(data.user);
     return true;
   }
+  let saleTotal = 0;
+  async function syncSales() {
+    const uid = user?.id;
+    if (!uid) return null;
+    const { data, error } = await requireClient().rpc("fm_correio_vendas", { client_revision: revision });
+    if (error) throw friendly(error);
+    if (!data || user?.id !== uid) return null;
+    if (data.revision !== revision && !data.related) return null;
+    revision = data.revision;
+    saleTotal = Number(data.total) || 0;
+    window.dispatchEvent(new CustomEvent("fm-sales", { detail: data }));
+    return data;
+  }
+  function saleMail() {
+    const result = pending.then(syncSales);
+    pending = result.catch(() => {});
+    return result;
+  }
   function write(str) {
     if (!user) return Promise.reject(new Error("Entre na sua conta para salvar."));
     let progress;
@@ -120,9 +139,16 @@ const fmCloud = (() => {
       const nextRevision = crypto.randomUUID();
       let result;
       if (revision) {
-        result = await db.from("fm_partidas")
+        const saveCurrent = () => {
+          const extra = saleTotal - (Number(progress.saleTotal) || 0);
+          progress.bank = (Number(progress.bank) || 0) + extra;
+          progress.saleTotal = saleTotal;
+          return db.from("fm_partidas")
           .update({ progresso: progress, revisao: nextRevision })
           .eq("jogador", userId).eq("revisao", revision).select("revisao");
+        };
+        result = await saveCurrent();
+        if (!result.error && !result.data?.length && await syncSales()) result = await saveCurrent();
       } else {
         result = await db.from("fm_partidas")
           .insert({ jogador: userId, progresso: progress, revisao: nextRevision }).select("revisao");
@@ -130,7 +156,7 @@ const fmCloud = (() => {
       if (result.error) throw friendly(result.error);
       if (!result.data || result.data.length !== 1 || result.data[0].revisao !== nextRevision)
         throw new Error("Esta partida foi alterada em outra aba ou dispositivo. Saia e entre novamente antes de salvar.");
-      snapshot = str;
+      snapshot = JSON.stringify(progress);
       revision = nextRevision;
     });
     pending = operation.catch(() => {});
@@ -229,7 +255,7 @@ const fmCloud = (() => {
   }
   return { resume, login, logout, resend, ping,
     sendPasswordRecovery, observeAuth, recoverySession, changeRecoveredPassword,
-    write, marketAction, read: () => snapshot, isActive: () => !!user, isAdmin: () => !!user && userIsAdmin, hasOnlineSave: () => revision !== null,
+    write, saleMail, marketAction, read: () => snapshot, isActive: () => !!user, isAdmin: () => !!user && userIsAdmin, hasOnlineSave: () => revision !== null,
     userId: () => user ? user.id : null, socialClient: () => client,
     // administrador: o servidor confere a permissão em cada chamada
     ban: (uid, dias, motivo) => rpc("fm_banir", { alvo: uid, dias: dias || null, motivo: motivo || "" }),
