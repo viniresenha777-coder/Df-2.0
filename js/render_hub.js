@@ -269,9 +269,6 @@ function drawHub() {
   hubBar(bx, 150, bw, "Vida", player.hp, player.maxHp, "#6fd06a");
   hubBar(bx, 182, bw, "Fome", player.hunger, 100, "#e0a040");
   hubBar(bx, 214, bw, "Sede", player.thirst, 100, "#4aa3df");
-  hubBar(bx, 246, bw, "Energia", player.stamina, 100, "#e0d040");
-  txt(`Comida ${player.food} · Água ${player.water}`, bx, 278, 10, "#a9a58f");
-  txt(`Kit ${player.med} · Antib. ${player.anti}`, bx, 292, 10, "#a9a58f");
   if (save.vest >= 0) {
     const vd = Math.round(vestDur()), hov = mouse.x >= bx && mouse.x <= bx + bw && mouse.y >= 296 && mouse.y <= 312;
     txt(vd < 100 ? `Colete ${vd}% · consertar $${Math.max(1, repairCost())}` : `Colete ${vd}%`, bx, 308, 10, vd < 100 ? (hov ? "#ffd96a" : "#e0a040") : "#a9a58f", "left", true, bw);
