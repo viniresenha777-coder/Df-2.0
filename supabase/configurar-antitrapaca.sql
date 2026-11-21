@@ -12,7 +12,7 @@
 --   * Créditos: só sobem se o banco pagou ($500 por crédito) — no máximo isso.
 --   * VIP (vipUntil): só aumenta se foram gastos créditos (200 por mês) ou se chegou um presente de VIP.
 --   * Dinheiro (banco + mochila): ganho máximo por salvamento, proporcional ao tempo jogado, mais presentes.
---   * Nível: no máximo 3 níveis por salvamento + 20 por hora; nunca acima de 200.
+--   * Nível: o jogo grava a cada subida de nível; mais de 3 níveis num salvamento é desfeito inteiro.
 begin;
 
 alter table public.fm_partidas
@@ -132,11 +132,11 @@ begin
   end if;
 
   -- 5) nível
-  permitido := least(200, nivel0 + 3 + floor(20 * horas));
-  if nivel1 > permitido or nivel1 > 200 then
-    depois := jsonb_set(depois, '{char,level}', to_jsonb(least(permitido, 200)));
-    depois := jsonb_set(depois, '{char,xp}', '0');
-    motivos := motivos || format('nível %s -> %s (máximo %s)', nivel0, nivel1, permitido);
+  -- o jogo grava a cada subida de nível: mais de 3 níveis num salvamento é impossível e é desfeito inteiro
+  -- (nível, XP e pontos voltam ao salvamento anterior)
+  if nivel1 > least(200, nivel0 + 3) then
+    depois := jsonb_set(depois, '{char}', coalesce(antes->'char', depois->'char'));
+    motivos := motivos || format('nível %s -> %s (desfeito)', nivel0, nivel1);
   end if;
 
   if array_length(motivos, 1) > 0 then

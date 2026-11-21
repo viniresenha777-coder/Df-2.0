@@ -135,9 +135,11 @@ function gainXp(n) {
   if (up) {
     recalcImplants(); player.hp = Math.min(player.maxHp, player.hp + 10 * up);
     sfx.level();
-    game.banner = { text: `Nível ${player.level}!`, sub: "Aperte C para distribuir seus pontos", t: 2600, gold: true };
+    game.banner = { text: `Nível ${player.level}!`, sub: "Distribua seus pontos em Atributos, na base", t: 2600, gold: true };
   }
   syncChar();
+  // cada subida de nível grava o save completo na hora (o servidor só aceita poucos níveis por salvamento)
+  if (up && typeof checkpoint === "function") checkpoint("subiu de nível");
 }
 
 // ---------- Fome, sede, kit médico ----------
