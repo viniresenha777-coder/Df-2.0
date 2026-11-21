@@ -51,6 +51,7 @@ fotos em `img/clothing/cl_*.png`). Licença: <http://creativecommons.org/license
 | Máscara HOPE | [HOPE MASK // The Last Face](https://sketchfab.com/3d-models/hope-mask-the-last-face-8fdaf40c84c748ea90403bddd95dd839) | 6 ([Atahan.Danaci](https://sketchfab.com/Atahan.Danaci)) |
 | Máscara Vendetta | [Vendetta Mask](https://sketchfab.com/3d-models/vendetta-mask-3f7f3d843930459aad28bb790c9ed9a8) | [mathewdc](https://sketchfab.com/mathewdc) |
 | Moletom com capuz | [t shirt hoodie 3d model](https://sketchfab.com/3d-models/t-shirt-hoodie-3d-model-fd8d10eb5f5748e581ca6bd0db2abcce) | [harb-ayyad](https://sketchfab.com/harb-ayyad) |
+| Calça Cargo | [Male Cargo pants](https://sketchfab.com/3d-models/male-cargo-pants-3b54687837684dfea0552291c0ab88bc) | [Alexander Kurmanin](https://sketchfab.com/kurmanin) |
 
 Recebidos e não usados: **test-calca** (zebra3dfashion) é CC BY-NC (proíbe uso comercial); **raincoat coat** (DEYMAR) e
 **Speaker Harmer Body** (Freaky Gamer), ambos CC BY, ainda não encaixam no corpo (mangas / esqueleto próprio).

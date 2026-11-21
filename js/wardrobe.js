@@ -21,7 +21,7 @@ for (const set of CLOTHING_SETS) {
 // layer = camada img/gear/<layer>_<pose>.png e img/portrait_<layer>.png desenhada por cima do corpo;
 // icon = foto da própria peça. Peças 3D não pintam o corpo (a camada já tem a cor do modelo).
 // versão das imagens do personagem (corpo, camadas, retrato, fotos): troca quando o personagem é renderizado de novo
-const CHAR_V = "?v=roger13";
+const CHAR_V = "?v=roger14";
 const W3D = (id, kind, layer, name, setName) => ({ id, kind, set: "3d", setName, name, layer, icon: `img/clothing/${layer}.png${CHAR_V}`, color: "#6a6658", accent: "#8a8672", texture: "canvas" });
 // capa com capuz (manto medieval) vestida no Roger, com física de pano na caminhada
 // máscara HOPE // The Last Face (CC-BY, Atahan.Danaci): andando, os olhos deixam rastros de brilho (perspective.js)
@@ -35,7 +35,9 @@ const IMPORTED_CLOTHING = [W3D("cape_hood", "cape", "cape_hood", "Capa com capuz
   W3D("cl_boots_sapatos_couro", "boots", "cl_boots_sapatos_couro", "Sapatos de Couro", "Calçados"),
   W3D("cl_jacket_corrupted", "jacket", "cl_jacket_corrupted", "Moletom Corrupted", "Corrupted"),
   W3D("cl_pants_corrupted", "pants", "cl_pants_corrupted", "Calça Corrupted", "Corrupted"),
-  W3D("cl_pants_baked", "pants", "cl_pants_baked", "Calça Baked", "Baked")];
+  W3D("cl_pants_baked", "pants", "cl_pants_baked", "Calça Baked", "Baked"),
+  // calça cargo masculina (CC-BY, Alexander Kurmanin): encaixada à mão no Roger e presa ao esqueleto
+  W3D("cl_pants_cargo", "pants", "cl_pants_cargo", "Calça Cargo", "Cargo")];
 // camada 3D da peça equipada (ou null)
 function clothingLayer(kind, equipment) {
   const item = clothingGet(kind, equipment);
