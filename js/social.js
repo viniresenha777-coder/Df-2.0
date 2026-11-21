@@ -343,7 +343,8 @@ function drawOnlinePlayer(p) {
     // A calça e os calçados equipados vêm do estado do jogador remoto.
     const pants = clothingLayer("pants", p.clothing);
     const boots = clothingLayer("boots", p.clothing);
-    const gear = [boots, pants, "pack", ...(SKIN_GEAR[skin] || [])].filter(Boolean);
+    const jacket = clothingLayer("jacket", p.clothing);
+    const gear = [boots, pants, jacket, "pack", ...(SKIN_GEAR[skin] || [])].filter(Boolean);
     for (const id of gearOrder(gear, row !== 3 && row !== 4 && row !== 5)) {
       const layer = gearImg(id, pose);
       if (layer) ctx.drawImage(layer, col * cell, row * cell, cell, cell, x, y, S, S);

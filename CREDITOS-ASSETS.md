@@ -84,3 +84,7 @@ A **Calça Cargo Futurista** usa o modelo e as texturas de Alexander Kurmanin, f
 
 - **Tênis Brancos** baseados em [White Shoes 02](https://sketchfab.com/3d-models/white-shoes-02-d90391467f8c4ebe97754aa3493451c1), de [blenderguppy](https://sketchfab.com/blenderguppy), sob [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Modelo ajustado ao Roger e convertido em sprites.
 - **Sapatos de Couro** usam o modelo e as texturas fornecidos em `wood-shoes.zip`.
+
+Moletom e calça adaptados de [Corrupted Hoodie and Pants](https://sketchfab.com/3d-models/corrupted-hoodie-and-pants-73307af93cc843bb8f59f6c135c2188b), de [Liam Moffitt](https://sketchfab.com/divadan), sob [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Ajuste ao Roger e conversão em sprites.
+
+Calça adaptada de [Pants Baked Ver](https://sketchfab.com/3d-models/pants-baked-ver-ab60ac3b282e446ba3987fa936b13d9d), de [ChamberSu1996](https://sketchfab.com/chambersu1996), sob [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Ajuste ao Roger e conversão em sprites.

@@ -32,7 +32,10 @@ const IMPORTED_CLOTHING = [W3D("cape_hood", "cape", "cape_hood", "Capa com capuz
   W3D("cl_moletom", "jacket", "cl_moletom", "Moletom com capuz", "Moletom"),
   W3D("cl_pants_cargo_futurista", "pants", "cl_pants_cargo_futurista", "Calça Cargo Futurista", "Cargo"),
   W3D("cl_boots_tenis_brancos", "boots", "cl_boots_tenis_brancos", "Tênis Brancos", "Calçados"),
-  W3D("cl_boots_sapatos_couro", "boots", "cl_boots_sapatos_couro", "Sapatos de Couro", "Calçados")];
+  W3D("cl_boots_sapatos_couro", "boots", "cl_boots_sapatos_couro", "Sapatos de Couro", "Calçados"),
+  W3D("cl_jacket_corrupted", "jacket", "cl_jacket_corrupted", "Moletom Corrupted", "Corrupted"),
+  W3D("cl_pants_corrupted", "pants", "cl_pants_corrupted", "Calça Corrupted", "Corrupted"),
+  W3D("cl_pants_baked", "pants", "cl_pants_baked", "Calça Baked", "Baked")];
 // camada 3D da peça equipada (ou null)
 function clothingLayer(kind, equipment) {
   const item = clothingGet(kind, equipment);
