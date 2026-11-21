@@ -265,12 +265,9 @@ function drawHub() {
     ctx.fillStyle = shade(cp.color, -0.15); ctx.beginPath(); ctx.moveTo(hx - 26, hy - 58); ctx.lineTo(hx + 26, hy - 58); ctx.lineTo(hx + 44 + sw, hy + 62); ctx.lineTo(hx - 44 + sw, hy + 62); ctx.closePath(); ctx.fill();
     if (cp.trim) { ctx.fillStyle = cp.trim; ctx.fillRect(hx - 44 + sw, hy + 58, 88, 4); }
   };
-  // boneco 3D: arrastar gira; clicar abre o inventário. A capa vai atrás de frente e por cima de costas.
-  const openInv = () => { game.menu = "pack"; game.cur = 0; };
   if (portraitView() === "front") cape();
-  if (!drawPortrait(hx, hy + 6, 128, 196, openInv) && !drawSpr(skin.spr, hx, hy, 120, 196)) drawHero(hx, hy, 0.95);
+  if (!drawPortrait(hx, hy + 6, 128, 196, null, 64 + (links.length - 1) * 17 + 5) && !drawSpr(skin.spr, hx, hy, 120, 196)) drawHero(hx, hy, 0.95);
   if (portraitView() === "back") cape();
-  regClick(px + 10, hy - 100, 128, 200, openInv);   // clicar no boneco abre o inventário
   // estado do personagem, por cima do retrato: nome em cima, valor embaixo (Fome, Sede, Vida, Colete)
   const sx = px + pw - 48, stat = (label, value, color, y) => {
     shadowTxt(label, sx, y, 13, color, "center", true, 90);

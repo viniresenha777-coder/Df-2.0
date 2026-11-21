@@ -112,12 +112,13 @@ function portraitView() {
 }
 // desenha o retrato centrado na caixa; devolve false se a imagem não existe (usa o desenho antigo).
 // Arrastar sobre ele gira o boneco; onClick (opcional) roda com um clique sem arrastar.
-function drawPortrait(cx, cy, maxW, maxH, onClick) {
+function drawPortrait(cx, cy, maxW, maxH, onClick, minDragY = -Infinity) {
   const c = portraitCanvas();
   if (!c) return false;
   const b = PORTRAIT.box, k = Math.min(maxW / b.w, maxH / b.h), w = b.w * k, h = b.h * k;
   ctx.drawImage(c, portraitFrame() * PORTRAIT.fw + b.x, b.y, b.w, b.h, cx - w / 2, cy - h / 2, w, h);
-  PSPIN.hit = { x: cx - maxW / 2, y: cy - h / 2, w: maxW, h, onClick, t: performance.now() };
+  const top = Math.max(cy - h / 2, minDragY);
+  PSPIN.hit = { x: cx - maxW / 2, y: top, w: maxW, h: cy + h / 2 - top, onClick, t: performance.now() };
   return true;
 }
 function portraitMouseDown(x, y) {
