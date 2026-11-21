@@ -390,6 +390,15 @@ for (const id of ["sucata", "pecas"]) { const im = new Image(); im.src = `img/ma
 // Token da Loja: raríssimo em qualquer saque (chance fixa, nenhum bônus do jogo aumenta). Arrastado até o
 // personagem, deixa a Loja da base de graça por 1 dia.
 const TOKEN_LOJA_CHANCE = 0.0001, TOKEN_LOJA_MS = 24 * 3600 * 1000;
+function tokenAmmoCount(value, total) {
+  return Math.min(Math.max(0, Math.floor(total || 0)), Number.isSafeInteger(value) ? Math.max(0, value) : 0);
+}
+function tokenAmmoInReserve(type) {
+  return tokenAmmoCount(player.tokenReserve[type], player.reserve[type]);
+}
+function tradableReserve(type) {
+  return player.reserve[type] - tokenAmmoInReserve(type);
+}
 function shopFree() { return (Number(save.shopFreeUntil) || 0) > Date.now(); }
 function drawMatIcon(id, cx, cy, s) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
