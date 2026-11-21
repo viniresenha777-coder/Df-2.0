@@ -560,21 +560,74 @@ function drawMenu() {
   if (game.menu !== "admin" && game.menu !== "craft") menuToast();
 }
 
+// Tela do banco: cenário escuro da cidade, o prédio do banco, a fala do guarda-livros e os dois saldos
+// com campo de valor (clique no campo, digite, Enter ou "depositar"/"sacar"). Créditos e VIP embaixo.
+const BANK_BG = new Image(); BANK_BG.src = "img/fm_exterior.webp?v=20261116-interior2";
+const BANK_ART = new Image(); BANK_ART.src = "img/bank_art.webp?v=20261121-banco01";
+function bankMoney(v) { return "$" + Math.max(0, Math.floor(v || 0)).toLocaleString("pt-BR"); }
 function drawBank() {
-  menuFrame("Banco", `Mochila: $${game.money}  ·  Banco: $${save.bank}  ·  Créditos: ${save.credits}  ·  VIP: ${vipStatus()}`);
-  txt("O dinheiro do banco não se perde quando você morre. Só dá para usar o banco dentro de um posto.", W / 2, 100, 13, "#a9a58f", "center");
-  const rows = [["D", "Depositar (digitar valor)"], ["A", "Depositar tudo"], ["S", "Sacar (digitar valor)"], ["T", "Sacar tudo"],
-                ["C", `Comprar créditos ($${CREDIT_PRICE} cada)`], ["G", `Ativar VIP por 1 mês (${GM_COST} créditos)`]];
-  rows.forEach(([key, label], i) => {
-    const x = i % 2 === 0 ? 100 : 500, y = 124 + Math.floor(i / 2) * 60;
-    rowBox(x, y, 360, 50, false, i >= 4 ? "#d4af37" : null);
-    txt(`${key}  ${label}`, x + 16, y + 31, 16, "#e5e0c8", "left", true);
+  // fundo: cidade em ruínas, escurecida, com bordas mais escuras
+  ctx.fillStyle = "#070605"; ctx.fillRect(0, 0, W, H);
+  if (BANK_BG.complete && BANK_BG.naturalWidth) {
+    const k = Math.max(W / BANK_BG.naturalWidth, H / BANK_BG.naturalHeight);
+    ctx.globalAlpha = 0.85;
+    ctx.drawImage(BANK_BG, (W - BANK_BG.naturalWidth * k) / 2, (H - BANK_BG.naturalHeight * k) / 2, BANK_BG.naturalWidth * k, BANK_BG.naturalHeight * k);
+    ctx.globalAlpha = 1;
+  }
+  const vg = ctx.createRadialGradient(W / 2, H / 2, 120, W / 2, H / 2, 560);
+  vg.addColorStop(0, "rgba(0,0,0,0.35)"); vg.addColorStop(1, "rgba(0,0,0,0.9)");
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(150,90,40,0.55)"; ctx.lineWidth = 2; rr(14, 10, W - 28, H - 20, 8); ctx.stroke();
+  // título vermelho, com sombra
+  ctx.save();
+  ctx.font = "bold 40px Impact, 'Arial Black', sans-serif"; ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillText("BANCO", W / 2 + 2, 56);
+  ctx.fillStyle = "#b3201a"; ctx.fillText("BANCO", W / 2, 54);
+  ctx.restore();
+  txt(`Créditos: ${save.credits.toLocaleString("pt-BR")}  ·  VIP: ${vipStatus()}`, W - 34, 34, 12, "#8f8a72", "right");
+  // o prédio do banco, com as bordas sumindo no escuro
+  const aw = 384, ah = 146, ax = (W - aw) / 2, ay = 70;
+  if (BANK_ART.complete && BANK_ART.naturalWidth) {
+    ctx.drawImage(BANK_ART, ax, ay, aw, ah);
+    const fade = (x0, y0, x1, y1, ox, oy, w, h) => {
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, "rgba(7,6,5,1)"); g.addColorStop(1, "rgba(7,6,5,0)");
+      ctx.fillStyle = g; ctx.fillRect(ox, oy, w, h);
+    };
+    fade(ax, 0, ax + 60, 0, ax, ay, 60, ah); fade(ax + aw, 0, ax + aw - 60, 0, ax + aw - 60, ay, 60, ah);
+    fade(0, ay + ah, 0, ay + ah - 40, ax, ay + ah - 40, aw, 40); fade(0, ay, 0, ay + 24, ax, ay, aw, 24);
+  }
+  // fala do dono do banco
+  txtWrap("Um homem enorme, de braços cruzados atrás de um balcão blindado, te encara antes de falar: — Tenho seis homens " +
+    "armados vigiando este lugar dia e noite. O seu dinheiro está seguro aqui, mesmo que você não volte da rua. " +
+    "Só não me peça juros: isso acabou junto com o resto do mundo.", 210, 246, 14, "#e8e2cc", 540, 19, 5);
+  // os dois saldos, cada um com o seu campo de valor
+  const inp = game.input, cols = [
+    { x: W / 2 - 150, label: "Na mochila", val: game.money, mode: "deposit", act: "depositar", all: "depositar tudo",
+      go: (a) => deposit(a), allFn: () => deposit(game.money) },
+    { x: W / 2 + 150, label: "No banco", val: save.bank, mode: "withdraw", act: "sacar", all: "sacar tudo",
+      go: (a) => withdraw(a), allFn: () => withdraw(save.bank) }
+  ];
+  const hov = (x, y, w, h) => mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h;
+  const link = (label, x, y, fn, on) => {
+    ctx.font = `bold 14px ${FONT}`; const w = ctx.measureText(label).width + 12, h = hov(x - w / 2, y - 15, w, 20);
+    txt(label, x, y, 14, !on ? "#6b4a40" : h ? "#ffd2c4" : "#e0a090", "center", true);
+    if (on) regClick(x - w / 2, y - 15, w, 20, fn);
+  };
+  cols.forEach((c) => {
+    txt(`${c.label}: ${bankMoney(c.val)}`, c.x, 362, 15, "#d8c9a4", "center", true);
+    const bw = 170, bh = 26, bx = c.x - bw / 2, by = 372, typing = inp && inp.mode === c.mode;
+    ctx.fillStyle = typing ? "#2b2a25" : "#1b1a17"; ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = typing ? "#d4af37" : hov(bx, by, bw, bh) ? "#8a826a" : "#4a473d"; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+    const shown = typing ? (inp.text ? Number(inp.text).toLocaleString("pt-BR") : "") + (Math.floor(performance.now() / 500) % 2 ? "|" : "") : "0";
+    txt(shown, c.x, by + 18, 14, typing ? "#f2eedc" : "#7d7866", "center", true);
+    regClick(bx, by, bw, bh, () => { game.input = { mode: c.mode, text: "" }; });
+    const amount = typing ? parseInt(inp.text || "0", 10) : 0;
+    link(c.act, c.x, 418, () => { game.input = null; c.go(amount); }, typing && amount > 0);
+    link(c.all, c.x, 456, () => { game.input = null; c.allFn(); }, c.val > 0);
   });
-  txt(`VIP (${GM_COST} créditos = $${CREDIT_PRICE * GM_COST}, pagos com o saldo do banco) — benefícios durante o VIP:`, W / 2, 332, 15, "#d4af37", "center", true);
-  txt("+100% de chance de corpos para saquear · +100% de XP · +60% de saque nos lugares vasculháveis", W / 2, 360, 14, "#a9a58f", "center");
-  txt("+100% de munição · +100% de dinheiro · armas lendárias podem aparecer nos saques (teclas 9 e 0)", W / 2, 382, 14, "#a9a58f", "center");
-  hint("E, B ou Esc fecha");
-  if (game.input) {
+  hint("Clique no campo, digite o valor e Enter  ·  D/S digitar · A/T tudo  ·  E, B ou Esc fecha");
+  if (game.input && game.input.mode === "credits") {
     const mode = game.input.mode, dep = mode === "deposit";
     ctx.fillStyle = "rgba(0,0,0,0.95)"; rr(220, 200, 520, 180, 10); ctx.fill();
     ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 2; ctx.stroke();
