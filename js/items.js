@@ -139,6 +139,7 @@ const OLD_IDS = ["pistola", "ak47", "deagle", "katana", "uzi", "escopeta", "snip
 const MATS = {
   reset_stats: { name: "Cartão Reset de Stats", price: 5000 },
   trindade_eterna: { name: "Trindade · 100 anos", price: 20000000 },
+  token_loja: { name: "Token da Loja", price: 0 },
   sucata:      { name: "Sucata de metal",          price: 40 },
   pecas:       { name: "Peças de arma",            price: 90 },
   eletronicos: { name: "Componentes eletrônicos",  price: 140 },
@@ -385,6 +386,11 @@ TRINDADE_ICON.src = "img/trindade_icon.webp?v=20261116-highres1";
 // foto de alguns materiais (img/mats/<id>.png, 160x120); sem a imagem carregada, usa o desenho em código
 const MAT_ART = {};
 for (const id of ["sucata", "pecas"]) { const im = new Image(); im.src = `img/mats/${id}.png?v=20261120-mats03`; MAT_ART[id] = im; }
+{ const im = new Image(); im.src = "img/token_loja.webp?v=20261121-token01"; MAT_ART.token_loja = im; }
+// Token da Loja: raríssimo em qualquer saque (chance fixa, nenhum bônus do jogo aumenta). Arrastado até o
+// personagem, deixa a Loja da base de graça por 1 dia.
+const TOKEN_LOJA_CHANCE = 0.0001, TOKEN_LOJA_MS = 24 * 3600 * 1000;
+function shopFree() { return (Number(save.shopFreeUntil) || 0) > Date.now(); }
 function drawMatIcon(id, cx, cy, s) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
   const art = MAT_ART[id];

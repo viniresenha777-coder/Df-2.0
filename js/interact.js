@@ -218,6 +218,7 @@ function spotLootPrepared(spot) {
     const found = spot.table === "boss" ? bossLoot(spot.bossId, zone) : rollLoot(spot.table, zone);
     const dz = deadZoneDrop(zone);
     if (dz) found.push(dz);
+    if (Math.random() < TOKEN_LOJA_CHANCE) found.push({ type: "mat", id: "token_loja", amt: 1 });   // chance fixa, sem bônus
     spot.preparedLoot = found;
     spot.preparedAt = now;
   }

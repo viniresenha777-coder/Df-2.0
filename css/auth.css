@@ -6,7 +6,7 @@ body {
   background: #070b0a url("../img/fm_exterior.webp?v=20261116-outside2") center / cover no-repeat fixed;
 }
 .fm-auth {
-  min-height: 100svh; display: grid; place-items: center;
+  min-height: 100svh; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 28px;
   background: rgba(7, 11, 10, .12);
   padding: 24px; box-sizing: border-box; color: #e9e7d7;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -45,3 +45,21 @@ body {
 }
 .fm-auth-return:hover { color: #f2d780; }
 .fm-auth-panel > p#reset-success { color: #b8dfad; line-height: 1.5; font-size: 14px; }
+
+/* anúncio do Token da Loja ao lado do login */
+.fm-auth[hidden] { display: none !important; }
+.fm-token-ad {
+  width: min(100%, 300px); padding: 22px 22px 20px; text-align: center; box-sizing: border-box;
+  background: radial-gradient(circle at 50% 30%, rgba(40, 90, 50, .55), rgba(11, 17, 14, .96) 70%);
+  border: 1px solid #c9a23a; border-radius: 14px; box-shadow: 0 0 34px rgba(212, 175, 55, .25), 0 25px 80px #000b;
+}
+.fm-token-tag { margin: 0 0 6px; color: #ffd96a; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; }
+.fm-token-ad img { width: 170px; height: 170px; display: block; margin: 4px auto 6px;
+  filter: drop-shadow(0 0 14px rgba(255, 210, 90, .45)); animation: fm-token-float 3.2s ease-in-out infinite; }
+.fm-token-ad h2 { margin: 4px 0 8px; color: #f3e9b5; font-size: 22px; letter-spacing: .06em; }
+.fm-token-txt { margin: 0 0 10px; color: #dcdcca; font-size: 14px; line-height: 1.5; }
+.fm-token-txt strong { color: #ffd96a; }
+.fm-token-odds { margin: 0; color: #a9a58f; font-size: 12px; line-height: 1.45; }
+.fm-token-odds strong { color: #e0402a; }
+@keyframes fm-token-float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-7px) rotate(2deg); } }
+@media (prefers-reduced-motion: reduce) { .fm-token-ad img { animation: none; } }

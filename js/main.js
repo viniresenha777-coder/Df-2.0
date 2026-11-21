@@ -100,6 +100,17 @@ function resetStatsWithCredits() {
   resetAttrsCore("reset de atributos com créditos");
 }
 
+// Token da Loja: a Loja da base fica de graça por 1 dia (soma, se já estiver ativo).
+function useTokenLoja() {
+  const it = player.pack.find(x => x && x.kind === "mat" && x.id === "token_loja" && x.qty > 0);
+  if (!it) { toast("Você não possui um Token da Loja."); return; }
+  it.qty--;
+  if (!it.qty) player.pack.splice(player.pack.indexOf(it), 1);
+  save.shopFreeUntil = Math.max(Date.now(), Number(save.shopFreeUntil) || 0) + TOKEN_LOJA_MS;
+  checkpoint("Token da Loja ativado");
+  sfx.level();
+  toast("Token da Loja ativado: a Loja da base está de graça até " + new Date(save.shopFreeUntil).toLocaleString("pt-BR"));
+}
 // Consumo da Trindade: 100 anos de calendário desde a ativação.
 function useTrindadeItem() {
   const it = player.pack.find(x => x && x.kind === "mat" && x.id === "trindade_eterna" && x.qty > 0);

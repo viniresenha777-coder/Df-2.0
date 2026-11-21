@@ -5,7 +5,7 @@
 // =====================================================================
 const SAVE_KEY = "fronteira-morta";
 const save = {
-  bank: 0, vault: [], installed: [], credits: 0, gm: false, vipUntil: 0, trindadeUntil: 0, missions: [], receivedGifts: [], inbox: [],
+  bank: 0, vault: [], installed: [], credits: 0, gm: false, vipUntil: 0, trindadeUntil: 0, shopFreeUntil: 0, missions: [], receivedGifts: [], inbox: [],
   vest: -1, clothing: { jacket: null, pants: null, boots: null }, outposts: OUTPOSTS.map((o, i) => i === 0), muted: false, hud: 0, skin: 0, cape: 0, prof: null, name: "", classicChar: false, vestDur: {}, vestUpgrades: {}, music: true, gfx: 2, ambientVolume: 0.55, brightness: 1.0,
   stats: {}, story: 0, ach: {}, daily: null, coll: [], vestsOwned: VESTS.map(() => false), vestVer: 2,
   char: { level: 1, xp: 0, points: 0, wpoints: 0, attrs: defaultAttrs() }
@@ -34,6 +34,7 @@ function loadSave() {
     save.credits = s.credits || 0; save.gm = !!s.gm;
     save.vipUntil = Number.isFinite(s.vipUntil) && s.vipUntil > 0 ? Math.floor(s.vipUntil) : 0;
     save.trindadeUntil = Number.isFinite(s.trindadeUntil) && s.trindadeUntil > 0 ? Math.floor(s.trindadeUntil) : 0;
+    save.shopFreeUntil = Number.isFinite(s.shopFreeUntil) && s.shopFreeUntil > 0 ? Math.floor(s.shopFreeUntil) : 0;
     save.inbox = Array.isArray(s.inbox)
       ? s.inbox.filter(x => x && typeof x.id === "string" && typeof x.text === "string")
         .slice(-100).map(x => ({ id: x.id.slice(0,50), text: x.text.slice(0,200),

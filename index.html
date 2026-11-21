@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#070b0a">
-  <title>Fronteira Morta 2.0 · PROTECAO-07 — Entrar</title>
+  <title>Fronteira Morta 2.0 · TOKEN-01 — Entrar</title>
   <link rel="stylesheet" href="css/style.css?v=20261117-chat01">
-  <link rel="stylesheet" href="css/auth.css?v=20261117-backgrounds01">
-  <!-- Build identificável: PROTECAO-07, para diferenciar a versão publicada da versão em cache. -->
+  <link rel="stylesheet" href="css/auth.css?v=20261121-token01">
+  <!-- Build identificável: TOKEN-01, para diferenciar a versão publicada da versão em cache. -->
   <!-- Rebuild GitHub Pages default address; no custom domain configured. -->
   <!-- Re-publicação da versão 2.2.2 em 2026-11-16: sem alteração de mecânicas ou saves. -->
 </head>
@@ -39,6 +39,13 @@
       <button type="button" id="test-connection" class="textual" hidden>Testar conexão com o servidor</button>
       <p id="login-status" role="status" aria-live="polite"></p>
     </div>
+      <aside class="fm-token-ad" aria-label="Token da Loja">
+      <p class="fm-token-tag">Item lendário · novo</p>
+      <img src="img/token_loja.webp?v=20261121-token01" alt="Token da Loja" width="170" height="170">
+      <h2>TOKEN DA LOJA</h2>
+      <p class="fm-token-txt">Ache o token em qualquer saque e a <strong>Loja da base fica 100% de graça por 24 horas</strong>.</p>
+      <p class="fm-token-odds">Chance de <strong>0,01%</strong> · nenhum bônus aumenta. Só os mais sortudos da fronteira.</p>
+    </aside>
   </form>
   <form id="forgot-form" class="fm-auth" hidden>
     <div class="fm-auth-panel">
@@ -61,12 +68,12 @@
       <canvas id="gl" width="960" height="600" aria-hidden="true"></canvas>
       <canvas id="game" width="960" height="600" aria-label="Fronteira Morta"></canvas>
     </div>
-    <p class="help">WASD andar · Shift correr · mouse mirar e atacar · 1 2 3 / roda trocar arma · R recarregar · E usar · B mochila · M mapa · N cidade · Esc menu · Enter chat <span id="vip-footer" class="vip-footer" aria-live="off">VIP: carregando...</span> <span id="trindade-footer" class="trindade-footer" hidden aria-live="off"></span> <span id="fm-build" style="display:inline-block;margin-left:9px;padding:1px 6px;border:1px solid #7a906a;border-radius:4px;color:#d5e8bf;background:#172316;font-size:11px" title="Identifica a versão do jogo carregada no navegador">VERSÃO PROTECAO-07</span></p>
+    <p class="help">WASD andar · Shift correr · mouse mirar e atacar · 1 2 3 / roda trocar arma · R recarregar · E usar · B mochila · M mapa · N cidade · Esc menu · Enter chat <span id="vip-footer" class="vip-footer" aria-live="off">VIP: carregando...</span> <span id="trindade-footer" class="trindade-footer" hidden aria-live="off"></span> <span id="fm-build" style="display:inline-block;margin-left:9px;padding:1px 6px;border:1px solid #7a906a;border-radius:4px;color:#d5e8bf;background:#172316;font-size:11px" title="Identifica a versão do jogo carregada no navegador">VERSÃO TOKEN-01</span></p>
   </main>
   <template id="game-scripts">
-    <script src="js/jogo.min.js?v=4471162475"></script>
+    <script src="js/jogo.min.js?v=5ff82d2a03"></script>
   </template>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/conta.min.js?v=f595b407e6"></script>
+  <script src="js/conta.min.js?v=5b06dfd9a1"></script>
 </body>
 </html>

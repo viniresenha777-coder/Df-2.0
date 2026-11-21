@@ -13,6 +13,7 @@
 --   * VIP (vipUntil): só aumenta se foram gastos créditos (200 por mês) ou se chegou um presente de VIP.
 --   * Dinheiro (banco + mochila): ganho máximo por salvamento, proporcional ao tempo jogado, mais presentes.
 --   * Nível: o jogo grava a cada subida de nível; mais de 3 níveis num salvamento é desfeito inteiro.
+--   * Loja grátis (shopFreeUntil): só aumenta se um Token da Loja foi gasto (até 24 h por token).
 begin;
 
 alter table public.fm_partidas
@@ -37,6 +38,15 @@ returns numeric language sql immutable as $$
   select coalesce(nullif(j #>> caminho, '')::numeric, 0)
 $$;
 
+create or replace function public.fm_tokens_loja(j jsonb)
+returns numeric language sql immutable set search_path = public as $$
+  select coalesce(sum(coalesce((it->>'qty')::numeric, 1)), 0)
+    from (select jsonb_array_elements(coalesce(j #> '{run,p,pack}', '[]'::jsonb)) as it
+          union all
+          select jsonb_array_elements(coalesce(j -> 'vault', '[]'::jsonb))) t
+   where it->>'id' = 'token_loja'
+$$;
+
 create or replace function public.fm_conferir_save()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
@@ -47,6 +57,7 @@ declare
   -- valores antes/depois
   banco0 numeric; banco1 numeric; mochila0 numeric; mochila1 numeric;
   cred0 numeric; cred1 numeric; vip0 numeric; vip1 numeric; nivel0 numeric; nivel1 numeric;
+  loja0 numeric; loja1 numeric; agora_ms numeric := extract(epoch from now()) * 1000;
   -- presentes recebidos desde o último salvamento
   presente_dinheiro numeric := 0; presente_vip_meses numeric := 0;
   permitido numeric; ganho numeric; corte numeric;
@@ -65,6 +76,9 @@ begin
     end if;
     if fm_num(depois, 'vipUntil') > extract(epoch from now()) * 1000 then
       depois := jsonb_set(depois, '{vipUntil}', '0'); motivos := motivos || text 'VIP na criação';
+    end if;
+    if fm_num(depois, 'shopFreeUntil') > agora_ms then
+      depois := jsonb_set(depois, '{shopFreeUntil}', '0'); motivos := motivos || text 'loja grátis na criação';
     end if;
     if array_length(motivos, 1) > 0 then
       insert into fm_suspeitas (jogador, motivo, antes, depois) values (new.jogador, array_to_string(motivos, '; '), null, new.progresso);
@@ -90,6 +104,7 @@ begin
   cred0 := fm_num(antes, 'credits');          cred1 := fm_num(depois, 'credits');
   vip0 := fm_num(antes, 'vipUntil');          vip1 := fm_num(depois, 'vipUntil');
   nivel0 := fm_num(antes, 'char', 'level');   nivel1 := fm_num(depois, 'char', 'level');
+  loja0 := fm_num(antes, 'shopFreeUntil');    loja1 := fm_num(depois, 'shopFreeUntil');
 
   -- 1) VIP legado: só administrador liga
   if coalesce((depois->>'gm')::boolean, false) and not coalesce((antes->>'gm')::boolean, false) then
@@ -114,6 +129,17 @@ begin
     if vip1 > permitido then
       depois := jsonb_set(depois, '{vipUntil}', to_jsonb(greatest(vip0, 0)));
       motivos := motivos || text 'VIP sem pagamento';
+    end if;
+  end if;
+
+  -- loja grátis: cada Token da Loja gasto dá no máximo 24 h (mais 10 min de folga)
+  if loja1 > greatest(loja0, agora_ms) then
+    permitido := greatest(loja0, agora_ms)
+               + greatest(fm_tokens_loja(antes) - fm_tokens_loja(depois), 0) * 24::numeric * 3600 * 1000
+               + 600000;
+    if loja1 > permitido then
+      depois := jsonb_set(depois, '{shopFreeUntil}', to_jsonb(greatest(loja0, 0)));
+      motivos := motivos || text 'loja grátis sem token';
     end if;
   end if;
 

@@ -264,6 +264,7 @@ function invDrop(src, dst) {
     inv.sel = src.sel; INV.confirm = { name: invItemName(src) }; return;
   }
   if (src.type === "mat" && src.item.id === "trindade_eterna" && dst.area === "doll") { INV.confirm = { trindade: true, name: "Trindade · 100 anos" }; return; }
+  if (src.type === "mat" && src.item.id === "token_loja" && dst.area === "doll") { INV.confirm = { token: true, name: "Token da Loja" }; return; }
   if (src.type === "mat" && src.item.id === "reset_stats" && dst.area === "doll") {
     INV.confirm = { resetStats: true, name: "Cartão Reset de Stats" };
     return;
@@ -489,7 +490,7 @@ function drawInventory() {
       txt(`Exige: ${reqText(d)}`, 722, 346, 10, canUse(d) ? "#6fae4f" : "#e05a4a", "left", true, 200);
     } else if (info.type === "mat") {
       txt(`Quantidade: ${info.item.qty}`, 722, 314, 10, "#c9c4ad");
-      txt(MATS[info.item.id].cashProtection ? safeDescription(info.item.id) : "Material para a oficina", 722, 330, 10, "#a9a58f", "left", false, 200);
+      txt(info.item.id === "token_loja" ? "Arraste até o personagem: Loja da base de graça por 1 dia" : MATS[info.item.id].cashProtection ? safeDescription(info.item.id) : "Material para a oficina", 722, 330, 10, info.item.id === "token_loja" ? "#ffd96a" : "#a9a58f", "left", false, 200);
     } else if (info.type === "vest") {
       const v = VESTS[info.item.i];
       txt(vestText(v), 722, 314, 10, "#c9c4ad", "left", false, 200);
@@ -528,9 +529,9 @@ function drawInventory() {
   if (INV.confirm) {
     ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "#1a1913"; rr(W / 2 - 200, H / 2 - 60, 400, 120, 10); ctx.fill(); ctx.strokeStyle = "#e05a4a"; ctx.lineWidth = 2; ctx.stroke();
-    txt(INV.confirm.trindade ? "Consumir Trindade por 100 anos?" : INV.confirm.resetStats ? "Resetar atributos e proficiências?" : `Descartar ${INV.confirm.name}?`, W / 2, H / 2 - 22, 16, "#f2eedc", "center", true, 370);
-    txt(INV.confirm.trindade ? "+35% dano, corrida e armadura. Consome 1 item." : INV.confirm.resetStats ? "Todos os pontos investidos voltam. O cartão será consumido." : "Some para sempre.", W / 2, H / 2, 12, "#a9a58f", "center");
-    btn(W / 2 - 150, H / 2 + 16, 140, 30, INV.confirm.trindade ? "Consumir" : INV.confirm.resetStats ? "Resetar" : "Descartar", () => { const reset = INV.confirm.resetStats, trindade = INV.confirm.trindade; INV.confirm = null; if (trindade) useTrindadeItem(); else if (reset) useResetStatsCard(); else packDiscard(); }, true);
+    txt(INV.confirm.token ? "Ativar o Token da Loja?" : INV.confirm.trindade ? "Consumir Trindade por 100 anos?" : INV.confirm.resetStats ? "Resetar atributos e proficiências?" : `Descartar ${INV.confirm.name}?`, W / 2, H / 2 - 22, 16, "#f2eedc", "center", true, 370);
+    txt(INV.confirm.token ? "A Loja da base fica de graça por 1 dia. Consome o token." : INV.confirm.trindade ? "+35% dano, corrida e armadura. Consome 1 item." : INV.confirm.resetStats ? "Todos os pontos investidos voltam. O cartão será consumido." : "Some para sempre.", W / 2, H / 2, 12, "#a9a58f", "center");
+    btn(W / 2 - 150, H / 2 + 16, 140, 30, INV.confirm.token ? "Ativar" : INV.confirm.trindade ? "Consumir" : INV.confirm.resetStats ? "Resetar" : "Descartar", () => { const reset = INV.confirm.resetStats, trindade = INV.confirm.trindade, token = INV.confirm.token; INV.confirm = null; if (token) useTokenLoja(); else if (trindade) useTrindadeItem(); else if (reset) useResetStatsCard(); else packDiscard(); }, true);
     btn(W / 2 + 10, H / 2 + 16, 140, 30, "Cancelar", () => { INV.confirm = null; });
   }
   drawAllocPanel();
