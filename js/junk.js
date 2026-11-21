@@ -28,13 +28,13 @@ function ammoSellPrice(t) { return Math.max(0.2, AMMO[t].price / AMMO[t].box * 0
 // tudo o que você pode vender, numa lista só
 function junkItems() {
   const L = [];
-  player.slots.forEach((it, i) => { if (it) L.push({ kind: "weapon", it, where: "slot", i, name: instName(it), unit: weaponSellPrice(it), qty: 1, rare: WDEF[it.id].rar >= 2, sub: `slot ${i + 1}${player.cur === i ? " · na mão" : ""}` }); });
+  player.slots.forEach((it, i) => { if (it && !it.tokenAmmo) L.push({ kind: "weapon", it, where: "slot", i, name: instName(it), unit: weaponSellPrice(it), qty: 1, rare: WDEF[it.id].rar >= 2, sub: `slot ${i + 1}${player.cur === i ? " · na mão" : ""}` }); });
   player.pack.forEach((it) => {
     if (it.kind === "mat" && it.id === "reset_stats") return; // cartão consumível não é revendido
-    if (it.kind === "weapon") L.push({ kind: "weapon", it, where: "pack", name: instName(it), unit: weaponSellPrice(it), qty: 1, rare: WDEF[it.id].rar >= 2, sub: "mochila" });
+    if (it.kind === "weapon" && !it.tokenAmmo) L.push({ kind: "weapon", it, where: "pack", name: instName(it), unit: weaponSellPrice(it), qty: 1, rare: WDEF[it.id].rar >= 2, sub: "mochila" });
     else if (it.kind === "mat") L.push({ kind: "mat", it, name: MATS[it.id].name, unit: matSellPrice(it.id), qty: it.qty, rare: it.id === "nucleo" || it.id === "placa", sub: "material" });
   });
-  for (const t of Object.keys(AMMO)) if (player.reserve[t] > 0) L.push({ kind: "ammo", t, name: `Munição ${t}`, unit: ammoSellPrice(t), qty: player.reserve[t], rare: false, sub: "balas" });
+  for (const t of Object.keys(AMMO)) if (tradableReserve(t) > 0) L.push({ kind: "ammo", t, name: `Munição ${t}`, unit: ammoSellPrice(t), qty: tradableReserve(t), rare: false, sub: "balas" });
   for (const q of ["fresca", "comum", "podre"]) if (player.foodQ[q] > 0) L.push({ kind: "food", q, name: FOOD_Q[q].name[0].toUpperCase() + FOOD_Q[q].name.slice(1), unit: JUNK_CONS[q], qty: player.foodQ[q], sub: "comida" });
   if (player.water > 0) L.push({ kind: "water", name: "Garrafa de água", unit: JUNK_CONS.water, qty: player.water, sub: "água" });
   if (player.med > 0) L.push({ kind: "med", name: "Kit médico", unit: JUNK_CONS.med, qty: player.med, sub: "remédio" });
@@ -44,7 +44,10 @@ function junkItems() {
   return L;
 }
 function sellEntry(e, n) {
-  n = Math.max(1, Math.min(n, e.qty));
+  if (e.kind === "weapon" && e.it.tokenAmmo) { toast("Arma carregada com munição do Token."); return; }
+  const available = e.kind === "ammo" ? tradableReserve(e.t) : e.qty;
+  if (available <= 0) return;
+  n = Math.max(1, Math.min(n, e.qty, available));
   const total = Math.max(1, Math.round(e.unit * n));
   switch (e.kind) {
     case "weapon":
@@ -65,6 +68,7 @@ function sellEntry(e, n) {
   game.jcur = Math.max(0, Math.min(game.jcur, junkItems().length - 1));
 }
 function dismantle(e) {
+  if (e.it.tokenAmmo) { toast("Arma carregada com munição do Token."); return; }
   const p = weaponParts(e.it);
   if (e.where === "slot") { player.slots[e.i] = null; if (player.cur === e.i) { const j = player.slots.findIndex(Boolean); player.cur = j >= 0 ? j : 0; } player.reloading = 0; }
   else player.pack.splice(player.pack.indexOf(e.it), 1);
