@@ -216,6 +216,11 @@ function openWaitDone(kind) {
   else if (!game.paused) togglePause();
 }
 function update(dt) {
+  const isModerator = canUseAdmin();
+  if (isModerator) {
+    player.hunger = 100;
+    player.thirst = 100;
+  }
   if (game.over || game.trans || game.hub) game.openWait = null;
   if (game.quitting) return;
   if (game.over || game.shop || game.menu || game.found || game.paused) return;
@@ -225,10 +230,11 @@ function update(dt) {
   if (game.openWait && (game.openWait.t -= dt) <= 0) { const kind = game.openWait.kind; game.openWait = null; openWaitDone(kind); }
   // Horário da cidade sincronizado pelo servidor em fmWorld.tick().
 
-  const meta = 1 - Math.min(0.8, player.fx.metabolism / 100);
-  player.hunger = Math.max(0, player.hunger - 0.084 * sec * meta);
-  player.thirst = Math.max(0, player.thirst - 0.119 * sec * meta);
-  if (adm.noHunger) { player.hunger = 100; player.thirst = 100; }
+  if (!isModerator) {
+    const meta = 1 - Math.min(0.8, player.fx.metabolism / 100);
+    player.hunger = Math.max(0, player.hunger - 0.084 * sec * meta);
+    player.thirst = Math.max(0, player.thirst - 0.119 * sec * meta);
+  }
   const fed = player.hunger > 0 && player.thirst > 0;
   if (fed && player.fx.regen > 0) player.hp = Math.min(player.maxHp, player.hp + player.fx.regen * sec);
   if (inSafe() && fed) player.hp = Math.min(player.maxHp, player.hp + 1.5 * sec); // descanso no posto

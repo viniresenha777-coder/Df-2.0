@@ -347,7 +347,7 @@ function travelKey(k) {
 }
 
 // ---------- Painel de administrador (F2) ----------
-const adm = { god: false, infAmmo: false, noReq: false, noHunger: false, infStamina: false, freeze: false, dmg: 1, direct: false, shopAnywhere: false };
+const adm = { god: false, infAmmo: false, noReq: false, infStamina: false, freeze: false, dmg: 1, direct: false, shopAnywhere: false };
 const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Armas", "Implantes", "Presentes", "Banidos"];
 function canUseAdmin() {
   return typeof fmCloud !== "undefined" && fmCloud.isActive() && fmCloud.isAdmin();
@@ -415,7 +415,6 @@ function admRows() {
     B("Restaurar vida, energia, fome e sede", () => { player.hp = player.maxHp; player.stamina = 100; player.exhausted = false; player.hunger = 100; player.thirst = 100; toast("Status restaurados"); });
     T("Modo deus (não morre)", () => adm.god, (v) => { adm.god = v; });
     T("Energia infinita (correr sem limite)", () => adm.infStamina, (v) => { adm.infStamina = v; });
-    T("Sem fome e sem sede", () => adm.noHunger, (v) => { adm.noHunger = v; });
     T("Munição infinita", () => adm.infAmmo, (v) => { adm.infAmmo = v; });
     T("Ignorar requisitos de armas", () => adm.noReq, (v) => { adm.noReq = v; });
     T("Zumbis congelados", () => adm.freeze, (v) => { adm.freeze = v; });
