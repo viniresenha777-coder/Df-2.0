@@ -340,9 +340,10 @@ function drawOnlinePlayer(p) {
     const col = p.moving ? (Math.floor(performance.now() / 110 + p.x * 0.05) % 8) : 1;
     const x = p.x - S / 2, y = p.y + 6 - S * PSHEET.footY;
     ctx.drawImage(sprite, col * cell, row * cell, cell, cell, x, y, S, S);
-    // A calça equipada vem do estado do jogador remoto.
+    // A calça e os calçados equipados vêm do estado do jogador remoto.
     const pants = clothingLayer("pants", p.clothing);
-    const gear = [pants, "pack", ...(SKIN_GEAR[skin] || [])].filter(Boolean);
+    const boots = clothingLayer("boots", p.clothing);
+    const gear = [boots, pants, "pack", ...(SKIN_GEAR[skin] || [])].filter(Boolean);
     for (const id of gearOrder(gear, row !== 3 && row !== 4 && row !== 5)) {
       const layer = gearImg(id, pose);
       if (layer) ctx.drawImage(layer, col * cell, row * cell, cell, cell, x, y, S, S);

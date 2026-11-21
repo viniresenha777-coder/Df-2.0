@@ -81,3 +81,6 @@ CC0 (exceção de licença da MakeHuman para os assets do sistema); as roupas da
 As animações de repouso, caminhada e corrida foram adaptadas da Universal Animation Library (Standard), de Quaternius, sob CC0 1.0.
 
 A **Calça Cargo Futurista** usa o modelo e as texturas de Alexander Kurmanin, fornecidos no pacote `futuristic-apocalypse-female-cargo-pants.zip`.
+
+- **Tênis Brancos** baseados em [White Shoes 02](https://sketchfab.com/3d-models/white-shoes-02-d90391467f8c4ebe97754aa3493451c1), de [blenderguppy](https://sketchfab.com/blenderguppy), sob [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Modelo ajustado ao Roger e convertido em sprites.
+- **Sapatos de Couro** usam o modelo e as texturas fornecidos em `wood-shoes.zip`.
