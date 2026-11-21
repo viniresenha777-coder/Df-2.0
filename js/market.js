@@ -1,19 +1,54 @@
 "use strict";
 
-const market = { rows: [], tab: "comprar", page: 0, error: "", loading: false, confirm: null };
+const market = { rows: [], tab: "comprar", page: 0, filter: "all", error: "", loading: false, confirm: null };
+
+const MARKET_FILTERS = [
+  ["all", "Todos"], ["ammo", "Munição"], ["vest", "Coletes"], ["machinegun", "Metralhadoras"],
+  ["pistols", "Pistolas"], ["rifles", "Rifles"], ["shotguns", "Escopetas"], ["melee", "Corpo a corpo"],
+  ["implant", "Implantes"], ["mat", "Materiais"], ["food", "Comida"], ["supplies", "Suprimentos"]
+];
+const MARKET_SUPPLIES = { water: "Água", med: "Kit médico", anti: "Antibiótico" };
+
+function marketCategory(item) {
+  if (item.kind === "weapon") return WDEF[item.id]?.cat;
+  return Object.hasOwn(MARKET_SUPPLIES, item.kind) ? "supplies" : item.kind;
+}
 
 function marketItemName(item) {
   if (item.kind === "weapon" && WDEF[item.id]) return instName(item);
   if (item.kind === "mat" && MATS[item.id]) return `${item.qty}× ${MATS[item.id].name}`;
+  if (item.kind === "ammo") return `${item.qty}× Munição ${item.id}`;
+  if (item.kind === "vest" && VESTS[item.id]) return `${VESTS[item.id].name} · ${Math.round(item.dur ?? 100)}%`;
+  if (item.kind === "implant" && IMP[item.id]) return implantName(item);
+  if (item.kind === "food" && FOOD_Q[item.id]) return `${item.qty}× ${FOOD_Q[item.id].name}`;
+  if (Object.hasOwn(MARKET_SUPPLIES, item.kind)) return `${item.qty}× ${MARKET_SUPPLIES[item.kind]}`;
   return "Item desconhecido";
 }
 
 function marketInventory() {
-  return ["slots", "pack"].flatMap(local =>
-    player[local].map((item, index) => ({ item, local, index })).filter(({ item }) =>
-      item?.loot === true && !item.tokenBound && (item.kind === "weapon" ||
-        (item.kind === "mat" && !["token_loja", "reset_stats"].includes(item.id))))
-  );
+  const rows = [];
+  const add = (item, local, index = 0) => {
+    if (item && !item.tokenBound) rows.push({ item, local, index });
+  };
+  for (const [local, items] of [["slots", player.slots], ["pack", player.pack], ["vault", save.vault]])
+    items.forEach((item, index) => add(item, local, index));
+  player.bag.forEach((item, index) => add({ ...item, kind: "implant" }, "bag", index));
+  VESTS.forEach((_, index) => {
+    if (save.vestsOwned[index] && save.vest !== index)
+      add({ kind: "vest", id: index, dur: vestDur(index) }, "vest", index);
+  });
+  for (const id of Object.keys(AMMO)) {
+    const qty = sellableAmmo(id);
+    if (qty > 0) add({ kind: "ammo", id, qty }, "ammo:" + id);
+  }
+  for (const id of Object.keys(FOOD_Q)) {
+    const qty = player.foodQ[id];
+    if (qty > 0) add({ kind: "food", id, qty }, "food:" + id);
+  }
+  for (const kind of Object.keys(MARKET_SUPPLIES)) {
+    if (player[kind] > 0) add({ kind, qty: player[kind] }, kind);
+  }
+  return rows;
 }
 
 async function marketRefresh() {
@@ -39,6 +74,7 @@ function openMarket() {
   game.menu = "market";
   game.clicks = [];
   market.tab = "comprar";
+  market.filter = "all";
   market.page = 0;
   market.confirm = null;
   marketRefresh();
@@ -58,6 +94,15 @@ async function marketTrade(acao, args) {
     const p = result.run.p;
     player.pack = p.pack;
     player.slots = p.slots;
+    player.reserve = p.reserve;
+    player.bag = p.bag;
+    player.food = p.food;
+    player.foodQ = p.foodQ;
+    for (const kind of Object.keys(MARKET_SUPPLIES)) player[kind] = p[kind];
+    save.vault = result.vault;
+    save.vestsOwned = result.vestsOwned;
+    save.vestDur = result.vestDur;
+    save.vestUpgrades = result.vestUpgrades;
     if (!player.slots[player.cur]) {
       player.cur = Math.max(0, player.slots.findIndex(Boolean));
       player.reloading = 0;
@@ -80,7 +125,11 @@ function marketAskPrice(row) {
         toast("Digite um preço entre $1 e $1.000.000.");
         return;
       }
-      if (player[row.local][row.index] !== row.item) return;
+      const current = marketInventory().find(item => item.local === row.local && item.index === row.index);
+      if (!current || JSON.stringify(current.item) !== JSON.stringify(row.item)) {
+        toast("O item mudou. Selecione-o novamente.");
+        return;
+      }
       marketTrade("listar", { local_item: row.local, posicao: row.index, preco: price });
     }
   };
@@ -97,18 +146,27 @@ function drawMarket() {
   btn(W - 300, 84, 118, 34, "Atualizar", marketRefresh, false, locked || market.loading);
   btn(W - 170, 84, 110, 34, "Voltar", () => { game.menu = null; }, false, locked);
 
-  const entries = market.tab === "vender" ? marketInventory()
+  MARKET_FILTERS.forEach(([key, label], i) => {
+    const x = 60 + (i % 6) * 140, y = 126 + Math.floor(i / 6) * 32;
+    btn(x, y, 132, 27, label, () => {
+      market.filter = key;
+      market.page = 0;
+    }, market.filter === key, locked);
+  });
+  const available = market.tab === "vender" ? marketInventory()
     : market.rows.filter(row => market.tab === "meus" ? row.meu : !row.meu);
-  const last = Math.max(0, Math.ceil(entries.length / 7) - 1);
+  const entries = available.filter(({ item }) => market.filter === "all" || marketCategory(item) === market.filter);
+  const pageSize = 6;
+  const last = Math.max(0, Math.ceil(entries.length / pageSize) - 1);
   market.page = Math.min(market.page, last);
   const status = market.error || (market.loading ? "Carregando anúncios…" : "");
-  if (status) txt(status, W / 2, 142, 14, "#ffd96a", "center");
+  if (status) txt(status, W / 2, 201, 14, "#ffd96a", "center");
   if (!entries.length && !status) {
-    txt(market.tab === "vender" ? "Nenhuma arma ou material de saque elegível na mochila." : "Nenhum anúncio nesta aba.",
+    txt(market.tab === "vender" ? "Nenhum item disponível para anunciar nesta categoria." : "Nenhum anúncio nesta aba.",
       W / 2, 230, 16, "#c9c4ad", "center");
   }
-  entries.slice(market.page * 7, market.page * 7 + 7).forEach((row, i) => {
-    const y = 160 + i * 46;
+  entries.slice(market.page * pageSize, (market.page + 1) * pageSize).forEach((row, i) => {
+    const y = 212 + i * 44;
     ctx.fillStyle = "#27251e";
     ctx.fillRect(60, y, W - 120, 40);
     txt(marketItemName(row.item), 78, y + 25, 15, "#f2eedc", "left", true, W - 390);

@@ -49,6 +49,14 @@ declare
   path text[];
   saldo numeric;
   espacos integer;
+  tipo text;
+  chave text;
+  quantidade integer;
+  reserva integer;
+  vinculada integer;
+  atuais integer;
+  colete integer;
+  inventario jsonb;
 begin
   if uid is null or public.fm_esta_banido(uid) then
     raise exception 'Mercado indisponível para esta conta.';
@@ -72,29 +80,65 @@ begin
   saldo := coalesce((partida #>> '{run,g,money}')::numeric, 0);
 
   if acao = 'listar' then
-    if local_item is null or local_item not in ('pack', 'slots') or posicao is null or posicao < 0
-       or preco is null or preco not between 1 and 1000000 then
+    if local_item is null or posicao is null or posicao < 0 or preco is null or preco not between 1 and 1000000 then
       raise exception 'Item ou preço inválido.';
     end if;
     if (select count(*) from fm_market.listings where seller = uid and state <> 'closed') >= 20 then
       raise exception 'Limite de 20 anúncios ativos ou aguardando recebimento.';
     end if;
-    path := array['run', 'p', local_item];
-    objeto := partida #> (path || posicao::text);
-    if objeto->'loot' is distinct from 'true'::jsonb
-       or coalesce(objeto->>'kind', '') not in ('weapon', 'mat')
-       or coalesce(objeto->>'id', '') = ''
-       or objeto->>'id' in ('reset_stats', 'token_loja')
-       or objeto->'tokenBound' = 'true'::jsonb then
-      raise exception 'Esse item não pode ser anunciado.';
-    end if;
-    if objeto->>'kind' = 'weapon' then
-      objeto := jsonb_set(objeto, '{ammo}', '0');
-    end if;
-    if local_item = 'slots' then
-      partida := jsonb_set(partida, path || posicao::text, 'null');
+    tipo := split_part(local_item, ':', 1);
+    chave := split_part(local_item, ':', 2);
+    if local_item in ('slots', 'pack', 'vault', 'bag') then
+      path := case when local_item = 'vault' then array['vault'] else array['run', 'p', local_item] end;
+      inventario := partida #> path;
+      objeto := inventario -> posicao;
+      if jsonb_typeof(objeto) is distinct from 'object' or coalesce(objeto->>'id', '') = ''
+         or objeto->'tokenBound' = 'true'::jsonb
+         or (local_item <> 'bag' and coalesce(objeto->>'kind', '') not in ('weapon', 'mat')) then
+        raise exception 'Esse item não pode ser anunciado.';
+      end if;
+      if local_item = 'bag' then objeto := objeto || '{"kind":"implant"}'::jsonb; end if;
+      if local_item = 'slots' then
+        partida := jsonb_set(partida, path || posicao::text, 'null');
+      else
+        partida := jsonb_set(partida, path, inventario - posicao);
+      end if;
+    elsif local_item = 'vest' then
+      chave := posicao::text;
+      if partida #> array['vestsOwned', chave] is distinct from 'true'::jsonb
+         or partida->>'vest' = chave then
+        raise exception 'Guarde o colete antes de anunciá-lo.';
+      end if;
+      objeto := jsonb_build_object('kind', 'vest', 'id', posicao,
+        'dur', coalesce(partida #> array['vestDur', chave], '100'::jsonb),
+        'up', coalesce(partida #> array['vestUpgrades', chave], '{}'::jsonb));
+      partida := jsonb_set(partida, array['vestsOwned', chave], 'false');
+      partida := partida #- array['vestDur', chave] #- array['vestUpgrades', chave];
     else
-      partida := jsonb_set(partida, path, mochila - posicao);
+      if tipo = 'ammo' and chave in ('9mm', '.45', '.50', '5.56', '7.62', 'cartucho', 'combustível', 'virote', 'granada') then
+        path := array['run', 'p', 'reserve', chave];
+      elsif tipo = 'food' and chave in ('fresca', 'comum', 'podre') then
+        path := array['run', 'p', 'foodQ', chave];
+      elsif local_item in ('water', 'med', 'anti') then
+        path := array['run', 'p', local_item];
+      else
+        raise exception 'Categoria de item inválida.';
+      end if;
+      atuais := coalesce((partida #>> path)::integer, 0);
+      vinculada := 0;
+      if tipo = 'ammo' then
+        vinculada := case
+          when partida #> '{run,p,tokenAmmo}' is null and coalesce((partida->>'shopFreeUntil')::numeric, 0) > 0 then atuais
+          else greatest(0, coalesce((partida #>> array['run','p','tokenAmmo',chave])::integer, 0))
+        end;
+      end if;
+      quantidade := atuais - vinculada;
+      if quantidade <= 0 then raise exception 'Nenhuma unidade disponível para revenda.'; end if;
+      objeto := jsonb_build_object('kind', tipo, 'id', chave, 'qty', quantidade);
+      partida := jsonb_set(partida, path, to_jsonb(atuais - quantidade));
+      if tipo = 'food' then
+        partida := jsonb_set(partida, '{run,p,food}', to_jsonb((partida #>> '{run,p,food}')::int - quantidade));
+      end if;
     end if;
     insert into fm_market.listings(seller, item, price) values (uid, objeto, preco);
   elsif acao = 'receber' then
@@ -108,15 +152,52 @@ begin
     if oferta.state <> 'open' or (acao = 'cancelar') <> (oferta.seller = uid) then
       raise exception 'Anúncio indisponível para esta operação.';
     end if;
-    select coalesce(sum(ceil(greatest(value::numeric, 0) / 500)), 0)::int
-      into espacos from jsonb_each_text(coalesce(partida #> '{run,p,reserve}', '{}'::jsonb));
-    -- Mesmo limite de items.js (PACK_MAX) e survival.js (AMMO_STACK).
-    if jsonb_array_length(mochila) + espacos >= 20 then raise exception 'Mochila cheia.'; end if;
+    objeto := oferta.item;
+    tipo := objeto->>'kind';
+    chave := objeto->>'id';
     if acao = 'comprar' then
       if saldo < oferta.price then raise exception 'Dinheiro insuficiente.'; end if;
       partida := jsonb_set(partida, '{run,g,money}', to_jsonb(saldo - oferta.price));
     end if;
-    partida := jsonb_set(partida, '{run,p,pack}', mochila || jsonb_build_array(oferta.item));
+    if tipo in ('weapon', 'mat', 'ammo') then
+      select coalesce(sum(ceil(greatest(value::numeric, 0) / 500)), 0)::int
+        into espacos from jsonb_each_text(coalesce(partida #> '{run,p,reserve}', '{}'::jsonb));
+      if tipo = 'ammo' then
+        quantidade := (objeto->>'qty')::int;
+        path := array['run','p','reserve',chave];
+        reserva := coalesce((partida #>> path)::int, 0);
+        espacos := espacos - ceil(reserva / 500.0)::int + ceil((reserva::numeric + quantidade) / 500)::int;
+        if jsonb_array_length(mochila) + espacos > 20 then raise exception 'Mochila cheia para essa munição.'; end if;
+        partida := jsonb_set(partida, path, to_jsonb(reserva + quantidade));
+      else
+        if jsonb_array_length(mochila) + espacos >= 20 then raise exception 'Mochila cheia.'; end if;
+        if tipo = 'weapon' and acao = 'comprar' then objeto := jsonb_set(objeto, '{ammo}', '0'); end if;
+        partida := jsonb_set(partida, '{run,p,pack}', mochila || jsonb_build_array(objeto));
+      end if;
+    elsif tipo = 'implant' then
+      inventario := coalesce(partida #> '{run,p,bag}', '[]'::jsonb);
+      if jsonb_array_length(inventario) >= 8 then raise exception 'Mochila de implantes cheia.'; end if;
+      partida := jsonb_set(partida, '{run,p,bag}', inventario || jsonb_build_array(objeto - 'kind'));
+    elsif tipo = 'vest' then
+      colete := chave::int;
+      inventario := partida->'vestsOwned';
+      if colete < 0 or colete >= jsonb_array_length(inventario) or inventario->colete = 'true'::jsonb then
+        raise exception 'Você já tem esse colete ou ele está indisponível.';
+      end if;
+      partida := jsonb_set(partida, array['vestsOwned',chave], 'true');
+      partida := jsonb_set(partida, array['vestDur',chave], objeto->'dur');
+      partida := jsonb_set(partida, array['vestUpgrades',chave], objeto->'up');
+    elsif tipo in ('food', 'water', 'med', 'anti') then
+      quantidade := (objeto->>'qty')::int;
+      path := case when tipo = 'food' then array['run','p','foodQ',chave] else array['run','p',tipo] end;
+      atuais := coalesce((partida #>> path)::int, 0);
+      partida := jsonb_set(partida, path, to_jsonb(atuais + quantidade));
+      if tipo = 'food' then
+        partida := jsonb_set(partida, '{run,p,food}', to_jsonb((partida #>> '{run,p,food}')::int + quantidade));
+      end if;
+    else
+      raise exception 'Categoria de item inválida.';
+    end if;
     update fm_market.listings set state = case when acao = 'comprar' then 'sold' else 'closed' end where id = anuncio;
   end if;
 
