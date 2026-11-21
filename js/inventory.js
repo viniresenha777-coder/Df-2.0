@@ -605,6 +605,7 @@ function shopBuy() {
   if (ammoRoom(type) < AMMO_PACK_SIZE) { toast("Espaço insuficiente para 999 munições na mochila."); return; }
   if (!free) game.money -= AMMO_PACK_PRICE;
   player.reserve[type] = (player.reserve[type] || 0) + AMMO_PACK_SIZE;
+  if (free) player.tokenReserve[type] = tokenAmmoInReserve(type) + AMMO_PACK_SIZE;
   sfx.buy();
   checkpoint("compra de pacote de munição");
   toast("Comprou 999 munições " + type + (free ? " de graça (Token da Loja)" : " por $14.000"));
