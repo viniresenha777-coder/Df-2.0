@@ -158,8 +158,16 @@ function invItemName(z) {
   if (z.type === "vest") return VESTS[z.item.i].name;
   if (z.type === "clothing") return z.item.name;
   if (z.type === "implant") return implantName(z.item);
+  if (z.type === "supply") return SUPPLY[z.item.id].name;
   return "";
 }
+// comida, água, kit médico e antibiótico: na mochila, arrastar até o boneco consome um (único jeito de usar)
+const SUPPLY = {
+  food:  { name: "Comida",      n: () => player.food,  use: () => eat(),     icon: { type: "food" } },
+  water: { name: "Água",        n: () => player.water, use: () => drink(),   icon: { type: "water" } },
+  med:   { name: "Kit médico",  n: () => player.med,   use: () => heal(),    icon: { type: "med" } },
+  anti:  { name: "Antibiótico", n: () => player.anti,  use: () => useAnti(), icon: { type: "pills", spr: "pills" } }
+};
 
 // chamado pelo main.js no clique / soltar do mouse com o inventário aberto
 function invMouseDown(x, y) {
@@ -193,6 +201,7 @@ function invClick(z) {
     return;
   }
   if (z.type === "vest") { if (z.area === "vestslot") unequipVest(); else equipVest(z.item.i); return; }
+  if (z.type === "supply") { toast(`Arraste ${SUPPLY[z.item.id].name.toLowerCase()} até o personagem para usar`); return; }
   if (z.type === "implant") { if (z.area === "installed") moveImplant(z.item, "bag"); else moveImplant(z.item, "installed"); }
 }
 
@@ -257,6 +266,11 @@ function invDrop(src, dst) {
   if (src.type === "mat" && src.item.id === "trindade_eterna" && dst.area === "doll") { INV.confirm = { trindade: true, name: "Trindade · 100 anos" }; return; }
   if (src.type === "mat" && src.item.id === "reset_stats" && dst.area === "doll") {
     INV.confirm = { resetStats: true, name: "Cartão Reset de Stats" };
+    return;
+  }
+  if (src.type === "supply") {
+    if (dst.area === "doll") SUPPLY[src.item.id].use();
+    else toast("Solte no personagem para usar");
     return;
   }
   if (src.type === "clothing") {
@@ -337,6 +351,11 @@ function invIcon(z, x, y, w, h) {
     if (v.rar) { ctx.strokeStyle = RARITY[v.rar].color; ctx.globalAlpha = 0.6; ctx.lineWidth = 1.5; rr(x + 2, y + 2, w - 4, h - 4, 4); ctx.stroke(); ctx.globalAlpha = 1; }
     return;
   }
+  if (z.type === "supply") {
+    drawEntryIcon(SUPPLY[z.item.id].icon, x + w / 2, y + h / 2 + 1, Math.min(w, h) / 64);
+    txt(String(z.item.n), x + w - 4, y + 11, 10, "#ffd96a", "right", true);
+    return;
+  }
   if (z.type === "implant") {
     drawEntryIcon({ type: "implant", im: z.item }, x + w / 2, y + h / 2, Math.min(w, h) / 62);
     const d = IMP[z.item.id];
@@ -363,7 +382,6 @@ function outfitSlot(x, y, w, h, label, piece) {
   else if (piece) { ctx.fillStyle = piece.color; ctx.beginPath(); ctx.ellipse(0, 2, 16, 13, 0, Math.PI, Math.PI * 2); ctx.fill(); ctx.fillRect(-18, 1, 36, 4); }
   else { ctx.strokeStyle = "#3d3b30"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-8, -8); ctx.lineTo(8, 8); ctx.moveTo(8, -8); ctx.lineTo(-8, 8); ctx.stroke(); }
   ctx.restore();
-  regClick(x, y, w, h, () => { game.menu = "stats"; game.stab = 1; game.cur = 0; });
   if (hov) INV.hover = { type: "outfit", label, piece };
 }
 function headPieces() {
@@ -398,9 +416,10 @@ function drawInventory() {
   }
   txt(canSwapImplants() ? "Arraste para instalar, remover ou mudar a ordem" : "Instalar/remover: só na base", 40, 382, 10, canSwapImplants() ? "#6fae4f" : "#a9a58f");
   txt("Solte no boneco para distribuir os pontos", 40, 393, 10, "#a9a58f");
-  const Q = player.foodQ;
-  [`Comida ${player.food} (fresca ${Q.fresca})`, `Água ${player.water}`, `Kit médico ${player.med} · Antibiótico ${player.anti}`]
-    .forEach((s, i) => txt(s, 40, 408 + i * 12, 10, "#a9a58f"));
+  Object.keys(SUPPLY).forEach((id, i) => {
+    const n = SUPPLY[id].n();
+    slotBox(40 + i * 49, 400, 45, 38, null, { area: "supply", i, type: "supply", item: n > 0 ? { id, n } : null });
+  });
 
   // ---- boneco e slots (meio)
   ctx.fillStyle = "rgba(0,0,0,0.3)"; rr(262, 88, 436, 342, 8); ctx.fill();
@@ -477,6 +496,9 @@ function drawInventory() {
       if (info.item.i === save.vest) txt(`Durabilidade ${Math.round(vestDur())}%`, 722, 330, 10, "#a9a58f");
     } else if (info.type === "implant") {
       txtWrap(implantDesc(info.item), 722, 311, 10, "#c9c4ad", 200, 11, 6);
+    } else if (info.type === "supply") {
+      txt(`Quantidade: ${info.item.n}`, 722, 314, 10, "#c9c4ad");
+      txt("Arraste até o personagem para usar", 722, 330, 10, "#ffd96a", "left", false, 200);
     }
   } else txt("Passe o mouse num item", 822, 330, 11, "#6d6a58", "center");
 

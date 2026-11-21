@@ -83,6 +83,7 @@ function resetAttrsCore(reason) {
   toast("Atributos resetados! Redistribua seus pontos.");
 }
 function useResetStatsCard() {
+  if (!atBase()) { toast("Só dá para resetar atributos dentro da base"); return; }
   const it = player.pack.find(x => x && x.kind === "mat" && x.id === "reset_stats" && x.qty > 0);
   if (!it) { toast("Você não possui um cartão de reset."); return; }
   it.qty--;
@@ -92,6 +93,7 @@ function useResetStatsCard() {
 // reset pela tela de atributos, pago com créditos
 const RESET_STATS_CREDITS = 200;
 function resetStatsWithCredits() {
+  if (!atBase()) { toast("Só dá para resetar atributos dentro da base"); return; }
   if (save.credits < RESET_STATS_CREDITS) { toast(`Precisa de ${RESET_STATS_CREDITS} créditos (compre no banco)`); return; }
   save.credits -= RESET_STATS_CREDITS;
   persist();
@@ -134,39 +136,33 @@ window.addEventListener("keydown", (e) => {
   if (game.quitting) return;
   if (game.menu === "pack" && game.found) { menuKey(k); return; } // mochila sobre loot: preserva a oferta
   if (game.found) { foundKey(k); return; }
-  if (k === "u" && !e.repeat && !game.shop && !game.over && !game.menu) {
-    openFriends();
-    return;
-  }
   if (game.menu) { menuKey(k); return; }
   if (game.shop) { shopKey(k); return; }
   if (k === "enter" && !game.paused && typeof fmChat !== "undefined") { fmChat.open(); return; }   // chat global
   if (game.hub && (k === "escape" || k === "e")) { leaveHouse(); return; }
-  if (k === "l" && !game.paused) { openLibrary(); return; }   // biblioteca de armas (só para ver)
-  if (game.hub && (k === "r" || k === "f" || k === "p")) { if (k === "f") eat(); return; }
+  // Atalhos do jogo: só andar, correr, mirar, trocar arma, recarregar, usar (E), mochila (B), mapa (M), cidade (N),
+  // Esc e Enter (chat). Comer, beber, kit, antibiótico, atributos, objetivos, amigos, mensagens, música, som e
+  // a biblioteca de armas ficam como botões no menu do Esc.
+  if (game.hub && k === "r") return;
   if (game.paused) {
-    if ((k === "escape" || k === "p") && game.settingsOpen) {
+    if (k === "escape" && game.settingsOpen) {
       game.settingsOpen = false; game.settingsDrag = null;
-    } else if (k === "escape" || k === "p") togglePause();
+    } else if (k === "escape") togglePause();
     return;
   }
   if (k === "escape" && game.sectorMap) { game.sectorMap = false; return; }
-  if (k === "escape" || k === "p") { togglePause(); return; }
-  if (k === "b") { game.menu = "pack"; mouse.down = false; return; }
-  // A tecla L não abre mais a loja. O painel visual continua no refúgio.
-  if (k === "k") { sndMute(!SND.muted); save.muted = SND.muted; persist(); toast(SND.muted ? "Som desligado" : "Som ligado"); return; }
+  // Esc (menu) e B (mochila) não abrem na hora fora da base: contagem de 7 a 0 com o jogo correndo.
+  // Apertar Esc ou B de novo durante a contagem cancela.
+  if (k === "escape" || k === "b") {
+    if (game.openWait) { game.openWait = null; toast("Cancelado"); return; }
+    const kind = k === "b" ? "pack" : "pause";
+    if (atBase()) openWaitDone(kind); else game.openWait = { kind, t: OPEN_WAIT_MS };
+    return;
+  }
   if (k === "n") { game.menu = "map"; game.mapAsk = null; game.mapSel = { cx: world.cell.cx, cy: world.cell.cy }; return; }
-  if (k === "o") { game.menu = "obj"; game.oscroll = 0; return; }
-  if (k === "j") { save.music = !save.music; musicSetOn(save.music); persist(); toast(save.music ? "Música ligada" : "Música desligada"); return; }
-  if (k === "tab") { save.hud = save.hud === 1 ? 0 : 1; persist(); toast(save.hud ? "HUD compacto (Tab volta ao completo)" : "HUD completo"); return; }
   const n = k === "0" ? 10 : parseInt(k, 10);
   if (k === "r") startReload();
   else if (k === "e") interact();
-  else if (k === "f") eat();
-  else if (k === "g") drink();
-  else if (k === "h") heal();
-  else if (k === "i") openMessages();
-  else if (k === "c") { game.menu = "stats"; game.cur = 0; }
   else if (k === "m") { game.sectorMap = !game.sectorMap; }
   else if (n >= 1 && n <= SLOT_N) selectWeapon(n - 1);
 });
@@ -214,12 +210,19 @@ canvas.addEventListener("wheel", (e) => {
 window.addEventListener("resize", fitCanvas);
 
 // ---------- Atualização ----------
+const OPEN_WAIT_MS = 7000;
+function openWaitDone(kind) {
+  if (kind === "pack") { game.menu = "pack"; mouse.down = false; }
+  else if (!game.paused) togglePause();
+}
 function update(dt) {
+  if (game.over || game.trans || game.hub) game.openWait = null;
   if (game.quitting) return;
   if (game.over || game.shop || game.menu || game.found || game.paused) return;
   if (game.trans) { transTick(dt); return; } // trocando de área (tela escura)
   const k = dt / 16.67, sec = dt / 1000;
   game.time += dt;
+  if (game.openWait && (game.openWait.t -= dt) <= 0) { const kind = game.openWait.kind; game.openWait = null; openWaitDone(kind); }
   // Horário da cidade sincronizado pelo servidor em fmWorld.tick().
 
   const meta = 1 - Math.min(0.8, player.fx.metabolism / 100);
@@ -443,6 +446,16 @@ function draw() {
   ctx.globalAlpha = 1;
   ctx.restore();
   drawHUD();
+  if (game.openWait && !game.menu && !game.paused) {
+    const s = Math.max(0, Math.ceil(game.openWait.t / 1000));
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.55)"; rr(W / 2 - 130, 150, 260, 96, 10); ctx.fill();
+    ctx.strokeStyle = "rgba(212,175,55,0.6)"; ctx.lineWidth = 1.5; ctx.stroke();
+    txt(game.openWait.kind === "pack" ? "Abrindo a mochila" : "Abrindo o menu", W / 2, 176, 15, "#e5e0c8", "center", true);
+    txt(String(s), W / 2, 222, 40, "#ffd96a", "center", true);
+    txt(`${game.openWait.kind === "pack" ? "B" : "Esc"} de novo cancela`, W / 2, 240, 10, "#a9a58f", "center");
+    ctx.restore();
+  }
   drawBonusPanel();
   drawObjTracker();
   drawEventHud();

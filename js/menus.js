@@ -91,8 +91,6 @@ function statsKey(k) {
     else if (k === "escape" || k === "n") game.sconfirm = false;
     return;
   }
-  if (k === "tab") { game.stab = game.stab ? 0 : 1; game.skc = save.skin; return; }
-  if (game.stab === 1) { skinsKey(k); return; }
   const n = STATS_ORDER.length, col = game.cur >= STATS_LEFT.length;
   if (k === "w" || k === "arrowup") game.cur = Math.max(0, game.cur - 1);
   else if (k === "s" || k === "arrowdown") game.cur = Math.min(n - 1, game.cur + 1);
@@ -100,9 +98,10 @@ function statsKey(k) {
   else if (k === "arrowright") { if (!col) game.cur = STATS_LEFT.length + Math.min(PROF_IDS.length - 1, game.cur); }
   else if (k === "enter") addPoint(1);
   else if (k === "d") addPoint(5);
-  else if (k === "r") game.sconfirm = true;
+  else if (k === "r") { if (atBase()) game.sconfirm = true; else toast("Só dá para resetar atributos dentro da base"); }
 }
 function addPoint(n, id) {
+  if (!atBase()) { toast("Só dá para mudar atributos dentro da base"); return; }
   const d = ATTRS.find((a) => a.id === (id || STATS_ORDER[game.cur] || STATS_ORDER[0]));
   const weapon = WEAPON_SKILL_IDS.includes(d.id), pool = weapon ? "wpoints" : "points";
   if (player[pool] <= 0) { toast(weapon ? "Sem pontos de armas" : "Sem pontos de atributo"); return; }
@@ -639,13 +638,8 @@ function drawBank() {
 }
 
 function drawStats() {
-  menuFrame(game.stab === 1 ? "Personagem" : `Atributos · Nível ${player.level}`);
-  ["Atributos", "Personagem"].forEach((t, i) => {
-    const sel = (game.stab || 0) === i;
-    txt(t, 60 + i * 120, 40, 13, sel ? "#ffd96a" : "#6d6a58", "left", true);
-    regClick(50 + i * 120, 24, 110, 24, () => { game.stab = i; game.skc = save.skin; });
-  });
-  if (game.stab === 1) { drawSkins(); hint("A/D escolhe · Enter usa · Tab volta aos atributos · C ou Esc fecha"); return; }
+  game.stab = 0;   // a sub-aba "Personagem" (troca de aparência) saiu da tela de atributos
+  menuFrame(`Atributos · Nível ${player.level}`);
   game.cur = Math.max(0, Math.min(STATS_ORDER.length - 1, game.cur | 0));
   txt(`HP ${Math.ceil(player.hp)}/${Math.ceil(player.maxHp)}  ·  XP ${Math.floor(player.xp)}/${player.level >= MAX_LEVEL ? "máx" : xpNeed(player.level)}`, W / 2, 72, 14, "#a9a58f", "center");
   // uma coluna (Stats ou Proficiências): linhas com valor, barra e botão +
@@ -696,7 +690,7 @@ function drawStats() {
     btn(W / 2 - 150, H / 2 + 16, 140, 32, "Resetar", () => { game.sconfirm = false; resetStatsWithCredits(); }, true);
     btn(W / 2 + 10, H / 2 + 16, 140, 32, "Cancelar", () => { game.sconfirm = false; });
   }
-  hint("W/S escolhe · A/→ troca de coluna · Enter +1 · D +5 · clique no + (Shift soma 5) · R reset · Tab: personagem · C ou Esc");
+  hint("W/S escolhe · A/→ troca de coluna · Enter +1 · D +5 · clique no + (Shift soma 5) · R reset · C ou Esc");
 }
 
 function drawMissionRow(x, y, w, m, sel, active) {

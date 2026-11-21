@@ -26,6 +26,8 @@ function btn(x, y, w, h, label, fn, primary, disabled) {
 function rowClick(x, y, w, h, isSel, select, act) { regClick(x, y, w, h, () => { if (isSel) act(); else select(); }); }
 
 function inSafe() { return !!(game.inside && game.inside.safe); }
+// atributos só mudam (distribuir pontos e resetar) dentro da base
+function atBase() { return !!game.hub || inSafe(); }
 
 // ---------- Detalhes de uma arma (usado em várias telas) ----------
 function weaponDetail(d, inst, x, y, w) {
@@ -352,8 +354,8 @@ function drawPause() {
   ctx.fillStyle = "rgba(6,7,5,0.82)"; ctx.fillRect(0, 0, W, H);
   txt("PAUSADO", W / 2, 100, 46, "#f2eedc", "center", true);
   txt(`${playerName()}${prof() ? ` · ${prof().name}` : ""}`, W / 2, 124, 14, "#ffd96a", "center", true);
-  btn(W / 2 - 280, 290, 160, 34, "Amigos (U)", openFriends);
-  btn(W / 2 - 280, 334, 160, 34, "Mensagens (I)" + (inboxUnread() ? " · " + inboxUnread() : ""), openMessages);
+  btn(W / 2 - 280, 290, 160, 34, "Amigos", openFriends);
+  btn(W / 2 - 280, 330, 160, 34, "Mensagens" + (inboxUnread() ? " · " + inboxUnread() : ""), openMessages);
   btn(W / 2 - 280, 170, 160, 42, "Salvar progresso", manualSave);
   txt("Boneco: novo", W / 2 - 200, 113, 16, "#e5e0c8", "center", true);
   const ago = game.lastSave ? Math.round((performance.now() - game.lastSave) / 1000) : null;
@@ -364,7 +366,8 @@ function drawPause() {
   btn(W / 2 - 110, 220, 220, 38, `Som: ${SND.muted ? "desligado" : "ligado"}`, () => { sndMute(!SND.muted); save.muted = SND.muted; persist(); });
   btn(W / 2 - 110, 266, 220, 38, "Áudio, ambiente e brilho", () => { game.settingsOpen = true; game.settingsDrag = null; });
   btn(W / 2 + 120, 220, 150, 38, `Música: ${save.music ? "ligada" : "desligada"}`, () => { save.music = !save.music; musicSetOn(save.music); persist(); });
-  btn(W / 2 + 120, 266, 150, 38, "Objetivos (O)", () => { game.paused = false; game.menu = "obj"; });
+  btn(W / 2 + 120, 266, 150, 38, "Objetivos", () => { game.paused = false; game.menu = "obj"; game.oscroll = 0; });
+  btn(W / 2 - 110, 312, 220, 38, `HUD: ${save.hud === 1 ? "compacto" : "completo"}`, () => { save.hud = save.hud === 1 ? 0 : 1; persist(); });
   btn(W / 2 + 120, 170, 150, 42, "Missões", () => { game.paused = false; game.menu = "missions"; game.cur = 0; game.atBase = inSafe(); }, true);
   // missões ativas direto na pausa
   const mx = 640, my = 330;
@@ -383,12 +386,8 @@ function drawPause() {
   btn(W / 2 - 280, 220, 160, 38, `Gráficos: ${(GFX_Q[save.gfx] || "").split(" ")[0]}`, () => gfxSetQuality(((save.gfx || 0) + 2) % 3));
   txt(GFX.on ? (save.gfx >= 2 ? "luz, sombras, brilho e clima" : "luz, sombras e clima, sem brilho") : GFX.failed ? "WebGL indisponível neste PC" : "modo antigo, mais leve", W / 2 - 200, 274, 11, "rgba(229,224,200,0.55)", "center");
   txt("Créditos: armas extras do pacote \"2D Guns\" de Kay Lousberg (OpenGameArt.org, CC0)", W / 2, H - 14, 11, "rgba(229,224,200,0.45)", "center");
-  const ctl = [["WASD", "andar"], ["Shift", "correr"], ["Mouse", "mirar e atacar"], ["1 2 3 / roda", "trocar arma"], ["R", "recarregar"], ["E", "vasculhar, entrar, usar"],
-    ["B", "mochila"], ["F G H", "comer, beber, kit"], ["C", "atributos e personagem"], ["M", "mapa do setor"], ["N", "mapa da cidade"], ["O", "objetivos"], ["Esc", "pausa e missões"], ["J", "música"], ["K", "som"], ["U", "amigos e jogadores"], ["I", "mensagens"]];
-  ctl.forEach(([k, v], i) => {
-    const cx = i < 8 ? 150 : 410, cy = 340 + (i % 8) * 22;
-    txt(k, cx, cy, 13, "#ffd96a", "right", true); txt(v, cx + 12, cy, 13, "#c9c4ad");
-  });
+  txt("WASD andar · Shift correr · mouse mirar e atacar · 1 2 3 / roda trocar arma · R recarregar · E usar · B mochila · M mapa · N cidade · Enter chat",
+    W / 2, 498, 12, "rgba(229,224,200,0.6)", "center", false, W - 60);
 }
 
 // =====================================================================

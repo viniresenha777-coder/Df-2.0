@@ -239,17 +239,20 @@ function drawHub() {
   // O interior continua visível atrás do retrato; textos e barras ficam por cima.
   ctx.fillStyle = "rgba(20,19,15,0.22)"; rr(px, 44, pw, H - 52, 8); ctx.fill();
   ctx.strokeStyle = "#5a4a2a"; ctx.lineWidth = 2; ctx.stroke();
-  const links = [["Mochila e equipamento", "pack"], ["Atributos", "stats"], ["Objetivos", "obj"], ["Mapa", "map"]];
+  const links = [["Mochila e equipamento", "pack"], ["Atributos", "stats"], ["Objetivos", "obj"]];   // o mapa continua na tecla N
   links.forEach(([label, m], i) => {
     const ly = 64 + i * 17, hov = mouse.x >= px + 10 && mouse.x <= px + 180 && mouse.y >= ly - 12 && mouse.y <= ly + 4;
     txt(label, px + 12, ly, 12, hov ? "#ffd96a" : "#f2eedc", "left", true);
     regClick(px + 10, ly - 12, 170, 16, () => { game.menu = m; game.cur = 0; if (m === "creditshop") { game.creditCur = 0; game.creditConfirm = null; } if (m === "map") game.mapSel = { cx: world.cell.cx, cy: world.cell.cy }; if (m === "obj") game.oscroll = 0; });
   });
   const skin = SKINS[save.skin] || SKINS[0];
-  txt(playerName(), px + pw - 10, 64, 12, "#ffd96a", "right", true, 120);
-  txt(prof() ? prof().name : skin.name, px + pw - 10, 110, 10, "#e05a4a", "right", true, 120);
-  txt(`Nível ${player.level}`, px + pw - 10, 80, 12, "#e5e0c8", "right", true);
-  txt(player.level >= MAX_LEVEL ? "máximo" : `${Math.floor(player.xp)} / ${xpNeed(player.level)} XP`, px + pw - 10, 95, 10, "#a9a58f", "right");
+  // coluna da direita: nome, nível, XP, dinheiro e créditos (de cima para baixo)
+  const rx = px + pw - 10;
+  shadowTxt(playerName(), rx, 66, 14, "#e0402a", "right", true, 130);
+  shadowTxt(`Nível ${player.level}`, rx, 84, 13, "#f2eedc", "right", true, 130);
+  if (player.level < MAX_LEVEL) shadowTxt(`${Math.floor(player.xp).toLocaleString("pt-BR")} / ${xpNeed(player.level).toLocaleString("pt-BR")}`, rx, 99, 11, "#d8d2bc", "right", true, 130);
+  shadowTxt(`Dinheiro: $${game.money.toLocaleString("pt-BR")}`, rx, 116, 12, "#ffd96a", "right", true, 130);
+  shadowTxt(`Créditos: ${save.credits.toLocaleString("pt-BR")}`, rx, 131, 12, "#e5e0c8", "right", true, 130);
 
   // retrato de frente (arte do personagem); capa aparece por trás dos ombros
   const cp = CAPES[save.cape | 0], hx = px + 74, hy = 214;
@@ -265,14 +268,21 @@ function drawHub() {
   if (!drawPortrait(hx, hy + 6, 128, 196, openInv) && !drawSpr(skin.spr, hx, hy, 120, 196)) drawHero(hx, hy, 0.95);
   if (portraitView() === "back") cape();
   regClick(px + 10, hy - 100, 128, 200, openInv);   // clicar no boneco abre o inventário
-  const bx = px + 140, bw = pw - 152;
-  hubBar(bx, 150, bw, "Vida", player.hp, player.maxHp, "#6fd06a");
-  hubBar(bx, 182, bw, "Fome", player.hunger, 100, "#e0a040");
-  hubBar(bx, 214, bw, "Sede", player.thirst, 100, "#4aa3df");
+  // estado do personagem, por cima do retrato: nome em cima, valor embaixo (Fome, Sede, Vida, Colete)
+  const sx = px + pw - 48, stat = (label, value, color, y) => {
+    shadowTxt(label, sx, y, 13, color, "center", true, 90);
+    shadowTxt(value, sx, y + 16, 13, color, "center", true, 90);
+  };
+  stat("Fome", `${Math.round(player.hunger)} / 100`, "#e0a040", 168);
+  stat("Sede", `${Math.round(player.thirst)} / 100`, "#4aa3df", 208);
+  stat("Vida", `${Math.round(player.hp)} / ${Math.round(player.maxHp)}`, "#6fd06a", 248);
   if (save.vest >= 0) {
-    const vd = Math.round(vestDur()), hov = mouse.x >= bx && mouse.x <= bx + bw && mouse.y >= 296 && mouse.y <= 312;
-    txt(vd < 100 ? `Colete ${vd}% · consertar $${Math.max(1, repairCost())}` : `Colete ${vd}%`, bx, 308, 10, vd < 100 ? (hov ? "#ffd96a" : "#e0a040") : "#a9a58f", "left", true, bw);
-    if (vd < 100) regClick(bx, 296, bw, 16, repairVest);
+    const vd = Math.round(vestDur()), hov = mouse.x >= sx - 45 && mouse.x <= sx + 45 && mouse.y >= 276 && mouse.y <= 310;
+    stat("Colete", `${vd}%`, vd < 100 ? (hov ? "#ffd96a" : "#e0a040") : "#c9c4ad", 288);
+    if (vd < 100) {
+      shadowTxt(`consertar $${Math.max(1, repairCost())}`, sx, 318, 10, hov ? "#ffd96a" : "#a9a58f", "center", true, 90);
+      regClick(sx - 45, 276, 90, 46, repairVest);
+    }
   }
 
   // Na base, exibir SOMENTE os três bônus de combate calculados com os

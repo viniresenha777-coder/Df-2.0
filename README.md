@@ -13,6 +13,11 @@ Apenas um JSON com o progresso do jogo é guardado em `public.fm_partidas`, asso
 2. Em **Authentication → URL Configuration**, defina o **Site URL** para `https://viniresenha777-coder.github.io/Df-2.0/`. Adicione exatamente esse mesmo endereço em **Redirect URLs**.
 3. Em **Authentication → Providers → Email**, habilite logins com e-mail e senha. Recomenda-se manter a confirmação de e-mail ativada.
 4. Teste cadastro, confirmação por e-mail, login, carregar jogo e **Esc → Salvar e sair**.
+5. Anti-trapaça: execute também [supabase/configurar-antitrapaca.sql](supabase/configurar-antitrapaca.sql). A cada salvamento o servidor confere dinheiro, créditos, VIP e nível e corrige o impossível; os casos ficam em `public.fm_suspeitas` (só administradores leem).
+
+### Código publicado
+
+O site carrega o jogo empacotado em `js/jogo.min.js` (uma função fechada, sem comentários), gerado por `tools/empacotar.py` a partir dos arquivos de `js/`. Depois de alterar o código, rode o empacotador antes de publicar. Para testar com os arquivos soltos, abra `dev.html`.
 
 Se o link de confirmação apontar para `localhost:3000`, o Site URL/Redirect URLs ainda não estão corretos.
 A opção **Reenviar confirmação** ajuda quando o link anterior expirou.
