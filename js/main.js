@@ -152,11 +152,11 @@ window.addEventListener("keydown", (e) => {
   }
   if (k === "escape" && game.sectorMap) { game.sectorMap = false; return; }
   // Esc (menu) e B (mochila) não abrem na hora fora da base: contagem de 7 a 0 com o jogo correndo.
-  // Apertar Esc ou B de novo durante a contagem cancela.
+  // Apertar Esc ou B de novo durante a contagem cancela. Administrador abre na hora.
   if (k === "escape" || k === "b") {
     if (game.openWait) { game.openWait = null; toast("Cancelado"); return; }
     const kind = k === "b" ? "pack" : "pause";
-    if (atBase()) openWaitDone(kind); else game.openWait = { kind, t: OPEN_WAIT_MS };
+    if (atBase() || canUseAdmin()) openWaitDone(kind); else game.openWait = { kind, t: OPEN_WAIT_MS };
     return;
   }
   if (k === "n") { game.menu = "map"; game.mapAsk = null; game.mapSel = { cx: world.cell.cx, cy: world.cell.cy }; return; }
