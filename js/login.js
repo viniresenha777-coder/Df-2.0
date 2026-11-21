@@ -204,7 +204,7 @@ document.getElementById("resend-confirmation").addEventListener("click", async (
       loginStatus("Sessão restaurada. Carregando seu jogo...");
       await startGame();
     } else {
-      loginStatus("Entre ou crie sua conta para continuar o jogo.");
+      loginStatus("");
     }
   } catch (error) {
     loginStatus(displayAuthError(error), true);

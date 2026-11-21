@@ -448,12 +448,10 @@ function draw() {
   drawHUD();
   if (game.openWait && !game.menu && !game.paused) {
     const s = Math.max(0, Math.ceil(game.openWait.t / 1000));
+    // só o texto e o tempo, embaixo da tela, sem caixa
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.55)"; rr(W / 2 - 130, 150, 260, 96, 10); ctx.fill();
-    ctx.strokeStyle = "rgba(212,175,55,0.6)"; ctx.lineWidth = 1.5; ctx.stroke();
-    txt(game.openWait.kind === "pack" ? "Abrindo a mochila" : "Abrindo o menu", W / 2, 176, 15, "#e5e0c8", "center", true);
-    txt(String(s), W / 2, 222, 40, "#ffd96a", "center", true);
-    txt(`${game.openWait.kind === "pack" ? "B" : "Esc"} de novo cancela`, W / 2, 240, 10, "#a9a58f", "center");
+    ctx.shadowColor = "rgba(0,0,0,0.95)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
+    txt(`${game.openWait.kind === "pack" ? "ABRINDO MOCHILA" : "ABRINDO MENU"} (${s})`, W / 2, H - 22, 16, "#e0402a", "center", true);
     ctx.restore();
   }
   drawBonusPanel();
