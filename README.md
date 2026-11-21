@@ -17,7 +17,7 @@ Apenas um JSON com o progresso do jogo é guardado em `public.fm_partidas`, asso
 
 ### Código publicado
 
-O site carrega o jogo empacotado em `js/jogo.min.js` (uma função fechada, sem comentários), gerado por `tools/empacotar.py` a partir dos arquivos de `js/`. Depois de alterar o código, rode o empacotador antes de publicar. Para testar com os arquivos soltos, abra `dev.html`.
+O site carrega o jogo empacotado em `js/jogo.min.js` (uma função fechada, sem comentários), gerado por `tools/empacotar.py` a partir dos arquivos de `js/`. Depois de alterar o código, rode o empacotador antes de publicar. Para testar com os arquivos soltos, abra `tools/dev.html`. O empacotador também embaralha o código (javascript-obfuscator) e gera `js/conta.min.js` (login e salvamento) e `js/recuperar.min.js`; no site, os demais arquivos de `js/`, `supabase/`, `tools/` e `tests/` respondem 404 (`functions/`).
 
 Se o link de confirmação apontar para `localhost:3000`, o Site URL/Redirect URLs ainda não estão corretos.
 A opção **Reenviar confirmação** ajuda quando o link anterior expirou.
