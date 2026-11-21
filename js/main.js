@@ -38,6 +38,7 @@ function resetGame() {
     stamina: 100, exhausted: false, hunger: 100, thirst: 100, food: 1, foodQ: { podre: 0, comum: 1, fresca: 0 }, water: 1, med: 0, infect: 0, anti: 0,
     slots: [newInst("pistola"), newInst("faca"), null], pack: [],
     reserve: Object.fromEntries(Object.keys(AMMO).map((t) => [t, t === "9mm" ? 30 : 0])),
+    tokenReserve: {},
     cur: 0, reloading: 0, cooldown: 0, heat: 0, spin: 0, overheat: 0
   };
   recalcImplants(); player.hp = player.maxHp;
