@@ -33,7 +33,9 @@ OFUSCA = os.path.join(FERRAMENTAS, "ofusca", "node_modules", "javascript-obfusca
 OPCOES = {"compact": True, "simplify": True, "identifierNamesGenerator": "mangled", "renameGlobals": False,
           "stringArray": True, "stringArrayThreshold": 0.6, "stringArrayRotate": True, "stringArrayShuffle": True,
           "controlFlowFlattening": False, "deadCodeInjection": False, "selfDefending": False,
-          "transformObjectKeys": False, "splitStrings": False, "unicodeEscapeSequence": False, "sourceMap": False}
+          "transformObjectKeys": False, "splitStrings": False, "unicodeEscapeSequence": False, "sourceMap": False,
+          # com o Inspecionar (DevTools) aberto, o código fica parando no depurador a cada 4 s
+          "debugProtection": True, "debugProtectionInterval": 4000}
 
 REGEX_BEFORE = set("(,=:[!&|?{};+-*%<>~^")
 REGEX_WORDS = {"return", "typeof", "instanceof", "in", "of", "new", "delete", "void", "throw", "case", "do", "else", "yield", "await"}

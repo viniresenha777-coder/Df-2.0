@@ -1,4 +1,17 @@
 "use strict";
+// Atrapalha quem tenta abrir o Inspecionar: F12, Ctrl+Shift+I/J/C (Cmd+Opt no Mac), Ctrl+U (ver código) e o
+// botão direito. Não impede de verdade (o menu do navegador continua abrindo), só afasta os curiosos.
+// Na versão para testar (tools/dev.html) fica liberado.
+if (!/\/tools\/dev\.html$/.test(location.pathname)) {
+  window.addEventListener("keydown", (e) => {
+    const k = (e.key || "").toLowerCase(), mod = e.ctrlKey || (e.metaKey && e.altKey);
+    if (k === "f12" || (mod && e.shiftKey && (k === "i" || k === "j" || k === "c")) || (mod && e.altKey && (k === "i" || k === "j" || k === "c")) ||
+        ((e.ctrlKey || e.metaKey) && k === "u")) {
+      e.preventDefault(); e.stopImmediatePropagation();
+    }
+  }, true);
+  window.addEventListener("contextmenu", (e) => e.preventDefault(), true);
+}
 // O jogo só é carregado depois da autenticação e da leitura do save online.
 const loginForm = document.getElementById("login");
 const statusEl = document.getElementById("login-status");
