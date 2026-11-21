@@ -34,7 +34,7 @@ function runSnapshot() {
   return {
     v: 1, cx: world.cell.cx, cy: world.cell.cy, x: Math.round(pos.x), y: Math.round(pos.y),
     p: { hp: p.hp, hunger: p.hunger, thirst: p.thirst, stamina: p.stamina, food: p.food, foodQ: p.foodQ, water: p.water, med: p.med,
-         anti: p.anti, infect: p.infect || 0, slots: p.slots, pack: p.pack, reserve: p.reserve, bag: p.bag, cur: p.cur },
+         anti: p.anti, infect: p.infect || 0, slots: p.slots, pack: p.pack, reserve: p.reserve, tokenAmmo: p.tokenAmmo, bag: p.bag, cur: p.cur },
     g: { money: game.money, clock: game.clock, kills: game.kills, best: game.best, time: game.time },
     map: typeof MAP !== "undefined" && MAP ? {
       bossT: MAP.bossT,
@@ -47,7 +47,7 @@ function runSnapshot() {
   };
 }
 function checkpoint(reason) {
-  if (!game || game.over || !save.name || !save.prof || !world) return Promise.resolve(false);
+  if (!game || game.over || game.marketBusy || !save.name || !save.prof || !world) return Promise.resolve(false);
   let payload;
   try {
     save.run = runSnapshot();
@@ -154,6 +154,11 @@ function restoreRun() {
     while (player.slots.length < SLOT_N) player.slots.push(null);
     if (Array.isArray(p.pack)) player.pack = p.pack.filter(validItem).slice(0, PACK_MAX);
     if (p.reserve) for (const t in AMMO) player.reserve[t] = Math.max(0, p.reserve[t] | 0);
+    for (const t in AMMO) {
+      // Saves anteriores misturavam munição comum e do token na mesma reserva.
+      const bound = p.tokenAmmo ? p.tokenAmmo[t] | 0 : save.shopFreeUntil > 0 ? player.reserve[t] : 0;
+      player.tokenAmmo[t] = clamp(bound, 0, player.reserve[t]);
+    }
     if (Array.isArray(p.bag)) player.bag = p.bag.map(cleanImplant).filter(Boolean).slice(0, BAG_MAX);
     recalcImplants();
     player.hp = Math.max(1, Math.min(player.maxHp, p.hp || player.maxHp));

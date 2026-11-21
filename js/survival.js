@@ -112,6 +112,10 @@ function ammoRoom(t) {
   const r = player.reserve[t] || 0, partial = Math.ceil(r / AMMO_STACK) * AMMO_STACK - r;
   return partial + Math.max(0, PACK_MAX - packUsed()) * AMMO_STACK;
 }
+function spendAmmo(t, n) {
+  player.tokenAmmo[t] = Math.max(0, (player.tokenAmmo[t] || 0) - n);
+  player.reserve[t] -= n;
+}
 function addAmmo(t, n) { const take = Math.max(0, Math.min(n, ammoRoom(t))); player.reserve[t] = (player.reserve[t] || 0) + take; return take; }
 
 // ---------- Durabilidade dos coletes ----------

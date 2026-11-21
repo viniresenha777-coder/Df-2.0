@@ -6,6 +6,7 @@
 
 // ---------- Teclas dentro dos menus ----------
 function menuKey(k) {
+  if (game.menu === "market" && game.marketBusy) return;
   if (game.input) { inputKey(k); return; }
   if (game.menu === "admin") { if (!canUseAdmin()) { game.menu = null; game.input = null; return; } adminKey(k); return; }
   if (game.menu === "name") { nameKey(k); return; }
@@ -43,6 +44,7 @@ function inputKey(k) {
     game.input = null;
     if (inp.mode === "admText") { if (canUseAdmin() && rawText.trim()) inp.fn(rawText.trim()); }
     else if (inp.mode === "adm") { if (canUseAdmin() && rawText !== "") inp.fn(a); }
+    else if (inp.mode === "market") inp.fn(Number(rawText));
     else if (inp.mode === "deposit") deposit(a);
     else if (inp.mode === "credits") buyCredits(a);
     else withdraw(a);
@@ -544,6 +546,7 @@ function drawMenu() {
   else if (game.menu === "missions") drawMissions();
   else if (game.menu === "sector") drawSector();
   else if (game.menu === "junk") drawJunk();
+  else if (game.menu === "market") drawMarket();
   else if (game.menu === "creditshop") drawCreditShop();
   else if (game.menu === "admin") drawAdmin();
   else if (game.menu === "travel") drawTravel();

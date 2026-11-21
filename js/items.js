@@ -237,12 +237,12 @@ function addWeapon(inst) {
   if (packUsed() < PACK_MAX) { player.pack.push(inst); return "pack"; }
   return null;
 }
-function addMat(id, n, list, max) {
+function addMat(id, n, list, max, loot = false) {
   list = list || player.pack; max = max || PACK_MAX;
-  const st = list.find((it) => it.kind === "mat" && it.id === id);
+  const st = list.find((it) => it.kind === "mat" && it.id === id && !!it.loot === loot);
   if (st) { st.qty += n; return true; }
   if ((list === player.pack ? packUsed() : list.length) >= max) return false;
-  list.push({ kind: "mat", id, qty: n });
+  list.push({ kind: "mat", id, qty: n, loot });
   return true;
 }
 // materiais da mochila contam sempre; os do baú contam quando você está num posto

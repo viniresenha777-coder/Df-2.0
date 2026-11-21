@@ -123,11 +123,12 @@ function acceptFound() {
     if (got < e.amt) { e.amt -= got; toast(got ? `Pegou ${got} balas · a mochila encheu (500 balas por espaço)` : "Mochila cheia: munição ocupa 1 espaço a cada 500 balas"); sfx.empty(); return false; }
   }
   else if (e.type === "weapon") {
+    e.inst.loot = true;
     const r = addWeapon(e.inst);
     if (!r) { toast("Mochila cheia! Recuse o item ou abra espaço"); sfx.empty(); return false; }
     if (r === "slot" && !curInst()) player.cur = player.slots.indexOf(e.inst);
   } else if (e.type === "mat") {
-    if (!addMat(e.id, e.amt)) { toast("Mochila cheia! Recuse o item ou abra espaço"); sfx.empty(); return false; }
+    if (!addMat(e.id, e.amt, player.pack, PACK_MAX, true)) { toast("Mochila cheia! Recuse o item ou abra espaço"); sfx.empty(); return false; }
   } else if (e.type === "implant") {
     if (player.bag.length >= BAG_MAX) { toast("Mochila de implantes cheia"); sfx.empty(); return false; }
     player.bag.push(e.im);
@@ -535,7 +536,7 @@ function vaultMove() {
   if (game.vside === 0) {
     const e = myList()[game.vcur];
     if (!e) return;
-    if (e.it.kind === "mat") { if (!addMat(e.it.id, e.it.qty, save.vault, VAULT_MAX)) { toast("Baú cheio"); return; } }
+    if (e.it.kind === "mat") { if (!addMat(e.it.id, e.it.qty, save.vault, VAULT_MAX, !!e.it.loot)) { toast("Baú cheio"); return; } }
     else { if (save.vault.length >= VAULT_MAX) { toast("Baú cheio"); return; } save.vault.push(e.it); }
     if (e.where === "slot") player.slots[e.i] = null; else player.pack.splice(e.i, 1);
     player.reloading = 0;
@@ -545,7 +546,7 @@ function vaultMove() {
     const it = save.vault[game.vcur];
     if (!it) return;
     if (it.kind === "weapon") { if (!addWeapon(it)) { toast("Mochila cheia"); return; } }
-    else if (!addMat(it.id, it.qty)) { toast("Mochila cheia"); return; }
+    else if (!addMat(it.id, it.qty, player.pack, PACK_MAX, !!it.loot)) { toast("Mochila cheia"); return; }
     save.vault.splice(game.vcur, 1);
     toast(`Pegou do baú: ${it.kind === "weapon" ? instName(it) : MATS[it.id].name}`);
     game.vcur = Math.max(0, Math.min(game.vcur, save.vault.length - 1));
@@ -603,7 +604,8 @@ function shopBuy() {
   const free = shopFree();
   if (!free && game.money < AMMO_PACK_PRICE) { toast("Você precisa de $14.000 para comprar munições."); return; }
   if (ammoRoom(type) < AMMO_PACK_SIZE) { toast("Espaço insuficiente para 999 munições na mochila."); return; }
-  if (!free) game.money -= AMMO_PACK_PRICE;
+  if (free) player.tokenAmmo[type] = (player.tokenAmmo[type] || 0) + AMMO_PACK_SIZE;
+  else game.money -= AMMO_PACK_PRICE;
   player.reserve[type] = (player.reserve[type] || 0) + AMMO_PACK_SIZE;
   sfx.buy();
   checkpoint("compra de pacote de munição");

@@ -136,6 +136,22 @@ const fmCloud = (() => {
     pending = operation.catch(() => {});
     return operation;
   }
+  function marketAction(args) {
+    const userId = user?.id;
+    const operation = pending.then(async () => {
+      if (!userId || user?.id !== userId || !revision) throw new Error("Salve a partida antes de negociar.");
+      const nextRevision = crypto.randomUUID();
+      const { data: result, error } = await requireClient().rpc("fm_mercado_operar", {
+        ...args, versao: revision, nova_versao: nextRevision
+      });
+      if (error) throw new Error(error.message || "O servidor recusou a negociação.");
+      revision = nextRevision;
+      snapshot = JSON.stringify(result);
+      return result;
+    });
+    pending = operation.catch(() => {});
+    return operation;
+  }
   async function logout() {
     // Uma falha de rede ao revogar o refresh token não deve impedir que o
     // jogador retorne à tela de login após o progresso ter sido salvo.
@@ -213,7 +229,7 @@ const fmCloud = (() => {
   }
   return { resume, login, logout, resend, ping,
     sendPasswordRecovery, observeAuth, recoverySession, changeRecoveredPassword,
-    write, read: () => snapshot, isActive: () => !!user, isAdmin: () => !!user && userIsAdmin, hasOnlineSave: () => revision !== null,
+    write, marketAction, read: () => snapshot, isActive: () => !!user, isAdmin: () => !!user && userIsAdmin, hasOnlineSave: () => revision !== null,
     userId: () => user ? user.id : null, socialClient: () => client,
     // administrador: o servidor confere a permissão em cada chamada
     ban: (uid, dias, motivo) => rpc("fm_banir", { alvo: uid, dias: dias || null, motivo: motivo || "" }),

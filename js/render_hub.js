@@ -225,6 +225,8 @@ function drawHub() {
     }, true);
   }
 
+  btn(W - 300, 6, 158, 26, "Mercado Negro", openMarket);
+
   // planta da base
   if (!drawHubArt()) {
     ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(290, 82, 552, 412);

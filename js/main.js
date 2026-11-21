@@ -37,6 +37,7 @@ function resetGame() {
     attrs: save.char.attrs, bag: [], fx: {},
     stamina: 100, exhausted: false, hunger: 100, thirst: 100, food: 1, foodQ: { podre: 0, comum: 1, fresca: 0 }, water: 1, med: 0, infect: 0, anti: 0,
     slots: [newInst("pistola"), newInst("faca"), null], pack: [],
+    tokenAmmo: {},
     reserve: Object.fromEntries(Object.keys(AMMO).map((t) => [t, t === "9mm" ? 30 : 0])),
     cur: 0, reloading: 0, cooldown: 0, heat: 0, spin: 0, overheat: 0
   };
@@ -142,6 +143,7 @@ window.addEventListener("keydown", (e) => {
   keys[k] = true;
   if (["tab", " ", "arrowup", "arrowdown", "arrowleft", "arrowright", "backspace", "f2"].includes(k)) e.preventDefault();
   if (e.repeat && !game.menu) return;
+  if (game.marketBusy) return;
   if (k === "f2") { toggleAdmin(); return; }
   if (game.over) { if (k === "enter") respawnPlayer(); return; }
   if (game.quitting) return;

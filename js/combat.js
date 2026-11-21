@@ -171,7 +171,7 @@ function finishReload() {
   if (player.reloadRound) {
     if (it.ammo < w.mag && player.reserve[w.ammo] > 0) {
       it.ammo += 1;
-      player.reserve[w.ammo] -= 1;
+      spendAmmo(w.ammo, 1);
     }
     if (it.ammo < w.mag && player.reserve[w.ammo] > 0) {
       player.reloading = player.reloadMax;
@@ -187,7 +187,7 @@ function finishReload() {
   player.reloadWeapon = null;
   if (w.infinite) { it.ammo = w.mag; return; }
   const take = Math.min(w.mag - it.ammo, player.reserve[w.ammo]);
-  it.ammo += take; player.reserve[w.ammo] -= take;
+  it.ammo += take; spendAmmo(w.ammo, take);
 }
 function explode(x, y, r, dmg) {
   for (const z of Zs()) if (z.hp > 0 && Math.hypot(z.x - x, z.y - y) < r + z.r) hurt(z, dmg, Math.atan2(z.y - y, z.x - x), true);

@@ -34,7 +34,7 @@ function junkItems() {
     if (it.kind === "weapon") L.push({ kind: "weapon", it, where: "pack", name: instName(it), unit: weaponSellPrice(it), qty: 1, rare: WDEF[it.id].rar >= 2, sub: "mochila" });
     else if (it.kind === "mat") L.push({ kind: "mat", it, name: MATS[it.id].name, unit: matSellPrice(it.id), qty: it.qty, rare: it.id === "nucleo" || it.id === "placa", sub: "material" });
   });
-  for (const t of Object.keys(AMMO)) if (player.reserve[t] > 0) L.push({ kind: "ammo", t, name: `Munição ${t}`, unit: ammoSellPrice(t), qty: player.reserve[t], rare: false, sub: "balas" });
+  for (const t of Object.keys(AMMO)) if (sellableAmmo(t) > 0) L.push({ kind: "ammo", t, name: `Munição ${t}`, unit: ammoSellPrice(t), qty: sellableAmmo(t), rare: false, sub: "balas" });
   for (const q of ["fresca", "comum", "podre"]) if (player.foodQ[q] > 0) L.push({ kind: "food", q, name: FOOD_Q[q].name[0].toUpperCase() + FOOD_Q[q].name.slice(1), unit: JUNK_CONS[q], qty: player.foodQ[q], sub: "comida" });
   if (player.water > 0) L.push({ kind: "water", name: "Garrafa de água", unit: JUNK_CONS.water, qty: player.water, sub: "água" });
   if (player.med > 0) L.push({ kind: "med", name: "Kit médico", unit: JUNK_CONS.med, qty: player.med, sub: "remédio" });
@@ -43,7 +43,12 @@ function junkItems() {
   VESTS.forEach((v, i) => { if (save.vestsOwned[i] && i !== save.vest) L.push({ kind: "vest", idx: i, name: v.name, unit: Math.round(v.price * 0.3 * (vestDur(i) / 100)) || 20, qty: 1, rare: v.rar >= 2, sub: `colete guardado · ${Math.round(vestDur(i))}%` }); });
   return L;
 }
+function sellableAmmo(t) { return Math.max(0, player.reserve[t] - (player.tokenAmmo[t] || 0)); }
 function sellEntry(e, n) {
+  if (e.kind === "ammo") {
+    n = Math.min(n, sellableAmmo(e.t));
+    if (n <= 0) return;
+  }
   n = Math.max(1, Math.min(n, e.qty));
   const total = Math.max(1, Math.round(e.unit * n));
   switch (e.kind) {
