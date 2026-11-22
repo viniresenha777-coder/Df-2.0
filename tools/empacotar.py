@@ -20,6 +20,7 @@ import json
 import hashlib
 import subprocess
 import tempfile
+import shutil
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEV = os.path.join(ROOT, "tools", "dev.html")
@@ -27,8 +28,9 @@ INDEX = os.path.join(ROOT, "index.html")
 RECUPERAR = os.path.join(ROOT, "recuperar.html")
 OUT = os.path.join(ROOT, "js", "jogo.min.js")
 FERRAMENTAS = os.path.normpath(os.path.join(ROOT, "..", "fronteiraMorta_src", "tools"))
-NODE = os.path.join(FERRAMENTAS, "node-v26.13.1-win-x64", "node.exe")
-OFUSCA = os.path.join(FERRAMENTAS, "ofusca", "node_modules", "javascript-obfuscator")
+NODE_PORTATIL = os.path.join(FERRAMENTAS, "node-v26.13.1-win-x64", "node.exe")
+NODE = os.environ.get("FM_NODE") or (NODE_PORTATIL if os.path.isfile(NODE_PORTATIL) else shutil.which("node") or NODE_PORTATIL)
+OFUSCA = os.environ.get("FM_OBFUSCATOR") or os.path.join(FERRAMENTAS, "ofusca", "node_modules", "javascript-obfuscator")
 # leve o bastante para não pesar no jogo: troca os nomes e esconde os textos numa tabela, sem embaralhar o fluxo
 OPCOES = {"compact": True, "simplify": True, "identifierNamesGenerator": "mangled", "renameGlobals": False,
           "stringArray": True, "stringArrayThreshold": 0.6, "stringArrayRotate": True, "stringArrayShuffle": True,
@@ -245,6 +247,8 @@ def main():
     troca_versao(INDEX, "jogo.min.js", ver)
     total = sum(os.path.getsize(os.path.join(ROOT, r)) for r in game_scripts())
     print(f"{len(parts)} arquivos -> js/jogo.min.js ({len(bundle) // 1024} KB, antes {total // 1024} KB), versão {ver}")
+    if "--game-only" in sys.argv:
+        return
     v2, n2 = pacote_solto(["js/cloud.js", "js/login.js"], "conta.min.js")
     troca_versao(INDEX, "conta.min.js", v2)
     v3, n3 = pacote_solto(["js/cloud.js", "js/reset-password.js"], "recuperar.min.js")
