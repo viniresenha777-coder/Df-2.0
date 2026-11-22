@@ -243,6 +243,7 @@ function foundKey(k) {
 }
 // Painel de saque inspirado na interface marrom/desgastada; o mundo continua
 // visível fora dele. A arte é gerada uma vez para não pesar no jogo.
+// Janela totalmente transparente: desenha só a moldura, sem qualquer fundo.
 let foundPanelSkin = null;
 function drawFoundPanelSkin(x, y, w, h) {
   if (!foundPanelSkin || foundPanelSkin.width !== w || foundPanelSkin.height !== h) {
@@ -261,45 +262,19 @@ function drawFoundPanelSkin(x, y, w, h) {
       g.lineTo(2, r); g.quadraticCurveTo(2, 2, r, 2);
       g.closePath();
     };
-    const base = g.createLinearGradient(0, 0, w, h);
-    base.addColorStop(0, "#6d2b0f");
-    base.addColorStop(0.24, "#4e1a0a");
-    base.addColorStop(0.57, "#5b210a");
-    base.addColorStop(1, "#331204");
-    border(); g.fillStyle = base; g.fill();
-    g.save(); border(); g.clip();
-    // Poeira, desgaste, ferrugem e riscos fixos para não piscarem a cada quadro.
-    let seed = 715093;
-    const rnd = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
-    for (let i = 0; i < 2500; i++) {
-      const bright = rnd() > 0.49, a = 0.02 + rnd() * (bright ? 0.17 : 0.22);
-      g.fillStyle = bright ? "rgba(242,147,71," + a + ")" : "rgba(11,3,0," + a + ")";
-      const px = rnd() * w, py = rnd() * h, sz = 0.5 + rnd() * 2.6;
-      g.fillRect(px, py, sz, sz * (0.3 + rnd() * 1.7));
-    }
-    for (let i = 0; i < 105; i++) {
-      g.strokeStyle = "rgba(245,170,92," + (0.04 + rnd() * 0.2) + ")";
-      g.lineWidth = 0.4 + rnd() * 1.1;
-      const px = rnd() * w, py = rnd() * h;
-      g.beginPath(); g.moveTo(px, py); g.lineTo(px + 4 + rnd() * 35, py - 1 - rnd() * 5); g.stroke();
-    }
-    // Faixa superior escura, brilho metálico e vinheta na moldura.
-    g.fillStyle = "rgba(19,6,2,0.35)"; g.fillRect(2, 58, w - 4, 2);
-    g.fillStyle = "rgba(0,0,0,0.21)"; g.fillRect(2, 60, w - 4, h - 62);
-    const edge = g.createRadialGradient(w / 2, h / 2, 90, w / 2, h / 2, w / 1.4);
-    edge.addColorStop(0, "rgba(0,0,0,0)");
-    edge.addColorStop(1, "rgba(10,1,0,0.6)");
-    g.fillStyle = edge; g.fillRect(0, 0, w, h);
-    g.restore();
+    // NÃO usar fill/gradient/overlay aqui: canvas começa com alpha=0.
+    // O cenário deve aparecer 100% através de toda a área interna.
+    g.save();
     border(); g.lineWidth = 4; g.strokeStyle = "#bd612d"; g.stroke();
-    g.save(); g.translate(3, 3);
+    g.translate(3, 3);
     border(); g.lineWidth = 1.5; g.strokeStyle = "rgba(250,172,83,0.60)"; g.stroke();
     g.restore();
+    // Separador discreto, sem faixa opaca atrás do título.
+    g.beginPath(); g.moveTo(10, 58); g.lineTo(w - 10, 58);
+    g.lineWidth = 1; g.strokeStyle = "rgba(210,110,52,0.8)"; g.stroke();
     foundPanelSkin = surface;
   }
   ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.88)";
-  ctx.shadowBlur = 20; ctx.shadowOffsetY = 7;
   ctx.drawImage(foundPanelSkin, x, y);
   ctx.restore();
 }
