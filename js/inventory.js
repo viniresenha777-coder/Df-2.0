@@ -377,18 +377,9 @@ function drawFound() {
   foundText("ITEM ENCONTRADO", x + w / 2, y + 27, 21, "#efd4ab", w - 156);
   foundText("em: " + game.foundSrc, x + w - 17, y + 27, 11, "#bfa083", 90, "right");
   foundText("Você encontrou " + entryName(e) + ". Quer pegar?", x + w / 2, y + 76, 18, "#f4dcc1", w - 26);
-  // Vitrine central com o ícone específico de cada tipo de item.
-  // Fundo da vitrine restrito ao tamanho aproximado da marcação vermelha.
+  // Somente o ícone na área central: sem retângulo, borda ou
+  // preenchimento. A textura marrom do painel fica visível atrás do item.
   const vw = 238, vh = 143, vx = x + (w - vw) / 2, vy = y + 101;
-  ctx.save();
-  ctx.fillStyle = "rgba(15,5,3,0.82)"; rr(vx, vy, vw, vh, 9); ctx.fill();
-  ctx.strokeStyle = "rgba(203,122,69,0.25)"; ctx.lineWidth = 1; ctx.stroke();
-  if (wd && wd.rar >= 2) {
-    const halo = ctx.createRadialGradient(vx + vw / 2, vy + vh / 2, 5, vx + vw / 2, vy + vh / 2, vh * 0.8);
-    halo.addColorStop(0, rarColor(wd) + "60"); halo.addColorStop(1, rarColor(wd) + "00");
-    ctx.fillStyle = halo; ctx.fillRect(vx + 2, vy + 2, vw - 4, vh - 4);
-  }
-  ctx.restore();
   const pulse = 1 + Math.sin(performance.now() / 300) * 0.018;
   if (wd) drawWeaponSide(wd, vx + vw / 2, vy + vh / 2, 1.35 * pulse);
   else drawEntryIcon(e, vx + vw / 2, vy + vh / 2, 1.28 * pulse);
