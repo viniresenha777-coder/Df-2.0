@@ -367,18 +367,19 @@ function foundBackpack(x, y, size) {
 function drawFound() {
   if (!game.found || !game.found.length) return;
   const e = game.found[0];
-  const x = 167, y = 67, w = 626, h = 466;
+  // Popup inteiro menor (antes 626 x 466). Centralizado sem cobrir o HUD.
+  const w = 478, h = 350, x = (W - w) / 2, y = (H - h) / 2;
   const wd = e.type === "weapon" ? WDEF[e.inst.id] : null;
   // Fundo externo transparente: não desenhar overlay preto sobre o cenário.
   // Bloqueia cliques fora da janela sem escurecer o mapa.
   regClick(0, 0, W, H, () => {});
   drawFoundPanelSkin(x, y, w, h);
-  foundText("ITEM ENCONTRADO", x + w / 2, y + 33, 25, "#efd4ab", w - 225);
-  foundText("em: " + game.foundSrc, x + w - 22, y + 33, 13, "#bfa083", 125, "right");
-  foundText("Você encontrou " + entryName(e) + ". Quer pegar?", x + w / 2, y + 95, 22, "#f4dcc1", w - 60);
+  foundText("ITEM ENCONTRADO", x + w / 2, y + 27, 21, "#efd4ab", w - 156);
+  foundText("em: " + game.foundSrc, x + w - 17, y + 27, 11, "#bfa083", 90, "right");
+  foundText("Você encontrou " + entryName(e) + ". Quer pegar?", x + w / 2, y + 76, 18, "#f4dcc1", w - 26);
   // Vitrine central com o ícone específico de cada tipo de item.
-  // Vitrine reduzida à região central marcada na referência (~238 × 154 px no canvas).
-  const vw = 238, vh = 154, vx = x + (w - vw) / 2, vy = y + 144;
+  // Fundo da vitrine restrito ao tamanho aproximado da marcação vermelha.
+  const vw = 238, vh = 143, vx = x + (w - vw) / 2, vy = y + 101;
   ctx.save();
   ctx.fillStyle = "rgba(15,5,3,0.82)"; rr(vx, vy, vw, vh, 9); ctx.fill();
   ctx.strokeStyle = "rgba(203,122,69,0.25)"; ctx.lineWidth = 1; ctx.stroke();
@@ -389,8 +390,8 @@ function drawFound() {
   }
   ctx.restore();
   const pulse = 1 + Math.sin(performance.now() / 300) * 0.018;
-  if (wd) drawWeaponSide(wd, vx + vw / 2, vy + vh / 2, 1.6 * pulse);
-  else drawEntryIcon(e, vx + vw / 2, vy + vh / 2, 1.5 * pulse);
+  if (wd) drawWeaponSide(wd, vx + vw / 2, vy + vh / 2, 1.35 * pulse);
+  else drawEntryIcon(e, vx + vw / 2, vy + vh / 2, 1.28 * pulse);
   let info = "";
   if (wd) {
     info = RARITY[wd.rar].name + " · " + CAT_LABEL[wd.cat] + " · Dano " + wd.dmg +
@@ -400,17 +401,17 @@ function drawFound() {
   else if (e.type === "food") info = "Alimento encontrado na região";
   else if (e.type === "ammo") info = "Munição: " + e.ammo;
   else if (e.type === "credit") info = "Créditos encontrados";
-  if (info) foundText(info, W / 2, y + 335, 14, wd ? rarColor(wd) : "#dbc19d", w - 60);
-  if (wd && !canUse(wd)) foundText("Exige: " + reqText(wd), W / 2, y + 353, 13, "#ff9478", w - 70);
-  const by = y + 373;
-  foundButton(x + 65, by, 182, 56, "SIM", acceptFound);
-  foundButton(x + 286, by, 182, 56, "NÃO", declineFound);
-  foundBackpack(x + w - 103, by - 3, 69);
+  if (info) foundText(info, W / 2, y + 259, 12, wd ? rarColor(wd) : "#dbc19d", w - 32);
+  if (wd && !canUse(wd)) foundText("Exige: " + reqText(wd), W / 2, y + 274, 11, "#ff9478", w - 35);
+  const by = y + 280;
+  foundButton(x + 24, by, 145, 45, "SIM", acceptFound);
+  foundButton(x + 183, by, 145, 45, "NÃO", declineFound);
+  foundBackpack(x + w - 96, by - 8, 60);
   const more = game.found.length - 1;
   const usable = canUseFound(e);
   foundText("ENTER: PEGAR · ESC: RECUSAR · B: MOCHILA" +
     (usable ? " · C: USAR" : "") + (more ? " · T: PEGAR TUDO (" + (more + 1) + ")" : ""),
-    W / 2, y + h - 17, 12, "#c6a487", w - 45);
+    W / 2, y + h - 12, 10, "#c6a487", w - 24);
   if (game.msgT > 0) txt(game.msg, W / 2, y + h + 23, 15, "#ffd96a", "center", true);
 }
 
