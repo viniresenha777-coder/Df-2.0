@@ -339,15 +339,46 @@ function foundBackpack(x, y, size) {
   ctx.restore();
   regClick(x - 7, y - 7, size + 14, size * 1.15 + 14, openPackFromFound);
 }
+// Reduz a janela inteira em 40% mantendo proporções, conteúdo e ações.
+// A renderização usa coordenadas virtuais; os cliques são convertidos de volta
+// ao canvas real para preservar SIM, NÃO e mochila após o redimensionamento.
 function drawFound() {
+  if (!game.found || !game.found.length) return;
+  const scale = 0.60;
+  const originX = W / 2, originY = H / 2;
+  const pointerX = mouse.x, pointerY = mouse.y;
+  // Bloqueia a interface atrás da janela mesmo nas áreas transparentes.
+  regClick(0, 0, W, H, () => {});
+  const firstAction = game.clicks.length;
+  ctx.save();
+  ctx.translate(originX, originY);
+  ctx.scale(scale, scale);
+  ctx.translate(-originX, -originY);
+  mouse.x = originX + (pointerX - originX) / scale;
+  mouse.y = originY + (pointerY - originY) / scale;
+  try {
+    drawFoundContents();
+  } finally {
+    mouse.x = pointerX;
+    mouse.y = pointerY;
+    ctx.restore();
+    for (let i = firstAction; i < game.clicks.length; i++) {
+      const click = game.clicks[i];
+      click.x = originX + (click.x - originX) * scale;
+      click.y = originY + (click.y - originY) * scale;
+      click.w *= scale;
+      click.h *= scale;
+    }
+  }
+}
+
+function drawFoundContents() {
   if (!game.found || !game.found.length) return;
   const e = game.found[0];
   // Popup inteiro menor (antes 626 x 466). Centralizado sem cobrir o HUD.
   const w = 478, h = 350, x = (W - w) / 2, y = (H - h) / 2;
   const wd = e.type === "weapon" ? WDEF[e.inst.id] : null;
-  // Fundo externo transparente: não desenhar overlay preto sobre o cenário.
-  // Bloqueia cliques fora da janela sem escurecer o mapa.
-  regClick(0, 0, W, H, () => {});
+  // Painel sem preenchimento: o cenário permanece visível.
   drawFoundPanelSkin(x, y, w, h);
   foundText("ITEM ENCONTRADO", x + w / 2, y + 27, 21, "#efd4ab", w - 156);
   foundText("em: " + game.foundSrc, x + w - 17, y + 27, 11, "#bfa083", 90, "right");
