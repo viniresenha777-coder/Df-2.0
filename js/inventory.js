@@ -241,51 +241,176 @@ function foundKey(k) {
   else if (k === "t") takeAllFound();
   else if (k === "b" && game.found[0]) openPackFromFound();
 }
+// Painel de saque inspirado na interface marrom/desgastada; o mundo continua
+// visível fora dele. A arte é gerada uma vez para não pesar no jogo.
+let foundPanelSkin = null;
+function drawFoundPanelSkin(x, y, w, h) {
+  if (!foundPanelSkin || foundPanelSkin.width !== w || foundPanelSkin.height !== h) {
+    const surface = document.createElement("canvas");
+    surface.width = w; surface.height = h;
+    const g = surface.getContext("2d");
+    const border = () => {
+      const r = 17;
+      g.beginPath();
+      g.moveTo(r, 2); g.lineTo(w - r, 2);
+      g.quadraticCurveTo(w - 2, 2, w - 2, r);
+      g.lineTo(w - 2, h - r);
+      g.quadraticCurveTo(w - 2, h - 2, w - r, h - 2);
+      g.lineTo(r, h - 2);
+      g.quadraticCurveTo(2, h - 2, 2, h - r);
+      g.lineTo(2, r); g.quadraticCurveTo(2, 2, r, 2);
+      g.closePath();
+    };
+    const base = g.createLinearGradient(0, 0, w, h);
+    base.addColorStop(0, "#6d2b0f");
+    base.addColorStop(0.24, "#4e1a0a");
+    base.addColorStop(0.57, "#5b210a");
+    base.addColorStop(1, "#331204");
+    border(); g.fillStyle = base; g.fill();
+    g.save(); border(); g.clip();
+    // Poeira, desgaste, ferrugem e riscos fixos para não piscarem a cada quadro.
+    let seed = 715093;
+    const rnd = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    for (let i = 0; i < 2500; i++) {
+      const bright = rnd() > 0.49, a = 0.02 + rnd() * (bright ? 0.17 : 0.22);
+      g.fillStyle = bright ? "rgba(242,147,71," + a + ")" : "rgba(11,3,0," + a + ")";
+      const px = rnd() * w, py = rnd() * h, sz = 0.5 + rnd() * 2.6;
+      g.fillRect(px, py, sz, sz * (0.3 + rnd() * 1.7));
+    }
+    for (let i = 0; i < 105; i++) {
+      g.strokeStyle = "rgba(245,170,92," + (0.04 + rnd() * 0.2) + ")";
+      g.lineWidth = 0.4 + rnd() * 1.1;
+      const px = rnd() * w, py = rnd() * h;
+      g.beginPath(); g.moveTo(px, py); g.lineTo(px + 4 + rnd() * 35, py - 1 - rnd() * 5); g.stroke();
+    }
+    // Faixa superior escura, brilho metálico e vinheta na moldura.
+    g.fillStyle = "rgba(19,6,2,0.35)"; g.fillRect(2, 58, w - 4, 2);
+    g.fillStyle = "rgba(0,0,0,0.21)"; g.fillRect(2, 60, w - 4, h - 62);
+    const edge = g.createRadialGradient(w / 2, h / 2, 90, w / 2, h / 2, w / 1.4);
+    edge.addColorStop(0, "rgba(0,0,0,0)");
+    edge.addColorStop(1, "rgba(10,1,0,0.6)");
+    g.fillStyle = edge; g.fillRect(0, 0, w, h);
+    g.restore();
+    border(); g.lineWidth = 4; g.strokeStyle = "#bd612d"; g.stroke();
+    g.save(); g.translate(3, 3);
+    border(); g.lineWidth = 1.5; g.strokeStyle = "rgba(250,172,83,0.60)"; g.stroke();
+    g.restore();
+    foundPanelSkin = surface;
+  }
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.88)";
+  ctx.shadowBlur = 20; ctx.shadowOffsetY = 7;
+  ctx.drawImage(foundPanelSkin, x, y);
+  ctx.restore();
+}
+function foundText(text, x, y, size, color, maxWidth, align) {
+  ctx.save();
+  ctx.font = "bold " + size + "px Impact, 'Arial Narrow', Arial, sans-serif";
+  ctx.textAlign = align || "center";
+  ctx.textBaseline = "middle";
+  ctx.shadowColor = "rgba(0,0,0,0.7)";
+  ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
+  ctx.fillStyle = color || "#f1d9b6";
+  ctx.fillText(text, x, y, maxWidth);
+  ctx.restore();
+}
+function foundButton(x, y, w, h, label, action) {
+  const hover = mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h;
+  ctx.save();
+  ctx.shadowColor = "rgba(7,2,0,0.9)"; ctx.shadowBlur = 5; ctx.shadowOffsetY = 3;
+  const g = ctx.createLinearGradient(x, y, x, y + h);
+  g.addColorStop(0, hover ? "#755038" : "#4b3326");
+  g.addColorStop(1, hover ? "#51301b" : "#26180f");
+  ctx.fillStyle = g; rr(x, y, w, h, 7); ctx.fill();
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.strokeStyle = hover ? "#f3c18a" : "#a27246"; ctx.lineWidth = 2; ctx.stroke();
+  ctx.strokeStyle = "rgba(235,166,105,0.29)"; ctx.lineWidth = 1;
+  rr(x + 3, y + 3, w - 6, h - 6, 5); ctx.stroke();
+  ctx.restore();
+  foundText(label, x + w / 2, y + h / 2 + 1, 24, "#f3ddc1", w - 10);
+  regClick(x, y, w, h, action);
+}
+// Mochila vetorial baseada no ícone enviado: sem fundo branco e clicável.
+function foundBackpack(x, y, size) {
+  const hover = mouse.x >= x - 7 && mouse.x <= x + size + 7 &&
+    mouse.y >= y - 7 && mouse.y <= y + size * 1.15 + 7;
+  ctx.save(); ctx.translate(x, y); ctx.scale(size / 72, size / 72);
+  ctx.shadowColor = hover ? "#d77b36" : "rgba(0,0,0,0.8)";
+  ctx.shadowBlur = hover ? 11 : 4; ctx.shadowOffsetY = 2;
+  ctx.strokeStyle = hover ? "#ffdbad" : "#f2dbc2";
+  ctx.fillStyle = "#100b08"; ctx.lineWidth = 3;
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  // Alça
+  ctx.beginPath(); ctx.arc(36, 16, 13, Math.PI, Math.PI * 2); ctx.stroke();
+  // Bolsos laterais
+  ctx.beginPath(); ctx.moveTo(12, 35); ctx.quadraticCurveTo(3, 37, 3, 47);
+  ctx.lineTo(3, 66); ctx.quadraticCurveTo(3, 72, 12, 71); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(60, 35); ctx.quadraticCurveTo(69, 37, 69, 47);
+  ctx.lineTo(69, 66); ctx.quadraticCurveTo(69, 72, 60, 71); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // Corpo
+  ctx.beginPath(); ctx.moveTo(20, 18); ctx.lineTo(52, 18);
+  ctx.quadraticCurveTo(62, 18, 62, 32); ctx.lineTo(62, 72);
+  ctx.quadraticCurveTo(62, 80, 54, 80); ctx.lineTo(18, 80);
+  ctx.quadraticCurveTo(10, 80, 10, 72); ctx.lineTo(10, 32);
+  ctx.quadraticCurveTo(10, 18, 20, 18); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // Tampa e bolso frontal
+  ctx.beginPath(); ctx.moveTo(21, 19); ctx.lineTo(51, 19);
+  ctx.quadraticCurveTo(57, 19, 57, 27); ctx.lineTo(54, 43);
+  ctx.quadraticCurveTo(53, 48, 46, 48); ctx.lineTo(26, 48);
+  ctx.quadraticCurveTo(19, 48, 18, 43); ctx.lineTo(15, 27);
+  ctx.quadraticCurveTo(15, 19, 21, 19); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(19, 53, 34, 23, 10); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(24, 54); ctx.lineTo(24, 61); ctx.stroke();
+  ctx.restore();
+  regClick(x - 7, y - 7, size + 14, size * 1.15 + 14, openPackFromFound);
+}
 function drawFound() {
+  if (!game.found || !game.found.length) return;
   const e = game.found[0];
-  ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(0, 0, W, H);
-  const x = 200, y = 95, w = 560, h = 400, wd = e.type === "weapon" ? WDEF[e.inst.id] : null;
-  ctx.fillStyle = "rgba(62,22,18,0.94)"; rr(x, y, w, h, 10); ctx.fill();
-  ctx.strokeStyle = wd && wd.rar >= 2 ? rarColor(wd) : "#a04a3a"; ctx.lineWidth = wd && wd.rar >= 3 ? 3 : 2; ctx.stroke();
+  const x = 167, y = 67, w = 626, h = 466;
+  const wd = e.type === "weapon" ? WDEF[e.inst.id] : null;
+  // Fundo externo transparente: não desenhar overlay preto sobre o cenário.
+  // Bloqueia cliques fora da janela sem escurecer o mapa.
+  regClick(0, 0, W, H, () => {});
+  drawFoundPanelSkin(x, y, w, h);
+  foundText("ITEM ENCONTRADO", x + w / 2, y + 33, 25, "#efd4ab", w - 225);
+  foundText("em: " + game.foundSrc, x + w - 22, y + 33, 13, "#bfa083", 125, "right");
+  foundText("Você encontrou " + entryName(e) + ". Quer pegar?", x + w / 2, y + 95, 22, "#f4dcc1", w - 60);
+  // Vitrine central com o ícone específico de cada tipo de item.
+  const vx = x + 83, vy = y + 131, vw = w - 166, vh = 177;
+  ctx.save();
+  ctx.fillStyle = "rgba(15,5,3,0.82)"; rr(vx, vy, vw, vh, 9); ctx.fill();
+  ctx.strokeStyle = "rgba(203,122,69,0.25)"; ctx.lineWidth = 1; ctx.stroke();
   if (wd && wd.rar >= 2) {
-    const g = ctx.createRadialGradient(W / 2, y + 134, 10, W / 2, y + 134, 190);
-    g.addColorStop(0, rarColor(wd) + "55"); g.addColorStop(1, rarColor(wd) + "00");
-    ctx.fillStyle = g; ctx.fillRect(x + 120, y + 74, 320, 120);
+    const halo = ctx.createRadialGradient(W / 2, vy + 85, 5, W / 2, vy + 85, 200);
+    halo.addColorStop(0, rarColor(wd) + "60"); halo.addColorStop(1, rarColor(wd) + "00");
+    ctx.fillStyle = halo; ctx.fillRect(vx + 2, vy + 2, vw - 4, vh - 4);
   }
-  ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(x + 1, y + 1, w - 2, 30);
-  txt("ITEM ENCONTRADO", W / 2, y + 21, 14, "#e8c0a0", "center", true);
-  txt(`em: ${game.foundSrc}`, x + w - 14, y + 21, 11, "rgba(232,192,160,0.6)", "right");
-  txt(`Você encontrou ${entryName(e)}. Quer pegar?`, W / 2, y + 58, 17, "#f2eedc", "center", true, w - 40);
-  ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(x + 120, y + 74, 320, 120, 8); ctx.fill();
-  const pulse = 1 + Math.sin(performance.now() / 300) * 0.03;
-  if (e.type === "weapon") drawWeaponSide(WDEF[e.inst.id], W / 2, y + 134, 2.1 * pulse);
-  else drawEntryIcon(e, W / 2, y + 134, 1.8 * pulse);
-  if (e.type === "weapon") {
-    const d = WDEF[e.inst.id];
-    txt(RARITY[d.rar].name.toUpperCase(), x + 132, y + 92, 12, rarColor(d), "left", true);
-    txt(`${CAT_LABEL[d.cat]} · dano ${d.dmg}${d.pellets ? ` x${d.pellets}` : ""} · ${d.melee ? "sem munição" : d.infinite ? "munição infinita" : `${d.mag} balas ${d.ammo}`}${d.burn ? " · fogo" : ""}${d.bleed ? " · sangramento" : ""}${d.stun ? " · choque" : ""}`, W / 2, y + 216, 13, "#d8c8b0", "center", false, w - 30);
-    txt(`Exige: ${reqText(d)}`, W / 2, y + 234, 12, canUse(d) ? "#8fd08a" : "#ff8a6a", "center", true);
-    if (upSum(e.inst)) txt(`Já vem melhorada: Precisão ${e.inst.up.acc} · Dano ${e.inst.up.dmg} · Recarga ${e.inst.up.rel}`, W / 2, y + 252, 12, "#ffd96a", "center");
-  } else if (e.type === "mat") txt("Material usado na oficina dos postos para criar e melhorar armas", W / 2, y + 222, 12, "#d8c8b0", "center");
-  else if (e.type === "implant") { txt(implantDesc(e.im), W / 2, y + 222, 12, "#d8c8b0", "center", false, w - 40); if (e.dead) txt("★ EXCLUSIVO DA ZONA MORTA", W / 2, y + 242, 12, "#ffd96a", "center", true); }
-  else if (e.type === "food") txt(e.q === "fresca" ? "Comida fresca: sacia muito e recupera um pouco de vida" : e.q === "podre" ? "Comida estragada: sacia pouco e pode aumentar a infecção" : "Comida enlatada comum", W / 2, y + 222, 12, FOOD_Q[e.q || "comum"].color, "center", true);
-  else if (e.type === "anti") txt("Antibiótico guardado para futura atualização de infecção", W / 2, y + 222, 12, "#8fd0ff", "center", true);
-  else if (e.type === "ammo") txt(`A munição ocupa a mochila: 1 espaço a cada ${AMMO_STACK} balas de cada tipo`, W / 2, y + 222, 12, "#d8c8b0", "center");
-  const usable = canUseFound(e);
-  if (usable) {
-    btn(x + 30, y + 266, 130, 42, "SIM", acceptFound, true);
-    btn(x + 170, y + 266, 130, 42, "USAR AGORA", useFound, true);
-    btn(x + 310, y + 266, 130, 42, "NÃO", declineFound);
-  } else {
-    btn(x + 110, y + 266, 150, 42, "SIM", acceptFound, true);
-    btn(x + 300, y + 266, 150, 42, "NÃO", declineFound);
-  }
-  btn(x + 130, y + 318, 300, 36, "ABRIR MOCHILA (B)", openPackFromFound, true);
+  ctx.restore();
+  const pulse = 1 + Math.sin(performance.now() / 300) * 0.018;
+  if (wd) drawWeaponSide(wd, W / 2, vy + 88, 2.0 * pulse);
+  else drawEntryIcon(e, W / 2, vy + 88, 1.85 * pulse);
+  let info = "";
+  if (wd) {
+    info = RARITY[wd.rar].name + " · " + CAT_LABEL[wd.cat] + " · Dano " + wd.dmg +
+      (wd.pellets ? " x" + wd.pellets : "") + (wd.melee ? " · Sem munição" : " · " + wd.mag + " balas");
+  } else if (e.type === "mat") info = "Material de criação e melhoria de equipamentos";
+  else if (e.type === "implant") info = implantDesc(e.im);
+  else if (e.type === "food") info = "Alimento encontrado na região";
+  else if (e.type === "ammo") info = "Munição: " + e.ammo;
+  else if (e.type === "credit") info = "Créditos encontrados";
+  if (info) foundText(info, W / 2, y + 335, 14, wd ? rarColor(wd) : "#dbc19d", w - 60);
+  if (wd && !canUse(wd)) foundText("Exige: " + reqText(wd), W / 2, y + 353, 13, "#ff9478", w - 70);
+  const by = y + 373;
+  foundButton(x + 65, by, 182, 56, "SIM", acceptFound);
+  foundButton(x + 286, by, 182, 56, "NÃO", declineFound);
+  foundBackpack(x + w - 103, by - 3, 69);
   const more = game.found.length - 1;
-  txt(`Enter/E: pegar${usable ? " · C: usar" : ""} · N/Esc: recusar (10s) · B: mochila${more ? " · T: tudo" : ""}`,
-    W / 2, y + h - 14, 12, "rgba(232,192,160,0.7)", "center");
-  if (more) btn(x + w - 100, y + 274, 86, 28, "Tudo", takeAllFound);
-  if (game.msgT > 0) txt(game.msg, W / 2, y + h + 26, 15, "#ffd96a", "center", true);
+  const usable = canUseFound(e);
+  foundText("ENTER: PEGAR · ESC: RECUSAR · B: MOCHILA" +
+    (usable ? " · C: USAR" : "") + (more ? " · T: PEGAR TUDO (" + (more + 1) + ")" : ""),
+    W / 2, y + h - 17, 12, "#c6a487", w - 45);
+  if (game.msgT > 0) txt(game.msg, W / 2, y + h + 23, 15, "#ffd96a", "center", true);
 }
 
 // =====================================================================
