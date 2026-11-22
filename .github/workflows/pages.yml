@@ -54,6 +54,23 @@ jobs:
             git push origin HEAD:main
           fi
 
+      - name: Configurar Node para empacotar o jogo
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Gerar e registrar bundle ofuscado atualizado
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/fm-compiler" --no-audit --no-fund javascript-obfuscator@4.1.1
+          FM_OBFUSCATOR="$RUNNER_TEMP/fm-compiler/node_modules/javascript-obfuscator" python3 tools/empacotar.py --game-only
+          git add index.html js/jogo.min.js
+          if ! git diff --cached --quiet; then
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Atualiza bundle da Glock 18"
+            git push origin HEAD:main
+          fi
+
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
         with:
