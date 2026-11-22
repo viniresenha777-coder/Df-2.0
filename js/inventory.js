@@ -270,7 +270,7 @@ function drawFoundPanelSkin(x, y, w, h) {
     border(); g.lineWidth = 1.5; g.strokeStyle = "rgba(250,172,83,0.60)"; g.stroke();
     g.restore();
     // Separador discreto, sem faixa opaca atrás do título.
-    g.beginPath(); g.moveTo(10, 58); g.lineTo(w - 10, 58);
+    g.beginPath(); g.moveTo(10, 36); g.lineTo(w - 10, 36);
     g.lineWidth = 1; g.strokeStyle = "rgba(210,110,52,0.8)"; g.stroke();
     foundPanelSkin = surface;
   }
@@ -280,13 +280,14 @@ function drawFoundPanelSkin(x, y, w, h) {
 }
 function foundText(text, x, y, size, color, maxWidth, align) {
   ctx.save();
-  ctx.font = "bold " + size + "px Impact, 'Arial Narrow', Arial, sans-serif";
+  // Texto direto no canvas final, sem redução ou sombra borrada.
+  ctx.font = "bold " + Math.round(size) + "px 'Arial Narrow', Arial, sans-serif";
   ctx.textAlign = align || "center";
   ctx.textBaseline = "middle";
-  ctx.shadowColor = "rgba(0,0,0,0.7)";
-  ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
+  ctx.shadowColor = "rgba(0,0,0,0.45)";
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 1;
   ctx.fillStyle = color || "#f1d9b6";
-  ctx.fillText(text, x, y, maxWidth);
+  ctx.fillText(text, Math.round(x), Math.round(y), maxWidth);
   ctx.restore();
 }
 function foundButton(x, y, w, h, label, action) {
@@ -302,7 +303,7 @@ function foundButton(x, y, w, h, label, action) {
   ctx.strokeStyle = "rgba(235,166,105,0.29)"; ctx.lineWidth = 1;
   rr(x + 3, y + 3, w - 6, h - 6, 5); ctx.stroke();
   ctx.restore();
-  foundText(label, x + w / 2, y + h / 2 + 1, 24, "#f3ddc1", w - 10);
+  foundText(label, x + w / 2, y + h / 2 + 1, Math.min(22, Math.max(13, Math.round(h * 0.53))), "#f3ddc1", w - 10);
   regClick(x, y, w, h, action);
 }
 // Mochila vetorial baseada no ícone enviado: sem fundo branco e clicável.
@@ -342,74 +343,53 @@ function foundBackpack(x, y, size) {
 // Reduz a janela inteira em 40% mantendo proporções, conteúdo e ações.
 // A renderização usa coordenadas virtuais; os cliques são convertidos de volta
 // ao canvas real para preservar SIM, NÃO e mochila após o redimensionamento.
+// Janela de saque compacta: desenhada na resolução final (sem ctx.scale).
+// O texto e as hitboxes dos botões permanecem nítidos e alinhados.
 function drawFound() {
   if (!game.found || !game.found.length) return;
-  const scale = 0.60;
-  const originX = W / 2, originY = H / 2;
-  const pointerX = mouse.x, pointerY = mouse.y;
-  // Bloqueia a interface atrás da janela mesmo nas áreas transparentes.
-  regClick(0, 0, W, H, () => {});
-  const firstAction = game.clicks.length;
-  ctx.save();
-  ctx.translate(originX, originY);
-  ctx.scale(scale, scale);
-  ctx.translate(-originX, -originY);
-  mouse.x = originX + (pointerX - originX) / scale;
-  mouse.y = originY + (pointerY - originY) / scale;
-  try {
-    drawFoundContents();
-  } finally {
-    mouse.x = pointerX;
-    mouse.y = pointerY;
-    ctx.restore();
-    for (let i = firstAction; i < game.clicks.length; i++) {
-      const click = game.clicks[i];
-      click.x = originX + (click.x - originX) * scale;
-      click.y = originY + (click.y - originY) * scale;
-      click.w *= scale;
-      click.h *= scale;
-    }
-  }
-}
-
-function drawFoundContents() {
-  if (!game.found || !game.found.length) return;
   const e = game.found[0];
-  // Popup inteiro menor (antes 626 x 466). Centralizado sem cobrir o HUD.
-  const w = 478, h = 350, x = (W - w) / 2, y = (H - h) / 2;
+  const w = 287, h = 210;
+  const x = Math.round((W - w) / 2), y = Math.round((H - h) / 2);
   const wd = e.type === "weapon" ? WDEF[e.inst.id] : null;
-  // Painel sem preenchimento: o cenário permanece visível.
+  // Apenas bloqueia cliques atrás da janela; não pinta o cenário.
+  regClick(0, 0, W, H, () => {});
   drawFoundPanelSkin(x, y, w, h);
-  foundText("ITEM ENCONTRADO", x + w / 2, y + 27, 21, "#efd4ab", w - 156);
-  foundText("em: " + game.foundSrc, x + w - 17, y + 27, 11, "#bfa083", 90, "right");
-  foundText("Você encontrou " + entryName(e) + ". Quer pegar?", x + w / 2, y + 76, 18, "#f4dcc1", w - 26);
-  // Somente o ícone na área central: sem retângulo, borda ou
-  // preenchimento. A textura marrom do painel fica visível atrás do item.
-  const vw = 238, vh = 143, vx = x + (w - vw) / 2, vy = y + 101;
+  foundText("ITEM ENCONTRADO", x + w / 2, y + 17, 14, "#efd4ab", w - 113);
+  foundText("em: " + game.foundSrc, x + w - 10, y + 17, 8, "#dcc1a7", 65, "right");
+  foundText("Você encontrou " + entryName(e) + ". Quer pegar?",
+    x + w / 2, y + 48, 12, "#f4dcc1", w - 18);
+
+  // Item central sem placa/fundo escuro: cenário visível através do painel.
   const pulse = 1 + Math.sin(performance.now() / 300) * 0.018;
-  if (wd) drawWeaponSide(wd, vx + vw / 2, vy + vh / 2, 1.35 * pulse);
-  else drawEntryIcon(e, vx + vw / 2, vy + vh / 2, 1.28 * pulse);
+  const cx = x + w / 2, cy = y + 107;
+  if (wd) drawWeaponSide(wd, cx, cy, 0.81 * pulse);
+  else drawEntryIcon(e, cx, cy, 0.77 * pulse);
+
   let info = "";
   if (wd) {
     info = RARITY[wd.rar].name + " · " + CAT_LABEL[wd.cat] + " · Dano " + wd.dmg +
-      (wd.pellets ? " x" + wd.pellets : "") + (wd.melee ? " · Sem munição" : " · " + wd.mag + " balas");
-  } else if (e.type === "mat") info = "Material de criação e melhoria de equipamentos";
+      (wd.pellets ? " x" + wd.pellets : "") +
+      (wd.melee ? " · Sem munição" : " · " + wd.mag + " balas");
+  } else if (e.type === "mat") info = "Material de criação e melhoria";
   else if (e.type === "implant") info = implantDesc(e.im);
-  else if (e.type === "food") info = "Alimento encontrado na região";
+  else if (e.type === "food") info = "Alimento encontrado";
   else if (e.type === "ammo") info = "Munição: " + e.ammo;
   else if (e.type === "credit") info = "Créditos encontrados";
-  if (info) foundText(info, W / 2, y + 259, 12, wd ? rarColor(wd) : "#dbc19d", w - 32);
-  if (wd && !canUse(wd)) foundText("Exige: " + reqText(wd), W / 2, y + 274, 11, "#ff9478", w - 35);
-  const by = y + 280;
-  foundButton(x + 24, by, 145, 45, "SIM", acceptFound);
-  foundButton(x + 183, by, 145, 45, "NÃO", declineFound);
-  foundBackpack(x + w - 96, by - 8, 60);
-  const more = game.found.length - 1;
-  const usable = canUseFound(e);
+  if (info) foundText(info, cx, y + 148, 9, wd ? rarColor(wd) : "#dbc19d", w - 20);
+  if (wd && !canUse(wd))
+    foundText("Exige: " + reqText(wd), cx, y + 161, 9, "#ff9478", w - 20);
+
+  const by = y + 166;
+  foundButton(x + 13, by, 87, 28, "SIM", acceptFound);
+  foundButton(x + 106, by, 87, 28, "NÃO", declineFound);
+  foundBackpack(x + w - 56, by - 8, 34);
+  const more = game.found.length - 1, usable = canUseFound(e);
   foundText("ENTER: PEGAR · ESC: RECUSAR · B: MOCHILA" +
-    (usable ? " · C: USAR" : "") + (more ? " · T: PEGAR TUDO (" + (more + 1) + ")" : ""),
-    W / 2, y + h - 12, 10, "#c6a487", w - 24);
-  if (game.msgT > 0) txt(game.msg, W / 2, y + h + 23, 15, "#ffd96a", "center", true);
+    (usable ? " · C: USAR" : "") +
+    (more ? " · T: TUDO (" + (more + 1) + ")" : ""),
+    cx, y + h - 7, 8, "#d8b99e", w - 14);
+  if (game.msgT > 0)
+    txt(game.msg, cx, y + h + 20, 12, "#ffd96a", "center", true);
 }
 
 // =====================================================================
