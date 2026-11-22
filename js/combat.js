@@ -133,7 +133,7 @@ function losClear(x0, y0, x1, y1) {
 // ---------- Armas ----------
 function selectWeapon(i) {
   if (player.cur === i) return;
-  player.cur = i; player.reloading = 0;
+  player.cur = i; player.reloading = 0; player.glockBurstLeft = 0;
   const it = player.slots[i];
   if (!it) toast(`Slot ${i + 1} vazio · abra a mochila (B) para equipar`);
   else if (!canUse(WDEF[it.id])) toast(`Requisitos: ${reqText(WDEF[it.id])}`);
@@ -141,7 +141,7 @@ function selectWeapon(i) {
 function cycleWeapon(dir) {
   for (let s = 1; s <= SLOT_N; s++) {
     const i = (player.cur + dir * s + SLOT_N * 2) % SLOT_N;
-    if (player.slots[i]) { player.cur = i; player.reloading = 0; return; }
+    if (player.slots[i]) { player.cur = i; player.reloading = 0; player.glockBurstLeft = 0; return; }
   }
 }
 // Rifles recebem +15% no wStat(). Rifle de Caça usa o tempo total
@@ -149,6 +149,7 @@ function cycleWeapon(dir) {
 function startReload() {
   const w = curW(), it = curInst();
   if (game.over || w.melee || !it || player.reloading > 0 || it.ammo >= w.mag) return;
+  if (w.id === "glock") player.glockBurstLeft = 0;
   if (!w.infinite && player.reserve[w.ammo] <= 0) { toast("Sem munição de reserva"); sfx.empty(); return; }
   const reloadTime = wStat(it).reload *
     (1 - Math.max(-0.5, Math.min(0.6, player.fx.reload / 100))) /
