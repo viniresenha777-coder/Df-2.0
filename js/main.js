@@ -39,7 +39,8 @@ function resetGame() {
     slots: [newInst("pistola"), newInst("faca"), null], pack: [],
     tokenAmmo: {},
     reserve: Object.fromEntries(Object.keys(AMMO).map((t) => [t, t === "9mm" ? 30 : 0])),
-    cur: 0, reloading: 0, cooldown: 0, heat: 0, spin: 0, overheat: 0
+    cur: 0, reloading: 0, cooldown: 0, heat: 0, spin: 0, overheat: 0,
+    glockMode: "single", glockBurstLeft: 0, glockBurstInst: null
   };
   recalcImplants(); player.hp = player.maxHp;
   bullets = []; zombies = [];
@@ -172,6 +173,12 @@ window.addEventListener("keydown", (e) => {
     if (atBase() || canUseAdmin()) openWaitDone(kind); else game.openWait = { kind, t: OPEN_WAIT_MS };
     return;
   }
+  if (k === "q" && !game.hub && curW().id === "glock") {
+    player.glockMode = player.glockMode === "single" ? "burst" : "single";
+    player.glockBurstLeft = 0;
+    toast(`Glock 18 · ${player.glockMode === "burst" ? "RAJADA DE 3 TIROS" : "TIRO ÚNICO"} (Q para alternar)`);
+    return;
+  }
   if (k === "n") { game.menu = "map"; game.mapAsk = null; game.mapSel = { cx: world.cell.cx, cy: world.cell.cy }; return; }
   const n = k === "0" ? 10 : parseInt(k, 10);
   if (k === "r") startReload();
@@ -202,6 +209,11 @@ canvas.addEventListener("mousedown", (e) => {
   if (game.menu === "pack" && !INV.confirm && !allocOpen() && invMouseDown(mouse.x, mouse.y)) return;
   if (game.found || game.menu || game.shop || game.paused || game.over || game.hub || game.quitting) { handleClick(mouse.x, mouse.y); return; }
   mouse.down = true;
+  // Cada clique da Glock inicia uma única sequência; segurar não dispara automaticamente.
+  if (curW().id === "glock" && player.glockBurstLeft <= 0) {
+    player.glockBurstLeft = player.glockMode === "burst" ? 3 : 1;
+    player.glockBurstInst = curInst();
+  }
 });
 window.addEventListener("mouseup", () => {
   mouse.down = false;
@@ -241,6 +253,7 @@ function update(dt) {
   }
   if (game.over || game.trans || game.hub) game.openWait = null;
   if (game.quitting) return;
+  if (game.over || game.shop || game.menu || game.found || game.paused || game.trans || game.hub) player.glockBurstLeft = 0;
   if (game.over || game.shop || game.menu || game.found || game.paused) return;
   if (game.trans) { transTick(dt); return; } // trocando de área (tela escura)
   const k = dt / 16.67, sec = dt / 1000;
@@ -358,12 +371,20 @@ function update(dt) {
   // minigun de munição infinita: gira para acelerar (sem superaquecer)
   const firingInf = w.infinite && mouse.down && player.reloading === 0;
   player.spin = firingInf ? Math.min(1, player.spin + sec * 1.3) : Math.max(0, player.spin - sec * 2);
-  if (mouse.down && player.cooldown <= 0 && player.reloading === 0) {
-    if (!canUse(w)) { toast(`Requisitos: ${reqText(w)}`); player.cooldown = 600; }
-    else if (w.melee || inst.ammo > 0) attack();
+  // Armas comuns permanecem automáticas. Na Glock, só dispara se há tiros pendentes do clique.
+  if (w.id !== "glock") player.glockBurstLeft = 0;
+  const trigger = w.id === "glock"
+    ? player.glockBurstLeft > 0 && player.glockBurstInst === inst
+    : mouse.down;
+  if (trigger && player.cooldown <= 0 && player.reloading === 0) {
+    if (!canUse(w)) { toast(`Requisitos: ${reqText(w)}`); player.cooldown = 600; player.glockBurstLeft = 0; }
+    else if (w.melee || inst.ammo > 0) {
+      attack();
+      if (w.id === "glock") player.glockBurstLeft = Math.max(0, player.glockBurstLeft - 1);
+    }
     else if (w.infinite) startReload();
-    else if (player.reserve[w.ammo] > 0) startReload();
-    else { toast("Sem munição"); sfx.empty(); player.cooldown = 500; }
+    else if (player.reserve[w.ammo] > 0) { player.glockBurstLeft = 0; startReload(); }
+    else { toast("Sem munição"); sfx.empty(); player.cooldown = 500; player.glockBurstLeft = 0; }
   }
 
   searchTick(dt);
