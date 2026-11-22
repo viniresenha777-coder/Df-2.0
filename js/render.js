@@ -1578,6 +1578,9 @@ function drawHUD() {
   else if (w.infinite) ammoTxt = `${inst.ammo} / ∞`;
   else { ammoTxt = `${inst.ammo} / ${player.reserve[w.ammo]}`; if (inst.ammo === 0) ammoCol = "#e05a4a"; }
   hudT(ammoTxt, 122, H - 20, 18, ammoCol, "left", true);
+  if (w.id === "glock") {
+    hudT(`Q: ${player.glockMode === "burst" ? "RAJADA 3" : "TIRO ÚNICO"}`, 240, H - 20, 12, "#a9e5ac", "left", true);
+  }
   if (player.reloading > 0) {
     const oneByOne = w.id === "caca" && player.reloadRound;
     hudT(oneByOne ? `RECARREGANDO ${inst.ammo}/${w.mag}` : "RECARREGANDO",
