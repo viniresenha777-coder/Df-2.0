@@ -377,19 +377,20 @@ function drawFound() {
   foundText("em: " + game.foundSrc, x + w - 22, y + 33, 13, "#bfa083", 125, "right");
   foundText("Você encontrou " + entryName(e) + ". Quer pegar?", x + w / 2, y + 95, 22, "#f4dcc1", w - 60);
   // Vitrine central com o ícone específico de cada tipo de item.
-  const vx = x + 83, vy = y + 131, vw = w - 166, vh = 177;
+  // Vitrine reduzida à região central marcada na referência (~238 × 154 px no canvas).
+  const vw = 238, vh = 154, vx = x + (w - vw) / 2, vy = y + 144;
   ctx.save();
   ctx.fillStyle = "rgba(15,5,3,0.82)"; rr(vx, vy, vw, vh, 9); ctx.fill();
   ctx.strokeStyle = "rgba(203,122,69,0.25)"; ctx.lineWidth = 1; ctx.stroke();
   if (wd && wd.rar >= 2) {
-    const halo = ctx.createRadialGradient(W / 2, vy + 85, 5, W / 2, vy + 85, 200);
+    const halo = ctx.createRadialGradient(vx + vw / 2, vy + vh / 2, 5, vx + vw / 2, vy + vh / 2, vh * 0.8);
     halo.addColorStop(0, rarColor(wd) + "60"); halo.addColorStop(1, rarColor(wd) + "00");
     ctx.fillStyle = halo; ctx.fillRect(vx + 2, vy + 2, vw - 4, vh - 4);
   }
   ctx.restore();
   const pulse = 1 + Math.sin(performance.now() / 300) * 0.018;
-  if (wd) drawWeaponSide(wd, W / 2, vy + 88, 2.0 * pulse);
-  else drawEntryIcon(e, W / 2, vy + 88, 1.85 * pulse);
+  if (wd) drawWeaponSide(wd, vx + vw / 2, vy + vh / 2, 1.6 * pulse);
+  else drawEntryIcon(e, vx + vw / 2, vy + vh / 2, 1.5 * pulse);
   let info = "";
   if (wd) {
     info = RARITY[wd.rar].name + " · " + CAT_LABEL[wd.cat] + " · Dano " + wd.dmg +
