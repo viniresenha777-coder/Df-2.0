@@ -1,0 +1,73 @@
+Model Information:
+* title:	Dragon katana "Oni koroshi"
+* source:	https://sketchfab.com/3d-models/dragon-katana-oni-koroshi-778d3dfe4cc549dd93c9bdc5ad78a420
+* author:	Sky_Hunter (https://sketchfab.com/Sky_Hunter)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Dragon katana "Oni koroshi"" (https://sketchfab.com/3d-models/dragon-katana-oni-koroshi-778d3dfe4cc549dd93c9bdc5ad78a420) by Sky_Hunter (https://sketchfab.com/Sky_Hunter) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+Model Information:
+* title:	Katana
+* source:	https://sketchfab.com/3d-models/katana-0f003a332c064d9887b102b864b54084
+* author:	JoshuaQueck (https://sketchfab.com/JoshuaQueck)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Katana" (https://sketchfab.com/3d-models/katana-0f003a332c064d9887b102b864b54084) by JoshuaQueck (https://sketchfab.com/JoshuaQueck) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+Model Information:
+* title:	AK_47_Gold
+* source:	https://sketchfab.com/3d-models/ak-47-gold-8123e3c84fb24a2194c2cfff6d34ff43
+* author:	thesam997 (https://sketchfab.com/thesam997)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "AK_47_Gold" (https://sketchfab.com/3d-models/ak-47-gold-8123e3c84fb24a2194c2cfff6d34ff43) by thesam997 (https://sketchfab.com/thesam997) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+Model Information:
+* title:	Glock 49
+* source:	https://sketchfab.com/3d-models/glock-49-6f6817e88351410b9f481ff96833956b
+* author:	Nexor (https://sketchfab.com/Ghazanfarr)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Glock 49" (https://sketchfab.com/3d-models/glock-49-6f6817e88351410b9f481ff96833956b) by Nexor (https://sketchfab.com/Ghazanfarr) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+Model Information:
+* title:	pistola 9mm
+* source:	https://sketchfab.com/3d-models/pistola-9mm-ce79e3dbdb4542aaaaef0afff7bb0914
+* author:	Eduardo.Salas (https://sketchfab.com/Eduardo.Salas)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "pistola 9mm" (https://sketchfab.com/3d-models/pistola-9mm-ce79e3dbdb4542aaaaef0afff7bb0914) by Eduardo.Salas (https://sketchfab.com/Eduardo.Salas) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+Model Information:
+* title:	Colt Commander 9mm
+* source:	https://sketchfab.com/3d-models/colt-commander-9mm-fc5beaf47afb46d988bc590ac9e192ff
+* author:	xepec_ (https://sketchfab.com/xepec_)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Colt Commander 9mm" (https://sketchfab.com/3d-models/colt-commander-9mm-fc5beaf47afb46d988bc590ac9e192ff) by xepec_ (https://sketchfab.com/xepec_) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+Adaptação: renderização para inventário e personagem.

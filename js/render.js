@@ -939,12 +939,15 @@ function drawStation(f) {
 function drawWeaponShape(w, swing) {
   const held = WEAPON_3D[w.id];
   if (held && held.grip != null) {
-    const icon = weaponIcon(w);
+    const icon = weaponIcon(w, true);
     if (icon) {
       const width = (w.len || 20) + 18;
       ctx.save();
       ctx.rotate(swing);
-      ctx.drawImage(icon, 8 - width * held.grip, 6 - width / 4, width, width / 2);
+      const originX = w.melee ? 8 : (w.look === "pistol" ? 10 : 0);
+      const originY = w.melee ? 6 : 0;
+      if (held.heldView) ctx.filter = "none";
+      ctx.drawImage(icon, originX - width * held.grip, originY - width / 4, width, width / 2);
       ctx.restore();
       return;
     }

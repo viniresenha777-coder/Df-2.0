@@ -286,27 +286,28 @@ function tintedImg(im, key, hex) {
 // armas com modelo 3D na mão (camada img/gear/<m>_<pose>.png, já com o corpo escondendo o que fica atrás);
 // f = filtro de cor para as versões especiais. As outras armas continuam com o desenho 2D.
 const WEAPON_3D = {
-  ak47: { m: "w_ak" }, ak_ouro: { m: "w_ak", f: "sepia(1) saturate(4) hue-rotate(-12deg) brightness(1.25)" },
+  ak47: { m: "w_ak" }, ak_ouro: { m: "w_fm_ak_ouro", grip: 0.36, heldView: true },
   m4: { m: "w_m4" }, baioneta: { m: "w_m4" }, fal: { m: "w_fal" }, scar: { m: "w_scar" },
   uzi: { m: "w_uzi" }, vector: { m: "w_vector" }, m249: { m: "w_m249" },
-  minigun: { m: "w_minigun" }, minigun_inf: { m: "w_minigun", f: "sepia(0.7) saturate(2) hue-rotate(-15deg) brightness(1.15)" },
+  minigun: { m: "w_minigun" }, minigun_inf: { m: "w_fm_minigun_inf", grip: 0.3, heldView: true },
   canoduplo: { m: "w_canoduplo" }, spas: { m: "w_spas" }, aa12: { m: "w_aa12" },
   caca: { m: "w_caca" }, sniper: { m: "w_sniper" }, barrett: { m: "w_barrett" },
-  pistola: { m: "w_g17" }, glock: { m: "w_g17" }, silenciada: { m: "w_g17" }, colt: { m: "w_g17" }, deagle: { m: "w_deagle" },
+  pistola: { m: "w_fm_pistola", grip: 0.24, heldView: true }, glock: { m: "w_fm_glock", grip: 0.24, heldView: true }, silenciada: { m: "w_g17" }, colt: { m: "w_fm_colt", grip: 0.23, heldView: true }, deagle: { m: "w_deagle" },
   revolver: { m: "w_peacemaker" }, revolver_orn: { m: "w_peacemaker", f: "sepia(0.8) saturate(2.2) brightness(1.1)" },
-  katana: { m: "w_katana" }, katana_dragao: { m: "w_katana", f: "sepia(1) saturate(5) hue-rotate(-40deg)" },
-  lamina: { m: "w_katana", f: "sepia(1) saturate(4) hue-rotate(220deg)" },
+  katana: { m: "w_katana" }, katana_dragao: { m: "w_fm_katana_dragao", grip: 0.13, heldView: true },
+  lamina: { m: "w_fm_lamina", grip: 0.1, heldView: true },
   espada: { m: "w_espada" }, espadafogo: { m: "w_glory" },
   marreta: { m: "w_marreta" }, machado: { m: "w_machado" }, faca: { m: "w_utility", grip: 0.26 }, facao: { m: "w_ps1_machete", grip: 0.17 }, serra: { m: "w_serra" },
   lancachamas: { m: "w_flamer" },
 };
 // foto de cada arma 3D para a loja e o inventário (img/weapons/<m>.png: de lado, cano para a direita)
 const WEAPON_ICON = {};
-function weaponIcon(d) {
+function weaponIcon(d, heldView = false) {
   const w = WEAPON_3D[d.id];
   if (!w) return null;
-  let im = WEAPON_ICON[w.m];
-  if (!im) { im = WEAPON_ICON[w.m] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/weapons/${w.m}.png`; }
+  const key = w.m + (heldView && w.heldView ? "_held" : "");
+  let im = WEAPON_ICON[key];
+  if (!im) { im = WEAPON_ICON[key] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/weapons/${key}.png`; }
   return im.bad || !im.complete || !im.naturalWidth ? null : im;
 }
 function weapon3dImg(w, pose) { const d = w && WEAPON_3D[w.id]; return d && d.grip == null ? gearImg(d.m, pose) : null; }
