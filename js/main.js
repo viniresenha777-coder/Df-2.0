@@ -254,7 +254,11 @@ function update(dt) {
   if (game.over || game.trans || game.hub) game.openWait = null;
   if (game.quitting) return;
   if (game.over || game.shop || game.menu || game.found || game.paused || game.trans || game.hub) player.glockBurstLeft = 0;
-  if (game.over || game.shop || game.menu || game.found || game.paused) return;
+  if (game.over || game.shop || game.menu || game.found) return;
+  if (game.paused) {
+    if (!game.trans && !game.hub && !fmWorld.isFollower()) wanderDuringPause(dt);
+    return;
+  }
   if (game.trans) { transTick(dt); return; } // trocando de área (tela escura)
   const k = dt / 16.67, sec = dt / 1000;
   game.time += dt;

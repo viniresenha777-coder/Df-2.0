@@ -588,6 +588,25 @@ function bossAbility(z, d, dt, k) {
 const ZATK_MS = 560, ZATK_HIT = 0.45;
 function zReach(z) { return z.r + player.r + (z.type === "dog" ? 12 : 18) * Math.max(1, z.r / 13); }
 
+function wanderDuringPause(dt) {
+  for (const z of Zs()) {
+    if (z.hp <= 0) continue;
+    if (z.state === "chase") z.wt = 0;
+    z.state = "idle";
+    z.seen = false;
+    z.alertT = z.lose = z.blind = z.atkT = z.lunge = 0;
+    z.chargeT = z.windT = z.slamT = z.abilT = z.phase = 0;
+    z.recoilT = z.dodgeT = z.stuckT = z.detourT = 0;
+    if (adm.freeze) continue;
+    if (z.stun > 0) { z.stun -= dt; continue; }
+    const step = wander(z, dt / 16.67, dt);
+    pushOut(z, z.r);
+    z.x = game.inside ? clamp(z.x, 56, IW() - 56) : clamp(z.x, z.r, WORLD_W - z.r);
+    z.y = game.inside ? clamp(z.y, 56, IH() - 56) : clamp(z.y, z.r, WORLD_H - z.r);
+    z.anim += Math.abs(step) * 0.12;
+  }
+}
+
 function updateZombies(dt, k) {
   const list = Zs();
   for (const z of list) {
@@ -726,7 +745,7 @@ function updateZombies(dt, k) {
           if (z.type === "dog") z.recoilT = 400;
         }
       }
-    } else if (d < reach && z.hitCd <= 0) {
+    } else if (d < reach && z.hitCd <= 0 && z.state === "chase" && losClear(z.x, z.y, player.x, player.y)) {
       alertZombie(z); z.atkT = ZATK_MS; z.atkHit = false; z.hitCd = Math.max(z.hitDelay, ZATK_MS + 150);
     }
   }
