@@ -292,7 +292,7 @@ const WEAPON_3D = {
   minigun: { m: "w_minigun" }, minigun_inf: { m: "w_fm_minigun_inf", grip: 0.3, heldView: true },
   canoduplo: { m: "w_canoduplo" }, spas: { m: "w_spas" }, aa12: { m: "w_aa12" },
   caca: { m: "w_caca" }, sniper: { m: "w_sniper" }, barrett: { m: "w_barrett" },
-  pistola: { m: "w_fm_pistola", grip: 0.24, heldView: true }, glock: { m: "w_fm_glock", grip: 0.24, heldView: true }, silenciada: { m: "w_g17" }, colt: { m: "w_fm_colt", grip: 0.23, heldView: true }, deagle: { m: "w_deagle" },
+  pistola: { m: "w_fm_pistola", grip: 0.24, heldView: true }, glock: { m: "w_fm_glock", grip: 0.24, heldView: true }, silenciada: { m: "w_fm_vp9", grip: 0.23, heldView: true }, colt: { m: "w_fm_colt", grip: 0.23, heldView: true }, deagle: { m: "w_deagle" },
   revolver: { m: "w_peacemaker" }, revolver_orn: { m: "w_peacemaker", f: "sepia(0.8) saturate(2.2) brightness(1.1)" },
   katana: { m: "w_katana" }, katana_dragao: { m: "w_fm_katana_dragao", grip: 0.13, heldView: true },
   lamina: { m: "w_fm_lamina", grip: 0.1, heldView: true },

@@ -71,3 +71,16 @@ If you use this 3D model in your project be sure to copy paste this credit where
 This work is based on "Colt Commander 9mm" (https://sketchfab.com/3d-models/colt-commander-9mm-fc5beaf47afb46d988bc590ac9e192ff) by xepec_ (https://sketchfab.com/xepec_) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
 
 Adaptação: renderização para inventário e personagem.
+
+Model Information:
+* title:	Brügger & Thomet VP9 Silenced Pistol
+* source:	https://sketchfab.com/3d-models/brugger-thomet-vp9-silenced-pistol-6889cd070e55437e9a8d75bf21faaa69
+* author:	TheAlex (https://sketchfab.com/TheAlex)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Brügger & Thomet VP9 Silenced Pistol" (https://sketchfab.com/3d-models/brugger-thomet-vp9-silenced-pistol-6889cd070e55437e9a8d75bf21faaa69) by TheAlex (https://sketchfab.com/TheAlex) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+Adaptação: renderização para inventário e personagem.
