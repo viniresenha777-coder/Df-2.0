@@ -669,8 +669,10 @@ function drawEntryIcon(e, cx, cy, s) {
       ctx.save();
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(NEW_IMPLANTS_TRANSPARENT.width ? NEW_IMPLANTS_TRANSPARENT : NEW_IMPLANTS_ATLAS, col * tile, row * tile, tile, tile, cx - size / 2, cy - size / 2, size, size);
+      const atlas = NEW_IMPLANTS_TRANSPARENT.width ? NEW_IMPLANTS_TRANSPARENT : NEW_IMPLANTS_ATLAS;
+      ctx.drawImage(atlas, col * tile, row * tile, tile, tile, cx - size / 2, cy - size / 2, size, size);
       ctx.restore();
+      if (typeof drawImplantFx === "function") drawImplantFx(atlas, col * tile, row * tile, tile, cx, cy, size, idx);   // brilho pulsando e faíscas
       return;
     }
   }

@@ -414,9 +414,7 @@ function invDrop(src, dst) {
 function invCell(x, y, w, h, opt) {
   const hov = mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h;
   const drop = INV.drag && INV.drag.moved && hov;
-  ctx.fillStyle = opt.sel ? "#2f2d24" : "rgba(22,22,18,0.95)"; rr(x, y, w, h, 5); ctx.fill();
-  ctx.strokeStyle = drop ? "#6fd06a" : opt.sel ? "#ffd96a" : hov ? "#8a7a4a" : "#3d3b30";
-  ctx.lineWidth = drop || opt.sel ? 2 : 1; ctx.stroke();
+  uiCell(x, y, w, h, opt.sel, hov, drop);
   if (opt.label) txt(opt.label, x + w / 2, y + h + 13, 11, "#c9c4ad", "center", true);
   return hov;
 }

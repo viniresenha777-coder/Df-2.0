@@ -64,7 +64,7 @@ async function confirmName() {
   } finally { game.nameBusy = false; }
 }
 function drawNameScreen() {
-  ctx.fillStyle = "rgba(8,9,7,0.97)"; ctx.fillRect(0, 0, W, H);
+  uiBackdrop(0.97);
   txt("Crie o seu sobrevivente", W / 2, 120, 32, "#e5e0c8", "center", true);
   txt("Escolha o nome que vai aparecer em cima do seu personagem", W / 2, 152, 14, "#a9a58f", "center");
   const bx = W / 2 - 220, by = 200, bw = 440, bh = 60, d = game.nameDraft || "";

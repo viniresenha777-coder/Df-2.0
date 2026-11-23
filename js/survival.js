@@ -36,7 +36,7 @@ function profKey(k) {
   else if (k === "enter") chooseProf(game.pcur);
 }
 function drawProf() {
-  ctx.fillStyle = "rgba(8,9,7,0.96)"; ctx.fillRect(0, 0, W, H);
+  uiBackdrop(0.96);
   txt("Escolha a sua profissão", W / 2, 46, 28, "#e5e0c8", "center", true);
   txt("Ela vale para este personagem e não muda depois. Algumas têm só vantagem, outras têm vantagem e desvantagem.", W / 2, 72, 13, "#a9a58f", "center");
   game.pcur = game.pcur | 0;

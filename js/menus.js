@@ -858,16 +858,9 @@ function adminKey(k) {
 // =====================================================================
 //  Desenho dos menus
 // =====================================================================
-function menuFrame(title, sub) {
-  ctx.fillStyle = "rgba(8,9,7,0.92)"; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = "rgba(212,175,55,0.35)"; ctx.lineWidth = 1; rr(16, 12, W - 32, H - 24, 10); ctx.stroke();
-  txt(title, W / 2, 46, 28, "#e5e0c8", "center", true);
-  if (sub) txt(sub, W / 2, 72, 15, "#a9a58f", "center");
-}
-function rowBox(x, y, w, h, sel, accent) {
-  ctx.fillStyle = sel ? "#2b2a22" : "#1a1a15"; rr(x, y, w, h, 5); ctx.fill();
-  ctx.strokeStyle = sel ? "#ffd96a" : accent || "#3d3b30"; ctx.lineWidth = sel ? 2 : 1; ctx.stroke();
-}
+// moldura e linhas dos menus: desenho em js/estetica.js (clima de Natal da tela inicial)
+function menuFrame(title, sub) { uiFrame(title, sub); }
+function rowBox(x, y, w, h, sel, accent) { uiRow(x, y, w, h, sel, accent); }
 function hint(t) { txt(t, W / 2, H - 24, 13, "#a9a58f", "center"); }
 function menuToast() {
   if (game.msgT > 0) txt(game.msg, W / 2, H - 50, 17, "#ffd96a", "center", true, W - 80);
