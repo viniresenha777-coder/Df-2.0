@@ -82,7 +82,6 @@ const WLIST = [
   { id: "incendiaria", name: "Escopeta Incendiária", short: "Incendiária", cat: "shotguns", look: "shotgun", dmg: 10, delay: 666.67, mag: 8, reload: 2400, ammo: "cartucho", price: 0, req: [40, 100], len: 28, color: "#c0502a", wood: true, pellets: 8, spread: 0.3, life: 380, burn: 18 },
   { id: "choque",   name: "MKS .50", short: "MKS .50", cat: "rifles", look: "rifle", dmg: 24, delay: 333.33, mag: 8, reload: 2200, ammo: "7.62", price: 0, req: [45, 110], len: 36, color: "#3a8ac0", pierce: true, speed: 19, life: 1300, stun: 0.6 },
   { id: "lancador", name: "Lançador Espinhoso", short: "Lançador", cat: "rifles", look: "rifle", dmg: 35, delay: 666.67, mag: 6, reload: 3000, ammo: "granada", price: 0, req: [45, 110], len: 30, color: "#4a4a4a", explode: 120, speed: 8, life: 1100, sound: [1, 1], grenade: true },
-  { id: "machado_fuzil", name: "Fuzil-Machado", short: "Fuzil-Mach.", cat: "machinegun", look: "lmg", dmg: 20, delay: 83.33, mag: 40, reload: 2600, ammo: "7.62", price: 0, req: [60, 120], len: 38, color: "#6a6d70", pierce: true, knock: true, slow: 8 },
   { id: "pistolalamina", name: "Escopeta Presa de Ferro", short: "Presa de Ferro", cat: "shotguns", look: "shotgun", dmg: 14, delay: 666.67, mag: 6, reload: 1800, ammo: "cartucho", price: 0, req: [50, 120], len: 32, color: "#b08a4a", pellets: 4, spread: 0.18, life: 420, bleed: 0.5, lifesteal: 0.05 },
   { id: "espadaserra", name: "Espada-Serra", short: "Esp.-Serra", cat: "melee", look: "chainsaw", dmg: 15, delay: 116.67, range: 70, arc: 0.8, price: 0, req: [60, 120], len: 40, color: "#a33b32", bleed: 0.6, sound: [0.6, 0.8] },
   { id: "espadafogo", name: "Espada Flamejante", short: "Esp. Fogo", cat: "melee", look: "sword", dmg: 100, delay: 666.67, range: 82, arc: 1.05, price: 0, req: [70, 120], len: 42, color: "#ff8a3a", burn: 40 },
@@ -98,14 +97,14 @@ const W_RAR = {
   deagle: 2, p90: 2, ak47: 2, m4: 2, fal: 2, spas: 2, sniper: 2, marreta: 2, besta: 2, serra: 2,
   vector: 3, scar: 3, m249: 3, aa12: 3, barrett: 3, espada: 3, minigun: 3, lancachamas: 3, lamina: 3,
   revolver_orn: 3, incendiaria: 3, choque: 3, baioneta: 3, lancador: 3,
-  ak_ouro: 4, katana_dragao: 4, trovao: 4, machado_fuzil: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, punhos: 0
+  ak_ouro: 4, katana_dragao: 4, trovao: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, punhos: 0
 };
 // arte das folhas em img/ usada por cada arma (tint = filtro de cor)
 const W_SPR = {
   pistola: "pistol_sil", silenciada: "pistol_sil", revolver: "revolver", m4: "m4", ak47: "ak", fal: "ak", mp5: "smg", uzi: "smg",
   escopeta: "shotgun_pump", canoduplo: "shotgun_pump", sniper: "sniper", caca: "sniper", barrett: "sniper", besta: "crossbow",
   minigun: "minigun", machado: "axe", taco: "spikebat", facao: "machete", revolver_orn: "revolver_orn", baioneta: "bayonet",
-  machado_fuzil: "axerifle", pistolalamina: "gunblade", lancador: "spiked", espadaserra: "chainsword", minigun_inf: "minigun_orn",
+  pistolalamina: "gunblade", lancador: "spiked", espadaserra: "chainsword", minigun_inf: "minigun_orn",
   espadafogo: "flamesword", ak_ouro: "ak", incendiaria: "shotgun_pump", choque: "o_sniper2", scar: "o_ar",
   // pacote CC0 "2D Guns" (OpenGameArt)
   colt: "o_pistol", glock: "o_pistol2", deagle: "o_pistol3", vector: "o_smg", p90: "o_smg2", spas: "o_shotgun2", aa12: "o_shotgun",
@@ -203,6 +202,7 @@ function vestUpgrade(i = save.vest) {
   return cleanVestUpgrade(i >= 0 && save.vestUpgrades ? save.vestUpgrades[i] : null);
 }
 function vestUpgradeCost(i) {
+  if (VESTS[i].upCost) return { money: VESTS[i].upCost, mats: { sucata: 2 } };
   return { money: Math.round(240 + VESTS[i].price * 0.24), mats: { sucata: 2 } };
 }
 function vestSpeedBonus() { return vestUpgrade().speed; }
@@ -725,8 +725,10 @@ function drawEntryIcon(e, cx, cy, s) {
       ctx.save();
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(cmClean.width ? cmClean : NEW_IMPLANTS_ATLAS, col * tile, row * tile, tile, tile, cx - size / 2, cy - size / 2, size, size);
+      const atlas = cmClean.width ? cmClean : NEW_IMPLANTS_ATLAS;
+      ctx.drawImage(atlas, col * tile, row * tile, tile, tile, cx - size / 2, cy - size / 2, size, size);
       ctx.restore();
+      if (typeof drawImplantFx === "function") drawImplantFx(atlas, col * tile, row * tile, tile, cx, cy, size, idx);   // brilho pulsando e faíscas
       return;
     }
   }
