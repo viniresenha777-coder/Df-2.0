@@ -527,6 +527,12 @@ function drawInventory() {
   equippedClothingSlot(296, 268, "pants");
   if (clothingGet("mask")) equippedClothingSlot(606, 104, "mask"); else outfitSlot(606, 104, 58, 58, hp.mask ? hp.mask.name : "Máscara", hp.mask);
   slotBox(606, 186, 58, 58, "Colete", { area: "vestslot", type: "vest", item: save.vest >= 0 ? { i: save.vest } : null });
+  // só coletes com modelo vestido (Natalino): escolher se aparece no personagem
+  if (save.vest >= 0 && VESTS[save.vest].wear) {
+    const on = save.vestShow !== false;
+    txt(on ? "◉ Vestido" : "○ Oculto", 635, 258, 10, on ? "#ffd96a" : "#8f8a72", "center", true);
+    regClick(606, 246, 58, 18, () => { save.vestShow = !on; persist(); toast(on ? "Colete escondido no personagem" : "Colete aparecendo no personagem"); });
+  }
   equippedClothingSlot(606, 268, "boots");
   equippedClothingSlot(674, 104, "pack");
   regClick(674, 104, 58, 58, () => { INV.backpackPicker = true; });
