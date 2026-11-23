@@ -190,58 +190,119 @@ body:has(#login:not([hidden]))::before {
 }
 
 
-/* Cartão dos bônus de Natal, ao lado do Token da Loja */
-#login:not([hidden]) { gap: 22px; }
+/* Cartão do evento: reutiliza integralmente a moldura .fm-token-ad */
+#login:not([hidden]) { gap: 20px; }
 #login:not([hidden]) .fm-event-ad {
-  width: min(100%, 300px); box-sizing: border-box; flex: 0 0 300px;
-  padding: 19px 21px 20px; border: 1px solid #c49a37; border-radius: 14px;
-  text-align: center; color: #ece7cb;
-  background: radial-gradient(ellipse at 50% 22%, rgba(27,69,36,.82),rgba(6,17,12,.985) 73%);
-  box-shadow: 0 0 22px rgba(218,172,64,.13), 0 22px 62px rgba(0,0,0,.8);
-  position: relative; z-index: 1;
+  box-sizing: border-box;
+  width: min(100%, 300px);
+  flex: 0 0 300px;
+  min-width: 0;
+  padding: 19px 20px 17px;
+  background: radial-gradient(circle at 50% 30%, rgba(40,90,50,.55), rgba(11,17,14,.96) 70%);
+  border: 1px solid #c9a23a;
+  border-radius: 14px;
+  box-shadow: 0 0 34px rgba(212,175,55,.25), 0 25px 80px #000b;
+  color: #e9e7d7;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
-#login:not([hidden]) .fm-event-emblem {
-  display: block; width: 150px; height: 150px; object-fit: contain;
-  margin: 0 auto 7px; border-radius: 8px;
-  filter: drop-shadow(0 0 9px rgba(238,180,50,.32));
+#login:not([hidden]) .fm-event-hero {
+  width: 170px;
+  height: 158px;
+  margin: 5px auto 4px;
+  position: relative;
+  animation: fm-token-float 3.2s ease-in-out infinite;
+}
+#login:not([hidden]) .fm-event-hero > .fm-event-emblem {
+  width: 154px;
+  height: 154px;
+  object-fit: contain;
+  margin: 0 auto;
+  display: block;
+  animation: none;
+  filter: drop-shadow(0 0 12px rgba(255,210,90,.3));
 }
 #login:not([hidden]) .fm-event-ad h2 {
-  font-size: 18px; line-height: 1.25; letter-spacing: .045em;
-  color: #f7e6aa; margin: 7px 0 12px;
+  color: #f3e9b5;
+  font-size: 20px;
+  letter-spacing: .05em;
+  margin: 4px 0 11px;
 }
 #login:not([hidden]) .fm-event-bonuses {
-  margin: 0; padding: 0; list-style: none;
-  text-align: left; border-top: 1px solid rgba(232,182,64,.22);
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid rgba(201,162,58,.30);
+  text-align: left;
 }
-#login:not([hidden]) .fm-event-bonuses li {
-  display: grid; grid-template-columns: minmax(0,1fr) 58px;
-  align-items: center; gap: 6px; padding: 8px 0;
-  border-bottom: 1px solid rgba(232,182,64,.18);
-  color: #e6e3d4; font-size: 12px; line-height: 1.3;
+#login:not([hidden]) .fm-event-benefit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  margin: 0;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(201,162,58,.20);
+  font-size: 12px;
+  line-height: 1.28;
+  color: #dcdcca;
 }
-#login:not([hidden]) .fm-event-bonuses strong {
-  font-size: 15px; color: #ffdb70; text-align: right; white-space: nowrap;
+#login:not([hidden]) .fm-event-benefit span {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+#login:not([hidden]) .fm-event-benefit strong {
+  flex: 0 0 auto;
+  color: #ffd96a;
+  font-size: 14px;
+  white-space: nowrap;
+  font-weight: 800;
 }
 #login:not([hidden]) .fm-event-soon {
-  margin: 15px 0 0; font-size: 12px; font-weight: 800;
-  color: #ffd86c; letter-spacing: .055em;
+  margin: 13px 0 0;
+  padding: 0;
+  color: #ffd96a;
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: .04em;
 }
-@media (max-width: 1210px) {
-  #login:not([hidden]) { gap: 18px; }
+@media (max-width: 1260px) {
+  #login:not([hidden]) {
+    gap: 16px;
+  }
   #login:not([hidden]) .fm-auth-panel {
-    width: min(100%, 390px); padding: 28px;
+    width: min(100%, 390px);
+    padding: 28px;
   }
   #login:not([hidden]) .fm-token-ad,
-  #login:not([hidden]) .fm-event-ad { flex: 0 1 270px; }
+  #login:not([hidden]) .fm-event-ad {
+    flex: 0 1 270px;
+  }
 }
-@media (max-width: 900px) {
-  #login:not([hidden]) .fm-auth-panel { flex: 1 1 100%; max-width: 520px; }
+@media (max-width: 970px) {
+  #login:not([hidden]) .fm-auth-panel {
+    flex: 1 1 100%;
+    max-width: 520px;
+  }
   #login:not([hidden]) .fm-token-ad,
-  #login:not([hidden]) .fm-event-ad { flex: 1 1 265px; max-width: 300px; }
+  #login:not([hidden]) .fm-event-ad {
+    flex: 1 1 265px;
+    max-width: 300px;
+  }
 }
 @media (max-width: 620px) {
   #login:not([hidden]) { padding: 18px 12px 32px; gap: 16px; }
-  #login:not([hidden]) .fm-auth-panel { box-sizing: border-box; width:100%; padding: 24px; }
+  #login:not([hidden]) .fm-auth-panel {
+    width: 100%;
+    padding: 24px;
+    box-sizing: border-box;
+  }
   #login:not([hidden]) .fm-token-ad,
-  #login:not([hidden]) .fm-event-ad { flex: 0 1 100%; width:100%; max-width: 390px; }
+  #login:not([hidden]) .fm-event-ad {
+    flex: 0 1 100%;
+    width: 100%;
+    max-width: 390px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #login:not([hidden]) .fm-event-hero { animation: none; }
 }
