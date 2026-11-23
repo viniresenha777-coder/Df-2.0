@@ -37,6 +37,13 @@ function makeMap(seed) {
   }
   MAP = { cells, bossT: 240000, bossRandom: mulberry(seed + 1234507) };
   for (let i = 0; i < BOSS_MAX; i++) placeBoss();
+  // Um encontro natalino extra em cada cor, sem substituir os chefes normais.
+  if (EVENTO_NATAL.ativo) for (let tier = 0; tier < REGIONS.length; tier++) {
+    const opts = cells.flat().filter(c => c && c.tier === tier && c.op == null && !c.boss && !(tier === 0 && c.cx === 0 && c.cy === 0));
+    if (!opts.length) continue;
+    const c = opts[Math.floor(MAP.bossRandom() * opts.length)];
+    c.boss = "santa_natal"; c.bossHp = null; c.cleared = false;
+  }
 }
 function cellAt(cx, cy) { return (MAP.cells[cy] && MAP.cells[cy][cx]) || null; }
 function allCells() { return MAP.cells.flat().filter(Boolean); }
@@ -511,7 +518,7 @@ function mapTick(dt) {
   if (typeof fmWorld === "undefined") MAP.bossT -= dt;
   if (typeof fmWorld === "undefined" && MAP.bossT <= 0) {
     MAP.bossT = 240000;
-    if (bossCells().length < BOSS_MAX) {
+    if (bossCells().filter(c => c.boss !== "santa_natal").length < BOSS_MAX) {
       const c = placeBoss();
       if (c) toast(`☠ ${BOSSES[c.boss].name} apareceu na área ${c.code} (${REGIONS[c.tier].name}) · veja no mapa (N)`);
     }
