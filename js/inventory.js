@@ -501,9 +501,9 @@ function drawPause() {
 }
 
 // =====================================================================
-//  Mochila (B): 3 armas equipadas + 20 espaços
+//  Mochila (B): 3 armas equipadas + 14–30 espaços por nível
 // =====================================================================
-const PACK_COLS = 5;
+const PACK_COLS = 6;
 function packSel() { game.inv = game.inv || { sel: 0 }; return game.inv; }
 function selItem(s) { return s < SLOT_N ? player.slots[s] : player.pack[s - SLOT_N]; }
 function packMove(dx, dy) {
@@ -515,7 +515,7 @@ function packMove(dx, dy) {
     const i = s - SLOT_N, col = i % PACK_COLS, row = Math.floor(i / PACK_COLS);
     if (dx) s = SLOT_N + row * PACK_COLS + clamp(col + dx, 0, PACK_COLS - 1);
     if (dy < 0) s = row === 0 ? Math.min(SLOT_N - 1, Math.round(col / 2)) : s - PACK_COLS;
-    if (dy > 0 && row < PACK_MAX / PACK_COLS - 1) s += PACK_COLS;
+    if (dy > 0 && (row + 1) * PACK_COLS < packCapacity()) s += PACK_COLS;
   }
   inv.sel = s;
 }
@@ -536,7 +536,7 @@ function packAct() {
   const inv = packSel(), it = selItem(inv.sel);
   if (!it) return;
   if (inv.sel < SLOT_N) {
-    if (packUsed() >= PACK_MAX) { toast("Mochila cheia"); return; }
+    if (packUsed() >= packCapacity()) { toast("Mochila cheia"); return; }
     player.pack.push(it); player.slots[inv.sel] = null; player.reloading = 0;
     toast(`${instName(it)} guardada na mochila`);
   } else if (it.kind === "weapon") {
@@ -594,7 +594,7 @@ function drawAmmoCell(st, x, y, w, h) {
 }
 function drawPack() {
   const inv = packSel();
-  menuFrame("Mochila", `Armas equipadas: ${player.slots.filter(Boolean).length}/${SLOT_N}  ·  Mochila: ${packUsed()}/${PACK_MAX}  ·  $${game.money}`);
+  menuFrame("Mochila", `Armas equipadas: ${player.slots.filter(Boolean).length}/${SLOT_N}  ·  Mochila: ${packUsed()}/${packCapacity()}  ·  $${game.money}`);
   for (let i = 0; i < SLOT_N; i++) {
     const x = 40 + i * 182, y = 92;
     drawItemCell(player.slots[i], x, y, 174, 92, inv.sel === i, `SLOT ${i + 1}${player.cur === i ? " · NA MÃO" : ""}`);
@@ -605,10 +605,16 @@ function drawPack() {
   const stacks = [];
   for (const t of Object.keys(AMMO)) { let r = player.reserve[t] || 0; while (r > 0) { stacks.push({ t, n: Math.min(AMMO_STACK, r) }); r -= AMMO_STACK; } }
   for (let i = 0; i < PACK_MAX; i++) {
-    const x = 40 + (i % PACK_COLS) * 108, y = 212 + Math.floor(i / PACK_COLS) * 72, s = SLOT_N + i;
-    if (i >= player.pack.length && i < player.pack.length + stacks.length) { drawAmmoCell(stacks[i - player.pack.length], x, y, 104, 68); continue; }
-    drawItemCell(player.pack[i], x, y, 104, 68, inv.sel === s);
-    rowClick(x, y, 104, 68, inv.sel === s, () => { inv.sel = s; }, packAct);
+    const x = 40 + (i % PACK_COLS) * 90, y = 212 + Math.floor(i / PACK_COLS) * 54, s = SLOT_N + i;
+    const unlocked = i < packCapacity();
+    if (i >= player.pack.length && i < player.pack.length + stacks.length) {
+      drawAmmoCell(stacks[i - player.pack.length], x, y, 86, 49); continue;
+    }
+    drawItemCell(player.pack[i], x, y, 86, 49, inv.sel === s);
+    if (!unlocked && !player.pack[i]) {
+      ctx.fillStyle = "rgba(5,5,5,0.70)"; ctx.fillRect(x + 2, y + 2, 82, 45);
+      txt("NÍVEL " + packSlotUnlockLevel(i), x + 43, y + 27, 9, "#918778", "center");
+    } else rowClick(x, y, 86, 49, inv.sel === s, () => { inv.sel = s; }, packAct);
   }
   const it = selItem(inv.sel), px = 600, pw = 320;
   ctx.fillStyle = "rgba(0,0,0,0.25)"; rr(px - 10, 92, pw + 20, 410, 8); ctx.fill();
@@ -681,7 +687,7 @@ function drawListItem(it, x, y, w, sel, sub) {
 function drawStash() {
   game.vside = game.vside || 0; game.vcur = game.vcur || 0;
   menuFrame("Baú da base", "Armas e itens são preservados ao morrer. Cofres só protegem dinheiro quando estão na mochila.");
-  const mine = myList(), cols = [[mine.map((e) => ({ it: e.it, sub: e.where === "slot" ? `slot ${e.i + 1}` : "mochila" })), `Com você (${packUsed()}/${PACK_MAX} na mochila)`],
+  const mine = myList(), cols = [[mine.map((e) => ({ it: e.it, sub: e.where === "slot" ? `slot ${e.i + 1}` : "mochila" })), `Com você (${packUsed()}/${packCapacity()} na mochila)`],
     [save.vault.map((it) => ({ it, sub: "" })), `Baú (${save.vault.length}/${VAULT_MAX})`]];
   cols.forEach(([list, title], side) => {
     const x = side === 0 ? 40 : 490, w = 430, act = game.vside === side;
@@ -843,7 +849,7 @@ function craftRecipe() {
   if (r.vest != null && save.vestsOwned[r.vest]) { toast("Você já tem esse colete"); return; }
   if (game.money < cost) { toast(`Precisa de $${cost} na mochila`); return; }
   if (!hasMats(r.mats)) { toast("Faltam materiais"); return; }
-  if (r.vest == null && player.slots.indexOf(null) < 0 && packUsed() >= PACK_MAX) { toast("Mochila cheia"); return; }
+  if (r.vest == null && player.slots.indexOf(null) < 0 && packUsed() >= packCapacity()) { toast("Mochila cheia"); return; }
   for (const m in r.mats) takeMat(m, r.mats[m]);
   game.money -= cost; stat("crafts");
   if (r.vest != null) {

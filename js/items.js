@@ -207,7 +207,15 @@ function vestUpgradeCost(i) {
 function vestSpeedBonus() { return vestUpgrade().speed; }
 
 // ---------- Instâncias de armas ----------
-const SLOT_N = 3, PACK_MAX = 20, VAULT_MAX = 40;
+// Inventário: 14 espaços iniciais, +2 a cada 5 níveis, máximo de 30 no nível 40.
+const SLOT_N = 3, PACK_MAX = 30, VAULT_MAX = 40;
+function packCapacity(level = player.level) {
+  const lv = Math.max(1, Number.isFinite(Number(level)) ? Math.floor(Number(level)) : 1);
+  return Math.min(PACK_MAX, 14 + 2 * Math.floor(lv / 5));
+}
+function packSlotUnlockLevel(index) {
+  return index < 14 ? 1 : 5 * (Math.floor((index - 14) / 2) + 1);
+}
 function newInst(id, up) { return { kind: "weapon", id, up: Object.assign({ acc: 0, dmg: 0, rel: 0 }, up || {}), ammo: WDEF[id].mag || 0 }; }
 function wStat(inst) {
   const d = WDEF[inst ? inst.id : "punhos"], u = inst ? inst.up : { acc: 0, dmg: 0, rel: 0 };
@@ -234,11 +242,12 @@ function dmgMult(d) {
 function addWeapon(inst) {
   const e = player.slots.indexOf(null);
   if (e >= 0) { player.slots[e] = inst; return "slot"; }
-  if (packUsed() < PACK_MAX) { player.pack.push(inst); return "pack"; }
+  if (packUsed() < packCapacity()) { player.pack.push(inst); return "pack"; }
   return null;
 }
 function addMat(id, n, list, max, loot = false) {
-  list = list || player.pack; max = max || PACK_MAX;
+  list = list || player.pack;
+  max = list === player.pack ? Math.min(max || PACK_MAX, packCapacity()) : (max || VAULT_MAX);
   const st = list.find((it) => it.kind === "mat" && it.id === id && !!it.loot === loot);
   if (st) { st.qty += n; return true; }
   if ((list === player.pack ? packUsed() : list.length) >= max) return false;

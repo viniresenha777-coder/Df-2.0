@@ -110,7 +110,7 @@ function ammoSlots() { let n = 0; for (const t in player.reserve) n += Math.ceil
 function packUsed() { return player.pack.length + ammoSlots(); }
 function ammoRoom(t) {
   const r = player.reserve[t] || 0, partial = Math.ceil(r / AMMO_STACK) * AMMO_STACK - r;
-  return partial + Math.max(0, PACK_MAX - packUsed()) * AMMO_STACK;
+  return partial + Math.max(0, packCapacity() - packUsed()) * AMMO_STACK;
 }
 function spendAmmo(t, n) {
   player.tokenAmmo[t] = Math.max(0, (player.tokenAmmo[t] || 0) - n);

@@ -170,13 +170,15 @@ function invPackEntries() {
   });
   return entries;
 }
-function invPackPages() { return Math.max(1, Math.ceil(invPackEntries().length / 20)); }
+function invPackPages() {
+  return Math.max(1, Math.ceil(Math.max(invPackEntries().length, packCapacity()) / 30));
+}
 function invPackChangePage(direction) {
   INV.packPage = Math.max(0, Math.min(invPackPages() - 1, INV.packPage + direction));
 }
 function invJumpToClothing(kind) {
   const idx = invPackEntries().findIndex(e => e.type === "clothing" && e.item.kind === kind);
-  if (idx >= 0) INV.packPage = Math.floor(idx / 20);
+  if (idx >= 0) INV.packPage = Math.floor(idx / 30);
 }
 
 function invZone(z) { INV.zones.push(z); return z; }
@@ -346,7 +348,7 @@ function invDrop(src, dst) {
   }
   if (dst.area === "pack") {
     if (src.area === "wslot") {
-      if (packUsed() >= PACK_MAX) { toast("Mochila cheia"); return; }
+      if (packUsed() >= packCapacity()) { toast("Mochila cheia"); return; }
       player.pack.push(src.item); player.slots[src.i] = null; player.reloading = 0;
       toast(`${instName(src.item)} guardada na mochila`); inv.sel = SLOT_N + player.pack.length - 1; return;
     }
@@ -438,7 +440,7 @@ function headPieces() {
 function drawInventory() {
   const inv = packSel();
   INV.zones = []; INV.hover = null;
-  menuFrame("Inventário", `$${game.money}  ·  Mochila ${packUsed()}/${PACK_MAX}  ·  ${playerName()} · nível ${player.level}`);
+  menuFrame("Inventário", `$${game.money}  ·  Mochila ${packUsed()}/${packCapacity()}  ·  ${playerName()} · nível ${player.level}`);
 
   // ---- implantes (esquerda)
   txt("Implantes", 40, 100, 14, "#e5e0c8", "left", true);
@@ -483,29 +485,59 @@ function drawInventory() {
     txt(player.cur === i ? `Arma ${i + 1} · na mão` : `Arma ${i + 1}`, x + 56, y - 4, 10, player.cur === i ? "#ffd96a" : "#a9a58f", "center", true);
   }
 
-  // ---- MOCHILA PRINCIPAL (embaixo): todos os itens em uma grade única.
+  // ---- Grade única de inventário: o estilo é de slots escuros em metal
+  // envelhecido, com espaços desbloqueados por nível e sem itens de exemplo.
   const inventoryEntries = invPackEntries();
-  const inventoryPages = Math.max(1, Math.ceil(inventoryEntries.length / 20));
+  const physicalCapacity = packCapacity();
+  const inventoryPages = invPackPages();
   INV.packPage = Math.max(0, Math.min(inventoryPages - 1, INV.packPage));
-  txt("Mochila · armas, munição, materiais, coletes e roupas", 40, 444, 13, "#e5e0c8", "left", true);
-  txt((INV.packPage + 1) + " / " + inventoryPages, 802, 444, 12, "#ffd96a", "center", true);
-  btn(733, 426, 36, 23, "◀", () => invPackChangePage(-1), false, INV.packPage === 0);
-  btn(836, 426, 36, 23, "▶", () => invPackChangePage(1), false, INV.packPage >= inventoryPages - 1);
-  for (let i = 0; i < 20; i++) {
-    const index = INV.packPage * 20 + i;
-    const x = 40 + (i % 10) * 89, y = 452 + Math.floor(i / 10) * 50;
+  const nextCapacity = physicalCapacity < PACK_MAX ? packSlotUnlockLevel(physicalCapacity) : null;
+  ctx.fillStyle = "rgba(9,10,9,0.93)";
+  rr(31, 420, 901, 163, 8); ctx.fill();
+  ctx.strokeStyle = "#49453a"; ctx.lineWidth = 1.4; ctx.stroke();
+  ctx.fillStyle = "#1b1c19"; ctx.fillRect(39, 428, 885, 21);
+  txt("INVENTÁRIO", 44, 444, 14, "#d6d1bd", "left", true);
+  txt("Carga " + packUsed() + "/" + physicalCapacity + " · " +
+      (nextCapacity ? "+2 slots no nível " + nextCapacity : "30 slots liberados"),
+      273, 443, 11, "#a7a08b", "left", false, 290);
+  txt("Página " + (INV.packPage + 1) + "/" + inventoryPages, 759, 444, 11,
+    "#d9b95e", "center", true);
+  btn(829, 427, 42, 22, "◀", () => invPackChangePage(-1), false, INV.packPage === 0);
+  btn(878, 427, 42, 22, "▶", () => invPackChangePage(1), false, INV.packPage >= inventoryPages - 1);
+
+  // 10 colunas x 3 linhas = 30 espaços visíveis. Peças antigas continuam
+  // visíveis mesmo quando a conta carrega um inventário acima do limite atual.
+  for (let i = 0; i < 30; i++) {
+    const index = INV.packPage * 30 + i;
+    const col = i % 10, row = Math.floor(i / 10);
+    const x = 40 + col * 89, y = 452 + row * 42;
+    const width = 85, height = 39;
     const entry = inventoryEntries[index];
+    const locked = !entry && index >= physicalCapacity && INV.packPage === 0;
+
+    ctx.fillStyle = locked ? "rgba(11,11,11,0.92)" : "rgba(29,28,25,0.94)";
+    rr(x, y, width, height, 3); ctx.fill();
+    ctx.strokeStyle = locked ? "#292822" : "#514b40";
+    ctx.lineWidth = 1.0; ctx.stroke();
+
     if (entry && entry.type === "ammo") {
-      invAmmoCell(entry.item, x, y, 85, 46);
-      const z = invZone({ ...entry, x, y, w: 85, h: 46 });
-      if (mouse.x >= x && mouse.x <= x + 85 && mouse.y >= y && mouse.y <= y + 46)
+      invAmmoCell(entry.item, x, y, width, height);
+      const z = invZone({ ...entry, x, y, w: width, h: height });
+      if (mouse.x >= x && mouse.x <= x + width && mouse.y >= y && mouse.y <= y + height)
         INV.hover = z;
     } else if (entry) {
-      slotBox(x, y, 85, 46, null, entry);
-    } else {
-      slotBox(x, y, 85, 46, null,
+      slotBox(x, y, width, height, null, entry);
+    } else if (!locked) {
+      slotBox(x, y, width, height, null,
         { area: "pack", i: player.pack.length, item: null, type: null });
+    } else {
+      ctx.fillStyle = "rgba(0,0,0,0.42)"; ctx.fillRect(x + 3, y + 3, width - 6, height - 6);
+      txt("NV " + packSlotUnlockLevel(index), x + width / 2, y + 25, 10, "#777164", "center", true);
     }
+    // Moldura reforçada, com índice discreto e acabamento próximo à
+    // referência, sem replicar os itens que estavam na fotografia.
+    ctx.strokeStyle = locked ? "#3b332b" : entry ? "#76694a" : "#494437";
+    ctx.lineWidth = .8; ctx.strokeRect(x + 1.5, y + 1.5, width - 3, height - 3);
   }
 
   // ---- PAINEL DIREITO: somente informações, sem segunda lista de equipamentos.
@@ -586,7 +618,7 @@ function drawInventory() {
     btn(W / 2 + 10, H / 2 + 16, 140, 30, "Cancelar", () => { INV.confirm = null; });
   }
   drawAllocPanel();
-  hint("Tudo na mochila: armas, munição, roupas e coletes · ◀ ▶ páginas · B/Esc fecha");
+  hint("Inventário unificado · 14–30 espaços de carga por nível · Roda do mouse ou ◀ ▶ · B/Esc fecha");
 }
 
 // ---------------------------------------------------------------- texto em várias linhas
