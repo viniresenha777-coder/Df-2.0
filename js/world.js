@@ -55,7 +55,8 @@ function placeBoss() {
   if (!free.length) return null;
   // escolhe primeiro o chefe que está aparecendo menos, depois uma área da cor certa para ele
   const count = (id) => bossCells().filter((c) => c.boss === id).length;
-  const ids = Object.keys(BOSSES).sort((a, b) => count(a) - count(b) || a.localeCompare(b));
+  const ids = Object.keys(BOSSES).filter(id => id !== "santa_natal")
+    .sort((a, b) => count(a) - count(b) || a.localeCompare(b));
   for (const id of ids) {
     const opts = free.filter((c) => BOSSES[id].tiers.includes(c.tier));
     if (!opts.length) continue;
