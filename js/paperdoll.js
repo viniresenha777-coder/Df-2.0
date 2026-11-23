@@ -499,14 +499,16 @@ function drawInventory() {
   const physicalCapacity = packCapacity();
   const inventoryPages = invPackPages();
   INV.packPage = Math.max(0, Math.min(inventoryPages - 1, INV.packPage));
-  const nextCapacity = physicalCapacity < PACK_MAX ? packSlotUnlockLevel(physicalCapacity) : null;
+  const baseCapacity = backpackBaseCapacity(player.level);
+  const nextCapacity = baseCapacity < 30 ? packSlotUnlockLevel(baseCapacity) : null;
   ctx.fillStyle = "rgba(9,10,9,0.93)";
   rr(31, 420, 901, 163, 8); ctx.fill();
   ctx.strokeStyle = "#49453a"; ctx.lineWidth = 1.4; ctx.stroke();
   ctx.fillStyle = "#1b1c19"; ctx.fillRect(39, 428, 885, 21);
   txt("INVENTÁRIO", 44, 444, 14, "#d6d1bd", "left", true);
   txt("Carga " + packUsed() + "/" + physicalCapacity + " · " +
-      (nextCapacity ? "+2 slots no nível " + nextCapacity : "30 slots liberados"),
+      (nextCapacity ? "+2 espaços no nível " + nextCapacity :
+        "30 espaços base" + (backpackEquipped() ? " +" + backpackExtraSlots() + " mochila" : "")),
       273, 443, 11, "#a7a08b", "left", false, 290);
   txt("Página " + (INV.packPage + 1) + "/" + inventoryPages, 759, 444, 11,
     "#d9b95e", "center", true);
@@ -540,7 +542,7 @@ function drawInventory() {
         { area: "pack", i: player.pack.length, item: null, type: null });
     } else {
       ctx.fillStyle = "rgba(0,0,0,0.42)"; ctx.fillRect(x + 3, y + 3, width - 6, height - 6);
-      txt("NV " + packSlotUnlockLevel(index), x + width / 2, y + 25, 10, "#777164", "center", true);
+      txt(index >= 30 ? "MOCHILA" : "NV " + packSlotUnlockLevel(index), x + width / 2, y + 25, 10, "#777164", "center", true);
     }
     // Moldura reforçada, com índice discreto e acabamento próximo à
     // referência, sem replicar os itens que estavam na fotografia.
