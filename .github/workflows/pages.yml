@@ -59,7 +59,11 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Gerar e registrar bundle ofuscado atualizado
+      # Não recompilar automaticamente: o pacote restaurado contém correções
+      # do inventário que ainda não foram portadas para os arquivos-fonte.
+      # Atualizar o bundle apenas sob acionamento manual após sincronizar as fontes.
+      - name: Gerar e registrar bundle ofuscado atualizado (manual)
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           set -euo pipefail
