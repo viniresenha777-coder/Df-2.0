@@ -102,7 +102,7 @@ const ZTYPES = {
   // especiais
   dog:     { name: "Cão infectado", plural: "cães infectados", hp: 0.55, spd: 2.5, dmg: 0.7, r: 11, from: 3, weight: 2, xp: 1.4, pack: [2, 4], hitDelay: 1000, group: "Especial" },
   spitter: { name: "Cuspidor",    plural: "cuspidores",  hp: 0.8, spd: 0.8,  dmg: 0.7, r: 13, from: 6,  weight: 2,  xp: 1.5, group: "Especial" },
-  creeper: { name: "Rastejante",  plural: "rastejantes", hp: 1.2, spd: 0.6, dmg: 1.1, r: 14, from: 5, weight: 1.5, xp: 2, blastDeath: true, group: "Especial" },
+  creeper: { name: "Rastejante",  plural: "rastejantes", hp: 1.2, spd: 0.6, dmg: 0, r: 14, from: 6, weight: 0.3, xp: 2, screams: true, group: "Especial" },
   hazmat:  { name: "Contaminado", plural: "contaminados", hp: 1.4, spd: 0.85, dmg: 0.9, r: 14, from: 7, weight: 1.5, xp: 1.8, gas: true, group: "Especial" },
   infected: { name: "Infectado",  plural: "infectados",  hp: 1.1, spd: 1.35, dmg: 1.1, r: 13, from: 8, weight: 2, xp: 1.6, pack: [2, 3], dodge: true, group: "Infectado" },
   brute:   { name: "Brutamontes", plural: "brutamontes", hp: 3,   spd: 0.62, dmg: 1.9, r: 19, from: 9, weight: 2,  xp: 3, group: "Especial" },

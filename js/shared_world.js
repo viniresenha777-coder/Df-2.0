@@ -147,6 +147,7 @@ const fmWorld = (() => {
       burn: z.burn, burnDps: z.burnDps, bleed: z.bleed, bleedDps: z.bleedDps,
       stun: z.stun, alertT: z.alertT, chargeT: z.chargeT, windT: z.windT,
       phase: z.phase, abil: z.abil, abilT: z.abilT, slamT: z.slamT,
+      screamCount: z.screamCount || 0, screamCd: z.screamCd || 0,
       half: z.half, horde: z.horde, wave1: z.wave1
     };
   }
@@ -189,7 +190,9 @@ const fmWorld = (() => {
       const wasNew = !z;
       if (!z) z = makeZombie(d.x, d.y, d.type, world.cell.zone);
       const fromX = z.x, fromY = z.y;
+      const previousScreams = z.screamCount || 0;
       Object.assign(z, d);
+      if (!wasNew && ZTYPES[z.type].screams && z.screamCount > previousScreams) playCreeperScream(z);
       const skipLerp = wasNew || Math.hypot(fromX - d.x, fromY - d.y) > 140;
       z.netFromX = skipLerp ? d.x : fromX;
       z.netFromY = skipLerp ? d.y : fromY;
@@ -252,7 +255,7 @@ const fmWorld = (() => {
   function localZombieThreats(dt) {
     if (!isFollower() || game.trans || game.paused || game.menu) return;
     for (const z of Zs()) {
-      if (z.hp <= 0) continue;
+      if (z.hp <= 0 || ZTYPES[z.type].screams) continue;
       z.netHitCd = Math.max(0, (z.netHitCd || 0) - dt);
       if (z.netHitCd > 0 || Math.hypot(player.x - z.x, player.y - z.y) >= z.r + player.r + 3) continue;
       damagePlayer(z.dmg);

@@ -202,7 +202,6 @@ function explode(x, y, r, dmg) {
   if (!fmPlaySample("explosion", {x,y,volume:.90})) sfx.shot({cat:"shotguns"});
 }
 function hurt(z, dmg, ang, quiet, fx) {
-  z.lastMelee = !!(fx && fx.melee);   // o Rastejante só não explode quando morre no corpo a corpo
   let d = dmg * (1 + player.fx.firepower / 100) * adm.dmg * (trindadeActive() ? 1.35 : 1), crit = false;
   if (player.fx.rage && player.hp / player.maxHp < 0.4) d *= 1 + player.fx.rage / 100;
   if (!(fx && fx.noCrit) && Math.random() * 100 < Math.min(85, A("crit") * 0.5 + player.fx.crit + (fx && fx.crit ? fx.crit : 0))) { d *= 2 + player.fx.critDmg / 100; crit = true; }
@@ -413,7 +412,6 @@ function killZombie(z) {
   if (player.fx.killHeal) player.hp = Math.min(player.maxHp, player.hp + player.fx.killHeal);
   const zt0 = ZTYPES[z.type];
   if (zt0.gas && !z.boss) { addHazard(z.x, z.y, 70, 4500, 6 + diffOf(z.zone) * 3, "gas"); }
-  if (zt0.blastDeath && !z.boss && !z.lastMelee) creeperBlast(z);
   if (zt0.acidDeath && !z.boss) { addHazard(z.x, z.y, 60, 5000, 8 + diffOf(z.zone) * 4, "acid"); acidSplash(z.x, z.y); if (Math.hypot(player.x - z.x, player.y - z.y) < 70) damagePlayer(z.dmg * 0.8); }
   if (z.bossId === "matriarca" || z.bossId === "pestilento") addHazard(z.x, z.y, 120, 8000, 15 + diffOf(z.zone) * 5, "acid");
   missionProgress("kill", 1); missionProgress("killcat", 1, curW().cat); missionProgress("killtype", 1, z.type);
@@ -460,16 +458,19 @@ function killZombie(z) {
     if (corpses.length > 30) { const i = corpses.findIndex((c) => c.table !== "boss"); if (i >= 0) corpses.splice(i, 1); }
   }
 }
-// Rastejante abatido a distância: explode (fere quem estiver perto, inclusive outros zumbis e o jogador)
-const CREEPER_BLAST_R = 78;
-function creeperBlast(z) {
-  const reg = diffOf(z.zone);
-  explode(z.x, z.y, CREEPER_BLAST_R, 70 + reg * 45);
-  const d = Math.hypot(player.x - z.x, player.y - z.y);
-  if (d < CREEPER_BLAST_R + 12) damagePlayer(z.dmg * 2.2 * (1 - 0.6 * d / (CREEPER_BLAST_R + 12)));
-  for (let i = 0; i < 16; i++) {               // fumaça escura da criatura
-    const a = Math.random() * 6.283, s = rand(0.6, 2.4);
-    game.parts.push({ x: z.x, y: z.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 0.4, life: rand(500, 900), max: 900, color: pick(["#1a1418", "#2a2028", "#3a1a22"]), size: rand(4, 8), fr: 0.92 });
+const SCREAM_RADIUS = 600;
+function playCreeperScream(z) {
+  const distance = Math.hypot(player.x - z.x, player.y - z.y);
+  if (distance < SCREAM_RADIUS) fmPlayExtra("grito_rastejante", { volume: 1 - distance / SCREAM_RADIUS });
+}
+function creeperAlarm(z, list, dt, distance) {
+  z.screamCd = Math.max(0, (z.screamCd || 0) - dt);
+  if (z.screamCd || z.state !== "chase" || distance > 210 || !losClear(z.x, z.y, player.x, player.y)) return;
+  z.screamCd = 20000;
+  z.screamCount = (z.screamCount || 0) + 1;
+  playCreeperScream(z);
+  for (const other of list) {
+    if (other.hp > 0 && !ZTYPES[other.type].screams && Math.hypot(other.x - z.x, other.y - z.y) <= SCREAM_RADIUS) alertZombie(other);
   }
 }
 function damagePlayer(dmg) {
@@ -734,6 +735,10 @@ function updateZombies(dt, k) {
     }
     const reach = zReach(z);
     // Ataques de Natal são processados em bossAbility: não duplicar dano com a mordida padrão.
+    if (zt.screams) {
+      creeperAlarm(z, list, dt, d);
+      continue;
+    }
     if (z.type === "alce_natal" || z.bossId === "santa_natal") continue;
     if (z.atkT > 0) {                    // golpe em andamento: o dano sai no meio dele
       z.atkT -= dt;

@@ -694,13 +694,6 @@ function drawZombieSprite(z) {
   ctx.drawImage(sheet, col * 128, row * 128, 128, 128, x, y, S, S);
   ctx.filter = "none";
   if (z.flash > 0) { ctx.save(); ctx.globalAlpha = 0.55; ctx.globalCompositeOperation = "lighter"; ctx.drawImage(sheet, col * 128, row * 128, 128, 128, x, y, S, S); ctx.restore(); }
-  if (z.type === "creeper") {                   // brasa no peito: aviso de que explode
-    const low = 1 - Math.max(0, z.hp / z.maxHp), pulse = 0.6 + 0.4 * Math.sin(game.time / (220 - 120 * low));
-    const cx = z.x - Math.cos(z.angle) * 2, cy = z.y - S * 0.48, rr = (5 + 4 * low) * S / 86;
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rr * 2.4);
-    g.addColorStop(0, `rgba(255,90,40,${0.85 * pulse})`); g.addColorStop(1, "rgba(255,40,20,0)");
-    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; circle(cx, cy, rr * 2.4); ctx.restore();
-  }
   if (z.type === "spitter") {
     const pulse = 0.8 + 0.2 * Math.sin(game.time / 150);
     ctx.fillStyle = `rgba(143,209,79,${0.75 * pulse})`; circle(z.x - Math.cos(z.angle) * 5, z.y - S * 0.42, 6 * pulse * S / 86);

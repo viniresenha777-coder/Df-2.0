@@ -143,6 +143,7 @@ fmInstallAudioSamples();
 //  duro e grama), lança-granadas (tiro e recarga) e ambiente do bunker e dos hospitais.
 // =====================================================================
 const FM_EXTRA_FILES = {
+  grito_rastejante: "audio/grito_rastejante.m4a",
   fuzil_tiro: "audio/fuzil_tiro.ogg", fuzil_recarga: "audio/fuzil_recarga.mp3", faca: "audio/faca.ogg",
   cartucho: "audio/cartucho_chao.ogg", passos: "audio/passos.ogg", passos_grama: "audio/passos_grama.ogg",
   granada_tiro: "audio/lancagranada_tiro.ogg", granada_recarga: "audio/lancagranada_recarga.ogg",
