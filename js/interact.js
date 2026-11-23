@@ -105,6 +105,33 @@ function rollLoot(table, zone) {
   return out;
 }
 
+// Saque individual dos quatro alces zumbis do evento.
+// Exatamente um item por alce, com a raridade oficial da cor da região.
+// O Papai Noel mantém seu próprio drop separado, mais valioso.
+function natalAlceLoot(zone) {
+  const tier = regionOf(zone);
+  const t = TABLES.boss, r = Math.random();
+  // Nas primeiras cores predominam munição e dinheiro. Nas mais difíceis,
+  // armas, coletes e a rara chance de implante ficam mais frequentes.
+  if (tier < 3) {
+    if (r < 0.27) return [lootEntry("weapon", t, "boss", zone)];
+    if (r < 0.39) return [lootVest(zone)];
+    if (r < 0.72) return [lootEntry("ammo", t, "boss", zone)];
+    return [lootEntry("cash", t, "boss", zone)];
+  }
+  if (tier < 6) {
+    if (r < 0.38) return [lootEntry("weapon", t, "boss", zone)];
+    if (r < 0.58) return [lootVest(zone)];
+    if (r < 0.80) return [lootEntry("ammo", t, "boss", zone)];
+    return [lootEntry("cash", t, "boss", zone)];
+  }
+  if (r < 0.43) return [lootEntry("weapon", t, "boss", zone)];
+  if (r < 0.68) return [lootVest(zone)];
+  if (r < 0.75) return [{ type: "implant", im: randomImplant() }];
+  if (r < 0.90) return [lootEntry("ammo", t, "boss", zone)];
+  return [lootEntry("cash", t, "boss", zone)];
+}
+
 // ---------- Saque dos chefes: só arma, colete e implante (+ componentes de craft) ----------
 function weaponBetween(minR, maxR) {
   const list = WLIST.filter((d) => d.rar >= minR && d.rar <= maxR && !d.craftOnly && !d.fists && d.id !== "pistola");
@@ -225,9 +252,13 @@ function spotLootPrepared(spot) {
       SAFE_KINDS.includes(spot.kind) ||
       spot.kind === "door" || spot.kind === "decor" || spot.kind === "exit") return [];
   const now = game.time || 0;
-  if (!spot.preparedLoot || (spot.preparedAt != null && now - spot.preparedAt >= 300000)) {
-    const zone = game.inside ? game.inside.row : rowAt(spot.y + (spot.h || 0) / 2);
-    const found = spot.table === "boss" ? bossLoot(spot.bossId, zone) : rollLoot(spot.table, zone);
+  if (!spot.preparedLoot || (spot.table !== "alce_natal" && spot.preparedAt != null && now - spot.preparedAt >= 300000)) {
+    // Bosses e alces usam a região exata do encontro, não a rua em que o
+    // corpo caiu. Isso mantém as raridades proporcionais à cor do mapa.
+    const zone = Number.isFinite(spot.zone) ? spot.zone :
+      game.inside ? game.inside.row : rowAt(spot.y + (spot.h || 0) / 2);
+    const found = spot.table === "alce_natal" ? natalAlceLoot(zone) :
+      spot.table === "boss" ? bossLoot(spot.bossId, zone) : rollLoot(spot.table, zone);
     const dz = deadZoneDrop(zone);
     if (dz) found.push(dz);
     if (Math.random() < TOKEN_LOJA_CHANCE) found.push({ type: "mat", id: "token_loja", amt: 1 });   // chance fixa, sem bônus

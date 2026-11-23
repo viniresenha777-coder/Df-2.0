@@ -432,7 +432,25 @@ function killZombie(z) {
   }
   game.score += Math.round(10 * zx);
   gainXp((8 + 1.5 * z.zone) * zx);
-  // zumbi morto não deixa saque: o corpo fica um pouco e some
+  // Cada um dos quatro alces de Natal deixa UM drop garantido, separado
+  // do loot do Papai Noel. O corpo é vasculhável (E) como os demais saques.
+  if (z.type === "alce_natal") {
+    const size = Math.max(48, z.r * 2);
+    corpses.push({
+      x: z.x - size / 2, y: z.y - size / 2, w: size, h: size,
+      kind: "corpse", table: "alce_natal", name: "Alce Zumbi",
+      zone: z.zone, opened: false, life: Infinity,
+      ang: z.angle || 0, skin: z.skin || "#61724e",
+      cloth: z.cloth || "#514c35"
+    });
+    // Preservar saques do evento mesmo com muitos cadáveres na área.
+    if (corpses.length > 30) {
+      const idx = corpses.findIndex(c => c.table !== "boss" && c.table !== "alce_natal");
+      if (idx >= 0) corpses.splice(idx, 1);
+    }
+    return;
+  }
+  // Zumbis comuns mortos não deixam saque; ficam um pouco e somem
   // zumbi com sprite 3D: sempre cai no chão (animação de queda) e o corpo fica deitado um tempo
   const dz = typeof zombieDeathInfo === "function" ? zombieDeathInfo(z) : null;
   if (dz || Math.random() < 0.5) {
