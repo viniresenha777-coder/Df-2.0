@@ -652,65 +652,272 @@ function myList() {
 function vaultCapacity() { return Math.min(400, Math.max(40, (save.vaultRows || 5) * 8)); }
 function buyVaultRow() {
   const rows = Math.max(5, Math.min(50, save.vaultRows || 5));
-  if (rows >= 50) { toast('Baú completo'); return; }
-  const price = rows < 25 ? 10000 : 50000;
-  if (game.money < price) { toast('Dinheiro insuficiente'); return; }
-  game.money -= price; save.vaultRows = rows + 1; save.run = runSnapshot(); persist();
-  toast('Fileira liberada: +8 espaços no baú');
+  if (rows >= 50) { toast("O baú já possui 10 páginas completas."); return; }
+  const cost = rows < 25 ? 10000 : 50000;
+  if (game.money < cost) { toast("Dinheiro insuficiente: $" + cost.toLocaleString("pt-BR")); return; }
+  game.money -= cost; save.vaultRows = rows + 1; save.run = runSnapshot(); persist();
+  toast("Fileira liberada: +8 espaços no Baú da Base.");
 }
-function vaultMove() {
-  if (game.vside === 0) {
-    const e = myList()[game.vcur];
-    if (!e) return;
-    if (e.it.kind === "mat") { if (!addMat(e.it.id, e.it.qty, save.vault, vaultCapacity(), !!e.it.loot)) { toast("Baú cheio"); return; } }
-    else { if (save.vault.length >= vaultCapacity()) { toast("Baú cheio"); return; } save.vault.push(e.it); }
-    if (e.where === "slot") player.slots[e.i] = null; else player.pack.splice(e.i, 1);
-    player.reloading = 0;
-    toast(`Guardou no baú: ${e.it.kind === "weapon" ? instName(e.it) : MATS[e.it.id].name}`);
-    game.vcur = Math.max(0, Math.min(game.vcur, myList().length - 1));
-  } else {
-    const it = save.vault[game.vcur];
-    if (!it) return;
-    if (it.kind === "weapon") { if (!addWeapon(it)) { toast("Mochila cheia"); return; } }
-    else if (!addMat(it.id, it.qty, player.pack, PACK_MAX, !!it.loot)) { toast("Mochila cheia"); return; }
-    save.vault.splice(game.vcur, 1);
-    toast(`Pegou do baú: ${it.kind === "weapon" ? instName(it) : MATS[it.id].name}`);
-    game.vcur = Math.max(0, Math.min(game.vcur, save.vault.length - 1));
+function stashClothingStored(id) { return save.vault.some(v => v && v.kind === "clothing" && v.id === id); }
+function stashEntries() {
+  const entries = invPackEntries().filter(z => z && z.item &&
+    !(z.type === "clothing" && stashClothingStored(z.item.id)));
+  player.slots.forEach((item, i) => { if (item) entries.push({ area: "wslot", type: "weapon", i, item }); });
+  player.bag.forEach((item, i) => entries.push({ area: "bag", type: "implant", i, item }));
+  save.installed.forEach((item, i) => entries.push({ area: "installed", type: "implant", i, item }));
+  if (save.vest >= 0 && save.vestsOwned[save.vest])
+    entries.push({ area: "vest-equipped", type: "vest", item: { i: save.vest } });
+  for (const kind of Object.keys(save.clothing || {})) {
+    const item = CLOTHING_BY_ID[save.clothing[kind]];
+    if (item && !stashClothingStored(item.id))
+      entries.push({ area: "clothes-equipped", type: "clothing", item });
   }
-  save.run = runSnapshot();
-  persist();
+  BACKPACK_CATALOG.forEach(item => {
+    if (!stashClothingStored(item.id) && !entries.some(z => z.type === "clothing" && z.item?.id === item.id))
+      entries.push({ area: "clothes-list", type: "clothing", item });
+  });
+  for (const id of ["fresca", "comum", "podre"]) {
+    const qty = Math.floor(Number(player.foodQ?.[id]) || 0);
+    if (qty > 0) entries.push({ area: "food", type: "food", item: { id, qty } });
+  }
+  for (const id of ["water", "med", "anti"]) {
+    const n = Math.floor(Number(player[id]) || 0);
+    if (n > 0) entries.push({ area: "supply", type: "supply", item: { id, n } });
+  }
+  return entries;
 }
-function stashKey(k) {
-  const len = game.vside === 0 ? myList().length : save.vault.length;
-  if (k === "tab" || k === "a" || k === "d" || k === "arrowleft" || k === "arrowright") { game.vside ^= 1; game.vcur = 0; }
-  else if (k === "w" || k === "arrowup") game.vcur = Math.max(0, game.vcur - 1);
-  else if (k === "s" || k === "arrowdown") game.vcur = Math.max(0, Math.min(len - 1, game.vcur + 1));
-  else if (k === "enter") vaultMove();
+function stashItemName(it) {
+  if (!it) return "";
+  if (it.kind === "weapon") return instName(it);
+  if (it.kind === "mat") return (MATS[it.id]?.name || it.id) + " ×" + it.qty;
+  if (it.kind === "ammo") return "Munição " + it.id + " ×" + it.qty;
+  if (it.kind === "implant") return implantName(it);
+  if (it.kind === "vest") return VESTS[it.id]?.name || "Colete";
+  if (it.kind === "clothing") return CLOTHING_BY_ID[it.id]?.name || "Roupa";
+  if (it.kind === "food") return (FOOD_Q[it.id]?.name || "Comida") + " ×" + it.qty;
+  return ({ water: "Água", med: "Kit médico", anti: "Antibiótico" }[it.kind] || it.kind) + " ×" + (it.qty || 1);
 }
-function drawListItem(it, x, y, w, sel, sub) {
-  rowBox(x, y, w, 34, sel);
-  if (it.kind === "weapon") { drawWeaponSide(WDEF[it.id], x + 34, y + 17, 0.22); txt(instName(it), x + 70, y + 22, 13, canUse(WDEF[it.id]) ? rarColor(WDEF[it.id]) : "#e07b5a", "left", true, w - 160); }
-  else { drawMatIcon(it.id, x + 34, y + 17, 0.4); txt(`${it.qty}x ${MATS[it.id].name}`, x + 70, y + 22, 13, "#e5e0c8", "left", true, w - 160); }
-  if (sub) txt(sub, x + w - 10, y + 22, 11, "#a9a58f", "right");
+function stashSourceName(z) {
+  if (!z) return "";
+  if (z.type === "weapon" || z.type === "mat") return stashItemName(z.item);
+  if (z.type === "ammo") return "Munição " + z.item.t + " ×" + z.item.n;
+  if (z.type === "implant") return implantName(z.item);
+  if (z.type === "vest") return VESTS[z.item.i]?.name || "Colete";
+  if (z.type === "clothing") return z.item.name;
+  if (z.type === "food") return stashItemName({ kind: "food", ...z.item });
+  if (z.type === "supply") return stashItemName({ kind: z.item.id, qty: z.item.n });
+  return "Item";
+}
+function stashPersist() { save.run = runSnapshot(); persist(); }
+function stashStore(at) {
+  const z = stashEntries()[game.vcur | 0];
+  if (!z || !z.item) { toast("Escolha um item no inventário inferior."); return; }
+  let obj = null, merged = null;
+  if (z.type === "weapon" || z.type === "mat") {
+    obj = z.item;
+    if (z.type === "mat") merged = save.vault.find(v => v && v.kind === "mat" &&
+      v.id === obj.id && !!v.loot === !!obj.loot && !!v.tokenBound === !!obj.tokenBound);
+  } else if (z.type === "ammo") {
+    const id = z.item.t, qty = Math.min(Math.floor(z.item.n), Math.floor(player.reserve[id] || 0));
+    if (qty <= 0) return;
+    obj = { kind: "ammo", id, qty, tokenQty: Math.min(qty, Math.floor(player.tokenAmmo?.[id] || 0)) };
+  } else if (z.type === "implant") {
+    obj = { ...z.item, kind: "implant" };
+  } else if (z.type === "vest") {
+    if (!save.vestsOwned[z.item.i]) return;
+    obj = { kind: "vest", id: z.item.i, dur: vestDur(z.item.i) };
+  } else if (z.type === "clothing") {
+    if (stashClothingStored(z.item.id)) { toast("Essa peça já está guardada."); return; }
+    if (z.item.kind === "pack" && save.clothing.pack === z.item.id &&
+        (packUsed() > backpackBaseCapacity(player.level) ||
+          invPackEntries().slice(30, 30 + backpackExtraSlots()).some(Boolean))) {
+      toast("Esvazie os slots extras da mochila antes de guardá-la."); return;
+    }
+    obj = { kind: "clothing", id: z.item.id };
+  } else if (z.type === "food") {
+    const qty = Math.floor(player.foodQ?.[z.item.id] || 0);
+    if (qty <= 0) return;
+    obj = { kind: "food", id: z.item.id, qty };
+  } else if (z.type === "supply") {
+    const id = z.item.id, qty = Math.floor(player[id] || 0);
+    if (!["water", "med", "anti"].includes(id) || qty <= 0) return;
+    obj = { kind: id, qty };
+  } else { toast("Item inválido."); return; }
+  if (!merged && save.vault.length >= vaultCapacity()) {
+    toast("Baú cheio. Libere uma fileira para guardar mais itens."); return;
+  }
+  if (z.type === "weapon" || z.type === "mat") {
+    if (z.area === "wslot") { player.slots[z.i] = null; player.reloading = 0; }
+    else if (z.area === "pack") {
+      const index = player.pack.indexOf(z.item); if (index < 0) return; player.pack.splice(index, 1);
+    } else return;
+  } else if (z.type === "ammo") {
+    player.reserve[obj.id] -= obj.qty;
+    player.tokenAmmo[obj.id] = Math.max(0, (player.tokenAmmo[obj.id] || 0) - obj.tokenQty);
+  } else if (z.type === "implant") {
+    const group = z.area === "installed" ? save.installed : player.bag;
+    const index = group.indexOf(z.item); if (index < 0) return;
+    group.splice(index, 1); if (z.area === "installed") recalcImplants();
+  } else if (z.type === "vest") {
+    save.vestsOwned[obj.id] = false;
+    if (save.vest === obj.id) { save.vest = -1; recalcImplants(); }
+  } else if (z.type === "clothing") {
+    if (save.clothing[z.item.kind] === obj.id) save.clothing[z.item.kind] = null;
+  } else if (z.type === "food") {
+    player.foodQ[obj.id] -= obj.qty; player.food = Math.max(0, player.food - obj.qty);
+  } else if (z.type === "supply") {
+    player[obj.kind] -= obj.qty;
+  }
+  if (merged) merged.qty += obj.qty;
+  else save.vault.splice(Math.max(0, Math.min(save.vault.length,
+    Number.isInteger(at) ? at : save.vault.length)), 0, obj);
+  game.vside = 0;
+  game.vcur = Math.max(0, Math.min(game.vcur, stashEntries().length - 1));
+  stashPersist(); toast("Guardado: " + stashItemName(obj));
+}
+function stashWithdraw(index = game.vcur | 0) {
+  const obj = save.vault[index];
+  if (!obj) { toast("Escolha um item do baú."); return; }
+  if (obj.kind === "weapon") {
+    if (!addWeapon(obj)) { toast("Inventário cheio."); return; }
+  } else if (obj.kind === "mat") {
+    const other = player.pack.find(it => it.kind === "mat" && it.id === obj.id &&
+      !!it.loot === !!obj.loot && !!it.tokenBound === !!obj.tokenBound);
+    if (other) other.qty += obj.qty;
+    else {
+      if (packUsed() >= packCapacity()) { toast("Inventário cheio."); return; }
+      player.pack.push(obj);
+    }
+  } else if (obj.kind === "ammo") {
+    if (ammoRoom(obj.id) < obj.qty) { toast("Sem espaço para munição."); return; }
+    player.reserve[obj.id] = (player.reserve[obj.id] || 0) + obj.qty;
+    player.tokenAmmo[obj.id] = (player.tokenAmmo[obj.id] || 0) + Math.min(obj.qty, obj.tokenQty || 0);
+  } else if (obj.kind === "implant") {
+    if (player.bag.length >= BAG_MAX) { toast("Sem espaço para implantes guardados."); return; }
+    const im = { ...obj }; delete im.kind; player.bag.push(im);
+  } else if (obj.kind === "vest") {
+    save.vestsOwned[obj.id] = true;
+    if (Number.isFinite(obj.dur)) save.vestDur[obj.id] = obj.dur;
+  } else if (obj.kind === "clothing") {
+    if (!CLOTHING_BY_ID[obj.id]) return;
+  } else if (obj.kind === "food") {
+    player.foodQ[obj.id] = (player.foodQ[obj.id] || 0) + obj.qty;
+    player.food += obj.qty;
+  } else if (["water", "med", "anti"].includes(obj.kind)) {
+    player[obj.kind] += obj.qty;
+  } else { toast("Tipo de item inválido."); return; }
+  const title = stashItemName(obj);
+  save.vault.splice(index, 1);
+  game.vside = 1; game.vcur = Math.max(0, Math.min(index, save.vault.length - 1));
+  stashPersist(); toast("Retirado: " + title);
+}
+function vaultMove() { if (game.vside === 1) stashWithdraw(game.vcur); else stashStore(); }
+function stashKey(key) {
+  if (key === "a" || key === "arrowleft") game.vpage = Math.max(0, (game.vpage || 0) - 1);
+  else if (key === "d" || key === "arrowright") game.vpage = Math.min(9, (game.vpage || 0) + 1);
+  else if (key === "tab") game.vside = game.vside === 1 ? 0 : 1;
+  else if (key === "w" || key === "arrowup") game.vcur = Math.max(0, (game.vcur || 0) - 1);
+  else if (key === "s" || key === "arrowdown") game.vcur++;
+  else if (key === "enter") vaultMove();
+}
+function stashSlot(x, y, w, h, selected, disabled) {
+  ctx.fillStyle = disabled ? "#090b0a" : "#171a18";
+  rr(x, y, w, h, 3); ctx.fill();
+  ctx.strokeStyle = selected ? "#ffdc86" : disabled ? "#282820" : "#806443";
+  ctx.lineWidth = selected ? 2 : 1.5; ctx.stroke();
+  ctx.fillStyle = disabled ? "rgba(35,35,31,.35)" : "rgba(154,150,129,.10)";
+  for (let n = y + 7; n < y + h - 5; n += 5) ctx.fillRect(x + 5, n, w - 10, 1);
+}
+function stashIcon(entry, x, y, w, h) {
+  if (!entry || !entry.item) return;
+  if (entry.type === "ammo") {
+    invAmmoCell(entry.item, x, y, w, h); return;
+  }
+  if (entry.type === "food") {
+    invIcon({ type: "supply", item: { id: "food", n: entry.item.qty } }, x, y, w, h); return;
+  }
+  invIcon(entry, x, y, w, h);
+}
+function stashVaultIcon(item, x, y, w, h) {
+  if (!item) return;
+  let entry = null;
+  if (item.kind === "weapon" || item.kind === "mat") entry = { type: item.kind, item };
+  else if (item.kind === "ammo") entry = { type: "ammo", item: { t: item.id, n: item.qty } };
+  else if (item.kind === "implant") entry = { type: "implant", item };
+  else if (item.kind === "vest") entry = { type: "vest", item: { i: item.id } };
+  else if (item.kind === "clothing") entry = { type: "clothing", item: CLOTHING_BY_ID[item.id] };
+  else if (item.kind === "food") entry = { type: "supply", item: { id: "food", n: item.qty } };
+  else if (["water", "med", "anti"].includes(item.kind)) entry = { type: "supply", item: { id: item.kind, n: item.qty } };
+  if (entry) stashIcon(entry, x, y, w, h);
+}
+function stashSelect(side, index) {
+  const prev = game.stashSelected;
+  if (side === 1 && index >= vaultCapacity()) { toast("Fileira bloqueada."); return; }
+  const item = side === 0 ? stashEntries()[index] : save.vault[index];
+  if (prev && prev.side !== side) {
+    if (prev.side === 0) { game.vcur = prev.index; stashStore(side === 1 ? index : undefined); }
+    else stashWithdraw(prev.index);
+    game.stashSelected = null;
+    return;
+  }
+  if (!item) { game.stashSelected = null; return; }
+  if (prev && prev.side === side && prev.index === index) {
+    if (side === 0) { game.vcur = index; stashStore(); } else stashWithdraw(index);
+    game.stashSelected = null; return;
+  }
+  game.stashSelected = { side, index }; game.vside = side; game.vcur = index;
 }
 function drawStash() {
-  // Bundle atual: Baú em 5 linhas x 8 colunas, 10 páginas e expansão por fileira.
-  game.vside = game.vside || 0; game.vcur = game.vcur || 0;
-  menuFrame("Baú da base", "Armas e itens são preservados ao morrer. Cofres só protegem dinheiro quando estão na mochila.");
-  const mine = myList(), cols = [[mine.map((e) => ({ it: e.it, sub: e.where === "slot" ? `slot ${e.i + 1}` : "mochila" })), `Com você (${packUsed()}/${packCapacity()} na mochila)`],
-    [save.vault.map((it) => ({ it, sub: "" })), `Baú (${save.vault.length}/${vaultCapacity()})`]];
-  cols.forEach(([list, title], side) => {
-    const x = side === 0 ? 40 : 490, w = 430, act = game.vside === side;
-    txt(title, x, 100, 14, act ? "#ffd96a" : "#a9a58f", "left", true);
-    const vis = 11, off = act ? Math.max(0, Math.min(list.length - vis, game.vcur - 5)) : 0;
-    list.slice(off, off + vis).forEach((e, j) => {
-      const i = off + j, y = 110 + j * 38, sel = act && game.vcur === i;
-      drawListItem(e.it, x, y, w, sel, e.sub);
-      rowClick(x, y, w, 34, sel, () => { game.vside = side; game.vcur = i; }, vaultMove);
-    });
-    if (!list.length) txt("vazio", x + w / 2, 140, 14, "#6d6a58", "center");
-  });
-  hint("W/S escolhe · A/D ou Tab troca de lado · Enter move o item · clique 2x para mover · E ou Esc fecha");
+  const items = stashEntries(), vault = save.vault, rows = Math.max(5, Math.min(50, save.vaultRows || 5));
+  game.vpage = Math.max(0, Math.min(9, game.vpage || 0));
+  const maxPages = Math.max(1, Math.ceil(items.length / 30));
+  game.vinvPage = Math.max(0, Math.min(maxPages - 1, game.vinvPage || 0));
+  menuFrame("BAÚ DA BASE", "Armazene e retire itens · clique no item e depois no destino.");
+  ctx.fillStyle = "rgba(10,11,9,.72)"; rr(99, 110, 766, 307, 6); ctx.fill();
+  ctx.strokeStyle = "#69533a"; ctx.lineWidth = 1.4; ctx.stroke();
+  txt("ARMAZENAMENTO", 110, 82, 17, "#b9362d", "left", true);
+  txt("Página " + (game.vpage + 1) + " / 10", 848, 82, 13, "#ffe2a2", "right", true);
+  if (rows < 50) btn(385, 82, 260, 26, "Liberar +8 slots · $" + (rows < 25 ? 10000 : 50000).toLocaleString("pt-BR"), buyVaultRow, true);
+  else txt("400 espaços liberados", 468, 100, 13, "#9fe6a1", "center", true);
+  txt("Ocupação " + vault.length + "/" + vaultCapacity(), 120, 103, 11, "#c6bca7");
+  btn(38, 250, 44, 38, "◀", () => { game.vpage = Math.max(0, game.vpage - 1); });
+  btn(883, 250, 44, 38, "▶", () => { game.vpage = Math.min(9, game.vpage + 1); });
+  for (let row = 0; row < 5; row++) {
+    const disabled = game.vpage * 5 + row >= rows, y = 119 + row * 57;
+    for (let col = 0; col < 8; col++) {
+      const index = game.vpage * 40 + row * 8 + col, x = 112 + col * 93;
+      const entry = disabled ? null : vault[index], selected = !!game.stashSelected && game.stashSelected.side === 1 && game.stashSelected.index === index;
+      stashSlot(x, y, 88, 53, selected, disabled);
+      if (entry) stashVaultIcon(entry, x, y, 88, 53);
+      if (!disabled) regClick(x, y, 88, 53, () => stashSelect(1, index));
+    }
+    if (disabled) txt(game.vpage * 5 + row === rows ? "LIBERAR FILEIRA" : "BLOQUEADO", 480, y + 30, 12, "#9c8263", "center", true);
+  }
+  ctx.fillStyle = "rgba(9,10,8,.86)"; rr(26, 430, 906, 117, 5); ctx.fill();
+  ctx.strokeStyle = "#60513c"; ctx.lineWidth = 1.2; ctx.stroke();
+  txt("INVENTÁRIO", 480, 446, 15, "#e4d3aa", "center", true);
+  txt("Itens " + items.length + " · 30 por página", 38, 446, 10, "#b6ac94");
+  txt("Página " + (game.vinvPage + 1) + "/" + maxPages, 798, 446, 11, "#d9bc7c", "right", true);
+  btn(806, 427, 35, 24, "◀", () => game.vinvPage = Math.max(0, game.vinvPage - 1));
+  btn(849, 427, 35, 24, "▶", () => game.vinvPage = Math.min(maxPages - 1, game.vinvPage + 1));
+  for (let row = 0; row < 2; row++) for (let col = 0; col < 15; col++) {
+    const index = game.vinvPage * 30 + row * 15 + col, x = 37 + col * 59, y = 455 + row * 43;
+    const entry = items[index], selected = !!game.stashSelected && game.stashSelected.side === 0 && game.stashSelected.index === index;
+    stashSlot(x, y, 55, 39, selected, false);
+    if (entry) stashIcon(entry, x, y, 55, 39);
+    regClick(x, y, 55, 39, () => stashSelect(0, index));
+  }
+  btn(710, 553, 100, 25, "↓ Guardar", () => {
+    const selected = game.stashSelected;
+    if (!selected || selected.side !== 0) return toast("Selecione um item no inventário.");
+    game.vcur = selected.index; stashStore(); game.stashSelected = null;
+  }, true);
+  btn(815, 553, 116, 25, "↑ Retirar", () => {
+    const selected = game.stashSelected;
+    if (!selected || selected.side !== 1) return toast("Selecione um item do baú.");
+    stashWithdraw(selected.index); game.stashSelected = null;
+  }, true);
+  txt("Selecione e clique no destino ou use Guardar / Retirar.", 40, 570, 11, "#bdb19b");
 }
 
 // =====================================================================

@@ -166,7 +166,8 @@ function invPackEntries() {
   });
   CLOTHING_ITEMS.forEach(item => {
     const equipped = save.clothing[item.kind] === item.id;
-    if (!equipped && item.kind !== "pack")
+    if (!equipped && item.kind !== "pack" &&
+        !save.vault.some(v => v && v.kind === "clothing" && v.id === item.id))
       entries.push({ area: "clothes-list", kind: item.kind, type: "clothing", item });
   });
   return entries;
@@ -247,6 +248,9 @@ function invClick(z) {
 
 function equipClothing(item) {
   if (!item || CLOTHING_BY_ID[item.id] !== item || !CLOTHING_KINDS.includes(item.kind)) return;
+  if (save.vault.some(v => v && v.kind === "clothing" && v.id === item.id)) {
+    toast("Retire essa peça do Baú da Base antes de equipar."); return;
+  }
   if (save.clothing[item.kind] === item.id) { unequipClothing(item.kind); return; }   // clicar de novo tira (mochila não tem slot)
   if (item.kind === "pack") {
     if (player.level < item.level) { toast("Disponível a partir do nível " + item.level); return; }

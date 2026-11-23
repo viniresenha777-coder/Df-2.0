@@ -20,6 +20,30 @@ function validItem(it) {
     it.ammo = clamp(it.ammo || 0, 0, WDEF[it.id].mag || 0);
     return true;
   }
+  if (it.kind === "ammo") {
+    if (!Object.prototype.hasOwnProperty.call(AMMO, it.id)) return false;
+    it.qty = Math.min(500000, Math.floor(Number(it.qty) || 0));
+    it.tokenQty = Math.max(0, Math.min(it.qty, Math.floor(Number(it.tokenQty) || 0)));
+    return it.qty > 0;
+  }
+  if (it.kind === "implant") {
+    const cleaned = cleanImplant(it);
+    if (!cleaned) return false;
+    it.alloc = cleaned.alloc;
+    it.tokenBound = cleaned.tokenBound === true;
+    return true;
+  }
+  if (it.kind === "vest") return Number.isInteger(it.id) && it.id >= 0 && it.id < VESTS.length;
+  if (it.kind === "clothing") return !!CLOTHING_BY_ID[it.id];
+  if (it.kind === "food") {
+    if (!FOOD_Q[it.id]) return false;
+    it.qty = Math.min(500000, Math.floor(Number(it.qty) || 0));
+    return it.qty > 0;
+  }
+  if (["water", "med", "anti"].includes(it.kind)) {
+    it.qty = Math.min(500000, Math.floor(Number(it.qty) || 0));
+    return it.qty > 0;
+  }
   return it.kind === "mat" && !!MATS[it.id] && it.qty > 0;
 }
 function loadSave() {

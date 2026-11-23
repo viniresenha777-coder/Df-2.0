@@ -453,7 +453,7 @@ function admGiveImplant(id) {
   else toast("Mochila de implantes cheia");
 }
 function admReset() {
-  save.bank = 0; save.vault = []; save.installed = []; save.credits = 0; save.gm = false; save.missions = [];
+  save.bank = 0; save.vault = []; save.vaultRows = 5; save.installed = []; save.credits = 0; save.gm = false; save.missions = [];
   save.vestUpgrades = {}; save.vestDur = {}; save.vest = -1; save.vestsOwned = VESTS.map(() => false); save.outposts = OUTPOSTS.map((o, i) => i === 0);
   save.char = { level: 1, xp: 0, points: 0, wpoints: 0, attrs: defaultAttrs() };
   persist(); resetGame(); toast("Progresso apagado");
