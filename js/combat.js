@@ -355,13 +355,22 @@ function spawnGroup(x, y, type, zone, list) {
 function spawnBoss(x, y, zone, forceId) {
   const R = REGIONS[regionOf(zone)], reg = diffOf(zone), cell = world.cell;
   const id = forceId || cell.boss || pick(bossesOfRegion(regionOf(zone))), B = BOSSES[id];
-  const maxHp = Math.round((1600 + (zone % REGION_ROWS) * 200) * R.hp * B.hp);
+  const maxHp = id === "santa_natal" ? natalBossHp(zone) : Math.round((1600 + (zone % REGION_ROWS) * 200) * R.hp * B.hp);
   const z = makeZombie(x, y, "brute", zone);
   const saved = cell.boss === id && cell.bossHp != null ? Math.min(maxHp, cell.bossHp) : maxHp;
   Object.assign(z, { r: B.r, boss: true, bossId: id, bossName: B.name, hp: saved, maxHp,
-    dmg: (22 + zone) * R.dmg * 0.6, hitDelay: 900, speed: (0.95 + Math.min(0.5, reg * 0.1)) * B.spd * BOSS_SPEED, skin: B.skin, cloth: B.cloth,
+    dmg: id === "santa_natal" ? natalBossDamage(zone) : (22 + zone) * R.dmg * 0.6, hitDelay: 900, speed: (0.95 + Math.min(0.5, reg * 0.1)) * B.spd * BOSS_SPEED, skin: B.skin, cloth: B.cloth,
     abil: 2500 + Math.random() * 1500, abilT: 0, phase: 0, minions: 0, announced: false });
   zombies.push(z);
+  if (id === "santa_natal") {
+    // O alce acompanha o trenó, mas tem vida, colisão e cabeçada próprias.
+    const p = { x: clamp(x + 95, 52, WORLD_W - 52), y: clamp(y + 45, 52, WORLD_H - 52) };
+    const alce = makeZombie(p.x, p.y, "alce_natal", zone);
+    Object.assign(alce, { hp: Math.round(maxHp * 0.32), maxHp: Math.round(maxHp * 0.32),
+      dmg: natalBossDamage(zone) * 0.55, speed: z.speed * 1.30,
+      hitDelay: 1800, abil: 2000, abilT: 0, mother: z, r: 24 });
+    zombies.push(alce); alertZombie(alce);
+  }
   return z;
 }
 function killZombie(z) {
@@ -481,7 +490,7 @@ function updateSpits(dt, k) {
 // ---------- Ataques especiais dos chefes ----------
 // devolve true quando o chefe está ocupado com o ataque (não anda normal neste quadro)
 function bossAbility(z, d, dt, k) {
-  const id = z.bossId, reg = diffOf(z.zone);
+  const id = z.bossId || (z.type === "alce_natal" ? "alce_natal" : null), reg = diffOf(z.zone);
   z.abil -= dt;
   const minions = () => zombies.filter((m) => m.mother === z && m.hp > 0).length;
   const summon = (type, n) => { for (let i = 0; i < n; i++) { const a = Math.random() * 6.283; const m = makeZombie(z.x + Math.cos(a) * (z.r + 20), z.y + Math.sin(a) * (z.r + 20), type, z.zone); m.mother = z; alertZombie(m); zombies.push(m); } };
@@ -494,6 +503,13 @@ function bossAbility(z, d, dt, k) {
       return true;
     }
     if (z.abilT <= 0) {
+      // O golpe só causa dano no fim da animação, à frente do animal ou do pirulito.
+      if ((id === "santa_natal" || id === "alce_natal") && d < (id === "santa_natal" ? 124 : 100) &&
+          Math.abs(angDiff(z.angle, Math.atan2(player.y - z.y, player.x - z.x))) < 1.1 &&
+          losClear(z.x, z.y, player.x, player.y)) {
+        damagePlayer(z.dmg); game.shake = Math.min(14, game.shake + (id === "santa_natal" ? 7 : 5));
+        game.flashes.push({ x: player.x, y: player.y, r: 40, t: 180 });
+      }
       if (id === "acougueiro" && d < 105 && Math.abs(angDiff(z.angle, Math.atan2(player.y - z.y, player.x - z.x))) < 1.1) { damagePlayer(z.dmg * 1.5); game.shake = 10; }
       if (id === "capataz") { game.flashes.push({ x: z.x, y: z.y, r: 120, t: 200 }); if (d < 110) damagePlayer(z.dmg); game.shake = 8; }
       if (id === "ceifador") {
@@ -510,6 +526,12 @@ function bossAbility(z, d, dt, k) {
   }
   if (z.abil > 0) return false;
   switch (id) {
+    case "santa_natal": if (d < 120 && losClear(z.x, z.y, player.x, player.y)) {
+      z.abilT = 670; z.abil = 2600; z.angle = Math.atan2(player.y - z.y, player.x - z.x); return true;
+    } break;
+    case "alce_natal": if (d < 105 && losClear(z.x, z.y, player.x, player.y)) {
+      z.abilT = 510; z.abil = 2100; z.angle = Math.atan2(player.y - z.y, player.x - z.x); return true;
+    } break;
     case "acougueiro": if (d < 90) { z.abilT = 450; z.abil = 2400; z.angle = Math.atan2(player.y - z.y, player.x - z.x); return true; } break;
     case "matriarca": if (minions() < 8) { summon("walker", 2); z.abil = 6000; } break;
     case "capataz": if (d < 100) { z.abilT = 600; z.abil = 4500; return true; } break;
@@ -565,7 +587,7 @@ function updateZombies(dt, k) {
       z.announced = true;
       game.banner = { text: z.bossName || "Chefe", sub: `apareceu! · deixa: ${BOSSES[z.bossId] ? BOSSES[z.bossId].drop : "saque raro"}`, t: 3200, color: "#e05a4a" };
     }
-    if (z.boss && z.state === "chase" && bossAbility(z, d, dt, k)) continue;
+    if ((z.boss || z.type === "alce_natal") && z.state === "chase" && bossAbility(z, d, dt, k)) continue;
     // investida (mutante, chefes) e salto (demônio, Alfa)
     const chg = !z.boss
       ? (zt.charge ? { w: 380, t: 650, m: 3.4, cd: 3800, min: 70, max: 300 } : zt.leap ? { w: 220, t: 330, m: 4.4, cd: 2600, min: 90, max: 240 } : null)
@@ -652,6 +674,8 @@ function updateZombies(dt, k) {
       if (player.sprinting) { z.stun = 700; z.spitCd = Math.max(z.spitCd || 0, 1500); z.hitCd = Math.max(z.hitCd, 400); continue; }
     }
     const reach = zReach(z);
+    // Ataques de Natal são processados em bossAbility: não duplicar dano com a mordida padrão.
+    if (z.type === "alce_natal" || z.bossId === "santa_natal") continue;
     if (z.atkT > 0) {                    // golpe em andamento: o dano sai no meio dele
       z.atkT -= dt;
       z.angle = Math.atan2(dy, dx);
