@@ -785,7 +785,7 @@ function clinicPresetNameKey(k) {
   }
   if (k === "backspace") { game.implantNameDraft = game.implantNameDraft.slice(0, -1); return; }
   const raw = game.rawKey || "";
-  if (raw.length === 1 && /[\\p{L}\\p{N} _.-]/u.test(raw) && game.implantNameDraft.length < 24)
+  if (raw.length === 1 && /[\p{L}\p{N} _.-]/u.test(raw) && game.implantNameDraft.length < 24)
     game.implantNameDraft += raw;
 }
 function clinicPresetDeleteKey(k) {
