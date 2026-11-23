@@ -262,6 +262,15 @@ const BOSS_IMPLANT = 0.15;       // chefes que davam implante garantido: agora s
 const STAT_KEYS = ["exp", "hunter", "scavenger", "crit", "reload", "endurance", "metabolism", "vigor", "regen", "silence", "firepower", "thick", "greed", "agility", "saver", "implantLoot",
   "rage", "killHeal", "lootSense", "luck", "accImp", "stealthImp", "craftDisc", "critDmg", "leech", "adren",
   "armorFind", "ammoLoot", "searchSpeed", "miscFind", "lootSpots", "atkSpeed", "deathDefy", "bossRare", "mcChance", "pvpPoints"];
+// Evento global: ativo para TODOS os jogadores, sem depender de VIP ou inventário.
+// Alterar ativo para false encerra o evento sem mudar saves ou implantes.
+// Os nomes das propriedades são os atributos oficiais do jogo (FX_LABEL).
+const EVENTO_NATAL = Object.freeze({
+  ativo: true,
+  nome: "EVENTO DE NATAL",
+  bonus: Object.freeze({ exp: 100, hunter: 100, armorFind: 100, greed: 100, lootSpots: 30, thick: 10 })
+});
+
 const FX_LABEL = {
   exp: "experiência", firepower: "dano causado", agility: "velocidade", thick: "redução do dano recebido",
   hunter: "chance de achar armas", armorFind: "chance de achar coletes", ammoLoot: "munição achada", greed: "dinheiro achado",
