@@ -31,8 +31,27 @@ function drawChristmasBoss(z, kind) {
   glow.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = glow; circle(z.x,z.y,rad*2);
   if (img && img.complete && img.naturalWidth >= 1920) {
-    ctx.drawImage(img, frame * 240, facing * 240, 240, 240,
-      z.x - size / 2, z.y - size * .63, size, size);
+    const sx = frame * 240, sy = facing * 240;
+    const dx = z.x - size / 2, dy = z.y - size * .63;
+    if (kind === "alce" && attacking) {
+      // Cabeçada de girafa: pescoço arma o golpe, cabeça baixa
+      // rapidamente e retorna. A base do corpo permanece estável.
+      const phase = Math.max(0, Math.min(1, 1 - z.abilT / 510));
+      const strike = Math.sin(Math.PI * phase);
+      const split = 118, overlap = 14, scale = size / 240;
+      ctx.drawImage(img, sx, sy + split - overlap, 240, 240 - split + overlap,
+        dx, dy + (split - overlap) * scale, size, (240 - split + overlap) * scale);
+      ctx.save();
+      ctx.translate(dx + size * .5, dy + split * scale);
+      ctx.rotate(.27 * strike);
+      ctx.translate(0, 18 * strike * scale);
+      ctx.drawImage(img, sx, sy, 240, split + overlap,
+        -size * .5, -(split + overlap) * scale, size, (split + overlap) * scale);
+      ctx.restore();
+    } else {
+      const bob = !attacking && moving ? Math.sin(game.time / 135) * 2 : 0;
+      ctx.drawImage(img, sx, sy, 240, 240, dx, dy + bob, size, size);
+    }
   } else {
     ctx.fillStyle = kind === "santa" ? "#ac2729" : "#526244";
     ellipse(z.x, z.y, rad, rad * .75);
