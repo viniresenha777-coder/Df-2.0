@@ -14,6 +14,8 @@ const save = {
 function validItem(it) {
   if (!it) return false;
   if (it.kind === "weapon") {
+    if (it.id === "revolver_orn") it.id = "revolver";
+    if (it.id === "baioneta") it.id = "m4";
     if (!WDEF[it.id] || WDEF[it.id].fists) return false;
     it.up = it.up || {};
     for (const s of UP_STATS) it.up[s.id] = clamp(Math.floor(it.up[s.id] || 0), 0, UP_MAX);

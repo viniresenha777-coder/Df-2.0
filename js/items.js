@@ -79,10 +79,8 @@ const WLIST = [
   { id: "trovao",   name: "Rifle Trovão",  short: "Trovão", cat: "rifles", look: "rifle", dmg: 160, delay: 1000, mag: 4, reload: 2800, ammo: ".50", price: 0, req: [70, 120], len: 40, color: "#3a5a8a", pierce: true, explode: 90, speed: 18, life: 1400, sound: [1, 1], special: true },
   // novas armas com efeitos (bleed = chance de sangramento · burn = dano de fogo por segundo · stun = chance de atordoar · crit = +% de crítico)
   { id: "silenciada", name: "Pistola silenciada", short: "Silenciada", cat: "pistols", look: "pistol", dmg: 7, delay: 500, mag: 15, reload: 1100, ammo: "9mm", price: 550, req: [10, 30], len: 18, color: "#2a2a2a", sound: [0.02, 0.05] },
-  { id: "revolver_orn", name: "Revólver Ornamentado", short: "Ornamentado", cat: "pistols", look: "revolver", dmg: 34, delay: 500, mag: 6, reload: 1700, ammo: ".50", price: 0, req: [30, 90], len: 18, color: "#b07a3a", crit: 25 },
   { id: "incendiaria", name: "Escopeta Incendiária", short: "Incendiária", cat: "shotguns", look: "shotgun", dmg: 10, delay: 666.67, mag: 8, reload: 2400, ammo: "cartucho", price: 0, req: [40, 100], len: 28, color: "#c0502a", wood: true, pellets: 8, spread: 0.3, life: 380, burn: 18 },
   { id: "choque",   name: "Rifle de Choque", short: "Choque", cat: "rifles", look: "rifle", dmg: 24, delay: 333.33, mag: 8, reload: 2200, ammo: "7.62", price: 0, req: [45, 110], len: 36, color: "#3a8ac0", pierce: true, speed: 19, life: 1300, stun: 0.6 },
-  { id: "baioneta", name: "Fuzil Baioneta", short: "Baioneta", cat: "machinegun", look: "ar", dmg: 19, delay: 116.66, mag: 30, reload: 1700, ammo: "5.56", price: 0, req: [40, 100], len: 34, color: "#5a5d60", bleed: 0.3 },
   { id: "lancador", name: "Lançador Espinhoso", short: "Lançador", cat: "rifles", look: "rifle", dmg: 35, delay: 666.67, mag: 6, reload: 3000, ammo: "granada", price: 0, req: [45, 110], len: 30, color: "#4a4a4a", explode: 120, speed: 8, life: 1100, sound: [1, 1], grenade: true },
   { id: "machado_fuzil", name: "Fuzil-Machado", short: "Fuzil-Mach.", cat: "machinegun", look: "lmg", dmg: 20, delay: 83.33, mag: 40, reload: 2600, ammo: "7.62", price: 0, req: [60, 120], len: 38, color: "#6a6d70", pierce: true, knock: true, slow: 8 },
   { id: "pistolalamina", name: "Pistola-Lâmina", short: "P.-Lâmina", cat: "shotguns", look: "shotgun", dmg: 14, delay: 666.67, mag: 6, reload: 1800, ammo: "cartucho", price: 0, req: [50, 120], len: 32, color: "#b08a4a", pellets: 4, spread: 0.18, life: 420, bleed: 0.5, lifesteal: 0.05 },
@@ -131,6 +129,8 @@ WLIST.forEach((d) => {
   d.craftOnly = CRAFT_ONLY.includes(d.id);
   if (d.id === "taco") { d.name = "Taco com pregos"; d.bleed = 0.25; }
 });
+// Compatibilidade com itens antigos e anúncios ainda em circulação.
+Object.defineProperties(WDEF, { revolver_orn: { value: WDEF.revolver }, baioneta: { value: WDEF.m4 } });
 function rarColor(d) { return RARITY[d.rar].color; }
 // IDs do jogo antigo (armas por número) para migrar saves
 const OLD_IDS = ["pistola", "ak47", "deagle", "katana", "uzi", "escopeta", "sniper", "machado", "ak_ouro", "katana_dragao"];
