@@ -89,3 +89,10 @@ A **Calça Cargo Futurista** usa o modelo e as texturas de Alexander Kurmanin, f
 Moletom e calça adaptados de [Corrupted Hoodie and Pants](https://sketchfab.com/3d-models/corrupted-hoodie-and-pants-73307af93cc843bb8f59f6c135c2188b), de [Liam Moffitt](https://sketchfab.com/divadan), sob [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Ajuste ao Roger e conversão em sprites.
 
 Calça adaptada de [Pants Baked Ver](https://sketchfab.com/3d-models/pants-baked-ver-ab60ac3b282e446ba3987fa936b13d9d), de [ChamberSu1996](https://sketchfab.com/chambersu1996), sob [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Ajuste ao Roger e conversão em sprites.
+
+## Besta CrossBow ZHNETS
+
+- Obra: **CrossBow ZHNETS**, autor **Andrewbezg**.
+- Origem: https://sketchfab.com/3d-models/crossbow-zhnets-df1cdde9889348c590c701303496b6d1
+- Licença: Creative Commons Attribution 4.0 (CC BY 4.0), conforme `license.txt` do arquivo fornecido.
+- Adaptação: ícone 2D renderizado da geometria e texturas fornecidas para a besta no jogo.

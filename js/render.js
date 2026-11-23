@@ -20,6 +20,8 @@ function poly(pts, color) {
   ctx.closePath(); ctx.fill();
 }
 function txt(s, x, y, size, color, align, bold, maxW) {
+  // Nome de exibição; internamente permanece "virote" para compatibilidade com saves.
+  if (typeof s === "string") s = s.replace(/\bvirote\b/gi, "Flechas");
   ctx.font = `${bold ? "bold " : ""}${size}px ${FONT}`; ctx.fillStyle = color; ctx.textAlign = align || "left";
   if (maxW) ctx.fillText(s, x, y, maxW); else ctx.fillText(s, x, y);
 }
@@ -935,6 +937,13 @@ function drawStation(f) {
 // =====================================================================
 // arma vista de cima, apontando para +x
 function drawWeaponShape(w, swing) {
+  if (w.id === "besta" && CROSSBOW_ZHNETS_ART.complete && CROSSBOW_ZHNETS_ART.naturalWidth) {
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(CROSSBOW_ZHNETS_ART, -43, -14, 50, 28);
+    ctx.restore();
+    return;
+  }
   const L = w.len, c = w.color, dk = shade(c, -0.4);
   if (w.melee) {
     ctx.save(); ctx.rotate(swing);

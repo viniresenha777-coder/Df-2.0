@@ -14,7 +14,7 @@ const AMMO = {
   "7.62":        { box: 20, price: 40 },
   "cartucho":    { box: 8,  price: 26 },
   "combustível": { box: 60, price: 45 },
-  "virote":      { box: 6,  price: 30 },
+  "virote":      { box: 6,  price: 30, name: "Flechas" },
   "granada":     { box: 4,  price: 120 }
 };
 // ---------- Raridade ----------
@@ -299,7 +299,21 @@ const MED_SPR = ["medkit", "pills", "bandage", "syringes"];
 // =====================================================================
 function R_(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
 function RR_(x, y, w, h, ang, c) { ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.fillStyle = c; ctx.fillRect(0, 0, w, h); ctx.restore(); }
+// Ícone renderizado a partir do modelo CrossBow ZHNETS (CC BY 4.0).
+// A arma continua usando o ID "besta" para preservar os saves.
+const CROSSBOW_ZHNETS_ART = new Image();
+CROSSBOW_ZHNETS_ART.src = "img/weapons/crossbow_zhnets.webp?v=231126-zh1";
+const FLECHAS_ZHNETS_ART = new Image();
+FLECHAS_ZHNETS_ART.src = "img/flechas_zh.svg?v=231126-zh1";
 function drawWeaponSide(d, cx, cy, s) {
+  if (d.id === "besta" && CROSSBOW_ZHNETS_ART.complete && CROSSBOW_ZHNETS_ART.naturalWidth) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(-1, 1); // boca da besta aponta para a direita
+    ctx.drawImage(CROSSBOW_ZHNETS_ART, -64 * s, -32 * s, 128 * s, 64 * s);
+    ctx.restore();
+    return;
+  }
   const ic = weaponIcon(d);                     // arma com modelo 3D: usa a foto do próprio modelo
   if (ic) {
     const f = WEAPON_3D[d.id].f;
@@ -537,6 +551,11 @@ NEW_IMPLANTS_ATLAS.src = "img/implantes_29_atlas.webp?v=20261116-atlas6x5";
 // ícone de qualquer coisa encontrada ou guardada
 function drawEntryIcon(e, cx, cy, s) {
   const t = e.type || e.kind;
+  if (t === "ammo" && e.ammo === "virote" && FLECHAS_ZHNETS_ART.complete && FLECHAS_ZHNETS_ART.naturalWidth) {
+    ctx.drawImage(FLECHAS_ZHNETS_ART, cx - 32 * s, cy - 28 * s, 64 * s, 56 * s);
+    txt("Flechas", cx, cy + 26 * s, Math.max(10, 11 * s), "#e0d8a0", "center", true);
+    return;
+  }
   if (t === "implant" && e.im && IMP[e.im.id] && NEW_IMPLANTS_ATLAS.complete && NEW_IMPLANTS_ATLAS.naturalWidth) {
     const idx = IMP_IDS.indexOf(e.im.id);
     if (idx >= 0) {
