@@ -8,6 +8,11 @@
 function menuKey(k) {
   if (game.menu === "market" && game.marketBusy) return;
   if (game.input) { inputKey(k); return; }
+  // Modais personalizados de esquemas capturam teclado antes do menu,
+  // inclusive letras E/B que normalmente fechariam a Clínica.
+  if (game.menu === "clinic" && game.implantNameDraft != null) { clinicPresetNameKey(k); return; }
+  if (game.menu === "clinic" && game.implantPresetDelete) { clinicPresetDeleteKey(k); return; }
+  if (game.menu === "clinic" && game.implantDropdown && k === "escape") { game.implantDropdown = false; return; }
   // Bloqueia fechar a Clínica sem resolver a confirmação de venda/descarte.
   if (game.menu === "clinic" && game.implantConfirm) { clinicConfirmKey(k); return; }
   if (game.menu === "admin") { if (!canUseAdmin()) { game.menu = null; game.input = null; return; } adminKey(k); return; }
@@ -198,7 +203,7 @@ function clinicItems() {
 }
 function clinicKey(k) {
   if (allocOpen()) { ALLOC.im = null; return; }
-  if (k === "tab") { game.tab ^= 1; game.cur = 0; return; }
+  if (k === "tab") { game.tab ^= 1; game.cur = 0; game.implantDropdown = false; return; }
   const len = game.tab === 0 ? clinicItems().length : game.stock.length;
   if (k === "w" || k === "arrowup") game.cur = Math.max(0, game.cur - 1);
   else if (k === "s" || k === "arrowdown") game.cur = Math.max(0, Math.min(len - 1, game.cur + 1));
@@ -223,7 +228,10 @@ function clinicAct() {
     save.installed.splice(save.installed.indexOf(it.im), 1); player.bag.push(it.im);
     toast(`Removeu ${implantName(it.im)} (volta para a mochila)`);
   }
-  persist(); recalcImplants();
+  game.implantPresetSelected = null;
+  recalcImplants();
+  // Instalações alteram o perfil e a mochila da partida: salvar os dois juntos.
+  checkpoint("alterou implantes instalados");
   game.cur = Math.max(0, Math.min(game.cur, clinicItems().length - 1));
 }
 // muda a ordem dos instalados (o Mímico copia quem está à esquerda dele)
@@ -233,7 +241,10 @@ function shiftImplant(dir) {
   const a = save.installed.indexOf(it.im), b = a + dir;
   if (b < 0 || b >= save.installed.length) return;
   save.installed[a] = save.installed[b]; save.installed[b] = it.im;
-  game.cur = player.bag.length + b; persist(); recalcImplants();
+  game.cur = player.bag.length + b;
+  game.implantPresetSelected = null;
+  recalcImplants();
+  checkpoint("reordenou implantes");
 }
 function buyImplant(i) {
   const st = game.stock[i];
@@ -757,6 +768,36 @@ function drawMissions() {
   hint("W/S move · Enter aceita/entrega · V abandona · M ou E fecha");
 }
 
+
+// ---------- Gerenciamento dos esquemas pela Clínica ----------
+function clinicPresetStartSave() {
+  if (!save.installed.length) { toast("Equipe implantes para montar um esquema."); return; }
+  game.implantDropdown = false;
+  game.implantNameDraft = game.implantPresetSelected || "";
+}
+function clinicPresetNameKey(k) {
+  if (k === "escape") { game.implantNameDraft = null; return; }
+  if (k === "enter") {
+    const name = (game.implantNameDraft || "").trim();
+    game.implantNameDraft = null;
+    if (name) implantPresetSave(name); else toast("Digite um nome para o esquema.");
+    return;
+  }
+  if (k === "backspace") { game.implantNameDraft = game.implantNameDraft.slice(0, -1); return; }
+  const raw = game.rawKey || "";
+  if (raw.length === 1 && /[\\p{L}\\p{N} _.-]/u.test(raw) && game.implantNameDraft.length < 24)
+    game.implantNameDraft += raw;
+}
+function clinicPresetDeleteKey(k) {
+  if (k === "escape" || k === "n" || k === "e") { game.implantPresetDelete = null; return; }
+  if (k === "enter" || k === "s" || k === "y") clinicPresetConfirmDelete();
+}
+function clinicPresetConfirmDelete() {
+  const name = game.implantPresetDelete;
+  game.implantPresetDelete = null;
+  if (name) implantPresetRemove(name);
+}
+
 function drawImplantRow(x, y, w, im, selected, right, rightColor) {
   rowBox(x, y, w, 28, selected);
   txt(implantName(im), x + 10, y + 19, 14, impColor(im), "left", true, w - (right ? 170 : 20));
@@ -771,49 +812,186 @@ function drawImplantInfo(im) {
   txtWrap(implantDesc(im), 56, 470, 13, "#d8d2ba", W - 112, 17, 4);
 }
 function drawClinic() {
-  menuFrame("Clínica de implantes", `Créditos: ${save.credits}  ·  Dinheiro: $${game.money}  ·  Instalados: ${save.installed.length}/${IMPL_SLOTS}  ·  Mochila: ${player.bag.length}/${BAG_MAX}`);
-  txt("Meus implantes", W / 2 - 100, 100, 16, game.tab === 0 ? "#ffd96a" : "#6d6a58", "center", true);
-  txt("Loja", W / 2 + 100, 100, 16, game.tab === 1 ? "#ffd96a" : "#6d6a58", "center", true);
-  if (game.tab === 0) {
-    txt("Na mochila (preservados ao morrer)", 40, 126, 13, "#a9a58f");
-    txt("Instalados, na ordem dos slots (permanentes)", 500, 126, 13, "#a9a58f");
-    const pts = (im) => (IMP[im.id].alloc ? `${allocUsed(im)}/${IMP[im.id].alloc.points} pts` : IMP[im.id].mimic ? "copia ←" : "");
+  const unlocked = implantUnlockedSlots(player.level);
+  const editing = game.tab === 0;
+  menuFrame("Implantes", `Nível ${player.level} · ${unlocked} espaços liberados de 14 · 225–415 bloqueados · Mochila ${player.bag.length}/${BAG_MAX}`);
+  btn(40, 85, 194, 32, editing ? "Minha mochila" : "Ver meus implantes", () => {
+    game.tab = 0; game.cur = 0; game.implantDropdown = false;
+  }, editing);
+  btn(246, 85, 232, 32, editing ? "Loja de implantes (Tab)" : "Loja de implantes", () => {
+    game.tab = 1; game.cur = 0; game.implantDropdown = false;
+  }, !editing);
+  if (editing) {
+    const presets = save.implantPresets || [];
+    const selectedName = presets.some(p => p.name === game.implantPresetSelected)
+      ? game.implantPresetSelected : "Atual";
+    btn(501, 85, 271, 32, "Implantes: " + selectedName.slice(0, 18) + " ▾",
+      () => { game.implantDropdown = !game.implantDropdown; game.implantShowStats = false; }, true);
+    const onB = mouse.x >= 782 && mouse.x <= 815 && mouse.y >= 85 && mouse.y <= 117;
+    btn(782, 85, 33, 32, "B", () => { game.implantShowStats = !game.implantShowStats; }, onB || !!game.implantShowStats);
+    btn(825, 85, 99, 32, "Salvar", clinicPresetStartSave, false, !save.installed.length);
+    txt("MOCHILA · Enter para instalar", 42, 135, 12, "#bcb8a0", "left", true);
+    txt(`EQUIPADOS ${save.installed.length}/${unlocked}  ·  Slots 225+ indisponíveis`, 512, 135, 12, "#bcb8a0", "left", true);
+
+    const pts = im => IMP[im.id].alloc
+      ? `${allocUsed(im)}/${IMP[im.id].alloc.points} pts`
+      : IMP[im.id].mimic ? "copia ←" : "";
     player.bag.forEach((im, i) => {
-      drawImplantRow(40, 134 + i * 32, 440, im, game.cur === i, pts(im));
-      regClick(40, 134 + i * 32, 440, 28, () => { game.cur = i; });
+      const y = 148 + i * 34;
+      drawImplantRow(40, y, 442, im, game.cur === i, pts(im));
+      regClick(40, y, 442, 28, () => { game.cur = i; });
     });
-    save.installed.forEach((im, j) => {
-      drawImplantRow(500, 134 + j * 32, 420, im, game.cur === player.bag.length + j, `${j + 1}º  ${pts(im)}`);
-      regClick(500, 134 + j * 32, 420, 28, () => { game.cur = player.bag.length + j; });
-    });
-    if (!player.bag.length && !save.installed.length) txt("Nenhum implante ainda. Compre na loja (Tab) ou ache em saques raros.", 40, 160, 15, "#6d6a58");
+    if (!player.bag.length)
+      txt("Mochila vazia. Colete, compre ou remova implantes equipados.", 48, 177, 12, "#8e8a77");
+    if (player.bag.length < BAG_MAX && save.installed.length > 0)
+      txt("Clique em um slot ocupado para selecionar e remover.", 44, 407, 11, "#aaa48b");
+
+    // Grade baseada na referência: 4 colunas x 5 linhas, 20 níveis indicados.
+    for (let i = 0; i < IMPLANT_SLOT_LEVELS.length; i++) {
+      const required = IMPLANT_SLOT_LEVELS[i];
+      const col = i % 4, row = Math.floor(i / 4);
+      const x = 514 + col * 102, y = 150 + row * 54, w = 93, h = 49;
+      const forever = i >= IMPL_SLOTS;
+      const open = !forever && player.level >= required;
+      const im = save.installed[i];
+      const selected = !!im && game.cur === player.bag.length + i;
+      ctx.fillStyle = forever ? "#140f0f" : open ? "#1e281c" : "#1a1a17";
+      rr(x, y, w, h, 3); ctx.fill();
+      ctx.strokeStyle = selected ? "#ffd96a" : forever ? "#53302c" : open ? "#4e7549" : "#3e3c35";
+      ctx.lineWidth = selected ? 2 : 1;
+      ctx.stroke();
+      if (im) {
+        drawEntryIcon({ type: "implant", im }, x + w / 2, y + 19, 0.52);
+        txt(String(required), x + w / 2, y + 46, 10, open ? "#d6d3bb" : "#db897d", "center", true);
+      } else {
+        txt(String(required), x + w / 2, y + 33, 25, open ? "#faf8e8" : "#848078", "center", true);
+        if (forever) txt("BLOQUEADO", x + w / 2, y + 45, 9, "#ad6962", "center", true);
+        else if (!open) txt("TRANCADO", x + w / 2, y + 45, 9, "#8b8378", "center");
+      }
+      regClick(x, y, w, h, () => {
+        if (game.implantDropdown || game.implantNameDraft != null) return;
+        if (forever) { toast("Este espaço está bloqueado: nível máximo atual é 200."); return; }
+        if (!open) { toast("Espaço libera no nível " + required + "."); return; }
+        if (im) game.cur = player.bag.length + i;
+        else { toast("Espaço vazio. Selecione um implante na mochila e pressione Enter."); }
+      });
+    }
     const it = clinicItems()[game.cur];
     drawImplantInfo(it ? it.im : null);
     const canRemove = !!it && it.src === "bag" && !it.im.tokenBound;
-    const salePrice = canRemove ? IMP[it.im.id].scrap : 0;
-    btn(535, 545, 188, 28, "Vender (V) · $" + salePrice.toLocaleString("pt-BR"), sellImplant, false, !canRemove);
-    btn(733, 545, 174, 28, "Descartar (X)", discardImplant, false, !canRemove);
-    hint("W/S seleciona · Enter instala/remove · V vende · X descarta · Q/D ordena · Tab loja · E fecha");
+    btn(523, 545, 190, 29, "Vender (V) · $" + (canRemove ? IMP[it.im.id].scrap : 0).toLocaleString("pt-BR"),
+      sellImplant, false, !canRemove);
+    btn(723, 545, 188, 29, "Descartar (X)", discardImplant, false, !canRemove);
+    hint("Enter instala/remove · Q/D ordena · A pontos · V vende · X descarta · Tab loja · E fecha");
   } else {
     const N = 9, first = Math.max(0, Math.min(game.stock.length - N, game.cur - 4));
     for (let r = 0; r < N && first + r < game.stock.length; r++) {
       const i = first + r, st = game.stock[i], im = { id: st.id, alloc: {} };
-      const has = save.installed.some((x) => x.id === st.id) ? "instalado · " : player.bag.some((x) => x.id === st.id) ? "na mochila · " : "";
-      drawImplantRow(140, 126 + r * 32, 680, im, game.cur === i, `${has}${st.price} créditos`, save.credits >= st.price ? "#6fae4f" : "#c0392b");
+      const has = save.installed.some(x => x.id === st.id) ? "instalado · "
+        : player.bag.some(x => x.id === st.id) ? "na mochila · " : "";
+      drawImplantRow(140, 126 + r * 32, 680, im, game.cur === i, `${has}${st.price} créditos`,
+        save.credits >= st.price ? "#6fae4f" : "#c0392b");
     }
     txt(`${game.cur + 1} / ${game.stock.length}`, 830, 144, 12, "#a9a58f");
     if (first > 0) txt("▲", 830, 164, 12, "#ffd96a");
     if (first + N < game.stock.length) txt("▼", 830, 400, 12, "#ffd96a");
     const st = game.stock[game.cur];
     drawImplantInfo(st ? { id: st.id, alloc: {} } : null);
-    hint("Implantes únicos, pagos com créditos (compre créditos no banco) · W/S move · Enter compra · Tab volta · E fecha");
+    hint("W/S move · Enter compra · Tab retorna aos implantes · E fecha");
   }
+
   drawAllocPanel();
+
+  // Menu suspenso sobre os slots: o clique aplica o esquema salvo imediatamente.
+  if (editing && game.implantDropdown && game.implantNameDraft == null) {
+    const presets = save.implantPresets || [];
+    const x = 498, y = 125, w = 427, h = 100 + presets.length * 28;
+    regClick(0, 0, W, H, () => { game.implantDropdown = false; });
+    ctx.fillStyle = "#10130e"; rr(x, y, w, h, 8); ctx.fill();
+    ctx.strokeStyle = "#a89044"; ctx.lineWidth = 1.5; ctx.stroke();
+    txt("ESQUEMAS SALVOS · selecionar para equipar", x + 12, y + 21, 13, "#f3dc93", "left", true);
+    if (!presets.length) txt("Nenhum esquema salvo ainda.", x + 12, y + 54, 13, "#b7b1a0");
+    presets.forEach((preset, i) => {
+      const py = y + 31 + i * 28, isSelected = preset.name === game.implantPresetSelected;
+      btn(x + 10, py, w - 20, 25,
+        (isSelected ? "✓ " : "") + preset.name + " · " + preset.slots.length + " implantes",
+        () => { implantPresetApply(preset.name); }, isSelected);
+    });
+    const actionY = y + 33 + presets.length * 28;
+    btn(x + 10, actionY, 204, 30, "Salvar esquema atual", clinicPresetStartSave, true, !save.installed.length);
+    btn(x + 225, actionY, 192, 30, "Excluir selecionado", () => {
+      if (game.implantPresetSelected && presets.some(p => p.name === game.implantPresetSelected)) {
+        game.implantPresetDelete = game.implantPresetSelected;
+        game.implantDropdown = false;
+      } else toast("Selecione um esquema salvo para excluir.");
+    }, false, !game.implantPresetSelected);
+    txt("Um esquema utiliza apenas implantes já possuídos.", x + 11, actionY + 53, 11, "#bbb399");
+  }
+
+  const overB = mouse.x >= 782 && mouse.x <= 815 && mouse.y >= 85 && mouse.y <= 117;
+  if (editing && (overB || game.implantShowStats) &&
+      !game.implantDropdown && game.implantNameDraft == null &&
+      !game.implantPresetDelete && !game.implantConfirm && !allocOpen()) {
+    const preset = (save.implantPresets || []).find(p => p.name === game.implantPresetSelected);
+    const { totals, flags, count } = implantPresetTotals(preset);
+    const stats = Object.entries(totals).filter(([, amount]) => amount !== 0);
+    const rows = Math.ceil(stats.length / 2);
+    const px = 487, py = 123, pw = 450, ph = Math.min(435, Math.max(180, 83 + rows * 19));
+    ctx.fillStyle = "rgba(10,15,10,0.97)"; rr(px, py, pw, ph, 9); ctx.fill();
+    ctx.strokeStyle = "#88b369"; ctx.lineWidth = 1.5; ctx.stroke();
+    txt("B · SOMA DOS BÔNUS", px + 15, py + 23, 16, "#ccedac", "left", true);
+    txt((preset ? preset.name : "Implantes equipados") + " · " + count + " implantes",
+      px + 15, py + 44, 12, "#dfddca", "left", false, pw - 30);
+    if (!stats.length) txt("Nenhum bônus ativo neste esquema.", px + 16, py + 81, 13, "#bcb8a0");
+    stats.forEach(([key, amount], i) => {
+      const col = Math.floor(i / Math.max(1, rows)), row = i % Math.max(1, rows);
+      const x = px + 15 + col * 220, y = py + 67 + row * 19;
+      const val = (amount > 0 ? "+" : "") + amount + "%";
+      txt((FX_LABEL[key] || key).slice(0, 23), x, y, 11, "#c5c6b7", "left", false, 160);
+      txt(val, x + 202, y, 12, amount >= 0 ? "#89d98d" : "#f18a83", "right", true, 60);
+    });
+    if (flags.length) txt("Efeitos especiais: " + flags.join(", "), px + 15,
+      Math.min(py + ph - 16, py + 76 + rows * 19), 11, "#f0d58e", "left", false, pw - 30);
+    txt("Somente bônus dos implantes; não inclui o evento nem profissão.",
+      px + 15, py + ph - 8, 10, "#97a68a", "left");
+  }
+
+  if (game.implantNameDraft != null) {
+    ctx.fillStyle = "rgba(0,0,0,0.88)"; ctx.fillRect(0, 0, W, H);
+    regClick(0, 0, W, H, () => {});
+    ctx.fillStyle = "#22261b"; rr(215, 200, 530, 206, 10); ctx.fill();
+    ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 2; ctx.stroke();
+    txt("Salvar esquema de implantes", W / 2, 237, 21, "#ffe5a3", "center", true);
+    txt("Exemplo: Loot, Dano, Velocidade, Boss...", W / 2, 263, 13, "#bdb89e", "center");
+    ctx.fillStyle = "#111510"; ctx.fillRect(264, 279, 432, 38);
+    ctx.strokeStyle = "#9a8d52"; ctx.lineWidth = 1; ctx.strokeRect(264, 279, 432, 38);
+    txt(game.implantNameDraft + (Math.floor(performance.now() / 400) % 2 ? "|" : ""),
+      277, 305, 17, "#f5f2dc", "left", true, 402);
+    txt("Ao salvar com o mesmo nome, o esquema anterior será atualizado.", W / 2, 339, 12, "#b3ae96", "center");
+    btn(286, 354, 177, 38, "Salvar (Enter)", () => {
+      const name = game.implantNameDraft.trim();
+      game.implantNameDraft = null; if (name) implantPresetSave(name);
+    }, true, !game.implantNameDraft.trim());
+    btn(496, 354, 177, 38, "Cancelar (Esc)", () => { game.implantNameDraft = null; });
+  }
+
+  if (game.implantPresetDelete) {
+    const name = game.implantPresetDelete;
+    ctx.fillStyle = "rgba(0,0,0,0.88)"; ctx.fillRect(0, 0, W, H);
+    regClick(0, 0, W, H, () => {});
+    ctx.fillStyle = "#22261b"; rr(220, 208, 520, 176, 10); ctx.fill();
+    ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 2; ctx.stroke();
+    txt("Excluir o esquema " + name + "?", W / 2, 251, 21, "#f9d3a0", "center", true, 500);
+    txt("Isso não apaga nem desmonta seus implantes.", W / 2, 289, 13, "#c9c4ad", "center");
+    btn(290, 318, 179, 40, "Excluir (Enter)", clinicPresetConfirmDelete, true);
+    btn(497, 318, 179, 40, "Cancelar", () => { game.implantPresetDelete = null; });
+  }
+
+  // Confirmação de venda/descarte preexistente, preservada.
   if (game.implantConfirm) {
     const c = game.implantConfirm;
     const price = IMP[c.im.id] ? IMP[c.im.id].scrap : 0;
     const label = c.action === "sell" ? "Vender" : "Descartar";
-    // Bloqueia cliques nos botões e itens atrás da caixa de confirmação.
     ctx.fillStyle = "rgba(0,0,0,0.80)"; ctx.fillRect(0, 0, W, H);
     regClick(0, 0, W, H, () => {});
     ctx.fillStyle = "#23241d"; rr(208, 197, 544, 198, 12); ctx.fill();
