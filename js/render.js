@@ -454,8 +454,10 @@ function drawChest(c) {
 }
 function drawCorpse(c) {
   const active = lootSpotActive(c);
-  if (active) { ctx.save(); ctx.filter = LOOT_YELLOW_FILTER; }
-  drawCorpseBase(c);
+  const kind = c.bossId === "santa_natal" ? "santa" : c.table === "alce_natal" ? "alce" : null;
+  if (active) { ctx.save(); if (!kind) ctx.filter = LOOT_YELLOW_FILTER; }
+  if (kind) drawChristmasCorpse(c, kind);
+  else drawCorpseBase(c);
   if (active) {
     ctx.restore();
     drawLootQuestion(c, c.x + c.w / 2, c.y - 12);

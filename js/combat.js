@@ -426,8 +426,8 @@ function killZombie(z) {
     if (!game.inside && world.cell.boss === z.bossId) { world.cell.boss = null; world.cell.bossHp = null; }
     game.score += 150; gainXp(80 + 25 * z.zone);
     corpses.push({ x: z.x - 22, y: z.y - 22, w: 44, h: 44, kind: "corpse", table: "boss", bossId: z.bossId, name: z.bossName || "Chefe", opened: false, life: Infinity,
-      ang: Math.random() * 3, skin: z.skin, cloth: z.cloth });
-    game.banner = { text: `${z.bossName || "Chefe"} derrotado!`, sub: "Vasculhe o corpo (E): arma, colete ou implante", t: 3000, gold: true };
+      ang: z.angle, deathTime: game.time, radius: z.r, zone: z.zone, skin: z.skin, cloth: z.cloth });
+    game.banner = { text: `${z.bossName || "Chefe"} derrotado!`, sub: "Vasculhe o corpo (E): arma ou colete", t: 3000, gold: true };
     return;
   }
   game.score += Math.round(10 * zx);
@@ -440,7 +440,7 @@ function killZombie(z) {
       x: z.x - size / 2, y: z.y - size / 2, w: size, h: size,
       kind: "corpse", table: "alce_natal", name: "Alce Zumbi",
       zone: z.zone, opened: false, life: Infinity,
-      ang: z.angle || 0, skin: z.skin || "#61724e",
+      ang: z.angle || 0, deathTime: game.time, radius: z.r, skin: z.skin || "#61724e",
       cloth: z.cloth || "#514c35"
     });
     // Preservar saques do evento mesmo com muitos cadáveres na área.

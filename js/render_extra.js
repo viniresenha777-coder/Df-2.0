@@ -8,19 +8,35 @@
 // Atlas 8 direções x 8 quadros, renderizado a partir dos GLBs rigados.
 // A cena continua 2D, portanto não exige renderizar 50 MB de GLB em tempo real.
 const CHRISTMAS_BOSS_SPRITES = {};
+const christmasGaits = {};
+const christmasStride = new WeakMap();
 for (const kind of ["santa", "alce"]) {
   const image = new Image();
   image.src = "img/boss_natal_" + kind + "_atlas." + (kind === "alce" ? "webp" : "png") + "?v=20261123-eventboss02";
   CHRISTMAS_BOSS_SPRITES[kind] = image;
+  const gait = new Image();
+  gait.src = "img/" + kind + "-gait.webp";
+  christmasGaits[kind] = gait;
 }
 function drawChristmasBoss(z, kind) {
-  const img = CHRISTMAS_BOSS_SPRITES[kind];
+  let img = CHRISTMAS_BOSS_SPRITES[kind];
   const rad = z.r, size = kind === "santa" ? rad * 4.0 : rad * 4.25;
   // Golpes e movimento desenhados em quadros diferentes.
   const attacking = z.abilT > 0;
-  const moving = z.state === "chase" && !attacking;
-  const frame = attacking ? 5 + Math.min(2, Math.floor((1 - z.abilT / (kind === "santa" ? 670 : 510)) * 3))
-    : moving ? 1 + Math.floor(game.time / 110) % 4 : 0;
+  let stride = christmasStride.get(z);
+  if (!stride) {
+    stride = { x: z.x, y: z.y, phase: 0 };
+    christmasStride.set(z, stride);
+  }
+  const distance = Math.hypot(z.x - stride.x, z.y - stride.y);
+  stride.x = z.x; stride.y = z.y;
+  const moving = !attacking && distance > .015 && distance < size;
+  if (moving) stride.phase = (stride.phase + distance / (size * .32)) % 1;
+  const gait = christmasGaits[kind];
+  const useGait = moving && gait.complete && gait.naturalWidth === 1920;
+  if (useGait) img = gait;
+  const frame = attacking ? 5 + Math.min(2, Math.max(0, Math.floor((1 - z.abilT / (kind === "santa" ? 670 : 510)) * 3)))
+    : useGait ? Math.floor(stride.phase * 8) : 0;
   const facing = ((Math.round(-z.angle * 4 / Math.PI) % 8) + 8) % 8;
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,.40)";
@@ -49,7 +65,7 @@ function drawChristmasBoss(z, kind) {
         -size * .5, -(split + overlap) * scale, size, (split + overlap) * scale);
       ctx.restore();
     } else {
-      const bob = !attacking && moving ? Math.sin(game.time / 135) * 2 : 0;
+      const bob = !attacking && moving ? Math.sin(stride.phase * Math.PI * 4) * size * .009 : 0;
       ctx.drawImage(img, sx, sy, 240, 240, dx, dy + bob, size, size);
     }
   } else {
@@ -462,4 +478,22 @@ function drawBossCompass() {
     ctx.globalAlpha = pulse; poly([[9, 0], [-5, -7], [-1, 0], [-5, 7]], bossAccent); ctx.restore();
     ctx.globalAlpha = 1;
   }
+}
+
+function drawChristmasCorpse(c, kind) {
+  const img = CHRISTMAS_BOSS_SPRITES[kind];
+  if (!img.complete || !img.naturalWidth) return;
+  const angle = c.ang || 0;
+  const facing = ((Math.round(-angle * 4 / Math.PI) % 8) + 8) % 8;
+  const size = (c.radius || (kind === "santa" ? 37 : 27)) * (kind === "santa" ? 4 : 4.25);
+  const t = c.deathTime == null ? 1 : clamp((game.time - c.deathTime) / 480, 0, 1);
+  const fall = Math.sin(t * Math.PI / 2);
+  ctx.save();
+  ctx.translate(c.x + c.w / 2, c.y + c.h / 2);
+  ctx.fillStyle = "rgba(23,12,10,.42)";
+  ellipse(0, 6, size * .32, size * .10);
+  ctx.scale(1, 1 - .39 * fall);
+  ctx.rotate((Math.cos(angle) >= 0 ? 1 : -1) * fall * 1.40);
+  ctx.drawImage(img, 0, facing * 240, 240, 240, -size / 2, -size * (.63 - .13 * fall), size, size);
+  ctx.restore();
 }
