@@ -324,7 +324,8 @@ function update(dt) {
     if (sprinting && Math.random() < dt / 70) dust(player.x - player.moveVX / actualSpeed * 8, player.y - player.moveVY / actualSpeed * 8);
   }
   if (sprinting) {
-    player.stamina -= 24 * sec * (1 - Math.min(0.8, player.fx.endurance / 100)) * (1 + profVal("stamina"));
+    // Corrida dura 30% mais: reduz o consumo a 1/1.30 do anterior sem mudar velocidade, recarga ou bônus.
+    player.stamina -= (24 / 1.30) * sec * (1 - Math.min(0.8, player.fx.endurance / 100)) * (1 + profVal("stamina"));
     if (player.stamina <= 0) { player.stamina = 0; player.exhausted = true; }
   } else if (fed) {
     player.stamina = Math.min(100, player.stamina + (moving ? 12 : 22) * sec);
