@@ -485,7 +485,54 @@ function drawCreditIcon(cx, cy, s) {
   ctx.restore();
 }
 // Arte oficial dos 29 implantes, atlas 6 colunas × 5 linhas (160 px por célula).
+function fmImplantTransparentAtlas(image, output) {
+  const width = image.naturalWidth, height = image.naturalHeight;
+  if (!width || !height) return;
+  const scratch = document.createElement("canvas");
+  scratch.width = width; scratch.height = height;
+  const g = scratch.getContext("2d", { willReadFrequently: true });
+  g.drawImage(image, 0, 0);
+  const pixels = g.getImageData(0, 0, width, height);
+  const data = pixels.data;
+  // Cada implante fica numa célula de 160x160. Só retirar o preto
+  // ligado às bordas evita apagar componentes internos escuros.
+  for (let baseY = 0; baseY < height; baseY += 160) {
+    for (let baseX = 0; baseX < width; baseX += 160) {
+      const cw = Math.min(160, width - baseX), ch = Math.min(160, height - baseY);
+      const seen = new Uint8Array(cw * ch), queue = new Int32Array(cw * ch);
+      let front = 0, back = 0;
+      function visit(x, y) {
+        if (x < 0 || x >= cw || y < 0 || y >= ch) return;
+        const n = y * cw + x;
+        if (seen[n]) return;
+        const p = 4 * ((baseY + y) * width + baseX + x);
+        if (Math.max(data[p], data[p + 1], data[p + 2]) > 70) return;
+        seen[n] = 1; queue[back++] = n;
+      }
+      for (let x = 0; x < cw; x++) { visit(x, 0); visit(x, ch - 1); }
+      for (let y = 0; y < ch; y++) { visit(0, y); visit(cw - 1, y); }
+      while (front < back) {
+        const n = queue[front++], x = n % cw, y = Math.floor(n / cw);
+        const p = 4 * ((baseY + y) * width + baseX + x);
+        const light = Math.max(data[p], data[p + 1], data[p + 2]);
+        const a = Math.max(0, Math.min(1, (light - 6) / 64));
+        data[p + 3] = Math.round(data[p + 3] * a);
+        visit(x - 1, y); visit(x + 1, y); visit(x, y - 1); visit(x, y + 1);
+        visit(x - 1, y - 1); visit(x + 1, y - 1);
+        visit(x - 1, y + 1); visit(x + 1, y + 1);
+      }
+    }
+  }
+  g.putImageData(pixels, 0, 0);
+  output.width = width; output.height = height;
+  output.getContext("2d").drawImage(scratch, 0, 0);
+}
 const NEW_IMPLANTS_ATLAS = new Image();
+const NEW_IMPLANTS_TRANSPARENT = document.createElement("canvas");
+NEW_IMPLANTS_ATLAS.addEventListener("load", () => {
+  try { fmImplantTransparentAtlas(NEW_IMPLANTS_ATLAS, NEW_IMPLANTS_TRANSPARENT); }
+  catch (e) { NEW_IMPLANTS_TRANSPARENT.width = 0; }
+});
 NEW_IMPLANTS_ATLAS.src = "img/implantes_29_atlas.webp?v=20261116-atlas6x5";
 // ícone de qualquer coisa encontrada ou guardada
 function drawEntryIcon(e, cx, cy, s) {
@@ -497,7 +544,7 @@ function drawEntryIcon(e, cx, cy, s) {
       ctx.save();
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(NEW_IMPLANTS_ATLAS, col * tile, row * tile, tile, tile, cx - size / 2, cy - size / 2, size, size);
+      ctx.drawImage(NEW_IMPLANTS_TRANSPARENT.width ? NEW_IMPLANTS_TRANSPARENT : NEW_IMPLANTS_ATLAS, col * tile, row * tile, tile, tile, cx - size / 2, cy - size / 2, size, size);
       ctx.restore();
       return;
     }
