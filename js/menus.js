@@ -386,7 +386,7 @@ function creditShopRows(section) {
   }));
   if (section === "vest") return VESTS.map((vest, id) => ({
     kind: "vest", id, title: vest.name, owned: !!save.vestsOwned[id],
-    price: vest.craft ? null : vest.credits || vest.price,
+    price: vest.craft ? null : vestCredits(vest) || vest.price,
     currency: vest.credits ? "credits" : "money"
   }));
   if (section === "ammo") return Object.keys(AMMO).map((id, index) => ({

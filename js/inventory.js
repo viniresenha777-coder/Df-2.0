@@ -959,15 +959,16 @@ function shopBuy() {
 }
 function vestText(v) {
   const up = vestUpgrade(VESTS.indexOf(v));
-  return `-${v.armor + up.armor}% dano${up.speed ? ` · +${up.speed}% velocidade` : ""}${v.slow ? ` · -${v.slow}% velocidade` : ""}${v.hp ? ` · +${v.hp} vida` : ""}${v.acid ? ` · -${v.acid}% ácido` : ""}${v.stealth ? ` · +${v.stealth}% furtividade` : ""}`;
+  return `-${Math.min(95, v.armor + up.armor)}% dano${up.speed ? ` · +${up.speed}% velocidade` : ""}${v.slow ? ` · -${v.slow}% velocidade` : ""}${v.hp ? ` · +${v.hp} vida` : ""}${v.acid ? ` · -${v.acid}% ácido` : ""}${v.stealth ? ` · +${v.stealth}% furtividade` : ""}${v.dur ? ` · ${v.dur} de durabilidade` : ""}${v.repairLevel ? ` · conserto: nível ${v.repairLevel}+` : ""}`;
 }
 function buyVest(i) {
   const v = VESTS[i];
   if (save.vestsOwned[i]) { save.vest = i; recalcImplants(); persist(); toast(`${v.name} equipado`); return; }
   if (v.craft) { toast("Esse colete só pode ser criado na oficina"); return; }
   if (v.credits) {
-    if (save.credits < v.credits) { toast(`Precisa de ${v.credits} créditos (compre no banco)`); return; }
-    save.credits -= v.credits;
+    const cr = vestCredits(v);
+    if (save.credits < cr) { toast(`Precisa de ${cr} créditos (compre no banco)`); return; }
+    save.credits -= cr;
   } else {
     if (game.money < v.price) { toast("Dinheiro insuficiente"); return; }
     game.money -= v.price;
