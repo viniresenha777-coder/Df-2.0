@@ -334,7 +334,9 @@ function playerGear() {
     // máscara + capa com capuz: camada da máscara já recortada pelo capuz (gear/<máscara>_capuz_<pose>.png)
     const cape = wear("cape"), mask = wear("mask");
     // moletom (jaqueta 3D) por baixo da capa e da máscara
-    return [wear("boots"), wear("pants"), wear("jacket"), vestWearLayer(), cape, mask && cape === "cape_hood" ? mask + "_capuz" : mask].filter(Boolean);
+    // colete vestido (Natalino): sem calça equipada, a calça cargo vai por baixo e cobre o quadril
+    const suit = vestWearLayer(), pants = wear("pants") || (suit ? "cl_pants_cargo" : null);
+    return [wear("boots"), pants, wear("jacket"), suit, cape, mask && cape === "cape_hood" ? mask + "_capuz" : mask].filter(Boolean);
   }
   const list = [];
   const hat = wear("hat"), mask = wear("mask");
