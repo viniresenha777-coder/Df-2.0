@@ -306,6 +306,59 @@ const CROSSBOW_ZHNETS_ART = new Image();
 CROSSBOW_ZHNETS_ART.src = "img/weapons/crossbow_zhnets.webp?v=231126-zh1";
 const FLECHAS_ZHNETS_ART = new Image();
 FLECHAS_ZHNETS_ART.src = "img/flechas_zh.svg?v=231126-zh1";
+function drawWeaponEnergy(surface, id, x, y, width, equipped) {
+  if (id !== "trovao" && id !== "minigun_inf" && id !== "incendiaria") return;
+  const t = performance.now() / 1000;
+  surface.save();
+  surface.translate(x, y);
+  surface.scale(width / 128, width / 128);
+  surface.globalCompositeOperation = "lighter";
+  surface.lineCap = "round";
+  function glow(cx, cy, radius, color) {
+    const light = surface.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    light.addColorStop(0, color);
+    light.addColorStop(1, "rgba(0,0,0,0)");
+    surface.fillStyle = light;
+    surface.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  }
+  if (id === "trovao") {
+    const cy = equipped ? 32 : 33;
+    glow(63, cy, 9, "rgba(30,155,255,.68)");
+    glow(118, cy, 6, "rgba(65,180,255,.74)");
+    surface.beginPath();
+    surface.moveTo(62, cy);
+    for (let i = 1; i < 10; i++) {
+      const bend = Math.sin(i * 12.3 + t * 7) * Math.cos(i * 1.8 - t * 4);
+      surface.lineTo(62 + i * 5.6, cy - 2 + bend * (i % 2 ? 3.2 : 1.2));
+    }
+    surface.lineTo(118, cy);
+    surface.strokeStyle = "rgba(35,129,255,.50)";
+    surface.lineWidth = 2.5;
+    surface.stroke();
+    surface.strokeStyle = "#a4eaff";
+    surface.lineWidth = 0.75;
+    surface.stroke();
+  } else if (id === "minigun_inf") {
+    const cy = equipped ? 25 : 30;
+    const pulse = (1 + Math.sin(t * 3.1)) / 2;
+    glow(40, cy, 6 + 3 * pulse, "rgba(255,77,9,.83)");
+    for (let i = 0; i < 3; i++) {
+      glow(83 + i * 7, 29 + Math.sin(t * 3 + i) * 1.4, 4 + pulse, "rgba(255,53,6,.64)");
+    }
+  } else {
+    const cy = equipped ? 25 : 15;
+    glow(102, cy, 7, "rgba(255,95,13,.57)");
+    for (let i = 0; i < 5; i++) {
+      const age = (t * .72 + i * .21) % 1;
+      const sx = 94 + i * 4 + Math.sin(t * 1.8 + i) * age * 3;
+      const sy = cy - 2 - age * (7 + i % 3);
+      surface.fillStyle = "rgba(255,175,55," + (1 - age) + ")";
+      surface.fillRect(sx, sy, 0.85, 1.6);
+    }
+  }
+  surface.restore();
+}
+
 function drawWeaponSide(d, cx, cy, s) {
   if (d.id === "besta" && CROSSBOW_ZHNETS_ART.complete && CROSSBOW_ZHNETS_ART.naturalWidth) {
     ctx.save();
@@ -321,6 +374,7 @@ function drawWeaponSide(d, cx, cy, s) {
     if (f) ctx.filter = f;
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(ic, cx - 64 * s, cy - 32 * s, 128 * s, 64 * s);
+    drawWeaponEnergy(ctx, d.id, cx - 64 * s, cy - 32 * s, 128 * s, false);
     ctx.filter = "none";
     return;
   }
