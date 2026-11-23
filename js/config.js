@@ -112,7 +112,9 @@ const ZTYPES = {
   mutant:  { name: "Mutante",     plural: "mutantes",    hp: 5,   spd: 1.05, dmg: 2.4, r: 22, from: 13, weight: 1.5, xp: 5, charge: true, group: "Mutante" },
   // demônios
   demon:   { name: "Demônio",     plural: "demônios",    hp: 3.2, spd: 1.6,  dmg: 2.2, r: 17, from: 15, weight: 1.2, xp: 5, leap: true, group: "Demônio" },
-  abomination: { name: "Abominação", plural: "abominações", hp: 9, spd: 0.75, dmg: 3.4, r: 27, from: 18, weight: 1, xp: 9, slam: true, group: "Mutante" }
+  abomination: { name: "Abominação", plural: "abominações", hp: 9, spd: 0.75, dmg: 3.4, r: 27, from: 18, weight: 1, xp: 9, slam: true, group: "Mutante" },
+  // Companheiro do Papai Noel: não pode nascer como zumbi aleatório.
+  alce_natal: { name: "Alce Zumbi", plural: "alces zumbis", hp: 3, spd: 1.65, dmg: 1.5, r: 24, from: 999, weight: 0, xp: 4, group: "Evento Natalino" }
 };
 // Chefes: aparecem em áreas sorteadas. tiers = em quais cores de área cada um pode surgir
 const BOSSES = {
@@ -123,10 +125,19 @@ const BOSSES = {
   carrasco:   { name: "O Carrasco",   tiers: [4, 5],       hp: 1.3,  spd: 0.95, r: 28, skin: "#a07060", cloth: "#1a1a1a", drop: "Arma única" },
   necromante: { name: "O Necromante", tiers: [5, 6],       hp: 1,    spd: 0.9,  r: 24, skin: "#5a6a4a", cloth: "#1e2a1e", drop: "Implantes raros" },
   alfa:       { name: "O Alfa",       tiers: [6, 7],       hp: 1.2,  spd: 2.1,  r: 26, skin: "#7a4a3a", cloth: "#4a2a20", drop: "Equipamento premium" },
-  ceifador:   { name: "O Ceifador",   tiers: [7, 8],       hp: 1.7,  spd: 1.2,  r: 26, skin: "#3a3a3a", cloth: "#121214", drop: "Itens lendários" }
+  ceifador:   { name: "O Ceifador",   tiers: [7, 8],       hp: 1.7,  spd: 1.2,  r: 26, skin: "#3a3a3a", cloth: "#121214", drop: "Itens lendários" },
+  santa_natal: { name: "Papai Noel Zumbi", tiers: [0,1,2,3,4,5,6,7,8], hp: 1.3, spd: 1.05, r: 37, skin: "#9b6c5c", cloth: "#a12226", drop: "Equipamento de Natal conforme a cor da área" }
 };
 const BOSS_SPEED = 1.2; // todos os chefes andam 20% mais rápido
-function bossesOfRegion(tier) { return Object.keys(BOSSES).filter((k) => BOSSES[k].tiers.includes(tier)); }
+function bossesOfRegion(tier) { return Object.keys(BOSSES).filter((k) => k !== "santa_natal" && BOSSES[k].tiers.includes(tier)); }
+// Vida do Papai Noel: 30% acima do chefe mais resistente da MESMA cor.
+// Dano: 10% acima do golpe base dos chefes daquela área.
+function natalBossHp(zone) {
+  const tier = regionOf(zone);
+  const maxBoss = Math.max(...bossesOfRegion(tier).map(id => BOSSES[id].hp));
+  return Math.round((1600 + (zone % REGION_ROWS) * 200) * REGIONS[tier].hp * maxBoss * 1.30);
+}
+function natalBossDamage(zone) { return (22 + zone) * REGIONS[regionOf(zone)].dmg * 0.6 * 1.10; }
 const ZCLOTHES = ["#5b4b3a", "#3f4f5f", "#6a3b3b", "#4d5a3e", "#777060", "#3a3a44", "#6b5a7a", "#7a6a3a"];
 const ZSKIN = ["#7a9c55", "#8aa06a", "#93a07a", "#6f8a5a", "#9aa58a", "#88957a"];
 
