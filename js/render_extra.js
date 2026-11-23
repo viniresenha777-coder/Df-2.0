@@ -38,6 +38,21 @@ function drawChristmasBoss(z, kind) {
     ellipse(z.x, z.y, rad, rad * .75);
     ctx.fillStyle = "#f1eee0"; circle(z.x + rad * .40, z.y - rad * .4, rad * .3);
   }
+  // Golpe do pirulito: anima a arma no braço do Papai Noel.
+  // O atlas preserva a aparência 3D, enquanto o pirulito destaca o golpe.
+  if (kind === "santa" && attacking) {
+    const phase = Math.max(0, Math.min(1, 1 - z.abilT / 670));
+    ctx.save(); ctx.translate(z.x, z.y); ctx.rotate(z.angle);
+    ctx.translate(rad * .2, rad * .1);
+    ctx.rotate(-1.15 + phase * 2.3);
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    const len = rad * 1.15, thick = Math.max(5, rad * .17);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, 0);
+    ctx.quadraticCurveTo(len + rad * .22, -rad * .36, len - rad * .06, -rad * .45);
+    ctx.strokeStyle = "#f8e8d9"; ctx.lineWidth = thick + 3; ctx.stroke();
+    ctx.strokeStyle = "#d32834"; ctx.lineWidth = thick * .62; ctx.setLineDash([thick * 1.9, thick * 1.15]); ctx.stroke();
+    ctx.setLineDash([]); ctx.restore();
+  }
   if (z.flash > 0) { ctx.globalAlpha = .28; ctx.fillStyle = "#fff"; circle(z.x,z.y,rad); }
   ctx.restore();
   if (z.hp < z.maxHp) {
