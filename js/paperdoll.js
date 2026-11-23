@@ -166,13 +166,13 @@ function invPackEntries() {
   });
   CLOTHING_ITEMS.forEach(item => {
     const equipped = save.clothing[item.kind] === item.id;
-    if (!equipped || item.kind === "pack")
-      entries.push({ area: equipped ? "clothes-slot" : "clothes-list", kind: item.kind, type: "clothing", item });
+    if (!equipped && item.kind !== "pack")
+      entries.push({ area: "clothes-list", kind: item.kind, type: "clothing", item });
   });
   return entries;
 }
 function invPackPages() {
-  return Math.max(1, Math.ceil(Math.max(invPackEntries().length, packCapacity()) / 30));
+  return 1 + Math.ceil(Math.max(0, invPackEntries().length - 30 - backpackExtraSlots()) / 30);
 }
 function invPackChangePage(direction) {
   INV.packPage = Math.max(0, Math.min(invPackPages() - 1, INV.packPage + direction));
@@ -487,6 +487,8 @@ function drawInventory() {
   if (clothingGet("mask")) equippedClothingSlot(606, 104, "mask"); else outfitSlot(606, 104, 58, 58, hp.mask ? hp.mask.name : "Máscara", hp.mask);
   slotBox(606, 186, 58, 58, "Colete", { area: "vestslot", type: "vest", item: save.vest >= 0 ? { i: save.vest } : null });
   equippedClothingSlot(606, 268, "boots");
+  equippedClothingSlot(674, 104, "pack");
+  regClick(674, 104, 58, 58, () => { INV.backpackPicker = true; });
   for (let i = 0; i < SLOT_N; i++) {
     const x = 300 + i * 124, y = 370;
     slotBox(x, y, 112, 52, null, { area: "wslot", i, sel: i, type: "weapon", item: player.slots[i] || null });
@@ -518,12 +520,12 @@ function drawInventory() {
   // 10 colunas x 3 linhas = 30 espaços visíveis. Peças antigas continuam
   // visíveis mesmo quando a conta carrega um inventário acima do limite atual.
   for (let i = 0; i < 30; i++) {
-    const index = INV.packPage * 30 + i;
+    const index = INV.packPage === 0 ? i : 30 + backpackExtraSlots() + (INV.packPage - 1) * 30 + i;
     const col = i % 10, row = Math.floor(i / 10);
     const x = 40 + col * 89, y = 452 + row * 42;
     const width = 85, height = 39;
     const entry = inventoryEntries[index];
-    const locked = !entry && index >= physicalCapacity;
+    const locked = !entry && index >= backpackBaseCapacity(player.level);
 
     ctx.fillStyle = locked ? "rgba(11,11,11,0.92)" : "rgba(29,28,25,0.94)";
     rr(x, y, width, height, 3); ctx.fill();
