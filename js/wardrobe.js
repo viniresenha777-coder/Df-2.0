@@ -52,8 +52,33 @@ for (const item of IMPORTED_CLOTHING) {
   CLOTHING_ITEMS.push(item);
   CLOTHING_BY_ID[item.id] = item;
 }
+
+// Mochilas adaptadas do catálogo Dead Frontier: os números são espaços
+// adicionais à capacidade-base (14-30), não substituem o inventário.
+// Itens liberados para teste por nível; não exigem criação na oficina.
+const BACKPACK_CATALOG = [{"id":"fm_pack_cintura","name":"Bolsa de Cintura","slots":1,"speedPenalty":0,"level":1,"color":"#74684d","accent":"#c09b5c","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas"},
+  {"id":"fm_pack_transversal","name":"Bolsa Transversal","slots":2,"speedPenalty":1,"level":5,"color":"#6c5242","accent":"#c7a380","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas"},
+  {"id":"fm_pack_pequena","name":"Mochila Pequena","slots":3,"speedPenalty":2,"level":15,"color":"#596747","accent":"#a0ab76","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas"},
+  {"id":"fm_pack_basica","name":"Mochila Básica","slots":4,"speedPenalty":3,"level":25,"color":"#3f5452","accent":"#a1b1a6","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas"},
+  {"id":"fm_pack_grande","name":"Mochila Grande","slots":5,"speedPenalty":4,"level":50,"color":"#736245","accent":"#c7af81","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas"},
+  {"id":"fm_pack_trilha","name":"Mochila de Trilha","slots":6,"speedPenalty":5,"level":75,"color":"#52674f","accent":"#9ab88a","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas"},
+  {"id":"fm_pack_militar","name":"Mochila Militar","slots":7,"speedPenalty":6,"level":100,"color":"#4f5844","accent":"#95a27a","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas"},
+  {"id":"fm_pack_expedicao","name":"Mochila de Expedição","slots":8,"speedPenalty":7,"level":120,"color":"#495e6b","accent":"#98b0c4","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas"},
+  {"id":"fm_pack_expedicao_grande","name":"Mochila de Expedição Grande","slots":9,"speedPenalty":8,"level":120,"color":"#6e6352","accent":"#c1a98a","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas"},
+  {"id":"fm_pack_trekking","name":"Mochila de Trekking","slots":8,"speedPenalty":2,"level":120,"color":"#475e58","accent":"#b2d0bb","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas"}];
+for (const bag of BACKPACK_CATALOG) {
+  CLOTHING_ITEMS.push(bag);
+  CLOTHING_BY_ID[bag.id] = bag;
+}
+function backpackBaseCapacity(level) {
+  const lv = Math.max(1, Math.floor(Number(level) || 1));
+  return Math.min(30, 14 + 2 * Math.floor(lv / 5));
+}
+function backpackEquipped() { return clothingGet("pack"); }
+function backpackExtraSlots() { return backpackEquipped()?.slots || 0; }
+function backpackSpeedPenalty() { return backpackEquipped()?.speedPenalty || 0; }
 function clothingClean(src) {
-  const clean = { jacket: null, pants: null, boots: null };
+  const clean = { jacket: null, pants: null, boots: null, pack: null };
   for (const kind of CLOTHING_KINDS) {
     const id = src && typeof src[kind] === "string" ? src[kind] : null;
     if (id && CLOTHING_BY_ID[id] && CLOTHING_BY_ID[id].kind === kind) clean[kind] = id;
@@ -317,8 +342,30 @@ function clothingTintCanvas(base, mask, skin, equipment, portrait) {
   return c;
 }
 const CLOTHING_PNG_CACHE = Object.create(null);
+function drawBackpackIcon(item, x, y, w, h) {
+  const scale = Math.min(w, h) / 60;
+  ctx.save();
+  ctx.translate(x + w / 2, y + h / 2);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = item.color;
+  ctx.strokeStyle = item.accent;
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-12, -16); ctx.lineTo(-12, -21);
+  ctx.quadraticCurveTo(0, -30, 12, -21); ctx.lineTo(12, -16); ctx.stroke();
+  ctx.fillRect(-17, -18, 34, 38);
+  ctx.strokeRect(-17, -18, 34, 38);
+  ctx.fillStyle = item.accent; ctx.fillRect(-17, -17, 34, 5);
+  ctx.fillStyle = "#28302b"; ctx.fillRect(-12, 0, 24, 15);
+  ctx.strokeRect(-12, 0, 24, 15);
+  ctx.fillStyle = item.accent;
+  ctx.fillRect(-22, -8, 5, 20); ctx.fillRect(17, -8, 5, 20);
+  ctx.fillStyle = "#f5e9ca"; ctx.font = "bold 13px sans-serif";
+  ctx.textAlign = "center"; ctx.fillText("+" + item.slots, 0, -5);
+  ctx.restore();
+}
 function drawClothingIcon(item, x, y, w, h) {
   if (!item) return;
+  if (item.kind === 'pack' && item.slots) { drawBackpackIcon(item, x, y, w, h); return; }
   if (item.icon) {
     let im = CLOTHING_PNG_CACHE[item.icon];
     if (!im) {

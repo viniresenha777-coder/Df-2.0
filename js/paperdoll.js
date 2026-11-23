@@ -165,8 +165,9 @@ function invPackEntries() {
       entries.push({ area: "vests", type: "vest", item: { i } });
   });
   CLOTHING_ITEMS.forEach(item => {
-    if (save.clothing[item.kind] !== item.id)
-      entries.push({ area: "clothes-list", type: "clothing", item });
+    const equipped = save.clothing[item.kind] === item.id;
+    if (!equipped || item.kind === "pack")
+      entries.push({ area: equipped ? "clothes-slot" : "clothes-list", kind: item.kind, type: "clothing", item });
   });
   return entries;
 }
@@ -247,12 +248,21 @@ function invClick(z) {
 function equipClothing(item) {
   if (!item || CLOTHING_BY_ID[item.id] !== item || !CLOTHING_KINDS.includes(item.kind)) return;
   if (save.clothing[item.kind] === item.id) { unequipClothing(item.kind); return; }   // clicar de novo tira (mochila não tem slot)
+  if (item.kind === "pack") {
+    if (player.level < item.level) { toast("Disponível a partir do nível " + item.level); return; }
+    if (packUsed() > backpackBaseCapacity(player.level) + item.slots) {
+      toast("Retire itens antes de usar uma mochila menor."); return;
+    }
+  }
   save.clothing[item.kind] = item.id;
   persist();
-  toast(item.name + " equipada");
+  toast(item.name + " equipada" + (item.kind === "pack" ? " · +" + item.slots + " espaços" : ""));
 }
 function unequipClothing(kind) {
   if (!CLOTHING_KINDS.includes(kind) || !save.clothing[kind]) return;
+  if (kind === "pack" && packUsed() > backpackBaseCapacity(player.level)) {
+    toast("Esvazie os espaços extras antes de retirar a mochila."); return;
+  }
   save.clothing[kind] = null; persist();
   toast(CLOTHING_LABELS[kind] + " retirada");
 }
@@ -511,7 +521,7 @@ function drawInventory() {
     const x = 40 + col * 89, y = 452 + row * 42;
     const width = 85, height = 39;
     const entry = inventoryEntries[index];
-    const locked = !entry && index >= physicalCapacity && INV.packPage === 0;
+    const locked = !entry && index >= physicalCapacity;
 
     ctx.fillStyle = locked ? "rgba(11,11,11,0.92)" : "rgba(29,28,25,0.94)";
     rr(x, y, width, height, 3); ctx.fill();
@@ -560,7 +570,11 @@ function drawInventory() {
     if (info.type === "clothing") {
       txt(info.item.setName + " · " + CLOTHING_LABELS[info.item.kind], 722, 241, 11,
         "#ffd96a", "left", false, 202);
-      txt("Clique ou arraste até o slot da roupa", 722, 261, 11,
+      if (info.item.kind === "pack") {
+        txt("+" + info.item.slots + " espaços · -" + info.item.speedPenalty + "% velocidade", 722, 261, 11,
+          "#8bed92", "left", true, 202);
+        txt("Nível mínimo " + info.item.level, 722, 283, 11, "#e2cb90");
+      } else txt("Clique ou arraste até o slot da roupa", 722, 261, 11,
         "#bcb6a2", "left", false, 202);
     } else if (info.type === "vest") {
       txt(vestText(VESTS[info.item.i]), 722, 242, 11, "#c9c4ad",

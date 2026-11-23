@@ -303,6 +303,7 @@ function update(dt) {
     const sp = (sprinting ? 3.38 * (1 + profVal("sprint")) : player.speed) *
       (1 + (player.fx.agility + vestSpeedBonus()) / 100) *
       (1 + (A("agi") - 10) * 0.004) * (1 - slow / 100) *
+      (1 - backpackSpeedPenalty() / 100) *
       (sprinting && trindadeActive() ? 1.35 : 1);
     goalVX = dx / len * sp; goalVY = dy / len * sp;
   }
