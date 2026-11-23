@@ -101,7 +101,7 @@ const ZTYPES = {
   runner:  { name: "Corredor",    plural: "corredores",  hp: 0.6, spd: 1.85, dmg: 0.8, r: 12, from: 2,  weight: 3,  xp: 1.2, group: "Comum" },
   // especiais
   dog:     { name: "Cão infectado", plural: "cães infectados", hp: 0.55, spd: 2.5, dmg: 0.7, r: 11, from: 3, weight: 2, xp: 1.4, pack: [2, 4], hitDelay: 1000, group: "Especial" },
-  spitter: { name: "Cuspidor",    plural: "cuspidores",  hp: 0.8, spd: 0.8,  dmg: 0.7, r: 13, from: 6,  weight: 2,  xp: 1.5, ranged: true, group: "Especial" },
+  spitter: { name: "Cuspidor",    plural: "cuspidores",  hp: 0.8, spd: 0.8,  dmg: 0.7, r: 13, from: 6,  weight: 2,  xp: 1.5, group: "Especial" },
   creeper: { name: "Rastejante",  plural: "rastejantes", hp: 1.2, spd: 0.6, dmg: 1.1, r: 14, from: 5, weight: 1.5, xp: 2, blastDeath: true, group: "Especial" },
   hazmat:  { name: "Contaminado", plural: "contaminados", hp: 1.4, spd: 0.85, dmg: 0.9, r: 14, from: 7, weight: 1.5, xp: 1.8, gas: true, group: "Especial" },
   infected: { name: "Infectado",  plural: "infectados",  hp: 1.1, spd: 1.35, dmg: 1.1, r: 13, from: 8, weight: 2, xp: 1.6, pack: [2, 3], dodge: true, group: "Infectado" },
