@@ -137,7 +137,14 @@ function natalBossHp(zone) {
   const maxBoss = Math.max(...bossesOfRegion(tier).map(id => BOSSES[id].hp));
   return Math.round((1600 + (zone % REGION_ROWS) * 200) * REGIONS[tier].hp * maxBoss * 1.30);
 }
-function natalBossDamage(zone) { return (22 + zone) * REGIONS[regionOf(zone)].dmg * 0.6 * 1.10; }
+// Compara o golpe efetivo mais forte de cada boss daquela cor, incluindo
+// habilidades de golpe único (Açougueiro 1,5x / Ceifador 1,6x / investidas 1,3x).
+function natalBossDamage(zone) {
+  const tier = regionOf(zone);
+  const multipliers = { acougueiro: 1.5, ceifador: 1.6, alfa: 1.3, carrasco: 1.3 };
+  const strongest = Math.max(...bossesOfRegion(tier).map(id => multipliers[id] || 1));
+  return (22 + zone) * REGIONS[tier].dmg * 0.6 * strongest * 1.10;
+}
 const ZCLOTHES = ["#5b4b3a", "#3f4f5f", "#6a3b3b", "#4d5a3e", "#777060", "#3a3a44", "#6b5a7a", "#7a6a3a"];
 const ZSKIN = ["#7a9c55", "#8aa06a", "#93a07a", "#6f8a5a", "#9aa58a", "#88957a"];
 
