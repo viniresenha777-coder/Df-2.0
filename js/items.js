@@ -208,7 +208,7 @@ function vestSpeedBonus() { return vestUpgrade().speed; }
 
 // ---------- Instâncias de armas ----------
 // Inventário: 14 espaços iniciais, +2 a cada 5 níveis, máximo de 30 no nível 40.
-const SLOT_N = 3, PACK_MAX = 39, VAULT_MAX = 40;
+const SLOT_N = 3, PACK_MAX = 39, VAULT_MAX = 400;
 function packCapacity(level = player.level) {
   const lv = Math.max(1, Number.isFinite(Number(level)) ? Math.floor(Number(level)) : 1);
   return Math.min(PACK_MAX, backpackBaseCapacity(lv) + backpackExtraSlots());
@@ -247,7 +247,7 @@ function addWeapon(inst) {
 }
 function addMat(id, n, list, max, loot = false) {
   list = list || player.pack;
-  max = list === player.pack ? Math.min(max || PACK_MAX, packCapacity()) : (max || VAULT_MAX);
+  max = list === player.pack ? Math.min(max || PACK_MAX, packCapacity()) : list === save.vault ? Math.min(max || VAULT_MAX, vaultCapacity()) : (max || VAULT_MAX);
   const st = list.find((it) => it.kind === "mat" && it.id === id && !!it.loot === loot);
   if (st) { st.qty += n; return true; }
   if ((list === player.pack ? packUsed() : list.length) >= max) return false;

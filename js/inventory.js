@@ -649,12 +649,21 @@ function myList() {
   player.pack.forEach((it, i) => out.push({ it, where: "pack", i }));
   return out;
 }
+function vaultCapacity() { return Math.min(400, Math.max(40, (save.vaultRows || 5) * 8)); }
+function buyVaultRow() {
+  const rows = Math.max(5, Math.min(50, save.vaultRows || 5));
+  if (rows >= 50) { toast('Baú completo'); return; }
+  const price = rows < 25 ? 10000 : 50000;
+  if (game.money < price) { toast('Dinheiro insuficiente'); return; }
+  game.money -= price; save.vaultRows = rows + 1; save.run = runSnapshot(); persist();
+  toast('Fileira liberada: +8 espaços no baú');
+}
 function vaultMove() {
   if (game.vside === 0) {
     const e = myList()[game.vcur];
     if (!e) return;
-    if (e.it.kind === "mat") { if (!addMat(e.it.id, e.it.qty, save.vault, VAULT_MAX, !!e.it.loot)) { toast("Baú cheio"); return; } }
-    else { if (save.vault.length >= VAULT_MAX) { toast("Baú cheio"); return; } save.vault.push(e.it); }
+    if (e.it.kind === "mat") { if (!addMat(e.it.id, e.it.qty, save.vault, vaultCapacity(), !!e.it.loot)) { toast("Baú cheio"); return; } }
+    else { if (save.vault.length >= vaultCapacity()) { toast("Baú cheio"); return; } save.vault.push(e.it); }
     if (e.where === "slot") player.slots[e.i] = null; else player.pack.splice(e.i, 1);
     player.reloading = 0;
     toast(`Guardou no baú: ${e.it.kind === "weapon" ? instName(e.it) : MATS[e.it.id].name}`);
@@ -685,10 +694,11 @@ function drawListItem(it, x, y, w, sel, sub) {
   if (sub) txt(sub, x + w - 10, y + 22, 11, "#a9a58f", "right");
 }
 function drawStash() {
+  // Bundle atual: Baú em 5 linhas x 8 colunas, 10 páginas e expansão por fileira.
   game.vside = game.vside || 0; game.vcur = game.vcur || 0;
   menuFrame("Baú da base", "Armas e itens são preservados ao morrer. Cofres só protegem dinheiro quando estão na mochila.");
   const mine = myList(), cols = [[mine.map((e) => ({ it: e.it, sub: e.where === "slot" ? `slot ${e.i + 1}` : "mochila" })), `Com você (${packUsed()}/${packCapacity()} na mochila)`],
-    [save.vault.map((it) => ({ it, sub: "" })), `Baú (${save.vault.length}/${VAULT_MAX})`]];
+    [save.vault.map((it) => ({ it, sub: "" })), `Baú (${save.vault.length}/${vaultCapacity()})`]];
   cols.forEach(([list, title], side) => {
     const x = side === 0 ? 40 : 490, w = 430, act = game.vside === side;
     txt(title, x, 100, 14, act ? "#ffd96a" : "#a9a58f", "left", true);

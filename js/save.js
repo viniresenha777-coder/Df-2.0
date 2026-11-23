@@ -5,7 +5,7 @@
 // =====================================================================
 const SAVE_KEY = "fronteira-morta";
 const save = {
-  bank: 0, vault: [], installed: [], implantPresets: [], credits: 0, gm: false, vipUntil: 0, trindadeUntil: 0, shopFreeUntil: 0, missions: [], receivedGifts: [], inbox: [],
+  bank: 0, vault: [], vaultRows: 5, installed: [], implantPresets: [], credits: 0, gm: false, vipUntil: 0, trindadeUntil: 0, shopFreeUntil: 0, missions: [], receivedGifts: [], inbox: [],
   vest: -1, fmInventoryOrder: [], clothing: { jacket: null, pants: null, boots: null, pack: null }, outposts: OUTPOSTS.map((o, i) => i === 0), muted: false, hud: 0, skin: 0, cape: 0, prof: null, name: "", classicChar: false, vestDur: {}, vestUpgrades: {}, music: true, gfx: 2, ambientVolume: 0.55, brightness: 1.0,
   stats: {}, story: 0, ach: {}, daily: null, coll: [], vestsOwned: VESTS.map(() => false), vestVer: 2,
   char: { level: 1, xp: 0, points: 0, wpoints: 0, attrs: defaultAttrs() }
@@ -31,6 +31,7 @@ function loadSave() {
     save.run = s.run && s.run.v === 1 ? s.run : null; // checkpoint da partida
     if (Array.isArray(s.vault)) save.vault = s.vault.filter(validItem).slice(0, VAULT_MAX);
     else if (Array.isArray(s.stash)) save.vault = s.stash.map((v, i) => (v && OLD_IDS[i] ? newInst(OLD_IDS[i]) : null)).filter(Boolean); // save antigo
+    save.vaultRows = Math.min(50, Math.max(5, Math.floor(Number(s.vaultRows) || 5), 5 + Math.ceil(Math.max(0, save.vault.length - 40) / 8)));
     { const seen = {}; save.installed = (s.installed || []).map(cleanImplant).filter((im) => im && !seen[im.id] && (seen[im.id] = true)).slice(0, IMPL_SLOTS); }
     // Os esquemas armazenam somente a ordem e distribuição dos implantes.
     // Na ativação, o jogador precisa possuir cada implante de verdade.
