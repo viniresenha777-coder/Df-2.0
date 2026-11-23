@@ -131,6 +131,18 @@ function bossLoot(id, zone) {
     case "necromante": out = [bossImplant(), bossImplant()]; break;
     case "alfa":       out = [Wp(3, 4), bossVest(5, 6)]; break;
     case "ceifador":   out = [Wp(4, 4), bossImplant()]; break;
+    case "santa_natal": {
+      // Usar a mesma tabela de raridade da cor (REGIONS[tier].loot), sem
+      // entregar lendárias nas regiões iniciais ou itens épicos garantidos.
+      const tier = regionOf(zone);
+      const natalWeapon = () => ({ type: "weapon", inst: newInst(randomWeaponDrop(zone, tier >= 6 ? 1 : 0)) });
+      out = [natalWeapon()];
+      if (tier >= 2) out.push(tier >= 5 && Math.random() < .30 ? bossImplant() : lootVest(zone));
+      if (tier >= 4) out.push(natalWeapon());
+      if (tier >= 7 && Math.random() < .45) out.push(bossImplant());
+      // Boss dá itens úteis em todas as cores; qualidade escala pelo loot do mapa.
+      break;
+    }
     default:           out = [Wp(2, 3), bossVest(1, 4)];
   }
   out.push({ type: "mat", id: "nucleo", amt: 1 });
