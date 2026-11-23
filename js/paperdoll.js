@@ -142,7 +142,22 @@ function portraitMouseUp() {
 
 // ---------------------------------------------------------------- inventário: zonas de arrastar
 // cada quadro registra as zonas (onde soltar) e o que pode ser arrastado
-const INV = { zones: [], drag: null, hover: null, confirm: null, wardrobe: false, wardrobePage: 0 };
+const INV = { zones: [], drag: null, hover: null, confirm: null, equipmentPage: 0 };
+
+// Coletes e roupas ficam no MESMO inventário, sem abas separadas.
+// Preserva os dados de posse (vestsOwned e CLOTHING_ITEMS): não move
+// nenhuma peça para a mochila de armas e não modifica o salvamento.
+function invEquipmentItems() {
+  const vests = VESTS.map((v, i) => i).filter(i => save.vestsOwned[i] && i !== save.vest)
+    .map(i => ({ type: "vest", area: "vests", item: { i } }));
+  const clothes = CLOTHING_ITEMS.map(item => ({ type: "clothing", area: "clothes-list", item }));
+  return vests.concat(clothes);
+}
+function invJumpToClothing(kind) {
+  const list = invEquipmentItems();
+  const idx = list.findIndex(entry => entry.type === "clothing" && entry.item.kind === kind);
+  if (idx >= 0) INV.equipmentPage = Math.floor(idx / 9);
+}
 
 function invZone(z) { INV.zones.push(z); return z; }
 function invZoneAt(x, y) {
@@ -227,7 +242,7 @@ function equippedClothingSlot(x, y, kind) {
     ctx.strokeStyle = "#54534b"; ctx.lineWidth = 1.2;
     ctx.strokeRect(x + 15, y + 16, 28, 25);
     txt("+", x + 29, y + 34, 18, "#9b956e", "center", true);
-    regClick(x, y, 58, 58, () => { INV.wardrobe = true; });
+    regClick(x, y, 58, 58, () => { invJumpToClothing(kind); });
   }
 }
 function equipVest(i) {
@@ -446,29 +461,28 @@ function drawInventory() {
     txt(player.cur === i ? `Arma ${i + 1} · na mão` : `Arma ${i + 1}`, x + 56, y - 4, 10, player.cur === i ? "#ffd96a" : "#a9a58f", "center", true);
   }
 
-  // ---- coletes (direita)
-  // Duas abas no painel direito: coletes antigos e roupas independentes.
-  btn(716, 84, 103, 22, "Coletes", () => { INV.wardrobe = false; }, !INV.wardrobe);
-  btn(824, 84, 108, 22, "Roupas", () => { INV.wardrobe = true; }, INV.wardrobe);
-  if (INV.wardrobe) {
-    const pages = Math.max(1, Math.ceil(CLOTHING_ITEMS.length / 9));
-    INV.wardrobePage = Math.max(0, Math.min(pages - 1, INV.wardrobePage));
-    const visible = CLOTHING_ITEMS.slice(INV.wardrobePage * 9, INV.wardrobePage * 9 + 9);
-    for (let k = 0; k < 9; k++) {
-      const item = visible[k], x = 716 + (k % 3) * 54, y = 110 + Math.floor(k / 3) * 54;
-      slotBox(x, y, 50, 50, null, { area: "clothes-list", i: k, type: "clothing", item: item || null });
-    }
-    btn(878, 112, 50, 30, "◀", () => { INV.wardrobePage = (INV.wardrobePage + pages - 1) % pages; }, false);
-    btn(878, 150, 50, 30, "▶", () => { INV.wardrobePage = (INV.wardrobePage + 1) % pages; }, false);
-    txt((INV.wardrobePage + 1) + "/" + pages, 903, 204, 13, "#ffd96a", "center", true);
-    txt(CLOTHING_ITEMS.length ? "Clique ou arraste" : "Roupas novas em breve", 826, 260, 10, "#b8ad8d", "center");
-  } else {
-    const owned = VESTS.map((v, i) => i).filter((i) => save.vestsOwned[i]);
-    for (let k = 0; k < 12; k++) {
-      const x = 716 + (k % 4) * 54, y = 110 + Math.floor(k / 4) * 54, i = owned[k];
-      slotBox(x, y, 50, 50, null, { area: "vests", i: k, type: "vest", item: i != null && i !== save.vest ? { i } : null });
-    }
+  // ---- todos os equipamentos no inventário (direita)
+  // Sem abas de "Coletes" ou "Roupas": a grade mistura os itens disponíveis.
+  txt("Equipamentos", 716, 101, 14, "#e5e0c8", "left", true);
+  const equipment = invEquipmentItems();
+  const equipmentPages = Math.max(1, Math.ceil(equipment.length / 9));
+  INV.equipmentPage = Math.max(0, Math.min(equipmentPages - 1, INV.equipmentPage));
+  const equipmentVisible = equipment.slice(INV.equipmentPage * 9, INV.equipmentPage * 9 + 9);
+  for (let k = 0; k < 9; k++) {
+    const entry = equipmentVisible[k], x = 716 + (k % 3) * 54, y = 110 + Math.floor(k / 3) * 54;
+    slotBox(x, y, 50, 50, null, entry
+      ? { ...entry, i: INV.equipmentPage * 9 + k }
+      : { area: "equipment-empty", i: k, item: null });
   }
+  if (equipmentPages > 1) {
+    btn(878, 112, 50, 30, "◀",
+      () => { INV.equipmentPage = (INV.equipmentPage + equipmentPages - 1) % equipmentPages; }, false);
+    btn(878, 150, 50, 30, "▶",
+      () => { INV.equipmentPage = (INV.equipmentPage + 1) % equipmentPages; }, false);
+  }
+  txt((INV.equipmentPage + 1) + "/" + equipmentPages, 903, 204, 13, "#ffd96a", "center", true);
+  txt(equipment.length ? "Clique ou arraste para equipar" : "Nenhum equipamento disponível",
+    826, 260, 10, "#b8ad8d", "center");
   // detalhes do item sob o mouse (ou selecionado)
   const hz = INV.hover && INV.hover.item ? INV.hover : null;
   const selIt = selItem(inv.sel);
@@ -536,7 +550,7 @@ function drawInventory() {
     btn(W / 2 + 10, H / 2 + 16, 140, 30, "Cancelar", () => { INV.confirm = null; });
   }
   drawAllocPanel();
-  hint("Roupas: clique para equipar ou arraste ao slot · arraste armas para equipar · B/Esc fecha");
+  hint("Equipamentos: clique ou arraste ao boneco · Armas: arraste aos slots · B/Esc fecha");
 }
 
 // ---------------------------------------------------------------- texto em várias linhas
