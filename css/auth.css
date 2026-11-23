@@ -72,7 +72,7 @@ body {
 body:has(#login:not([hidden])) {
   background:
     linear-gradient(180deg, rgba(4,7,10,.18), rgba(3,7,9,.14) 48%, rgba(4,5,7,.28)),
-    url("../img/natal_decor.svg?v=20261123-natal01") center / cover no-repeat fixed,
+    url("../img/natal_login_bg.webp?v=20261123-natal02") center / cover no-repeat fixed,
     url("../img/fm_exterior.webp?v=20261116-outside2") center / cover no-repeat fixed;
   background-color: #080a0b;
 }
@@ -140,4 +140,51 @@ body:has(#login:not([hidden]))::after {
   #login:not([hidden]) { overflow-y:auto; max-height: 100svh; }
   #login:not([hidden]) .fm-auth-panel { box-sizing:border-box; }
   body:has(#login:not([hidden])) { background-attachment: scroll; }
+}
+
+
+/* Luzes de Natal pulsando devagar, posicionadas na imagem de fundo.
+   Camadas sem eventos de mouse para não afetar o formulário. */
+body:has(#login:not([hidden]))::before {
+  content: ""; position: fixed; inset: 0; z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 22% 8% at 13% 31%, rgba(255,186,75,.34), transparent 78%),
+    radial-gradient(ellipse 20% 7% at 87% 38%, rgba(255,189,72,.31), transparent 79%),
+    radial-gradient(ellipse 7% 8% at 89% 17%, rgba(255,176,56,.3), transparent 85%),
+    radial-gradient(ellipse 9% 16% at 94% 41%, rgba(249,173,50,.23), transparent 88%),
+    radial-gradient(ellipse 5% 7% at 9% 7%, rgba(255,195,92,.29), transparent 85%);
+  mix-blend-mode: screen;
+  opacity: .22;
+  animation: fm-natal-luzes 7.5s ease-in-out infinite alternate;
+}
+@keyframes fm-natal-luzes {
+  0%, 7% { opacity: .18; filter: brightness(.78); }
+  48%, 62% { opacity: .87; filter: brightness(1.22); }
+  95%, 100% { opacity: .28; filter: brightness(.86); }
+}
+/* Segundo grupo de luzes: ligeiramente fora de fase, dando
+   a impressão de que as fileiras acendem e apagam aos poucos. */
+#login:not([hidden])::before {
+  content: ""; position: fixed; inset: 0;
+  z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 7% 5% at 19% 43%, rgba(255,185,66,.28), transparent 78%),
+    radial-gradient(ellipse 17% 4% at 82% 33%, rgba(255,187,63,.26), transparent 83%),
+    radial-gradient(ellipse 10% 4% at 6% 4%, rgba(255,188,70,.38), transparent 77%);
+  mix-blend-mode: screen;
+  animation: fm-natal-luzes-secundarias 10s ease-in-out infinite alternate;
+}
+#login:not([hidden]) > .fm-auth-panel,
+#login:not([hidden]) > .fm-token-ad {
+  z-index: 1;
+}
+@keyframes fm-natal-luzes-secundarias {
+  0%, 20% { opacity: .27; }
+  55%, 76% { opacity: .90; }
+  100% { opacity: .31; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body:has(#login:not([hidden]))::before,
+  #login:not([hidden])::before { animation: none; opacity: .50; }
 }
