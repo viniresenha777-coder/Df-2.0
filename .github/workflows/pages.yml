@@ -65,7 +65,12 @@ jobs:
           set -euo pipefail
           npm install --prefix "$RUNNER_TEMP/fm-compiler" --no-audit --no-fund javascript-obfuscator@4.1.1
           FM_OBFUSCATOR="$RUNNER_TEMP/fm-compiler/node_modules/javascript-obfuscator" python3 tools/empacotar.py --game-only
-          git add index.html js/jogo.min.js
+          # Importação única dos dois atlas gerados dos GLBs rigados (8 direções).
+          curl -fL --retry 3 --connect-timeout 15 --max-time 120 'https://d2jqrm6oza8nb6.cloudfront.net/datasets/bd51b13b-ed61-43d0-9d33-b8d6003a0756.png?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiMWQ3ZDQ3NjRjMmZjZWVlNyIsImJ1Y2tldCI6InJ1bndheS1kYXRhc2V0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5NTUwMTU0MH0.4COIDzwQ7XUvo8zdxGBpiA5qxB36vUTj65wa88eP9Wo' -o img/boss_natal_santa_atlas.png
+          test "$(stat -c%s img/boss_natal_santa_atlas.png)" -gt 70000
+          curl -fL --retry 3 --connect-timeout 15 --max-time 120 'https://d2jqrm6oza8nb6.cloudfront.net/datasets/5b3144ec-9e21-41b2-a211-0e053f529d02.png?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiZTliMGNkMDA0MTk5NDk4MCIsImJ1Y2tldCI6InJ1bndheS1kYXRhc2V0cyIsImV4cCI6MTc5NTQ5NzM0NH0.2fOq-Q9AEFysklMseb58p-wdzXy16kDbRwmflUt7afU' -o img/boss_natal_alce_atlas.png
+          test "$(stat -c%s img/boss_natal_alce_atlas.png)" -gt 70000
+          git add index.html js/jogo.min.js img/boss_natal_santa_atlas.png img/boss_natal_alce_atlas.png
           if ! git diff --cached --quiet; then
             git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Atualiza bundle da Glock 18"
             git push origin HEAD:main
