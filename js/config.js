@@ -118,24 +118,27 @@ const ZTYPES = {
 };
 // Chefes: aparecem em áreas sorteadas. tiers = em quais cores de área cada um pode surgir
 const BOSSES = {
-  acougueiro: { name: "O Açougueiro", tiers: [0, 1, 2],    hp: 1,    spd: 1,    r: 28, skin: "#c08a7a", cloth: "#d8d0c0", drop: "Arma rara + colete" },
-  matriarca:  { name: "A Matriarca",  tiers: [2, 3],       hp: 1.35, spd: 0.65, r: 33, skin: "#b07a6a", cloth: "#6a3a3a", drop: "Implante + colete" },
-  capataz:    { name: "O Capataz",    tiers: [2, 3, 4],    hp: 1.2,  spd: 0.85, r: 27, skin: "#8a8a8a", cloth: "#2a2c30", drop: "Equipamento de alto nível" },
-  pestilento: { name: "O Pestilento", tiers: [4, 5],       hp: 1.2,  spd: 0.9,  r: 28, skin: "#8a4a3a", cloth: "#4a2a20", drop: "Itens especiais" },
-  carrasco:   { name: "O Carrasco",   tiers: [4, 5],       hp: 1.3,  spd: 0.95, r: 28, skin: "#a07060", cloth: "#1a1a1a", drop: "Arma única" },
-  necromante: { name: "O Necromante", tiers: [5, 6],       hp: 1,    spd: 0.9,  r: 24, skin: "#5a6a4a", cloth: "#1e2a1e", drop: "Implantes raros" },
-  alfa:       { name: "O Alfa",       tiers: [6, 7],       hp: 1.2,  spd: 2.1,  r: 26, skin: "#7a4a3a", cloth: "#4a2a20", drop: "Equipamento premium" },
-  ceifador:   { name: "O Ceifador",   tiers: [7, 8],       hp: 1.7,  spd: 1.2,  r: 26, skin: "#3a3a3a", cloth: "#121214", drop: "Itens lendários" },
+  acougueiro: { name: "O Açougueiro", tiers: [0, 1, 2],    healthByTier: [2500, 7500, 7500],    spd: 1,    r: 28, skin: "#c08a7a", cloth: "#d8d0c0", drop: "Arma rara + colete" },
+  matriarca:  { name: "A Matriarca",  tiers: [2, 3],       healthByTier: [15000, 30000], spd: 0.65, r: 33, skin: "#b07a6a", cloth: "#6a3a3a", drop: "Implante + colete" },
+  capataz:    { name: "O Capataz",    tiers: [2, 3, 4],    healthByTier: [7500, 15000, 20000],  spd: 0.85, r: 27, skin: "#8a8a8a", cloth: "#2a2c30", drop: "Equipamento de alto nível" },
+  pestilento: { name: "O Pestilento", tiers: [4, 5],       healthByTier: [20000, 30000],  spd: 0.9,  r: 28, skin: "#8a4a3a", cloth: "#4a2a20", drop: "Itens especiais" },
+  carrasco:   { name: "O Carrasco",   tiers: [4, 5],       healthByTier: [30000, 100000],  spd: 0.95, r: 28, skin: "#a07060", cloth: "#1a1a1a", drop: "Arma única" },
+  necromante: { name: "O Necromante", tiers: [5, 6],       healthByTier: [30000, 100000],    spd: 0.9,  r: 24, skin: "#5a6a4a", cloth: "#1e2a1e", drop: "Implantes raros" },
+  alfa:       { name: "O Alfa",       tiers: [6, 7],       healthByTier: [100000, 100000],  spd: 2.1,  r: 26, skin: "#7a4a3a", cloth: "#4a2a20", drop: "Equipamento premium" },
+  ceifador:   { name: "O Ceifador",   tiers: [7, 8],       healthByTier: [200000, 300000],  spd: 1.2,  r: 26, skin: "#3a3a3a", cloth: "#121214", drop: "Itens lendários" },
   santa_natal: { name: "Papai Noel Zumbi", tiers: [0,1,2,3,4,5,6,7,8], hp: 1.3, spd: 1.05, r: 37, skin: "#9b6c5c", cloth: "#a12226", drop: "Equipamento de Natal conforme a cor da área" }
 };
 const BOSS_SPEED = 1.2; // todos os chefes andam 20% mais rápido
 function bossesOfRegion(tier) { return Object.keys(BOSSES).filter((k) => k !== "santa_natal" && BOSSES[k].tiers.includes(tier)); }
-// Vida do Papai Noel: 30% acima do chefe mais resistente da MESMA cor.
-// Dano: 10% acima do golpe base dos chefes daquela área.
+function regionalBossHp(id, tier) {
+  const boss = BOSSES[id];
+  const index = boss.tiers.indexOf(tier);
+  if (index >= 0) return boss.healthByTier[index];
+  return boss.healthByTier[tier < boss.tiers[0] ? 0 : boss.healthByTier.length - 1];
+}
 function natalBossHp(zone) {
   const tier = regionOf(zone);
-  const maxBoss = Math.max(...bossesOfRegion(tier).map(id => BOSSES[id].hp));
-  return Math.round((1600 + (zone % REGION_ROWS) * 200) * REGIONS[tier].hp * maxBoss * 1.30);
+  return Math.round(1.25 * Math.max(...bossesOfRegion(tier).map(id => regionalBossHp(id, tier))));
 }
 // Compara o golpe efetivo mais forte de cada boss daquela cor, incluindo
 // habilidades de golpe único (Açougueiro 1,5x / Ceifador 1,6x / investidas 1,3x).

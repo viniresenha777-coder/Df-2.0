@@ -355,7 +355,7 @@ function spawnGroup(x, y, type, zone, list) {
 function spawnBoss(x, y, zone, forceId) {
   const R = REGIONS[regionOf(zone)], reg = diffOf(zone), cell = world.cell;
   const id = forceId || cell.boss || pick(bossesOfRegion(regionOf(zone))), B = BOSSES[id];
-  const maxHp = id === "santa_natal" ? natalBossHp(zone) : Math.round((1600 + (zone % REGION_ROWS) * 200) * R.hp * B.hp);
+  const maxHp = id === "santa_natal" ? natalBossHp(zone) : regionalBossHp(id, regionOf(zone));
   const z = makeZombie(x, y, "brute", zone);
   const saved = cell.boss === id && cell.bossHp != null ? Math.min(maxHp, cell.bossHp) : maxHp;
   Object.assign(z, { r: B.r, boss: true, bossId: id, bossName: B.name, hp: saved, maxHp,
