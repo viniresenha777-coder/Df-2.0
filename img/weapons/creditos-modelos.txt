@@ -122,3 +122,16 @@ Model License:
 If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
 This work is based on "DOOM eternal super shotgun" (https://sketchfab.com/3d-models/doom-eternal-super-shotgun-697778b664c1423692dfcde19a19b64e) by DJ_Nugget (https://sketchfab.com/DJ_Nugget) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
 Adaptação: renderização para inventário e personagem.
+
+Model Information:
+* title:	MKS .50 CAL Sniper Rifle (Jungle)
+* source:	https://sketchfab.com/3d-models/mks-50-cal-sniper-rifle-jungle-1b234e3a73df45b89156f9b8735a44b2
+* author:	SINNIK (https://sketchfab.com/sinnik)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "MKS .50 CAL Sniper Rifle (Jungle)" (https://sketchfab.com/3d-models/mks-50-cal-sniper-rifle-jungle-1b234e3a73df45b89156f9b8735a44b2) by SINNIK (https://sketchfab.com/sinnik) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+Adaptação: renderização para inventário e personagem.
