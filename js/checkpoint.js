@@ -38,6 +38,9 @@ function runSnapshot() {
     g: { money: game.money, clock: game.clock, kills: game.kills, best: game.best, time: game.time },
     map: typeof MAP !== "undefined" && MAP ? {
       bossT: MAP.bossT,
+      // A data do evento impede que checkpoints antigos ocultem os novos bosses
+      // e evita ressuscitar um chefe natalino derrotado no mesmo dia.
+      natalDay: MAP.natalDay,
       cells: allCells().map((cell) => ({
         cx: cell.cx, cy: cell.cy, boss: cell.boss, bossHp: cell.bossHp,
         cleared: !!cell.cleared, leftAt: cell.leftAt, visited: !!cell.visited,
@@ -146,6 +149,14 @@ function restoreRun() {
         cell.visited = !!previous.visited;
         cell._savedLoot = Array.isArray(previous.loot) ? previous.loot.slice() : null;
       }
+      // O checkpoint antigo sobrescrevia toda a grade após makeMap(),
+      // apagando os bosses natalinos antes de exibir o mapa.
+      // Migração: atualizar APENAS o evento quando o save é anterior à
+      // inclusão do Natal ou a data mudou. Preservar bosses mortos hoje.
+      const lastNatalDay = Number.isInteger(r.map.natalDay) ? r.map.natalDay : null;
+      if (EVENTO_NATAL.ativo && lastNatalDay !== christmasDay())
+        updateChristmasBosses(christmasDay(), true);
+      else MAP.natalDay = lastNatalDay;
     }
     const p = r.p;
     for (const k of ["hunger", "thirst", "stamina", "food", "water", "med", "anti", "infect", "cur"]) if (typeof p[k] === "number") player[k] = p[k];

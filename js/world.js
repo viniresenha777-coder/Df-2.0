@@ -35,25 +35,34 @@ function makeMap(seed) {
     for (let i = opts.length - 1; i > 0; i--) { const j = Math.floor(LR() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]]; }
     LANDMARKS[tier].forEach((t, i) => { if (opts[i]) opts[i].landmark = t; });
   }
-  MAP = { cells, bossT: 240000, bossRandom: mulberry(seed + 1234507) };
+  MAP = { cells, bossT: 240000, bossRandom: mulberry(seed + 1234507), natalDay: null };
   for (let i = 0; i < BOSS_MAX; i++) placeBoss();
-  // Um encontro natalino diferente em cada cor. As áreas mudam por dia UTC,
-  // mas são iguais para todos os jogadores (evita mapas discordantes online).
-  // Nunca ocupa uma base ou um setor de boss normal.
-  if (EVENTO_NATAL.ativo) {
-    const natalDay = Math.floor(Date.now() / 86400000);
-    const natalToday = mulberry(seed + 20261225 + natalDay * 4093);
-    const natalYesterday = mulberry(seed + 20261225 + (natalDay - 1) * 4093);
-    for (let tier = 0; tier < REGIONS.length; tier++) {
-      const opts = cells.flat().filter(c => c && c.tier === tier && c.op == null && !c.boss);
-      if (!opts.length) continue;
-      // Evita repetir a área sorteada no dia anterior, quando houver opção.
-      const previous = opts[Math.floor(natalYesterday() * opts.length)];
-      const choices = opts.length > 1 ? opts.filter(c => c !== previous) : opts;
-      const c = choices[Math.floor(natalToday() * choices.length)];
-      c.boss = "santa_natal"; c.bossHp = null; c.cleared = false;
-    }
+  updateChristmasBosses(christmasDay(), true);
+}
+// Datas e posições devem usar a mesma regra em todos os clientes.
+function christmasDay() { return Math.floor(Date.now() / 86400000); }
+// Só reposiciona encontros natalinos: chefes comuns, itens e progresso não mudam.
+// Chamado na criação do mapa, na migração de checkpoints antigos e na mudança do dia.
+function updateChristmasBosses(day, force) {
+  if (!MAP || !EVENTO_NATAL.ativo || (!force && MAP.natalDay === day)) return;
+  const cells = MAP.cells.flat().filter(Boolean);
+  for (const c of cells) if (c.boss === "santa_natal") {
+    c.boss = null; c.bossHp = null; c.cleared = false;
   }
+  const today = mulberry(20261113 + 20261225 + day * 4093);
+  const yesterday = mulberry(20261113 + 20261225 + (day - 1) * 4093);
+  for (let tier = 0; tier < REGIONS.length; tier++) {
+    const free = cells.filter(c => c.tier === tier && c.op == null && !c.boss);
+    if (!free.length) continue;
+    // Posições distintas, sem substituir boss normal, base ou setor já ocupado.
+    const previous = free[Math.floor(yesterday() * free.length)];
+    const choices = free.length > 1 ? free.filter(c => c !== previous) : free;
+    const chosen = choices[Math.floor(today() * choices.length)];
+    chosen.boss = "santa_natal";
+    chosen.bossHp = null;
+    chosen.cleared = false;
+  }
+  MAP.natalDay = day;
 }
 function cellAt(cx, cy) { return (MAP.cells[cy] && MAP.cells[cy][cx]) || null; }
 function allCells() { return MAP.cells.flat().filter(Boolean); }
@@ -524,6 +533,13 @@ function activateArea() {
 }
 // ao matar a primeira leva da área do chefe, o surgimento de zumbis cai 30%
 function mapTick(dt) {
+  // Gira as áreas natalinas à meia-noite UTC. Não interrompe um boss
+  // que esteja sendo enfrentado no momento: a rotação ocorre depois.
+  if (MAP && EVENTO_NATAL.ativo && MAP.natalDay !== christmasDay() &&
+      !(world && world.cell && world.cell.boss === "santa_natal" &&
+        zombies.some(z => z.bossId === "santa_natal" && z.hp > 0))) {
+    updateChristmasBosses(christmasDay(), true);
+  }
   // Chefes iniciais seguem uma semente comum. Não se criam novos chefes
   // aleatórios por navegador durante o multiplayer.
   if (typeof fmWorld === "undefined") MAP.bossT -= dt;
