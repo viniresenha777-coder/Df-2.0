@@ -64,10 +64,12 @@ jobs:
         run: |
           set -euo pipefail
           npm install --prefix "$RUNNER_TEMP/fm-compiler" --no-audit --no-fund javascript-obfuscator@4.1.1
-          FM_OBFUSCATOR="$RUNNER_TEMP/fm-compiler/node_modules/javascript-obfuscator" python3 tools/empacotar.py --game-only
-          git add index.html js/jogo.min.js
+          # O jogo, login e módulo de salvamento precisam sair na mesma versão.
+          # --game-only deixava js/conta.min.js antigo, ignorando correções do cloud.js.
+          FM_OBFUSCATOR="$RUNNER_TEMP/fm-compiler/node_modules/javascript-obfuscator" python3 tools/empacotar.py
+          git add index.html recuperar.html js/jogo.min.js js/conta.min.js js/recuperar.min.js
           if ! git diff --cached --quiet; then
-            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Atualiza bundle da Glock 18"
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Atualiza bundles do jogo, conta e salvamento"
             git push origin HEAD:main
           fi
 
