@@ -661,20 +661,23 @@ function buyVaultRow() {
 function stashClothingStored(id) { return save.vault.some(v => v && v.kind === "clothing" && v.id === id); }
 function stashInventoryCapacity() { return backpackBaseCapacity(player.level); }
 function stashEntries() {
+  const equippedBackpackId = save.clothing?.pack;
   const entries = invPackEntries().filter(z => z && z.item &&
-    !(z.type === "clothing" && stashClothingStored(z.item.id)));
+    !(z.type === "clothing" && (z.item.id === equippedBackpackId || stashClothingStored(z.item.id))));
   player.slots.forEach((item, i) => { if (item) entries.push({ area: "wslot", type: "weapon", i, item }); });
   player.bag.forEach((item, i) => entries.push({ area: "bag", type: "implant", i, item }));
   save.installed.forEach((item, i) => entries.push({ area: "installed", type: "implant", i, item }));
   if (save.vest >= 0 && save.vestsOwned[save.vest])
     entries.push({ area: "vest-equipped", type: "vest", item: { i: save.vest } });
-  for (const kind of Object.keys(save.clothing || {})) {
-    const item = CLOTHING_BY_ID[save.clothing[kind]];
+  for (const [kind, id] of Object.entries(save.clothing || {})) {
+    if (kind === "pack") continue;
+    const item = CLOTHING_BY_ID[id];
     if (item && !stashClothingStored(item.id))
       entries.push({ area: "clothes-equipped", type: "clothing", item });
   }
   BACKPACK_CATALOG.forEach(item => {
-    if (!stashClothingStored(item.id) && !entries.some(z => z.type === "clothing" && z.item?.id === item.id))
+    if (item.id !== equippedBackpackId && !stashClothingStored(item.id) &&
+        !entries.some(z => z.type === "clothing" && z.item?.id === item.id))
       entries.push({ area: "clothes-list", type: "clothing", item });
   });
   for (const id of ["fresca", "comum", "podre"]) {
@@ -730,11 +733,6 @@ function stashStore(at) {
     obj = { kind: "vest", id: z.item.i, dur: vestDur(z.item.i) };
   } else if (z.type === "clothing") {
     if (stashClothingStored(z.item.id)) { toast("Essa peça já está guardada."); return; }
-    if (z.item.kind === "pack" && save.clothing.pack === z.item.id &&
-        (packUsed() > backpackBaseCapacity(player.level) ||
-          invPackEntries().slice(30, 30 + backpackExtraSlots()).some(Boolean))) {
-      toast("Esvazie os slots extras da mochila antes de guardá-la."); return;
-    }
     obj = { kind: "clothing", id: z.item.id };
   } else if (z.type === "food") {
     const qty = Math.floor(player.foodQ?.[z.item.id] || 0);
