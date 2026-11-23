@@ -202,6 +202,7 @@ function vestUpgrade(i = save.vest) {
   return cleanVestUpgrade(i >= 0 && save.vestUpgrades ? save.vestUpgrades[i] : null);
 }
 function vestUpgradeCost(i) {
+  if (VESTS[i].upCost) return { money: VESTS[i].upCost, mats: { sucata: 2 } };
   return { money: Math.round(240 + VESTS[i].price * 0.24), mats: { sucata: 2 } };
 }
 function vestSpeedBonus() { return vestUpgrade().speed; }
@@ -668,8 +669,10 @@ function drawEntryIcon(e, cx, cy, s) {
       ctx.save();
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(NEW_IMPLANTS_TRANSPARENT.width ? NEW_IMPLANTS_TRANSPARENT : NEW_IMPLANTS_ATLAS, col * tile, row * tile, tile, tile, cx - size / 2, cy - size / 2, size, size);
+      const atlas = NEW_IMPLANTS_TRANSPARENT.width ? NEW_IMPLANTS_TRANSPARENT : NEW_IMPLANTS_ATLAS;
+      ctx.drawImage(atlas, col * tile, row * tile, tile, tile, cx - size / 2, cy - size / 2, size, size);
       ctx.restore();
+      if (typeof drawImplantFx === "function") drawImplantFx(atlas, col * tile, row * tile, tile, cx, cy, size, idx);   // brilho pulsando e faíscas
       return;
     }
   }

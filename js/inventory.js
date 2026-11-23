@@ -16,10 +16,7 @@ function handleClick(x, y) {
 }
 function btn(x, y, w, h, label, fn, primary, disabled) {
   const hov = mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h;
-  ctx.fillStyle = disabled ? "rgba(40,40,36,0.8)" : primary ? (hov ? "#5a4a2a" : "#463a20") : hov ? "#34322a" : "#24231d";
-  rr(x, y, w, h, 6); ctx.fill();
-  ctx.strokeStyle = disabled ? "#3d3b30" : primary ? "#d4af37" : "#6d6a58"; ctx.lineWidth = 1.5; ctx.stroke();
-  txt(label, x + w / 2, y + h / 2 + 5, 15, disabled ? "#6d6a58" : "#f2eedc", "center", true);
+  uiButton(x, y, w, h, label, hov, primary, disabled);
   if (!disabled) regClick(x, y, w, h, fn);
 }
 // linha de lista: 1º clique seleciona, 2º clique executa
@@ -456,7 +453,7 @@ function togglePause() {
 }
 function drawPause() {
   if (game.settingsOpen) { drawPauseSettings(); return; }
-  ctx.fillStyle = "rgba(6,7,5,0.82)"; ctx.fillRect(0, 0, W, H);
+  uiBackdrop(0.82);
   txt("PAUSADO", W / 2, 100, 46, "#f2eedc", "center", true);
   txt(`${playerName()}${prof() ? ` · ${prof().name}` : ""}`, W / 2, 124, 14, "#ffd96a", "center", true);
   txt("Boneco: novo", W / 2 - 200, 113, 16, "#e5e0c8", "center", true);
@@ -567,8 +564,7 @@ function packKey(k) {
   else if (k === "1" || k === "2" || k === "3") equipTo(parseInt(k, 10) - 1);
 }
 function drawItemCell(it, x, y, w, h, sel, label) {
-  ctx.fillStyle = sel ? "#2f2d24" : "rgba(26,26,21,0.95)"; rr(x, y, w, h, 6); ctx.fill();
-  ctx.strokeStyle = sel ? "#ffd96a" : "#3d3b30"; ctx.lineWidth = sel ? 2 : 1; ctx.stroke();
+  uiCell(x, y, w, h, sel, false, false);
   if (label) txt(label, x + 6, y + 13, 10, "#a9a58f", "left", true);
   if (!it) return;
   if (it.kind === "weapon") {
@@ -959,15 +955,16 @@ function shopBuy() {
 }
 function vestText(v) {
   const up = vestUpgrade(VESTS.indexOf(v));
-  return `-${v.armor + up.armor}% dano${up.speed ? ` · +${up.speed}% velocidade` : ""}${v.slow ? ` · -${v.slow}% velocidade` : ""}${v.hp ? ` · +${v.hp} vida` : ""}${v.acid ? ` · -${v.acid}% ácido` : ""}${v.stealth ? ` · +${v.stealth}% furtividade` : ""}`;
+  return `-${Math.min(95, v.armor + up.armor)}% dano${up.speed ? ` · +${up.speed}% velocidade` : ""}${v.slow ? ` · -${v.slow}% velocidade` : ""}${v.hp ? ` · +${v.hp} vida` : ""}${v.acid ? ` · -${v.acid}% ácido` : ""}${v.stealth ? ` · +${v.stealth}% furtividade` : ""}${v.dur ? ` · ${v.dur} de durabilidade` : ""}${v.repairLevel ? ` · conserto: nível ${v.repairLevel}+` : ""}`;
 }
 function buyVest(i) {
   const v = VESTS[i];
   if (save.vestsOwned[i]) { save.vest = i; recalcImplants(); persist(); toast(`${v.name} equipado`); return; }
   if (v.craft) { toast("Esse colete só pode ser criado na oficina"); return; }
   if (v.credits) {
-    if (save.credits < v.credits) { toast(`Precisa de ${v.credits} créditos (compre no banco)`); return; }
-    save.credits -= v.credits;
+    const cr = vestCredits(v);
+    if (save.credits < cr) { toast(`Precisa de ${cr} créditos (compre no banco)`); return; }
+    save.credits -= cr;
   } else {
     if (game.money < v.price) { toast("Dinheiro insuficiente"); return; }
     game.money -= v.price;

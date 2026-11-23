@@ -43,7 +43,13 @@ function junkItems() {
     if (im.tokenBound) return; // itens do Token Mestre não são revendáveis
     L.push({ kind: "implant", im, name: implantName(im), unit: implantSellPrice(im), qty: 1, rare: true, sub: "implante (não instalado)" });
   });
-  VESTS.forEach((v, i) => { if (save.vestsOwned[i] && i !== save.vest) L.push({ kind: "vest", idx: i, name: v.name, unit: Math.round(v.price * 0.3 * (vestDur(i) / 100)) || 20, qty: 1, rare: v.rar >= 2, sub: `colete guardado · ${Math.round(vestDur(i))}%` }); });
+  // coletes com valor de sucata fixo (ex.: Natalino) pagam o valor cheio; MC = melhorias de Armadura e Velocidade no máximo
+  const vestScrap = (i) => {
+    const v = VESTS[i];
+    if (v.scrap) { const u = vestUpgrade(i); return u.armor >= VEST_UP_MAX && u.speed >= VEST_UP_MAX ? v.scrapMC || v.scrap : v.scrap; }
+    return Math.round(v.price * 0.3 * (vestDur(i) / 100)) || 20;
+  };
+  VESTS.forEach((v, i) => { if (save.vestsOwned[i] && i !== save.vest) L.push({ kind: "vest", idx: i, name: v.name, unit: vestScrap(i), qty: 1, rare: v.rar >= 2, sub: `colete guardado · ${Math.round(vestDur(i))}%` }); });
   return L;
 }
 function sellableAmmo(t) { return Math.max(0, player.reserve[t] - (player.tokenAmmo[t] || 0)); }

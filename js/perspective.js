@@ -334,7 +334,9 @@ function playerGear() {
     // máscara + capa com capuz: camada da máscara já recortada pelo capuz (gear/<máscara>_capuz_<pose>.png)
     const cape = wear("cape"), mask = wear("mask");
     // moletom (jaqueta 3D) por baixo da capa e da máscara
-    return [wear("boots"), wear("pants"), wear("jacket"), cape, mask && cape === "cape_hood" ? mask + "_capuz" : mask].filter(Boolean);
+    // colete vestido (Natalino): sem calça equipada, a calça cargo vai por baixo e cobre o quadril
+    const suit = vestWearLayer(), pants = wear("pants") || (suit ? "cl_pants_cargo" : null);
+    return [wear("boots"), pants, wear("jacket"), suit, cape, mask && cape === "cape_hood" ? mask + "_capuz" : mask].filter(Boolean);
   }
   const list = [];
   const hat = wear("hat"), mask = wear("mask");
@@ -353,7 +355,7 @@ function playerGear() {
 // ordem das camadas: calça e botas embaixo de tudo; de frente a capa vai primeiro (fica atrás); de
 // lado/costas o colete vai antes, depois a capa por cima dele e a mochila por cima da capa. Cabeça por último.
 function gearOrder(list, back) {
-  const rank = (id) => id.startsWith("cl_boots") ? -2 : id.startsWith("cl_pants") ? -1 : id.startsWith("cl_jacket") || id.startsWith("cl_moletom") ? -0.5 : id.startsWith("cape") ? (back ? 1 : 0) :
+  const rank = (id) => id.startsWith("cl_boots") ? -2 : id.startsWith("cl_pants") ? -1 : id.startsWith("cl_jacket") || id.startsWith("cl_moletom") ? -0.5 : id.startsWith("cl_colete") ? -0.25 : id.startsWith("cape") ? (back ? 1 : 0) :
     id.startsWith("vest") ? (back ? 0 : 1) : id === "pack" || id.startsWith("cl_pack") ? 2 : 3;
   return list.slice().sort((a, b) => rank(a) - rank(b));
 }

@@ -414,9 +414,7 @@ function invDrop(src, dst) {
 function invCell(x, y, w, h, opt) {
   const hov = mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h;
   const drop = INV.drag && INV.drag.moved && hov;
-  ctx.fillStyle = opt.sel ? "#2f2d24" : "rgba(22,22,18,0.95)"; rr(x, y, w, h, 5); ctx.fill();
-  ctx.strokeStyle = drop ? "#6fd06a" : opt.sel ? "#ffd96a" : hov ? "#8a7a4a" : "#3d3b30";
-  ctx.lineWidth = drop || opt.sel ? 2 : 1; ctx.stroke();
+  uiCell(x, y, w, h, opt.sel, hov, drop);
   if (opt.label) txt(opt.label, x + w / 2, y + h + 13, 11, "#c9c4ad", "center", true);
   return hov;
 }
@@ -527,6 +525,12 @@ function drawInventory() {
   equippedClothingSlot(296, 268, "pants");
   if (clothingGet("mask")) equippedClothingSlot(606, 104, "mask"); else outfitSlot(606, 104, 58, 58, hp.mask ? hp.mask.name : "Máscara", hp.mask);
   slotBox(606, 186, 58, 58, "Colete", { area: "vestslot", type: "vest", item: save.vest >= 0 ? { i: save.vest } : null });
+  // só coletes com modelo vestido (Natalino): escolher se aparece no personagem
+  if (save.vest >= 0 && VESTS[save.vest].wear) {
+    const on = save.vestShow !== false;
+    txt(on ? "◉ Vestido" : "○ Oculto", 635, 258, 10, on ? "#ffd96a" : "#8f8a72", "center", true);
+    regClick(606, 246, 58, 18, () => { save.vestShow = !on; persist(); toast(on ? "Colete escondido no personagem" : "Colete aparecendo no personagem"); });
+  }
   equippedClothingSlot(606, 268, "boots");
   equippedClothingSlot(674, 104, "pack");
   regClick(674, 104, 58, 58, () => { INV.backpackPicker = true; });
