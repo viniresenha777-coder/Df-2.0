@@ -10,7 +10,7 @@
 const CHRISTMAS_BOSS_SPRITES = {};
 for (const kind of ["santa", "alce"]) {
   const image = new Image();
-  image.src = "img/boss_natal_" + kind + "_atlas.png?v=20261123-eventboss01";
+  image.src = "img/boss_natal_" + kind + "_atlas." + (kind === "alce" ? "webp" : "png") + "?v=20261123-eventboss02";
   CHRISTMAS_BOSS_SPRITES[kind] = image;
 }
 function drawChristmasBoss(z, kind) {
