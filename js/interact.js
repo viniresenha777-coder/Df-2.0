@@ -110,37 +110,14 @@ function rollLoot(table, zone) {
 // O Papai Noel mantém seu próprio drop separado, mais valioso.
 function natalAlceLoot(zone) {
   const tier = regionOf(zone);
-  const t = TABLES.boss, r = Math.random();
-  // Nas primeiras cores predominam munição e dinheiro. Nas mais difíceis,
-  // armas, coletes e a rara chance de implante ficam mais frequentes.
-  if (tier < 3) {
-    if (r < 0.27) return [lootEntry("weapon", t, "boss", zone)];
-    if (r < 0.39) return [lootVest(zone)];
-    if (r < 0.72) return [lootEntry("ammo", t, "boss", zone)];
-    return [lootEntry("cash", t, "boss", zone)];
-  }
-  if (tier < 6) {
-    if (r < 0.38) return [lootEntry("weapon", t, "boss", zone)];
-    if (r < 0.58) return [lootVest(zone)];
-    if (r < 0.80) return [lootEntry("ammo", t, "boss", zone)];
-    return [lootEntry("cash", t, "boss", zone)];
-  }
-  if (r < 0.43) return [lootEntry("weapon", t, "boss", zone)];
-  if (r < 0.68) return [lootVest(zone)];
-  if (r < 0.75) return [{ type: "implant", im: randomImplant() }];
-  if (r < 0.90) return [lootEntry("ammo", t, "boss", zone)];
-  return [lootEntry("cash", t, "boss", zone)];
+  const weaponChance = tier < 3 ? 27 / 39 : tier < 6 ? 38 / 58 : 43 / 68;
+  return [Math.random() < weaponChance ? lootEntry("weapon", TABLES.boss, "boss", zone) : lootVest(zone)];
 }
 
-// ---------- Saque dos chefes: só arma, colete e implante (+ componentes de craft) ----------
+// ---------- Saque dos chefes ----------
 function weaponBetween(minR, maxR) {
   const list = WLIST.filter((d) => d.rar >= minR && d.rar <= maxR && !d.craftOnly && !d.fists && d.id !== "pistola");
   return pick(list).id;
-}
-// chefes: o implante agora é raro; quando não vem, cai uma arma boa no lugar
-function bossImplant() {
-  if (Math.random() < BOSS_IMPLANT * (1 + player.fx.implantLoot / 100)) return { type: "implant", im: randomImplant() };
-  return { type: "weapon", inst: newInst(weaponBetween(2, 4), upgrades(1 + upBonus())) };
 }
 function bossVest(a, b) { return { type: "vest", idx: a + Math.floor(Math.random() * (b - a + 1)), mcArmor: player.flags.mc ? 6 : 0 }; }
 function upgrades(n) { const up = {}; for (let i = 0; i < n; i++) { const s = pick(UP_STATS).id; up[s] = Math.min(UP_MAX, (up[s] || 0) + 1); } return up; }
@@ -151,29 +128,27 @@ function bossLoot(id, zone) {
   let out;
   switch (id) {
     case "acougueiro": out = [Wp(2, 2), bossVest(1, 3)]; break;
-    case "matriarca":  out = [bossImplant(), bossVest(2, 4)]; break;
+    case "matriarca":  out = [Wp(2, 4, upgrades(1 + upBonus())), bossVest(2, 4)]; break;
     case "capataz":    out = [Wp(2, 3), bossVest(4, 6)]; break;
-    case "pestilento": out = [special(), bossImplant()]; break;
+    case "pestilento": out = [special(), Wp(2, 4, upgrades(1 + upBonus()))]; break;
     case "carrasco":   out = [Wp(3, 3, upgrades(3 + Math.floor(Math.random() * 4) + upBonus())), Wp(2, 3)]; break;
-    case "necromante": out = [bossImplant(), bossImplant()]; break;
+    case "necromante": out = [Wp(2, 4, upgrades(1 + upBonus())), Wp(2, 4, upgrades(1 + upBonus()))]; break;
     case "alfa":       out = [Wp(3, 4), bossVest(5, 6)]; break;
-    case "ceifador":   out = [Wp(4, 4), bossImplant()]; break;
+    case "ceifador":   out = [Wp(4, 4), Wp(2, 4, upgrades(1 + upBonus()))]; break;
     case "santa_natal": {
       // Usar a mesma tabela de raridade da cor (REGIONS[tier].loot), sem
       // entregar lendárias nas regiões iniciais ou itens épicos garantidos.
       const tier = regionOf(zone);
       const natalWeapon = () => ({ type: "weapon", inst: newInst(randomWeaponDrop(zone, tier >= 6 ? 1 : 0)) });
       out = [natalWeapon()];
-      if (tier >= 2) out.push(tier >= 5 && Math.random() < .30 ? bossImplant() : lootVest(zone));
+      if (tier >= 2) out.push(tier >= 5 && Math.random() < .30 ? Wp(2, 4, upgrades(1 + upBonus())) : lootVest(zone));
       if (tier >= 4) out.push(natalWeapon());
-      if (tier >= 7 && Math.random() < .45) out.push(bossImplant());
+      if (tier >= 7 && Math.random() < .45) out.push(Wp(2, 4, upgrades(1 + upBonus())));
       // Boss dá itens úteis em todas as cores; qualidade escala pelo loot do mapa.
       break;
     }
     default:           out = [Wp(2, 3), bossVest(1, 4)];
   }
-  out.push({ type: "mat", id: "nucleo", amt: 1 });
-  if (regionOf(zone) >= 6 && Math.random() < 0.25) out.push({ type: "mat", id: "placa", amt: 1 });
   return out;
 }
 
@@ -252,16 +227,20 @@ function spotLootPrepared(spot) {
       SAFE_KINDS.includes(spot.kind) ||
       spot.kind === "door" || spot.kind === "decor" || spot.kind === "exit") return [];
   const now = game.time || 0;
-  if (!spot.preparedLoot || (spot.table !== "alce_natal" && spot.preparedAt != null && now - spot.preparedAt >= 300000)) {
+  const bossDrop = spot.table === "boss" || spot.table === "alce_natal";
+  const obsoleteDrop = bossDrop && spot.preparedLoot?.some(item => item.type !== "weapon" && item.type !== "vest");
+  if (obsoleteDrop || !spot.preparedLoot || (spot.table !== "alce_natal" && spot.preparedAt != null && now - spot.preparedAt >= 300000)) {
     // Bosses e alces usam a região exata do encontro, não a rua em que o
     // corpo caiu. Isso mantém as raridades proporcionais à cor do mapa.
     const zone = Number.isFinite(spot.zone) ? spot.zone :
       game.inside ? game.inside.row : rowAt(spot.y + (spot.h || 0) / 2);
     const found = spot.table === "alce_natal" ? natalAlceLoot(zone) :
       spot.table === "boss" ? bossLoot(spot.bossId, zone) : rollLoot(spot.table, zone);
-    const dz = deadZoneDrop(zone);
-    if (dz) found.push(dz);
-    if (Math.random() < TOKEN_LOJA_CHANCE) found.push({ type: "mat", id: "token_loja", amt: 1 });   // chance fixa, sem bônus
+    if (!bossDrop) {
+      const dz = deadZoneDrop(zone);
+      if (dz) found.push(dz);
+      if (Math.random() < TOKEN_LOJA_CHANCE) found.push({ type: "mat", id: "token_loja", amt: 1 });   // chance fixa, sem bônus
+    }
     spot.preparedLoot = found;
     spot.preparedAt = now;
   }
