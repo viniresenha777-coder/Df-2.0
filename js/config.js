@@ -274,7 +274,7 @@ const IMPLANT_CHANCE = { airdrop: 0.25, corpse: 0.02, boss: 1, chest: 0.06, tras
   "Cela": 0.02, "Armário de evidências": 0.04, "Caixa militar": 0.05, "Beliche": 0.03, "Estoque de suprimentos": 0.01 };
 
 // ---------- Implantes ----------
-// Novo catálogo: 29 implantes; o sistema antigo de slots, saque e clínica é preservado.
+// Catálogo de implantes, incluindo ofertas exclusivas da Loja de Créditos.
 // fx = efeitos fixos (%). alloc = pontos que o jogador distribui (arrastando o implante para o boneco).
 // flag = efeito único (não é copiado pelo Mímico). mimic = copia o implante do slot à esquerda.
 // Os seis últimos números ficam visíveis, porém bloqueados: nível máximo 200.
@@ -336,7 +336,9 @@ const IMP = {
   "implante_27": {"name":"Ovo Radioativo","price":2000,"scrap":29000,"kind":1,"fx":{"exp":30,"thick":-25},"event":true},
   "implante_28": {"name":"Coelho Mutante","price":1000,"scrap":29000,"kind":0,"fx":{"ammoLoot":27,"greed":33,"armorFind":27,"hunter":33},"event":true},
   "implante_29": {"name":"Trindade Suprema","price":1000,"scrap":29000,"kind":0,"fx":{"exp":4,"firepower":6,"agility":5},"event":true},
+  "implante_mimic": {"name":"Mimic","price":4000,"vipPrice":3000,"scrap":0,"kind":2,"mimic":true,"kitOnly":true,"text":"Copia os atributos do implante à esquerda. Penalidades copiadas valem em dobro. Equipamento único e intransferível."},
 };
+const FM_MIMIC_ID = "implante_mimic", FM_ADVANCED_CASE_ID = "caixa_implante_avancada";
 const IMP_IDS = Object.keys(IMP);
 const IMP_COLOR = ["#d4af37", "#e07b5a", "#c58bff"];     // comum · com penalidade · especial
 

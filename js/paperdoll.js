@@ -350,6 +350,9 @@ function invDrop(src, dst) {
     if (src.sel == null) { toast("Isso não dá para descartar aqui"); return; }
     inv.sel = src.sel; INV.confirm = { name: invItemName(src) }; return;
   }
+  if (src.type === "mat" && src.item.id === FM_ADVANCED_CASE_ID && dst.area === "doll") {
+    openAdvancedImplantCase(src.item); return;
+  }
   if (src.type === "mat" && src.item.id === "trindade_eterna" && dst.area === "doll") { INV.confirm = { trindade: true, name: "Trindade · 100 anos" }; return; }
   if (src.type === "mat" && src.item.id === "token_loja" && dst.area === "doll") { INV.confirm = { token: true, name: "Token da Loja" }; return; }
   if (src.type === "mat" && src.item.id === "reset_stats" && dst.area === "doll") {

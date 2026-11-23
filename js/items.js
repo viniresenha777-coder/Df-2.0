@@ -140,6 +140,7 @@ const MATS = {
   reset_stats: { name: "Cartão Reset de Stats", price: 5000 },
   trindade_eterna: { name: "Trindade · 100 anos", price: 20000000 },
   token_loja: { name: "Token da Loja", price: 0 },
+  "caixa_implante_avancada": { name: "Caixa Avançada de Implante", price: 0 },
   sucata:      { name: "Sucata de metal",          price: 40 },
   pecas:       { name: "Peças de arma",            price: 90 },
   eletronicos: { name: "Componentes eletrônicos",  price: 140 },
@@ -549,14 +550,21 @@ NEW_IMPLANTS_ATLAS.addEventListener("load", () => {
 });
 NEW_IMPLANTS_ATLAS.src = "img/implantes_29_atlas.webp?v=20261116-atlas6x5";
 // ícone de qualquer coisa encontrada ou guardada
+const FM_MIMIC_ART = new Image();
+FM_MIMIC_ART.src = "img/implante_mimic.webp";
 function drawEntryIcon(e, cx, cy, s) {
   const t = e.type || e.kind;
+  if (t === "implant" && e.im?.id === FM_MIMIC_ID && FM_MIMIC_ART.complete && FM_MIMIC_ART.naturalWidth) {
+    const size = 76 * s;
+    ctx.drawImage(FM_MIMIC_ART, cx - size / 2, cy - size / 2, size, size);
+    return;
+  }
   if (t === "ammo" && e.ammo === "virote" && FLECHAS_ZHNETS_ART.complete && FLECHAS_ZHNETS_ART.naturalWidth) {
     ctx.drawImage(FLECHAS_ZHNETS_ART, cx - 32 * s, cy - 28 * s, 64 * s, 56 * s);
     txt("Flechas", cx, cy + 26 * s, Math.max(10, 11 * s), "#e0d8a0", "center", true);
     return;
   }
-  if (t === "implant" && e.im && IMP[e.im.id] && NEW_IMPLANTS_ATLAS.complete && NEW_IMPLANTS_ATLAS.naturalWidth) {
+  if (t === "implant" && e.im && e.im.id !== FM_MIMIC_ID && IMP[e.im.id] && NEW_IMPLANTS_ATLAS.complete && NEW_IMPLANTS_ATLAS.naturalWidth) {
     const idx = IMP_IDS.indexOf(e.im.id);
     if (idx >= 0) {
       const tile = 160, col = idx % 6, row = Math.floor(idx / 6), size = 64 * s;

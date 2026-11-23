@@ -4,8 +4,12 @@
 // =====================================================================
 
 // ---------- Implantes ----------
-function newImplant(id) { return { id, alloc: {} }; }
-function randomImplant() { return newImplant(pick(IMP_IDS)); }
+function newImplant(id) {
+  const im = { id, alloc: {} };
+  if (id === FM_MIMIC_ID) im.tokenBound = true;
+  return im;
+}
+function randomImplant() { return newImplant(pick(IMP_IDS.filter(id => !IMP[id].kitOnly))); }
 function impColor(im) { return IMP_COLOR[IMP[im.id].kind || 0]; }
 function implantName(im) { return IMP[im.id].name; }
 function allocUsed(im) { let n = 0; for (const k in im.alloc || {}) n += im.alloc[k]; return n; }
@@ -25,7 +29,7 @@ function implantFx(im, i, list) {
   const d = IMP[im.id], fx = {};
   if (d.mimic) {
     const left = list && i > 0 ? list[i - 1] : null;
-    if (!left || IMP[left.id].mimic) return fx;
+    if (!left || !IMP[left.id] || IMP[left.id].mimic) return fx;
     const src = implantFx(left, i - 1, list);
     for (const k in src) fx[k] = src[k] < 0 ? src[k] * 2 : src[k];
     return fx;
@@ -52,8 +56,12 @@ function implantDesc(im) {
   return parts.join(" · ");
 }
 // por que este implante não pode ser instalado agora (ou null se pode)
+function implantInstallConflict(first, second) {
+  return first === second || !!(IMP[first]?.mimic && IMP[second]?.mimic);
+}
 function installBlock(im) {
-  if (save.installed.some((x) => x.id === im.id)) return `Você já tem ${implantName(im)} instalado (só um de cada)`;
+  if (save.installed.some(x => implantInstallConflict(x.id, im.id)))
+    return "Já existe um implante igual ou com o mesmo efeito de cópia instalado.";
   if (save.installed.length >= implantUnlockedSlots(player.level))
     return "Slots ocupados. Próximo desbloqueio no nível " +
       (IMPLANT_SLOT_LEVELS[save.installed.length] || 200);
@@ -95,7 +103,7 @@ function lastStandTick() {
   if (!player.fxAll) return;
   player.fx = player.flags.lastStand && player.hp / player.maxHp < 0.25 ? player.fxSafe : player.fxAll;
 }
-function makeStock() { return IMP_IDS.map((id) => ({ id, price: IMP[id].price })); }
+function makeStock() { return IMP_IDS.filter(id => !IMP[id].kitOnly).map(id => ({ id, price: IMP[id].price })); }
 
 
 // ---------- Esquemas de implantes (presets) ----------
@@ -134,7 +142,7 @@ function implantPresetApply(name) {
   const available = [...save.installed, ...player.bag];
   const remaining = available.slice(), chosen = [];
   for (const template of slots) {
-    if (!template || !IMP[template.id] || chosen.some(im => im.id === template.id)) {
+    if (!template || !IMP[template.id] || chosen.some(({ actual }) => implantInstallConflict(actual.id, template.id))) {
       toast("Esquema inválido: implante repetido ou desconhecido.");
       return false;
     }

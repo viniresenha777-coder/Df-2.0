@@ -266,7 +266,7 @@ function confirmClinicImplant(action) {
     return;
   }
   if (selected.im.tokenBound) {
-    toast("Implantes comprados com o Token Mestre não podem ser vendidos nem descartados.");
+    toast("Este implante é intransferível e não pode ser vendido nem descartado.");
     return;
   }
   game.implantConfirm = { action, im: selected.im };
@@ -319,16 +319,41 @@ function buyTrindade() {
   sfx.buy(); checkpoint("compra de Trindade");
   toast("Trindade adquirida! Arraste-a sobre o personagem para consumir.");
 }
+function ownsCreditImplant(id) {
+  return player.bag.some(im => im.id === id) || save.installed.some(im => im.id === id) ||
+    save.vault.some(item => item?.kind === "implant" && item.id === id);
+}
+function creditImplantPrice(id) {
+  const def = IMP[id];
+  return vipActive() && def.vipPrice ? def.vipPrice : def.price;
+}
+function openAdvancedImplantCase(item) {
+  const index = player.pack.indexOf(item);
+  if (index < 0 || item.kind !== "mat" || item.id !== FM_ADVANCED_CASE_ID || item.qty < 1) return;
+  if (player.bag.length >= BAG_MAX) { toast("Libere espaço para receber o implante."); return; }
+  const pool = IMP_IDS.filter(id => IMP[id].kind === 2 && !IMP[id].mimic && !IMP[id].event);
+  const im = newImplant(pick(pool));
+  if (--item.qty === 0) player.pack.splice(index, 1);
+  player.bag.push(im);
+  checkpoint("abriu uma Caixa Avançada de Implante");
+  toast("Implante obtido: " + implantName(im));
+}
 function buyCreditImplant(id) {
-  const d = IMP[id];
-  if (!d || !inSafe()) { toast("Implante indisponível."); return; }
-  if (player.bag.length >= BAG_MAX) { toast("Mochila de implantes cheia."); return; }
-  if (player.bag.some(im => im.id === id) || save.installed.some(im => im.id === id)) { toast("Você já possui este implante."); return; }
-  if (save.credits < d.price) { toast("Créditos insuficientes. Necessário: " + d.price); return; }
-  save.credits -= d.price;
+  const def = IMP[id];
+  if (!def || !inSafe()) { toast("Implante indisponível."); return; }
+  if (player.bag.length >= BAG_MAX) { toast("Libere espaço para receber o implante."); return; }
+  if (ownsCreditImplant(id)) { toast("Você já possui este implante."); return; }
+  const price = creditImplantPrice(id);
+  if (save.credits < price) { toast("Créditos insuficientes. Necessário: " + price); return; }
+  if (id === FM_MIMIC_ID && !addMat(FM_ADVANCED_CASE_ID, 2)) {
+    toast("Libere um espaço de carga para as caixas do Kit Mimic."); return;
+  }
+  save.credits -= price;
   player.bag.push(newImplant(id));
-  sfx.buy(); checkpoint("compra de implante");
-  toast("Comprou " + d.name + " por " + d.price + " créditos.");
+  sfx.buy();
+  checkpoint("compra de implante");
+  toast(id === FM_MIMIC_ID ? "Kit Mimic adquirido. Você recebeu o implante e 2 caixas." :
+    "Comprou " + def.name + " por " + price + " créditos.");
 }
 function creditShopBuy(id) {
   if (id === "trindade_eterna") buyTrindade();
@@ -350,17 +375,17 @@ function creditShopKey(k) {
 }
 function drawCreditShop() {
   game.creditCur = Math.max(0, Math.min(IMP_IDS.length, game.creditCur | 0));
-  menuFrame("Loja de Créditos", "Créditos: " + save.credits.toLocaleString("pt-BR") + " · Dinheiro: $" + game.money.toLocaleString("pt-BR") + " · 29 implantes disponíveis");
+  menuFrame("Loja de Créditos", "Créditos: " + save.credits.toLocaleString("pt-BR") + " · Dinheiro: $" + game.money.toLocaleString("pt-BR") + " · " + IMP_IDS.length + " implantes disponíveis");
   const visible = 11, top = Math.max(0, Math.min(IMP_IDS.length + 1 - visible, game.creditCur - 5));
   for (let j = 0; j < visible && j + top <= IMP_IDS.length; j++) {
     const i = top + j, special = i === 0, id = special ? "trindade_eterna" : IMP_IDS[i - 1], y = 96 + j * 37;
     const d = special ? null : IMP[id];
-    const owned = !special && (player.bag.some(im => im.id === id) || save.installed.some(im => im.id === id));
+    const owned = !special && ownsCreditImplant(id);
     rowBox(36, y, 514, 34, game.creditCur === i, special ? "#aa8933" : d.event ? "#8c476d" : owned ? "#47774d" : "#454338");
     if (special) drawMatIcon("trindade_eterna", 58, y + 17, 0.42);
     else drawEntryIcon({ type:"implant", im:{id, alloc:{}} }, 58, y + 17, 0.40);
-    txt(special ? "★ Trindade · 100 anos (item)" : d.name, 82, y + 22, 13, game.creditCur === i ? "#ffd96a" : "#e5e0c8", "left", true, 306);
-    txt(special ? "$20.000.000" : owned ? "POSSUI" : d.price.toLocaleString("pt-BR") + " cr", 532, y + 22, 12, special ? "#ffcb72" : owned ? "#7ed39d" : "#d4af37", "right", true);
+    txt(special ? "★ Trindade · 100 anos (item)" : id === FM_MIMIC_ID ? "Kit Mimic" : d.name, 82, y + 22, 13, game.creditCur === i ? "#ffd96a" : "#e5e0c8", "left", true, 306);
+    txt(special ? "$20.000.000" : owned ? "POSSUI" : creditImplantPrice(id).toLocaleString("pt-BR") + " cr", 532, y + 22, 12, special ? "#ffcb72" : owned ? "#7ed39d" : "#d4af37", "right", true);
     regClick(36, y, 514, 34, () => { if (game.creditCur === i) game.creditConfirm = id; else game.creditCur = i; });
   }
   const id = creditShopItem(), special = id === "trindade_eterna";
@@ -374,9 +399,10 @@ function drawCreditShop() {
     txt(d.name, 574, 114, 20, "#ffd96a", "left", true, 348);
     drawEntryIcon({ type: "implant", im }, 754, 201, 1.8);
     txtWrap(implantDesc(im), 574, 290, 13, "#c9c4ad", 344, 18, 9);
-    if (d.event) txt("★ Edição de evento", 574, 425, 12, "#e7a2d2");
+    if (id === FM_MIMIC_ID) txt("Inclui 2 Caixas Avançadas de Implante", 574, 420, 12, "#e7a2d2");
+    else if (d.event) txt("★ Edição de evento", 574, 425, 12, "#e7a2d2");
   }
-  const price = special ? "$20.000.000" : IMP[id].price.toLocaleString("pt-BR") + " créditos";
+  const price = special ? "$20.000.000" : creditImplantPrice(id).toLocaleString("pt-BR") + " créditos";
   btn(608, 457, 270, 38, "Comprar · " + price, () => { game.creditConfirm = id; }, true);
   hint("W/S seleciona · Enter confirma · Esc fecha");
   if (game.creditConfirm) {
@@ -386,7 +412,7 @@ function drawCreditShop() {
     ctx.fillStyle = "#27231b"; rr(226, 188, 508, 195, 9); ctx.fill();
     ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 2; ctx.stroke();
     txt("CONFIRMAR COMPRA", W / 2, 228, 20, "#f2eedc", "center", true);
-    txt(sp ? "Trindade · $20.000.000" : cd.name + " · " + cd.price + " créditos", W / 2, 272, 15, "#e3c46a", "center", true, 480);
+    txt(sp ? "Trindade · $20.000.000" : (cid === FM_MIMIC_ID ? "Kit Mimic" : cd.name) + " · " + creditImplantPrice(cid) + " créditos", W / 2, 272, 15, "#e3c46a", "center", true, 480);
     btn(276, 315, 184, 40, "Confirmar", () => { game.creditConfirm = null; creditShopBuy(cid); }, true);
     btn(506, 315, 184, 40, "Cancelar", () => { game.creditConfirm = null; });
   }
