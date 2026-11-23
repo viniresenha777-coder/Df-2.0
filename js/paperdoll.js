@@ -457,10 +457,8 @@ function drawInventory() {
   }
   txt(canSwapImplants() ? "Arraste para instalar, remover ou mudar a ordem" : "Instalar/remover: só na base", 40, 382, 10, canSwapImplants() ? "#6fae4f" : "#a9a58f");
   txt("Solte no boneco para distribuir os pontos", 40, 393, 10, "#a9a58f");
-  Object.keys(SUPPLY).forEach((id, i) => {
-    const n = SUPPLY[id].n();
-    slotBox(40 + i * 49, 400, 45, 38, null, { area: "supply", i, type: "supply", item: n > 0 ? { id, n } : null });
-  });
+  // A barra de suprimentos foi removida do inventário.
+  // Comida, água e medicamentos permanecem nos dados salvos e podem ser usados pelo sistema existente.
 
   // ---- boneco e slots (meio)
   ctx.fillStyle = "rgba(0,0,0,0.3)"; rr(262, 88, 436, 342, 8); ctx.fill();
