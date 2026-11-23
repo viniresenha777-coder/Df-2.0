@@ -126,9 +126,9 @@ body:has(#login:not([hidden]))::after {
 }
 #login:not([hidden]) .fm-token-hero > .fm-natal-hat {
   display: block; position: absolute;
-  width: 101px; height: 78px;
-  top: -16px; left: -11px;
-  margin: 0; transform: rotate(-18deg);
+  width: 118px; height: 118px;
+  top: -46px; left: -17px;
+  margin: 0; transform: rotate(-13deg);
   animation: none; filter: drop-shadow(2px 4px 4px rgba(0,0,0,.75));
   pointer-events: none;
 }
