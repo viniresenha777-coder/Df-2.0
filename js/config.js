@@ -90,8 +90,17 @@ const VESTS = [
   { name: "Armadura de Combate Urbano",     armor: 22, price: 12000, color: "#3a3a3e", rar: 2, stealth: 20 },
   { name: "Armadura de Segurança de Elite", armor: 30, credits: 500, color: "#2a2a2c", rar: 3, hp: 15 },
   { name: "Armadura Tática Avançada",       armor: 34, credits: 500, color: "#7a6a4a", rar: 3 },
-  { name: "Armadura de Assalto Pesada",     armor: 45, craft: true,  color: "#3a4a32", rar: 4, slow: 6, hp: 25, acid: 25 }
+  { name: "Armadura de Assalto Pesada",     armor: 45, craft: true,  color: "#3a4a32", rar: 4, slow: 6, hp: 25, acid: 25 },
+  // Colete de Natal (modelo 3D próprio). dur = durabilidade em pontos (os outros têm 100) ·
+  // creditsVip = preço para VIP (Membros Gold) · repairLevel = nível mínimo para consertar ·
+  // scrap/scrapMC = valor fixo no Ferro Velho (MC = melhorias no máximo) · upCost = preço de cada melhoria
+  { name: "Colete Tático Natalino",         armor: 75, credits: 2000, creditsVip: 1500, color: "#8a1f1f", rar: 4,
+    dur: 350, repairLevel: 75, scrap: 128250, scrapMC: 256500, upCost: 67000 }
 ];
+// quantos pontos de durabilidade o colete tem (100 nos antigos)
+function vestMaxDur(i) { return (VESTS[i] && VESTS[i].dur) || 100; }
+// preço em créditos (VIP paga o preço de membro quando existe)
+function vestCredits(v) { return v.creditsVip && typeof vipActive === "function" && vipActive() ? v.creditsVip : v.credits; }
 
 // ---------- Zumbis ----------
 // from = zona a partir da qual aparecem · pack = aparecem em grupo

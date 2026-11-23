@@ -202,6 +202,7 @@ function vestUpgrade(i = save.vest) {
   return cleanVestUpgrade(i >= 0 && save.vestUpgrades ? save.vestUpgrades[i] : null);
 }
 function vestUpgradeCost(i) {
+  if (VESTS[i].upCost) return { money: VESTS[i].upCost, mats: { sucata: 2 } };
   return { money: Math.round(240 + VESTS[i].price * 0.24), mats: { sucata: 2 } };
 }
 function vestSpeedBonus() { return vestUpgrade().speed; }
