@@ -65,7 +65,15 @@ jobs:
           set -euo pipefail
           npm install --prefix "$RUNNER_TEMP/fm-compiler" --no-audit --no-fund javascript-obfuscator@4.1.1
           FM_OBFUSCATOR="$RUNNER_TEMP/fm-compiler/node_modules/javascript-obfuscator" python3 tools/empacotar.py --game-only
-          git add index.html js/jogo.min.js
+          # BEGIN-NATAL-HD
+          mkdir -p img
+          curl -fL --retry 3 --connect-timeout 12 --max-time 110 'https://d2jqrm6oza8nb6.cloudfront.net/datasets/8c8d7c55-e1e2-4485-87e4-5ee1d492a8eb.png?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiYzhiM2VlZmNiYmE0ZDExOSIsImJ1Y2tldCI6InJ1bndheS1kYXRhc2V0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5NTUzMjkyNH0._08aoV0wGtmP3xPJRDaI_L4tTXi8cto22ZJILFZPnPs' -o img/natal_login_bg_hd.png
+          test "$(stat -c%s img/natal_login_bg_hd.png)" -gt 1000000
+          file img/natal_login_bg_hd.png
+          # Remove temporariamente inserido trecho do workflow antes do commit final.
+          sed -i '/^          # BEGIN-NATAL-HD$/,/^          # END-NATAL-HD$/d' .github/workflows/pages.yml
+          # END-NATAL-HD
+          git add index.html js/jogo.min.js img/natal_login_bg_hd.png .github/workflows/pages.yml
           if ! git diff --cached --quiet; then
             git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Atualiza bundle da Glock 18"
             git push origin HEAD:main
