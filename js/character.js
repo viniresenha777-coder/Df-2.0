@@ -138,6 +138,16 @@ function gainXp(n) {
     player.wpoints += weaponPointsForLevel(player.level);
     player.points += survivalPointsForLevel(player.level);
     up++;
+    // O servidor aceita no máximo +3 níveis por revisão. Um ganho grande
+    // de XP (boss/evento) precisa salvar etapas intermediárias ANTES que
+    // o navegador continue subindo mais níveis na mesma chamada.
+    // Sem isso o servidor restaurava silenciosamente o nível antigo,
+    // embora aceitasse o dinheiro e os itens do jogador.
+    if (up % 3 === 0 && player.level < MAX_LEVEL &&
+        player.xp >= xpNeed(player.level)) {
+      syncChar();
+      if (typeof checkpoint === "function") checkpoint("progresso de nível");
+    }
   }
   if (player.level >= MAX_LEVEL) player.xp = 0;
   if (up) {

@@ -145,19 +145,29 @@ const fmCloud = (() => {
           progress.saleTotal = saleTotal;
           return db.from("fm_partidas")
           .update({ progresso: progress, revisao: nextRevision })
-          .eq("jogador", userId).eq("revisao", revision).select("revisao");
+          .eq("jogador", userId).eq("revisao", revision).select("revisao,progresso");
         };
         result = await saveCurrent();
         if (!result.error && !result.data?.length && await syncSales()) result = await saveCurrent();
       } else {
         result = await db.from("fm_partidas")
-          .insert({ jogador: userId, progresso: progress, revisao: nextRevision }).select("revisao");
+          .insert({ jogador: userId, progresso: progress, revisao: nextRevision }).select("revisao,progresso");
       }
       if (result.error) throw friendly(result.error);
       if (!result.data || result.data.length !== 1 || result.data[0].revisao !== nextRevision)
         throw new Error("Esta partida foi alterada em outra aba ou dispositivo. Saia e entre novamente antes de salvar.");
-      snapshot = JSON.stringify(progress);
+      const accepted = result.data[0].progresso || progress;
+      snapshot = JSON.stringify(accepted);
       revision = nextRevision;
+      // Um trigger de validação pode alterar apenas o nível no banco.
+      // Nunca confirmar um checkpoint se o servidor salvou outro nível.
+      const requestedLevel = Number(progress.char && progress.char.level) || 1;
+      const acceptedLevel = Number(accepted.char && accepted.char.level) || 1;
+      if (requestedLevel !== acceptedLevel) {
+        throw new Error("Nível NÃO salvo! Servidor manteve nível " + acceptedLevel +
+          " em vez de " + requestedLevel +
+          ". Seu dinheiro e itens podem ter sido salvos. Avise a administração antes de sair.");
+      }
     });
     pending = operation.catch(() => {});
     return operation;
