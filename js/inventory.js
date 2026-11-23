@@ -659,6 +659,7 @@ function buyVaultRow() {
   toast("Fileira liberada: +8 espaços no Baú da Base.");
 }
 function stashClothingStored(id) { return save.vault.some(v => v && v.kind === "clothing" && v.id === id); }
+function stashInventoryCapacity() { return backpackBaseCapacity(player.level); }
 function stashEntries() {
   const entries = invPackEntries().filter(z => z && z.item &&
     !(z.type === "clothing" && stashClothingStored(z.item.id)));
@@ -710,7 +711,8 @@ function stashSourceName(z) {
 }
 function stashPersist() { save.run = runSnapshot(); persist(); }
 function stashStore(at) {
-  const z = stashEntries()[game.vcur | 0];
+  const sourceIndex = game.vcur | 0;
+  const z = sourceIndex < stashInventoryCapacity() ? stashEntries()[sourceIndex] : null;
   if (!z || !z.item) { toast("Escolha um item no inventário inferior."); return; }
   let obj = null, merged = null;
   if (z.type === "weapon" || z.type === "mat") {
@@ -778,12 +780,24 @@ function stashStore(at) {
 function stashWithdraw(index = game.vcur | 0) {
   const obj = save.vault[index];
   if (!obj) { toast("Escolha um item do baú."); return; }
+  const materialStack = obj.kind === "mat" && player.pack.find(item => item.kind === "mat" &&
+    item.id === obj.id && !!item.loot === !!obj.loot && !!item.tokenBound === !!obj.tokenBound);
+  let addedSlots = 1;
+  if (obj.kind === "ammo") {
+    const held = player.reserve[obj.id] || 0;
+    addedSlots = Math.ceil((held + obj.qty) / AMMO_STACK) - Math.ceil(held / AMMO_STACK);
+  } else if (materialStack || (obj.kind === "vest" && save.vestsOwned[obj.id]) ||
+      (obj.kind === "food" && player.foodQ[obj.id] > 0) ||
+      (["water", "med", "anti"].includes(obj.kind) && player[obj.kind] > 0)) {
+    addedSlots = 0;
+  }
+  if (addedSlots > 0 && stashEntries().length + addedSlots > stashInventoryCapacity()) {
+    toast("Inventário inferior cheio. Guarde um item para liberar espaço."); return;
+  }
   if (obj.kind === "weapon") {
     if (!addWeapon(obj)) { toast("Inventário cheio."); return; }
   } else if (obj.kind === "mat") {
-    const other = player.pack.find(it => it.kind === "mat" && it.id === obj.id &&
-      !!it.loot === !!obj.loot && !!it.tokenBound === !!obj.tokenBound);
-    if (other) other.qty += obj.qty;
+    if (materialStack) materialStack.qty += obj.qty;
     else {
       if (packUsed() >= packCapacity()) { toast("Inventário cheio."); return; }
       player.pack.push(obj);
@@ -817,7 +831,10 @@ function stashKey(key) {
   else if (key === "d" || key === "arrowright") game.vpage = Math.min(9, (game.vpage || 0) + 1);
   else if (key === "tab") game.vside = game.vside === 1 ? 0 : 1;
   else if (key === "w" || key === "arrowup") game.vcur = Math.max(0, (game.vcur || 0) - 1);
-  else if (key === "s" || key === "arrowdown") game.vcur++;
+  else if (key === "s" || key === "arrowdown") {
+    const limit = game.vside === 1 ? save.vault.length : Math.min(stashEntries().length, stashInventoryCapacity());
+    game.vcur = Math.max(0, Math.min(limit - 1, (game.vcur || 0) + 1));
+  }
   else if (key === "enter") vaultMove();
 }
 function stashSlot(x, y, w, h, selected, disabled) {
@@ -853,6 +870,7 @@ function stashVaultIcon(item, x, y, w, h) {
 function stashSelect(side, index) {
   const prev = game.stashSelected;
   if (side === 1 && index >= vaultCapacity()) { toast("Fileira bloqueada."); return; }
+  if (side === 0 && index >= stashInventoryCapacity()) return;
   const item = side === 0 ? stashEntries()[index] : save.vault[index];
   if (prev && prev.side !== side) {
     if (prev.side === 0) { game.vcur = prev.index; stashStore(side === 1 ? index : undefined); }
@@ -870,8 +888,8 @@ function stashSelect(side, index) {
 function drawStash() {
   const items = stashEntries(), vault = save.vault, rows = Math.max(5, Math.min(50, save.vaultRows || 5));
   game.vpage = Math.max(0, Math.min(9, game.vpage || 0));
-  const maxPages = Math.max(1, Math.ceil(items.length / 30));
-  game.vinvPage = Math.max(0, Math.min(maxPages - 1, game.vinvPage || 0));
+  const inventoryCapacity = stashInventoryCapacity();
+  const excess = Math.max(0, items.length - inventoryCapacity);
   menuFrame("BAÚ DA BASE", "Armazene e retire itens · clique no item e depois no destino.");
   ctx.fillStyle = "rgba(10,11,9,.72)"; rr(99, 110, 766, 307, 6); ctx.fill();
   ctx.strokeStyle = "#69533a"; ctx.lineWidth = 1.4; ctx.stroke();
@@ -896,14 +914,20 @@ function drawStash() {
   ctx.fillStyle = "rgba(9,10,8,.86)"; rr(26, 430, 906, 117, 5); ctx.fill();
   ctx.strokeStyle = "#60513c"; ctx.lineWidth = 1.2; ctx.stroke();
   txt("INVENTÁRIO", 480, 446, 15, "#e4d3aa", "center", true);
-  txt("Itens " + items.length + " · 30 por página", 38, 446, 10, "#b6ac94");
-  txt("Página " + (game.vinvPage + 1) + "/" + maxPages, 798, 446, 11, "#d9bc7c", "right", true);
-  btn(806, 427, 35, 24, "◀", () => game.vinvPage = Math.max(0, game.vinvPage - 1));
-  btn(849, 427, 35, 24, "▶", () => game.vinvPage = Math.min(maxPages - 1, game.vinvPage + 1));
+  txt("Ocupação " + Math.min(items.length, inventoryCapacity) + "/" + inventoryCapacity, 38, 446, 10, "#b6ac94", "left", true);
+  if (excess) txt("+" + excess + " aguardando espaço", 916, 446, 11, "#d9bc7c", "right", true);
+  else if (inventoryCapacity < 30)
+    txt("+2 slots no nível " + packSlotUnlockLevel(inventoryCapacity), 916, 446, 11, "#d9bc7c", "right", true);
   for (let row = 0; row < 2; row++) for (let col = 0; col < 15; col++) {
-    const index = game.vinvPage * 30 + row * 15 + col, x = 37 + col * 59, y = 455 + row * 43;
-    const entry = items[index], selected = !!game.stashSelected && game.stashSelected.side === 0 && game.stashSelected.index === index;
-    stashSlot(x, y, 55, 39, selected, false);
+    const index = row * 15 + col, x = 37 + col * 59, y = 455 + row * 43;
+    const locked = index >= inventoryCapacity;
+    const entry = locked ? null : items[index];
+    const selected = !locked && game.stashSelected?.side === 0 && game.stashSelected.index === index;
+    stashSlot(x, y, 55, 39, selected, locked);
+    if (locked) {
+      txt("NV " + packSlotUnlockLevel(index), x + 27.5, y + 23, 10, "#777164", "center", true);
+      continue;
+    }
     if (entry) stashIcon(entry, x, y, 55, 39);
     regClick(x, y, 55, 39, () => stashSelect(0, index));
   }
