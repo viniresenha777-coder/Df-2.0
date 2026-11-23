@@ -109,3 +109,16 @@ Model License:
 If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
 This work is based on "Shotgun/Flamethrower" (https://sketchfab.com/3d-models/shotgunflamethrower-044e09a00a3c451184274e099ad1ca19) by jesamabin (https://sketchfab.com/jesamabin) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
 Adaptação: renderização para inventário e personagem.
+
+Model Information:
+* title:	DOOM eternal super shotgun
+* source:	https://sketchfab.com/3d-models/doom-eternal-super-shotgun-697778b664c1423692dfcde19a19b64e
+* author:	DJ_Nugget (https://sketchfab.com/DJ_Nugget)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "DOOM eternal super shotgun" (https://sketchfab.com/3d-models/doom-eternal-super-shotgun-697778b664c1423692dfcde19a19b64e) by DJ_Nugget (https://sketchfab.com/DJ_Nugget) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+Adaptação: renderização para inventário e personagem.
