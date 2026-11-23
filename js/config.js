@@ -277,7 +277,13 @@ const IMPLANT_CHANCE = { airdrop: 0.25, corpse: 0.02, boss: 1, chest: 0.06, tras
 // Novo catálogo: 29 implantes; o sistema antigo de slots, saque e clínica é preservado.
 // fx = efeitos fixos (%). alloc = pontos que o jogador distribui (arrastando o implante para o boneco).
 // flag = efeito único (não é copiado pelo Mímico). mimic = copia o implante do slot à esquerda.
-const IMPL_SLOTS = 6, BAG_MAX = 8;
+// Os seis últimos números ficam visíveis, porém bloqueados: nível máximo 200.
+const IMPLANT_SLOT_LEVELS = Object.freeze([5,20,30,40,50,60,70,80,90,100,125,150,175,200,225,250,275,300,350,415]);
+const IMPL_SLOTS = 14, BAG_MAX = 8, IMPLANT_PRESET_MAX = 12;
+function implantUnlockedSlots(level) {
+  const lv = Math.min(MAX_LEVEL, Math.max(1, Math.floor(Number(level) || 1)));
+  return IMPLANT_SLOT_LEVELS.slice(0, IMPL_SLOTS).filter(required => lv >= required).length;
+}
 const IMPLANT_RARITY = 0.1;      // multiplica a chance de achar implante no saque (valem muito)
 const BOSS_IMPLANT = 0.15;       // chefes que davam implante garantido: agora só às vezes
 const STAT_KEYS = ["exp", "hunter", "scavenger", "crit", "reload", "endurance", "metabolism", "vigor", "regen", "silence", "firepower", "thick", "greed", "agility", "saver", "implantLoot",

@@ -5,7 +5,7 @@
 // =====================================================================
 const SAVE_KEY = "fronteira-morta";
 const save = {
-  bank: 0, vault: [], installed: [], credits: 0, gm: false, vipUntil: 0, trindadeUntil: 0, shopFreeUntil: 0, missions: [], receivedGifts: [], inbox: [],
+  bank: 0, vault: [], installed: [], implantPresets: [], credits: 0, gm: false, vipUntil: 0, trindadeUntil: 0, shopFreeUntil: 0, missions: [], receivedGifts: [], inbox: [],
   vest: -1, clothing: { jacket: null, pants: null, boots: null }, outposts: OUTPOSTS.map((o, i) => i === 0), muted: false, hud: 0, skin: 0, cape: 0, prof: null, name: "", classicChar: false, vestDur: {}, vestUpgrades: {}, music: true, gfx: 2, ambientVolume: 0.55, brightness: 1.0,
   stats: {}, story: 0, ach: {}, daily: null, coll: [], vestsOwned: VESTS.map(() => false), vestVer: 2,
   char: { level: 1, xp: 0, points: 0, wpoints: 0, attrs: defaultAttrs() }
@@ -32,6 +32,16 @@ function loadSave() {
     if (Array.isArray(s.vault)) save.vault = s.vault.filter(validItem).slice(0, VAULT_MAX);
     else if (Array.isArray(s.stash)) save.vault = s.stash.map((v, i) => (v && OLD_IDS[i] ? newInst(OLD_IDS[i]) : null)).filter(Boolean); // save antigo
     { const seen = {}; save.installed = (s.installed || []).map(cleanImplant).filter((im) => im && !seen[im.id] && (seen[im.id] = true)).slice(0, IMPL_SLOTS); }
+    // Os esquemas armazenam somente a ordem e distribuição dos implantes.
+    // Na ativação, o jogador precisa possuir cada implante de verdade.
+    save.implantPresets = Array.isArray(s.implantPresets) ? s.implantPresets.slice(0, IMPLANT_PRESET_MAX)
+      .filter(p => p && typeof p.name === "string" && Array.isArray(p.slots))
+      .map(p => ({ name: p.name.trim().slice(0, 24),
+        slots: p.slots.slice(0, IMPL_SLOTS).map(cleanImplant).filter(Boolean)
+          .map(im => ({ id: im.id, alloc: im.alloc }))
+      }))
+      .filter(p => p.name && new Set(p.slots.map(im => im.id)).size === p.slots.length)
+      : [];
     save.credits = s.credits || 0; save.gm = !!s.gm;
     save.vipUntil = Number.isFinite(s.vipUntil) && s.vipUntil > 0 ? Math.floor(s.vipUntil) : 0;
     save.trindadeUntil = Number.isFinite(s.trindadeUntil) && s.trindadeUntil > 0 ? Math.floor(s.trindadeUntil) : 0;

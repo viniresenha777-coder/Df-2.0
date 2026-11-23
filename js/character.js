@@ -54,14 +54,18 @@ function implantDesc(im) {
 // por que este implante não pode ser instalado agora (ou null se pode)
 function installBlock(im) {
   if (save.installed.some((x) => x.id === im.id)) return `Você já tem ${implantName(im)} instalado (só um de cada)`;
-  if (save.installed.length >= IMPL_SLOTS) return "Sem espaço: remova um implante primeiro";
+  if (save.installed.length >= implantUnlockedSlots(player.level))
+    return "Slots ocupados. Próximo desbloqueio no nível " +
+      (IMPLANT_SLOT_LEVELS[save.installed.length] || 200);
   return null;
 }
 function canSwapImplants() { return inSafe() || !!(player.flags && player.flags.hook); }
 function recalcImplants() {
   const all = {}, safe = {}, flags = {};
   STAT_KEYS.forEach((k) => { all[k] = 0; safe[k] = 0; });
-  save.installed.forEach((im, i) => {
+  // Não perder implantes de saves antigos, mas suspender o efeito em slots
+  // que ainda não foram desbloqueados após a migração.
+  save.installed.slice(0, implantUnlockedSlots(player.level)).forEach((im, i) => {
     const fx = implantFx(im, i, save.installed);
     for (const k in fx) { all[k] = (all[k] || 0) + fx[k]; if (fx[k] > 0) safe[k] = (safe[k] || 0) + fx[k]; }
     if (IMP[im.id].flag) flags[IMP[im.id].flag] = true;
@@ -92,6 +96,93 @@ function lastStandTick() {
   player.fx = player.flags.lastStand && player.hp / player.maxHp < 0.25 ? player.fxSafe : player.fxAll;
 }
 function makeStock() { return IMP_IDS.map((id) => ({ id, price: IMP[id].price })); }
+
+
+// ---------- Esquemas de implantes (presets) ----------
+function implantPresetSave(name) {
+  name = String(name || "").trim().slice(0, 24);
+  if (!name) { toast("Informe um nome para o esquema."); return false; }
+  const installed = save.installed.slice(0, implantUnlockedSlots(player.level));
+  if (!installed.length) { toast("Equipe pelo menos um implante antes de salvar um esquema."); return false; }
+  const presets = save.implantPresets || (save.implantPresets = []);
+  const existing = presets.findIndex(p => p.name.toLocaleLowerCase("pt-BR") === name.toLocaleLowerCase("pt-BR"));
+  if (existing < 0 && presets.length >= IMPLANT_PRESET_MAX) {
+    toast("Limite de " + IMPLANT_PRESET_MAX + " esquemas. Exclua um para salvar outro.");
+    return false;
+  }
+  const entry = { name, slots: installed.map(im => ({
+    id: im.id, alloc: { ...(im.alloc || {}) }
+  })) };
+  if (existing >= 0) presets[existing] = entry; else presets.push(entry);
+  game.implantPresetSelected = name;
+  game.implantDropdown = false;
+  checkpoint("salvou esquema de implantes");
+  toast("Esquema " + name + " salvo (" + entry.slots.length + " implantes).");
+  return true;
+}
+function implantPresetApply(name) {
+  const preset = (save.implantPresets || []).find(p => p.name === name);
+  if (!preset) { toast("Esquema não encontrado."); return false; }
+  const slots = preset.slots || [];
+  if (slots.length > implantUnlockedSlots(player.level)) {
+    const needed = IMPLANT_SLOT_LEVELS[slots.length - 1];
+    toast("Este esquema precisa do nível " + needed + " para equipar todos os slots.");
+    return false;
+  }
+  // A montagem trabalha com referências reais dos implantes já possuídos:
+  // presets não criam itens, não clonam implantes e não ignoram a mochila.
+  const available = [...save.installed, ...player.bag];
+  const remaining = available.slice(), chosen = [];
+  for (const template of slots) {
+    if (!template || !IMP[template.id] || chosen.some(im => im.id === template.id)) {
+      toast("Esquema inválido: implante repetido ou desconhecido.");
+      return false;
+    }
+    const idx = remaining.findIndex(im => im.id === template.id);
+    if (idx < 0) { toast("Falta o implante " + implantName(template) + " para este esquema."); return false; }
+    chosen.push({ actual: remaining.splice(idx, 1)[0], template });
+  }
+  if (remaining.length > BAG_MAX) {
+    toast("Não há espaço na mochila para trocar este esquema (precisa de " + remaining.length + ").");
+    return false;
+  }
+  // Todas as verificações foram realizadas, agora a troca é atômica.
+  for (const item of chosen) {
+    const cleaned = cleanImplant(item.template);
+    item.actual.alloc = { ...(cleaned ? cleaned.alloc : {}) };
+  }
+  save.installed = chosen.map(entry => entry.actual);
+  player.bag = remaining;
+  game.implantPresetSelected = name;
+  game.implantDropdown = false;
+  game.cur = 0;
+  recalcImplants();
+  checkpoint("ativou esquema de implantes");
+  toast("Esquema " + name + " equipado.");
+  return true;
+}
+function implantPresetRemove(name) {
+  const presets = save.implantPresets || [];
+  const index = presets.findIndex(p => p.name === name);
+  if (index < 0) return false;
+  presets.splice(index, 1);
+  if (game.implantPresetSelected === name) game.implantPresetSelected = null;
+  checkpoint("apagou esquema de implantes");
+  toast("Esquema " + name + " excluído. Implantes preservados.");
+  return true;
+}
+// Somente os bônus dos implantes do esquema; não soma evento, VIP ou profissão.
+function implantPresetTotals(preset) {
+  const raw = preset ? preset.slots : save.installed.slice(0, implantUnlockedSlots(player.level));
+  const list = (raw || []).map(cleanImplant).filter(Boolean);
+  const totals = {}, flags = [];
+  for (let i = 0; i < list.length; i++) {
+    const im = list[i], fx = implantFx(im, i, list);
+    for (const key in fx) totals[key] = (totals[key] || 0) + fx[key];
+    if (IMP[im.id].flag && !flags.includes(IMP[im.id].flag)) flags.push(IMP[im.id].flag);
+  }
+  return { totals, flags, count: list.length };
+}
 
 // ---------- Atributos ----------
 function xpNeed(l) { return Math.round(30 + 6 * l + 0.12 * l * l); }
