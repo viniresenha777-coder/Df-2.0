@@ -68,7 +68,7 @@ jobs:
           # Importação única dos dois atlas gerados dos GLBs rigados (8 direções).
           curl -fL --retry 3 --connect-timeout 15 --max-time 120 'https://d2jqrm6oza8nb6.cloudfront.net/datasets/bd51b13b-ed61-43d0-9d33-b8d6003a0756.png?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiMWQ3ZDQ3NjRjMmZjZWVlNyIsImJ1Y2tldCI6InJ1bndheS1kYXRhc2V0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5NTUwMTU0MH0.4COIDzwQ7XUvo8zdxGBpiA5qxB36vUTj65wa88eP9Wo' -o img/boss_natal_santa_atlas.png
           test "$(stat -c%s img/boss_natal_santa_atlas.png)" -gt 70000
-          curl -fL --retry 3 --connect-timeout 15 --max-time 120 'https://d2jqrm6oza8nb6.cloudfront.net/datasets/5b3144ec-9e21-41b2-a211-0e053f529d02.png?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiZTliMGNkMDA0MTk5NDk4MCIsImJ1Y2tldCI6InJ1bndheS1kYXRhc2V0cyIsImV4cCI6MTc5NTQ5NzM0NH0.2fOq-Q9AEFysklMseb58p-wdzXy16kDbRwmflUt7afU' -o img/boss_natal_alce_atlas.png
+          curl -fL --retry 3 --connect-timeout 15 --max-time 120 'https://d2jqrm6oza8nb6.cloudfront.net/datasets/31bcd449-1779-45ff-af23-837e49833f34.png?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiMTEwYmMyNjQ5NGUzOGQ1MCIsImJ1Y2tldCI6InJ1bndheS1kYXRhc2V0cyIsImV4cCI6MTc5NTU2NDEzMn0.hTlDwiU8dLig_NgIVsVMUYRN0EiRP9g9Bwu0ovSzI5s' -o img/boss_natal_alce_atlas.png
           test "$(stat -c%s img/boss_natal_alce_atlas.png)" -gt 70000
           git add index.html js/jogo.min.js img/boss_natal_santa_atlas.png img/boss_natal_alce_atlas.png
           if ! git diff --cached --quiet; then
