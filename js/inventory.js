@@ -660,26 +660,19 @@ function buyVaultRow() {
 }
 function stashClothingStored(id) { return save.vault.some(v => v && v.kind === "clothing" && v.id === id); }
 function stashInventoryCapacity() { return backpackBaseCapacity(player.level); }
+function stashItemEquipped(entry) {
+  if (entry.type === "weapon") return player.slots.includes(entry.item);
+  if (entry.type === "implant") return save.installed.includes(entry.item);
+  if (entry.type === "vest") return save.vest === entry.item.i;
+  return entry.type === "clothing" && save.clothing?.[entry.item.kind] === entry.item.id;
+}
 function stashEntries() {
-  const equippedBackpackId = save.clothing?.pack;
-  const entries = invPackEntries().filter(z => z && z.item &&
-    !(z.type === "clothing" && (z.item.id === equippedBackpackId || stashClothingStored(z.item.id))));
-  player.slots.forEach((item, i) => { if (item) entries.push({ area: "wslot", type: "weapon", i, item }); });
+  const entries = invPackEntries().filter(entry => entry?.item);
   player.bag.forEach((item, i) => entries.push({ area: "bag", type: "implant", i, item }));
-  save.installed.forEach((item, i) => entries.push({ area: "installed", type: "implant", i, item }));
-  if (save.vest >= 0 && save.vestsOwned[save.vest])
-    entries.push({ area: "vest-equipped", type: "vest", item: { i: save.vest } });
-  for (const [kind, id] of Object.entries(save.clothing || {})) {
-    if (kind === "pack") continue;
-    const item = CLOTHING_BY_ID[id];
-    if (item && !stashClothingStored(item.id))
-      entries.push({ area: "clothes-equipped", type: "clothing", item });
-  }
-  BACKPACK_CATALOG.forEach(item => {
-    if (item.id !== equippedBackpackId && !stashClothingStored(item.id) &&
-        !entries.some(z => z.type === "clothing" && z.item?.id === item.id))
+  for (const item of BACKPACK_CATALOG) {
+    if (!entries.some(entry => entry.type === "clothing" && entry.item.id === item.id))
       entries.push({ area: "clothes-list", type: "clothing", item });
-  });
+  }
   for (const id of ["fresca", "comum", "podre"]) {
     const qty = Math.floor(Number(player.foodQ?.[id]) || 0);
     if (qty > 0) entries.push({ area: "food", type: "food", item: { id, qty } });
@@ -688,7 +681,8 @@ function stashEntries() {
     const n = Math.floor(Number(player[id]) || 0);
     if (n > 0) entries.push({ area: "supply", type: "supply", item: { id, n } });
   }
-  return entries;
+  return entries.filter(entry => !stashItemEquipped(entry) &&
+    !(entry.type === "clothing" && stashClothingStored(entry.item.id)));
 }
 function stashItemName(it) {
   if (!it) return "";
@@ -747,22 +741,18 @@ function stashStore(at) {
     toast("Baú cheio. Libere uma fileira para guardar mais itens."); return;
   }
   if (z.type === "weapon" || z.type === "mat") {
-    if (z.area === "wslot") { player.slots[z.i] = null; player.reloading = 0; }
-    else if (z.area === "pack") {
-      const index = player.pack.indexOf(z.item); if (index < 0) return; player.pack.splice(index, 1);
-    } else return;
+    const index = player.pack.indexOf(z.item);
+    if (index < 0) return;
+    player.pack.splice(index, 1);
   } else if (z.type === "ammo") {
     player.reserve[obj.id] -= obj.qty;
     player.tokenAmmo[obj.id] = Math.max(0, (player.tokenAmmo[obj.id] || 0) - obj.tokenQty);
   } else if (z.type === "implant") {
-    const group = z.area === "installed" ? save.installed : player.bag;
-    const index = group.indexOf(z.item); if (index < 0) return;
-    group.splice(index, 1); if (z.area === "installed") recalcImplants();
+    const index = player.bag.indexOf(z.item);
+    if (index < 0) return;
+    player.bag.splice(index, 1);
   } else if (z.type === "vest") {
     save.vestsOwned[obj.id] = false;
-    if (save.vest === obj.id) { save.vest = -1; recalcImplants(); }
-  } else if (z.type === "clothing") {
-    if (save.clothing[z.item.kind] === obj.id) save.clothing[z.item.kind] = null;
   } else if (z.type === "food") {
     player.foodQ[obj.id] -= obj.qty; player.food = Math.max(0, player.food - obj.qty);
   } else if (z.type === "supply") {
@@ -939,7 +929,7 @@ function drawStash() {
     if (!selected || selected.side !== 1) return toast("Selecione um item do baú.");
     stashWithdraw(selected.index); game.stashSelected = null;
   }, true);
-  txt("Selecione e clique no destino ou use Guardar / Retirar.", 40, 570, 11, "#bdb19b");
+  txt("Desequipe os itens antes de guardá-los.", 40, 570, 11, "#bdb19b");
 }
 
 // =====================================================================
