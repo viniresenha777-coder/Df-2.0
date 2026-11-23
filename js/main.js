@@ -229,6 +229,10 @@ canvas.addEventListener("wheel", (e) => {
     return;
   }
   e.preventDefault();
+  if (game.menu === "creditshop") {
+    if (!game.input && !game.creditConfirm && e.deltaY) creditShopKey(e.deltaY > 0 ? "arrowdown" : "arrowup");
+    return;
+  }
   if (game.menu === "pack" && !INV.confirm && !allocOpen()) {
     invPackChangePage(e.deltaY > 0 ? 1 : -1);
     return;

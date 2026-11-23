@@ -222,13 +222,9 @@ function drawHub() {
       ctx.strokeStyle = "#ffd96a"; ctx.lineWidth = 1.5;
       ctx.strokeRect(cbx + 1, cby + 1, cbw - 2, cbh - 2);
     }
-    regClick(cbx, cby, cbw, cbh, () => {
-      game.menu = "creditshop"; game.creditCur = 0; game.creditConfirm = null; game.cur = 0;
-    });
+    regClick(cbx, cby, cbw, cbh, openCreditShop);
   } else {
-    btn(cbx, cby + 3, cbw, 28, "Créditos", () => {
-      game.menu = "creditshop"; game.creditCur = 0; game.creditConfirm = null; game.cur = 0;
-    }, true);
+    btn(cbx, cby + 3, cbw, 28, "Créditos", openCreditShop, true);
   }
 
   btn(W - 300, 6, 158, 26, "Mercado Negro", openMarket);
@@ -252,7 +248,7 @@ function drawHub() {
   links.forEach(([label, m], i) => {
     const ly = 64 + i * 17, hov = mouse.x >= px + 10 && mouse.x <= px + 180 && mouse.y >= ly - 12 && mouse.y <= ly + 4;
     txt(label, px + 12, ly, 12, hov ? "#ffd96a" : "#f2eedc", "left", true);
-    regClick(px + 10, ly - 12, 170, 16, () => { game.menu = m; game.cur = 0; if (m === "creditshop") { game.creditCur = 0; game.creditConfirm = null; } if (m === "map") game.mapSel = { cx: world.cell.cx, cy: world.cell.cy }; if (m === "obj") game.oscroll = 0; });
+    regClick(px + 10, ly - 12, 170, 16, () => { game.menu = m; game.cur = 0; if (m === "creditshop") openCreditShop(); if (m === "map") game.mapSel = { cx: world.cell.cx, cy: world.cell.cy }; if (m === "obj") game.oscroll = 0; });
   });
   const skin = SKINS[save.skin] || SKINS[0];
   // coluna da direita: nome, nível, XP, dinheiro e créditos (de cima para baixo)
