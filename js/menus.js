@@ -315,19 +315,25 @@ function buyTrindade() {
   sfx.buy(); checkpoint("compra de Trindade");
   toast("Trindade adquirida! Arraste-a sobre o personagem para consumir.");
 }
-function ownsCreditImplant(id) {
-  return player.bag.some(im => im.id === id) || save.installed.some(im => im.id === id) ||
-    save.vault.some(item => item?.kind === "implant" && item.id === id);
+function fmOwnsCreditImplant(id) {
+  return (
+    player.bag.some((im) => im.id === id) ||
+    save.installed.some((im) => im.id === id) ||
+    save.vault.some((item) => item?.kind === "implant" && item.id === id)
+  );
 }
-function creditImplantPrice(id) {
+function fmCreditImplantPrice(id) {
   const def = IMP[id];
   return vipActive() && def.vipPrice ? def.vipPrice : def.price;
 }
-function openAdvancedImplantCase(item) {
+function fmOpenAdvancedImplantCase(item) {
   const index = player.pack.indexOf(item);
   if (index < 0 || item.kind !== "mat" || item.id !== FM_ADVANCED_CASE_ID || item.qty < 1) return;
-  if (player.bag.length >= BAG_MAX) { toast("Libere espaço para receber o implante."); return; }
-  const pool = IMP_IDS.filter(id => IMP[id].kind === 2 && !IMP[id].mimic && !IMP[id].event);
+  if (player.bag.length >= BAG_MAX) {
+    toast("Libere espaço para receber o implante.");
+    return;
+  }
+  const pool = IMP_IDS.filter((id) => IMP[id].kind === 2 && !IMP[id].mimic && !IMP[id].event);
   const im = newImplant(pick(pool));
   if (--item.qty === 0) player.pack.splice(index, 1);
   player.bag.push(im);
@@ -336,20 +342,36 @@ function openAdvancedImplantCase(item) {
 }
 function buyCreditImplant(id) {
   const def = IMP[id];
-  if (!def || !inSafe()) { toast("Implante indisponível."); return; }
-  if (player.bag.length >= BAG_MAX) { toast("Libere espaço para receber o implante."); return; }
-  if (ownsCreditImplant(id)) { toast("Você já possui este implante."); return; }
-  const price = creditImplantPrice(id);
-  if (save.credits < price) { toast("Créditos insuficientes. Necessário: " + price); return; }
+  if (!def || !inSafe()) {
+    toast("Implante indisponível.");
+    return;
+  }
+  if (player.bag.length >= BAG_MAX) {
+    toast("Libere espaço para receber o implante.");
+    return;
+  }
+  if (fmOwnsCreditImplant(id)) {
+    toast("Você já possui este implante.");
+    return;
+  }
+  const price = fmCreditImplantPrice(id);
+  if (save.credits < price) {
+    toast("Créditos insuficientes. Necessário: " + price);
+    return;
+  }
   if (id === FM_MIMIC_ID && !addMat(FM_ADVANCED_CASE_ID, 2)) {
-    toast("Libere um espaço de carga para as caixas do Kit Mimic."); return;
+    toast("Libere um espaço de carga para as caixas do Kit Mimic.");
+    return;
   }
   save.credits -= price;
   player.bag.push(newImplant(id));
   sfx.buy();
   checkpoint("compra de implante");
-  toast(id === FM_MIMIC_ID ? "Kit Mimic adquirido. Você recebeu o implante e 2 caixas." :
-    "Comprou " + def.name + " por " + price + " créditos.");
+  toast(
+    id === FM_MIMIC_ID
+      ? "Kit Mimic adquirido. Você recebeu o implante e 2 caixas."
+      : "Comprou " + def.name + " por " + price + " créditos.",
+  );
 }
 function creditShopBuy(id) {
   if (id === "trindade_eterna") buyTrindade();
@@ -357,15 +379,20 @@ function creditShopBuy(id) {
 }
 const CREDIT_SHOP_SCENE = new Image();
 CREDIT_SHOP_SCENE.src = "img/fm_loja_creditos.webp";
-
 const CREDIT_SHOP_SECTIONS = [
-  ["special", "Serviços"], ["implant", "Implantes"], ["vest", "Coletes"],
-  ["clothing", "Vestuário"], ["ammo", "Munição"], ["explosive", "Explosivos"],
-  ["melee", "Corpo a corpo"], ["pistols", "Pistolas"], ["rifles", "Rifles"],
-  ["shotguns", "Escopetas"], ["machinegun", "Metralhadoras"]
+  ["special", "Serviços"],
+  ["implant", "Implantes"],
+  ["vest", "Coletes"],
+  ["clothing", "Vestuário"],
+  ["ammo", "Munição"],
+  ["explosive", "Explosivos"],
+  ["melee", "Corpo a corpo"],
+  ["pistols", "Pistolas"],
+  ["rifles", "Rifles"],
+  ["shotguns", "Escopetas"],
+  ["machinegun", "Metralhadoras"],
 ];
 const CREDIT_SHOP_PAGE_SIZE = 5;
-
 function openCreditShop() {
   game.menu = "creditshop";
   game.input = null;
@@ -373,34 +400,49 @@ function openCreditShop() {
   game.creditConfirm = null;
   creditShopSelectSection("special");
 }
-
 function creditShopSelectSection(section) {
   game.creditSection = section;
   game.creditCur = 0;
 }
-
 function creditShopRows(section) {
-  if (section === "implant") return IMP_IDS.map(id => ({
-    kind: "implant", id, title: id === FM_MIMIC_ID ? "Kit Mimic" : IMP[id].name,
-    owned: ownsCreditImplant(id), price: creditImplantPrice(id), currency: "credits"
-  }));
-  if (section === "vest") return VESTS.map((vest, id) => ({
-    kind: "vest", id, title: vest.name, owned: !!save.vestsOwned[id],
-    price: vest.craft ? null : vestCredits(vest) || vest.price,
-    currency: vest.credits ? "credits" : "money"
-  }));
-  if (section === "ammo") return Object.keys(AMMO).map((id, index) => ({
-    kind: "ammo", id, index, title: id === "virote" ? "Flechas" : id,
-    price: shopFree() ? 0 : AMMO_PACK_PRICE, currency: "money"
-  }));
-  if (section === "clothing") return CLOTHING_ITEMS.map(item => ({
-    kind: "clothing", item, title: item.name,
-    owned: save.clothing[item.kind] === item.id
-  }));
-  return WLIST.filter(item => !item.fists && (section === "explosive" ? item.grenade : item.cat === section && !item.grenade))
-    .map(item => ({ kind: "weapon", item, title: item.name }));
+  if (section === "implant")
+    return IMP_IDS.map((id) => ({
+      kind: "implant",
+      id,
+      title: id === FM_MIMIC_ID ? "Kit Mimic" : IMP[id].name,
+      owned: fmOwnsCreditImplant(id),
+      price: fmCreditImplantPrice(id),
+      currency: "credits",
+    }));
+  if (section === "vest")
+    return VESTS.map((vest, id) => ({
+      kind: "vest",
+      id,
+      title: vest.name,
+      owned: !!save.vestsOwned[id],
+      price: vest.craft ? null : vest.credits || vest.price,
+      currency: vest.credits ? "credits" : "money",
+    }));
+  if (section === "ammo")
+    return Object.keys(AMMO).map((id, index) => ({
+      kind: "ammo",
+      id,
+      index,
+      title: id === "virote" ? "Flechas" : id,
+      price: shopFree() ? 0 : AMMO_PACK_PRICE,
+      currency: "money",
+    }));
+  if (section === "clothing")
+    return CLOTHING_ITEMS.map((item) => ({
+      kind: "clothing",
+      item,
+      title: item.name,
+      owned: save.clothing[item.kind] === item.id,
+    }));
+  return WLIST.filter(
+    (item) => !item.fists && (section === "explosive" ? item.grenade : item.cat === section && !item.grenade),
+  ).map((item) => ({ kind: "weapon", item, title: item.name }));
 }
-
 function creditShopCost(row) {
   if (row.kind === "vest" && row.owned) return "Já possui";
   if (row.kind === "implant" && row.owned) return "Já possui";
@@ -410,41 +452,53 @@ function creditShopCost(row) {
   if (row.price === 0) return "Grátis";
   return row.currency === "credits" ? row.price.toLocaleString("pt-BR") + " cr" : bankMoney(row.price);
 }
-
 function creditShopCanBuy(row) {
   return Boolean(row && row.price != null && !row.owned);
 }
-
 function creditShopConfirm() {
   const row = game.creditConfirm;
   game.creditConfirm = null;
   if (!row) return;
-  if (!atBase()) { toast("Use a Loja de Créditos na base."); return; }
+  if (!atBase()) {
+    toast("Use a Loja de Créditos na base.");
+    return;
+  }
   switch (row.kind) {
-    case "vip": buyGM(); break;
-    case "reset": resetStatsWithCredits(); break;
+    case "vip":
+      buyGM();
+      break;
+    case "reset":
+      resetStatsWithCredits();
+      break;
     case "mat":
-    case "implant": creditShopBuy(row.id); break;
+    case "implant":
+      creditShopBuy(row.id);
+      break;
     case "vest":
       if (save.vestsOwned[row.id]) return;
       buyVest(row.id);
       if (save.vestsOwned[row.id]) checkpoint("compra de colete");
       break;
     case "ammo":
-      if (!inSafe()) { toast("A loja de munições fica na base."); return; }
+      if (!inSafe()) {
+        toast("A loja de munições fica na base.");
+        return;
+      }
       game.shopCur = row.index;
       shopBuy();
       break;
   }
 }
-
 function creditShopKey(key) {
   if (game.creditConfirm) {
     if (key === "escape" || key === "n") game.creditConfirm = null;
     else if (key === "enter" || key === "y") creditShopConfirm();
     return;
   }
-  if (key === "escape" || key === "e" || key === "b") { game.menu = null; return; }
+  if (key === "escape" || key === "e" || key === "b") {
+    game.menu = null;
+    return;
+  }
   const section = game.creditSection || "special";
   const active = CREDIT_SHOP_SECTIONS.findIndex(([id]) => id === section);
   if (key === "tab" || key === "arrowright" || key === "d" || key === "arrowleft" || key === "a") {
@@ -460,10 +514,16 @@ function creditShopKey(key) {
     if (creditShopCanBuy(row)) game.creditConfirm = row;
     return;
   }
-  const movement = { w: -1, arrowup: -1, s: 1, arrowdown: 1, pageup: -CREDIT_SHOP_PAGE_SIZE, pagedown: CREDIT_SHOP_PAGE_SIZE };
+  const movement = {
+    w: -1,
+    arrowup: -1,
+    s: 1,
+    arrowdown: 1,
+    pageup: -CREDIT_SHOP_PAGE_SIZE,
+    pagedown: CREDIT_SHOP_PAGE_SIZE,
+  };
   if (movement[key]) game.creditCur = Math.max(0, Math.min(rows.length - 1, game.creditCur + movement[key]));
 }
-
 function creditShopPanel(x, y, w, h, fill, border) {
   ctx.fillStyle = fill;
   rr(x, y, w, h, 4);
@@ -472,90 +532,142 @@ function creditShopPanel(x, y, w, h, fill, border) {
   ctx.lineWidth = 1;
   ctx.stroke();
 }
-
 function creditShopButton(x, y, w, h, title, action, active = false, disabled = false) {
   const hover = !disabled && mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h;
-  creditShopPanel(x, y, w, h, disabled ? "#1a1917" : active ? hover ? "#a34737" : "#80352d" : hover ? "#3a2a24" : "#26221e",
-    disabled ? "#383530" : active ? "#cf7461" : hover ? "#b48064" : "#5a4940");
+  creditShopPanel(
+    x,
+    y,
+    w,
+    h,
+    disabled ? "#1a1917" : active ? (hover ? "#a34737" : "#80352d") : hover ? "#3a2a24" : "#26221e",
+    disabled ? "#383530" : active ? "#cf7461" : hover ? "#b48064" : "#5a4940",
+  );
   txt(title, x + w / 2, y + h / 2 + 4, 13, disabled ? "#9d948a" : "#f5e7d5", "center", true, w - 12);
   if (!disabled) regClick(x, y, w, h, action);
 }
-
 function creditShopArt(row, x, y, scale) {
   switch (row.kind) {
-    case "mat": drawMatIcon(row.id, x, y, scale); break;
-    case "implant": drawEntryIcon({ type: "implant", im: { id: row.id } }, x, y, scale); break;
-    case "vest": drawVestIcon(row.id, x, y, scale); break;
-    case "ammo": drawEntryIcon({ type: "ammo", ammo: row.id }, x, y, scale); break;
-    case "clothing": drawClothingIcon(row.item, x - 28 * scale, y - 28 * scale, 56 * scale, 56 * scale); break;
-    case "weapon": drawWeaponSide(row.item, x, y, scale); break;
+    case "mat":
+      drawMatIcon(row.id, x, y, scale);
+      break;
+    case "implant":
+      drawEntryIcon({ type: "implant", im: { id: row.id } }, x, y, scale);
+      break;
+    case "vest":
+      drawVestIcon(row.id, x, y, scale);
+      break;
+    case "ammo":
+      drawEntryIcon({ type: "ammo", ammo: row.id }, x, y, scale);
+      break;
+    case "clothing":
+      drawClothingIcon(row.item, x - 28 * scale, y - 28 * scale, 56 * scale, 56 * scale);
+      break;
+    case "weapon":
+      drawWeaponSide(row.item, x, y, scale);
+      break;
   }
 }
-
 function drawCreditShopSidebar() {
   creditShopPanel(24, 112, 206, 410, "rgba(14,14,13,.94)", "#57473e");
   txt("CONTA", 42, 144, 14, "#ce8b74", "left", true);
   const shortcuts = [
-    ["Assinatura VIP", "1 mês · " + GM_COST + " créditos", () => {
-      if (save.gm) { toast("Seu VIP é permanente."); return; }
-      game.creditConfirm = { kind: "vip", title: "Assinatura VIP · 1 mês", price: GM_COST, currency: "credits" };
-    }],
-    ["Comprar créditos", "$" + CREDIT_PRICE + " do banco por crédito", () => { game.input = { mode: "credits", text: "" }; }],
-    ["Baú da Base", "Gerenciar itens guardados", () => {
-      if (!atBase()) { toast("O baú fica na base."); return; }
-      game.menu = "stash"; game.vside = 0; game.vcur = 0; game.stashSelected = null;
-    }]
+    [
+      "Assinatura VIP",
+      "1 mês · " + GM_COST + " créditos",
+      () => {
+        if (save.gm) {
+          toast("Seu VIP é permanente.");
+          return;
+        }
+        game.creditConfirm = { kind: "vip", title: "Assinatura VIP · 1 mês", price: GM_COST, currency: "credits" };
+      },
+    ],
+    [
+      "Comprar créditos",
+      "$" + CREDIT_PRICE + " do banco por crédito",
+      () => {
+        game.input = { mode: "credits", text: "" };
+      },
+    ],
+    [
+      "Baú da Base",
+      "Gerenciar itens guardados",
+      () => {
+        if (!atBase()) {
+          toast("O baú fica na base.");
+          return;
+        }
+        game.menu = "stash";
+        game.vside = 0;
+        game.vcur = 0;
+        game.fmVaultSelection = null;
+      },
+    ],
   ];
   shortcuts.forEach(([title, detail, action], i) => {
     const y = 161 + i * 65;
     const hover = mouse.x >= 38 && mouse.x <= 216 && mouse.y >= y && mouse.y <= y + 57;
     creditShopPanel(38, y, 178, 57, hover ? "#362622" : "#211c19", hover ? "#bf7e68" : "#4e3a31");
-    ctx.fillStyle = hover ? "#d78069" : "#a95042"; ctx.fillRect(38, y, 3, 57);
+    ctx.fillStyle = hover ? "#d78069" : "#a95042";
+    ctx.fillRect(38, y, 3, 57);
     txt(title, 49, y + 23, 14, "#f5e7d5", "left", true);
     txt(detail, 49, y + 42, 11, "#c4b5a4", "left", false, 152);
     txt("›", 206, y + 25, 18, "#df8a73", "right", true);
     regClick(38, y, 178, 57, action);
   });
-  ctx.fillStyle = "#4e3a31"; ctx.fillRect(42, 370, 170, 1);
+  ctx.fillStyle = "#4e3a31";
+  ctx.fillRect(42, 370, 170, 1);
   txt("SALDO NO BANCO", 42, 395, 11, "#bdab9a", "left", true);
   txt(bankMoney(save.bank), 42, 421, 21, "#f5e7d5", "left", true);
   txt("VIP", 42, 459, 11, "#bdab9a", "left", true);
   txt(vipStatus(), 42, 480, 13, "#e6b37b", "left", false, 170);
 }
-
 function creditShopSample(section) {
   if (section === "special") return { kind: "mat", id: "reset_stats" };
   if (section === "implant") return { kind: "implant", id: FM_MIMIC_ID };
   if (section === "vest") return { kind: "vest", id: 1 };
   if (section === "clothing") return { kind: "clothing", item: CLOTHING_ITEMS[0] };
   if (section === "ammo") return { kind: "ammo", id: "5.56" };
-  const item = WLIST.find(weapon => !weapon.fists && (section === "explosive" ? weapon.grenade : weapon.cat === section && !weapon.grenade));
+  const item = WLIST.find(
+    (weapon) =>
+      !weapon.fists && (section === "explosive" ? weapon.grenade : weapon.cat === section && !weapon.grenade),
+  );
   return item ? { kind: "weapon", item } : null;
 }
-
 function drawCreditShopSections(section) {
   CREDIT_SHOP_SECTIONS.forEach(([id, title], index) => {
     const row = Math.floor(index / 6);
-    const x = 246 + (index % 6) * 115 + row * 57, y = 112 + row * 63;
-    const w = 108, h = 55;
+    const x = 246 + (index % 6) * 115 + row * 57,
+      y = 112 + row * 63;
+    const w = 108,
+      h = 55;
     const selected = id === section;
     const hover = mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h;
-    creditShopPanel(x, y, w, h, selected ? "#41251f" : hover ? "#332722" : "rgba(25,22,20,.93)", selected ? "#cd715f" : hover ? "#a97563" : "#57473e");
+    creditShopPanel(
+      x,
+      y,
+      w,
+      h,
+      selected ? "#41251f" : hover ? "#332722" : "rgba(25,22,20,.93)",
+      selected ? "#cd715f" : hover ? "#a97563" : "#57473e",
+    );
     const sample = creditShopSample(id);
     if (sample) creditShopArt(sample, x + w / 2, y + 20, sample.kind === "weapon" ? 0.61 : 0.52);
     txt(title, x + w / 2, y + 46, 12, selected ? "#ffe1cd" : "#e9d9c6", "center", true, w - 8);
-    if (selected) { ctx.fillStyle = "#c86a57"; ctx.fillRect(x + 1, y + h - 2, w - 2, 2); }
+    if (selected) {
+      ctx.fillStyle = "#c86a57";
+      ctx.fillRect(x + 1, y + h - 2, w - 2, 2);
+    }
     regClick(x, y, w, h, () => creditShopSelectSection(id));
   });
 }
-
 function drawCreditShopServices() {
   creditShopPanel(246, 254, 357, 268, "rgba(20,17,15,.97)", "#635046");
   txt("Reset de atributos", 262, 282, 19, "#f5e7d5", "left", true);
   txt("Redistribua atributos e proficiências.", 262, 302, 12, "#c4b5a4");
   const groups = [
-    ["ATRIBUTOS", ATTRS.filter(attr => !PROF_IDS.includes(attr.id))],
-    ["PROFICIÊNCIAS", ATTRS.filter(attr => PROF_IDS.includes(attr.id))]
+    ["ATRIBUTOS", ATTRS.filter((attr) => !PROF_IDS.includes(attr.id))],
+    ["PROFICIÊNCIAS", ATTRS.filter((attr) => PROF_IDS.includes(attr.id))],
   ];
   const labels = { endurance: "Vida", acc: "Precisão", crit: "Crítico", reload: "Recarga", silence: "Silêncio" };
   groups.forEach(([title, attrs], i) => {
@@ -567,41 +679,94 @@ function drawCreditShopServices() {
       txt(String(player.attrs[attr.id]), x + 145, y, 11, "#efb484", "right", true);
     });
   });
-  creditShopButton(262, 481, 324, 29, "Resetar · " + RESET_STATS_CREDITS + " créditos", () => {
-    game.creditConfirm = { kind: "reset", title: "Reset de atributos", price: RESET_STATS_CREDITS, currency: "credits" };
-  }, true);
+  creditShopButton(
+    262,
+    481,
+    324,
+    29,
+    "Resetar · " + RESET_STATS_CREDITS + " créditos",
+    () => {
+      game.creditConfirm = {
+        kind: "reset",
+        title: "Reset de atributos",
+        price: RESET_STATS_CREDITS,
+        currency: "credits",
+      };
+    },
+    true,
+  );
 
   creditShopPanel(616, 254, 313, 268, "rgba(20,17,15,.95)", "#635046");
   txt("Trindade", 632, 282, 19, "#f5e7d5", "left", true);
   creditShopArt({ kind: "mat", id: "trindade_eterna" }, 773, 355, 2.0);
-  txtWrap("+35% de dano, velocidade de corrida e proteção proporcional aos atributos. Dura 100 anos após o uso.", 632, 422, 12, "#decebc", 281, 16, 3);
-  creditShopButton(632, 481, 281, 29, "Comprar · " + bankMoney(TRINDADE_PRICE), () => {
-    game.creditConfirm = { kind: "mat", id: "trindade_eterna", title: "Trindade", price: TRINDADE_PRICE, currency: "money" };
-  }, true);
+  txtWrap(
+    "+35% de dano, velocidade de corrida e proteção proporcional aos atributos. Dura 100 anos após o uso.",
+    632,
+    422,
+    12,
+    "#decebc",
+    281,
+    16,
+    3,
+  );
+  creditShopButton(
+    632,
+    481,
+    281,
+    29,
+    "Comprar · " + bankMoney(TRINDADE_PRICE),
+    () => {
+      game.creditConfirm = {
+        kind: "mat",
+        id: "trindade_eterna",
+        title: "Trindade",
+        price: TRINDADE_PRICE,
+        currency: "money",
+      };
+    },
+    true,
+  );
 }
-
 function creditShopDescription(row) {
   switch (row.kind) {
     case "implant": {
       const description = implantDesc({ id: row.id, alloc: {} });
       return row.id === FM_MIMIC_ID ? description + " O kit inclui 2 Caixas Avançadas de Implante." : description;
     }
-    case "vest": return vestText(VESTS[row.id]) + (VESTS[row.id].craft ? " · Fabricação na Oficina." : ".");
-    case "ammo": return "Pacote com " + AMMO_PACK_SIZE + " unidades. Você tem " + (player.reserve[row.id] || 0).toLocaleString("pt-BR") + ".";
+    case "vest":
+      return vestText(VESTS[row.id]) + (VESTS[row.id].craft ? " · Fabricação na Oficina." : ".");
+    case "ammo":
+      return (
+        "Pacote com " +
+        AMMO_PACK_SIZE +
+        " unidades. Você tem " +
+        (player.reserve[row.id] || 0).toLocaleString("pt-BR") +
+        "."
+      );
     case "clothing": {
       const item = row.item;
-      return item.kind === "pack" ? "+" + item.slots + " espaços · -" + item.speedPenalty + "% de velocidade · Nível " + item.level
+      return item.kind === "pack"
+        ? "+" + item.slots + " espaços · -" + item.speedPenalty + "% de velocidade · Nível " + item.level
         : item.setName + " · " + CLOTHING_LABELS[item.kind];
     }
-    case "weapon": return "Dano base " + row.item.dmg + " · " + reqText(row.item) + (row.item.craftOnly ? " · Fabricação na Oficina." : ".");
+    case "weapon":
+      return (
+        "Dano base " +
+        row.item.dmg +
+        " · " +
+        reqText(row.item) +
+        (row.item.craftOnly ? " · Fabricação na Oficina." : ".")
+      );
   }
 }
-
 function drawCreditShopCatalog(section) {
   const rows = creditShopRows(section);
   creditShopPanel(246, 254, 357, 268, "rgba(20,17,15,.97)", "#635046");
   creditShopPanel(616, 254, 313, 268, "rgba(20,17,15,.95)", "#635046");
-  if (!rows.length) { txt("Nenhum item nesta categoria.", 263, 284, 14, "#ead5c0"); return; }
+  if (!rows.length) {
+    txt("Nenhum item nesta categoria.", 263, 284, 14, "#ead5c0");
+    return;
+  }
   const visible = CREDIT_SHOP_PAGE_SIZE;
   game.creditCur = Math.max(0, Math.min(rows.length - 1, game.creditCur | 0));
   const top = Math.floor(game.creditCur / visible) * visible;
@@ -613,25 +778,68 @@ function drawCreditShopCatalog(section) {
     creditShopArt(row, 285, y + 18, row.kind === "weapon" ? 0.38 : 0.45);
     txt(row.title, 311, y + 23, 12, chosen ? "#ffe4cd" : "#eee0d2", "left", true, 186);
     txt(creditShopCost(row), 584, y + 23, 11, row.owned ? "#b0c197" : "#e6b37b", "right", true, 80);
-    regClick(257, y, 335, 37, () => { game.creditCur = top + index; });
+    regClick(257, y, 335, 37, () => {
+      game.creditCur = top + index;
+    });
   });
-  creditShopButton(257, 481, 36, 29, "‹", () => { game.creditCur = top - visible; }, false, top === 0);
-  creditShopButton(556, 481, 36, 29, "›", () => { game.creditCur = top + visible; }, false, top + visible >= rows.length);
-  txt(Math.min(top + 1, rows.length) + "–" + Math.min(top + visible, rows.length) + " de " + rows.length, 424, 500, 11, "#c4b5a4", "center");
+  creditShopButton(
+    257,
+    481,
+    36,
+    29,
+    "‹",
+    () => {
+      game.creditCur = top - visible;
+    },
+    false,
+    top === 0,
+  );
+  creditShopButton(
+    556,
+    481,
+    36,
+    29,
+    "›",
+    () => {
+      game.creditCur = top + visible;
+    },
+    false,
+    top + visible >= rows.length,
+  );
+  txt(
+    Math.min(top + 1, rows.length) + "–" + Math.min(top + visible, rows.length) + " de " + rows.length,
+    424,
+    500,
+    11,
+    "#c4b5a4",
+    "center",
+  );
   txt(selected.title, 631, 282, 18, "#f5e7d5", "left", true, 282);
   creditShopArt(selected, 774, 350, selected.kind === "weapon" ? 1.44 : 1.5);
   txtWrap(creditShopDescription(selected), 631, 417, 12, "#e3d3c3", 282, 15, 4);
   if (creditShopCanBuy(selected)) {
-    creditShopButton(631, 481, 282, 29, "Comprar · " + creditShopCost(selected), () => { game.creditConfirm = selected; }, true);
+    creditShopButton(
+      631,
+      481,
+      282,
+      29,
+      "Comprar · " + creditShopCost(selected),
+      () => {
+        game.creditConfirm = selected;
+      },
+      true,
+    );
   } else if (selected.kind === "clothing") {
-    creditShopButton(631, 481, 282, 29, "Abrir inventário", () => { game.menu = "pack"; });
+    creditShopButton(631, 481, 282, 29, "Abrir inventário", () => {
+      game.menu = "pack";
+    });
   } else if (selected.owned) {
     creditShopButton(631, 481, 282, 29, "Já possui", () => {}, false, true);
   }
 }
-
 function drawCreditShopDialog(title, detail, submit, cancel, amountLabel = "") {
-  ctx.fillStyle = "rgba(6,5,5,.79)"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "rgba(6,5,5,.79)";
+  ctx.fillRect(0, 0, W, H);
   regClick(0, 0, W, H, () => {});
   creditShopPanel(249, 177, 462, 239, "#211914", "#b56e57");
   txt(title, 480, 226, 22, "#f7e6d0", "center", true, 410);
@@ -640,7 +848,6 @@ function drawCreditShopDialog(title, detail, submit, cancel, amountLabel = "") {
   creditShopButton(270, 358, 196, 34, "Confirmar", submit, true);
   creditShopButton(494, 358, 196, 34, "Cancelar", cancel);
 }
-
 function drawCreditShop() {
   const section = game.creditSection || "special";
   ctx.fillStyle = "#14110f";
@@ -652,31 +859,55 @@ function drawCreditShop() {
   shade.addColorStop(0, "rgba(11,10,10,.81)");
   shade.addColorStop(0.65, "rgba(11,10,10,.52)");
   shade.addColorStop(1, "rgba(11,10,10,.73)");
-  ctx.fillStyle = shade; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = "#786050"; ctx.lineWidth = 1;
+  ctx.fillStyle = shade;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "#786050";
+  ctx.lineWidth = 1;
   ctx.strokeRect(11.5, 10.5, W - 23, H - 21);
-  ctx.fillStyle = "#ae5341"; ctx.fillRect(24, 91, 905, 2);
+  ctx.fillStyle = "#ae5341";
+  ctx.fillRect(24, 91, 905, 2);
   txt("FRONTEIRA MORTA  /  SUPRIMENTOS", 25, 33, 11, "#e7ad91", "left", true);
   txt("Loja de Créditos", 24, 75, 37, "#f4e4ce", "left", true);
   txt("CRÉDITOS", 790, 40, 11, "#bca79a", "right", true);
   txt(save.credits.toLocaleString("pt-BR"), 791, 69, 24, "#efb484", "right", true);
-  creditShopButton(809, 32, 120, 35, "Voltar", () => { game.menu = null; });
+  creditShopButton(809, 32, 120, 35, "Voltar", () => {
+    game.menu = null;
+  });
   drawCreditShopSidebar();
   drawCreditShopSections(section);
-  txt((CREDIT_SHOP_SECTIONS.find(([id]) => id === section) || CREDIT_SHOP_SECTIONS[0])[1].toUpperCase(), 247, 242, 13, "#e2987f", "left", true);
+  txt(
+    (CREDIT_SHOP_SECTIONS.find(([id]) => id === section) || CREDIT_SHOP_SECTIONS[0])[1].toUpperCase(),
+    247,
+    242,
+    13,
+    "#e2987f",
+    "left",
+    true,
+  );
   if (section === "special") drawCreditShopServices();
   else drawCreditShopCatalog(section);
   const pending = game.creditConfirm;
   if (pending) {
-    const amount = pending.currency === "credits" ? pending.price.toLocaleString("pt-BR") + " créditos" : creditShopCost(pending);
-    drawCreditShopDialog(pending.title, amount, creditShopConfirm, () => { game.creditConfirm = null; });
+    const amount =
+      pending.currency === "credits"
+        ? pending.price.toLocaleString("pt-BR") + " créditos"
+        : creditShopCost(pending);
+    drawCreditShopDialog(pending.title, amount, creditShopConfirm, () => {
+      game.creditConfirm = null;
+    });
   } else if (game.input?.mode === "credits") {
     const amount = Number(game.input.text || 0);
-    drawCreditShopDialog("Comprar créditos", "Custo " + bankMoney(amount * CREDIT_PRICE) + " · Banco " + bankMoney(save.bank),
-      () => inputKey("enter"), () => { game.input = null; }, amount ? amount.toLocaleString("pt-BR") : "Digite a quantidade");
+    drawCreditShopDialog(
+      "Comprar créditos",
+      "Custo " + bankMoney(amount * CREDIT_PRICE) + " · Banco " + bankMoney(save.bank),
+      () => inputKey("enter"),
+      () => {
+        game.input = null;
+      },
+      amount ? amount.toLocaleString("pt-BR") : "Digite a quantidade",
+    );
   } else hint("Tab troca categoria · ↑ ↓ ou roda selecionam · Enter compra · Esc volta");
 }
-
 // ---------- Viagem ----------
 function travelKey(k) {
   if (k === "w" || k === "arrowup") game.cur = Math.max(0, game.cur - 1);
@@ -737,7 +968,7 @@ function admGiveImplant(id) {
   else toast("Mochila de implantes cheia");
 }
 function admReset() {
-  save.bank = 0; save.vault = []; save.vaultRows = 5; save.installed = []; save.credits = 0; save.gm = false; save.missions = [];
+  save.bank = 0; save.vault = []; save.installed = []; save.credits = 0; save.gm = false; save.missions = [];
   save.vestUpgrades = {}; save.vestDur = {}; save.vest = -1; save.vestsOwned = VESTS.map(() => false); save.outposts = OUTPOSTS.map((o, i) => i === 0);
   save.char = { level: 1, xp: 0, points: 0, wpoints: 0, attrs: defaultAttrs() };
   persist(); resetGame(); toast("Progresso apagado");
@@ -858,9 +1089,16 @@ function adminKey(k) {
 // =====================================================================
 //  Desenho dos menus
 // =====================================================================
-// moldura e linhas dos menus: desenho em js/estetica.js (clima de Natal da tela inicial)
-function menuFrame(title, sub) { uiFrame(title, sub); }
-function rowBox(x, y, w, h, sel, accent) { uiRow(x, y, w, h, sel, accent); }
+function menuFrame(title, sub) {
+  ctx.fillStyle = "rgba(8,9,7,0.92)"; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(212,175,55,0.35)"; ctx.lineWidth = 1; rr(16, 12, W - 32, H - 24, 10); ctx.stroke();
+  txt(title, W / 2, 46, 28, "#e5e0c8", "center", true);
+  if (sub) txt(sub, W / 2, 72, 15, "#a9a58f", "center");
+}
+function rowBox(x, y, w, h, sel, accent) {
+  ctx.fillStyle = sel ? "#2b2a22" : "#1a1a15"; rr(x, y, w, h, 5); ctx.fill();
+  ctx.strokeStyle = sel ? "#ffd96a" : accent || "#3d3b30"; ctx.lineWidth = sel ? 2 : 1; ctx.stroke();
+}
 function hint(t) { txt(t, W / 2, H - 24, 13, "#a9a58f", "center"); }
 function menuToast() {
   if (game.msgT > 0) txt(game.msg, W / 2, H - 50, 17, "#ffd96a", "center", true, W - 80);

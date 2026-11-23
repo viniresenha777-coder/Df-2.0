@@ -290,9 +290,15 @@ const WEAPON_3D = {
   m4: { m: "w_m4" }, baioneta: { m: "w_m4" }, fal: { m: "w_fal" }, scar: { m: "w_scar" },
   uzi: { m: "w_uzi" }, vector: { m: "w_vector" }, m249: { m: "w_m249" },
   minigun: { m: "w_minigun" }, minigun_inf: { m: "w_fm_minigun_inf_hd", grip: 0.3, heldView: true },
-  choque: { m: "w_fm_mks50", grip: 0.22, heldView: true }, trovao: { m: "w_fm_trovao_hd", grip: 0.3, heldView: true }, pistolalamina: { m: "w_fm_presa", grip: 0.15, heldView: true }, escopeta: { m: "w_fm_escopeta", grip: 0.29, heldView: true }, incendiaria: { m: "w_fm_incendiaria_hd", grip: 0.23, heldView: true }, canoduplo: { m: "w_canoduplo" }, spas: { m: "w_spas" }, aa12: { m: "w_aa12" },
+  canoduplo: { m: "w_canoduplo" },
+  // grip: arma com arte própria na mão (img/weapons/<m>_held.png quando heldView), segurada nesse ponto do comprimento
+  choque: { m: "w_fm_mks50", grip: 0.22, heldView: true }, trovao: { m: "w_fm_trovao_hd", grip: 0.3, heldView: true },
+  pistolalamina: { m: "w_fm_presa", grip: 0.15, heldView: true }, escopeta: { m: "w_fm_escopeta", grip: 0.29, heldView: true },
+  incendiaria: { m: "w_fm_incendiaria_hd", grip: 0.23, heldView: true },
+  spas: { m: "w_spas" }, aa12: { m: "w_aa12" },
   caca: { m: "w_caca" }, sniper: { m: "w_sniper" }, barrett: { m: "w_barrett" },
-  pistola: { m: "w_fm_pistola", grip: 0.24, heldView: true }, glock: { m: "w_fm_glock", grip: 0.24, heldView: true }, silenciada: { m: "w_fm_vp9", grip: 0.23, heldView: true }, colt: { m: "w_fm_colt", grip: 0.23, heldView: true }, deagle: { m: "w_deagle" },
+  pistola: { m: "w_fm_pistola", grip: 0.24, heldView: true }, glock: { m: "w_fm_glock", grip: 0.24, heldView: true },
+  silenciada: { m: "w_fm_vp9", grip: 0.23, heldView: true }, colt: { m: "w_fm_colt", grip: 0.23, heldView: true }, deagle: { m: "w_deagle" },
   revolver: { m: "w_peacemaker" }, revolver_orn: { m: "w_peacemaker", f: "sepia(0.8) saturate(2.2) brightness(1.1)" },
   katana: { m: "w_katana" }, katana_dragao: { m: "w_fm_katana_dragao", grip: 0.13, heldView: true },
   lamina: { m: "w_fm_lamina", grip: 0.1, heldView: true },
@@ -334,9 +340,7 @@ function playerGear() {
     // máscara + capa com capuz: camada da máscara já recortada pelo capuz (gear/<máscara>_capuz_<pose>.png)
     const cape = wear("cape"), mask = wear("mask");
     // moletom (jaqueta 3D) por baixo da capa e da máscara
-    // colete vestido (Natalino): sem calça equipada, a calça cargo vai por baixo e cobre o quadril
-    const suit = vestWearLayer(), pants = wear("pants") || (suit ? "cl_pants_cargo" : null);
-    return [wear("boots"), pants, wear("jacket"), suit, cape, mask && cape === "cape_hood" ? mask + "_capuz" : mask].filter(Boolean);
+    return [wear("boots"), wear("pants"), wear("jacket"), cape, mask && cape === "cape_hood" ? mask + "_capuz" : mask].filter(Boolean);
   }
   const list = [];
   const hat = wear("hat"), mask = wear("mask");
@@ -355,7 +359,7 @@ function playerGear() {
 // ordem das camadas: calça e botas embaixo de tudo; de frente a capa vai primeiro (fica atrás); de
 // lado/costas o colete vai antes, depois a capa por cima dele e a mochila por cima da capa. Cabeça por último.
 function gearOrder(list, back) {
-  const rank = (id) => id.startsWith("cl_boots") ? -2 : id.startsWith("cl_pants") ? -1 : id.startsWith("cl_jacket") || id.startsWith("cl_moletom") ? -0.5 : id.startsWith("cl_colete") ? -0.25 : id.startsWith("cape") ? (back ? 1 : 0) :
+  const rank = (id) => id.startsWith("cl_boots") ? -2 : id.startsWith("cl_pants") ? -1 : id.startsWith("cl_jacket") || id.startsWith("cl_moletom") ? -0.5 : id.startsWith("cape") ? (back ? 1 : 0) :
     id.startsWith("vest") ? (back ? 0 : 1) : id === "pack" || id.startsWith("cl_pack") ? 2 : 3;
   return list.slice().sort((a, b) => rank(a) - rank(b));
 }

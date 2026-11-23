@@ -6,10 +6,10 @@
 // ---------- Implantes ----------
 function newImplant(id) {
   const im = { id, alloc: {} };
-  if (id === FM_MIMIC_ID) im.tokenBound = true;
+  if (id === FM_MIMIC_ID) im.tokenBound = true;      // o Mimic do kit é intransferível
   return im;
 }
-function randomImplant() { return newImplant(pick(IMP_IDS.filter(id => !IMP[id].kitOnly))); }
+function randomImplant() { return newImplant(pick(IMP_IDS.filter((id) => !IMP[id].kitOnly))); }
 function impColor(im) { return IMP_COLOR[IMP[im.id].kind || 0]; }
 function implantName(im) { return IMP[im.id].name; }
 function allocUsed(im) { let n = 0; for (const k in im.alloc || {}) n += im.alloc[k]; return n; }
@@ -56,11 +56,12 @@ function implantDesc(im) {
   return parts.join(" · ");
 }
 // por que este implante não pode ser instalado agora (ou null se pode)
-function implantInstallConflict(first, second) {
+// dois iguais, ou dois de cópia (Mimic), não podem ficar instalados juntos
+function fmImplantInstallConflict(first, second) {
   return first === second || !!(IMP[first]?.mimic && IMP[second]?.mimic);
 }
 function installBlock(im) {
-  if (save.installed.some(x => implantInstallConflict(x.id, im.id)))
+  if (save.installed.some((x) => fmImplantInstallConflict(x.id, im.id)))
     return "Já existe um implante igual ou com o mesmo efeito de cópia instalado.";
   if (save.installed.length >= implantUnlockedSlots(player.level))
     return "Slots ocupados. Próximo desbloqueio no nível " +
@@ -103,7 +104,7 @@ function lastStandTick() {
   if (!player.fxAll) return;
   player.fx = player.flags.lastStand && player.hp / player.maxHp < 0.25 ? player.fxSafe : player.fxAll;
 }
-function makeStock() { return IMP_IDS.filter(id => !IMP[id].kitOnly).map(id => ({ id, price: IMP[id].price })); }
+function makeStock() { return IMP_IDS.filter((id) => !IMP[id].kitOnly).map((id) => ({ id, price: IMP[id].price })); }
 
 
 // ---------- Esquemas de implantes (presets) ----------
@@ -142,7 +143,7 @@ function implantPresetApply(name) {
   const available = [...save.installed, ...player.bag];
   const remaining = available.slice(), chosen = [];
   for (const template of slots) {
-    if (!template || !IMP[template.id] || chosen.some(({ actual }) => implantInstallConflict(actual.id, template.id))) {
+    if (!template || !IMP[template.id] || chosen.some(({ actual }) => fmImplantInstallConflict(actual.id, template.id))) {
       toast("Esquema inválido: implante repetido ou desconhecido.");
       return false;
     }

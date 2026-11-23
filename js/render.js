@@ -20,7 +20,6 @@ function poly(pts, color) {
   ctx.closePath(); ctx.fill();
 }
 function txt(s, x, y, size, color, align, bold, maxW) {
-  // Nome de exibição; internamente permanece "virote" para compatibilidade com saves.
   if (typeof s === "string") s = s.replace(/\bvirote\b/gi, "Flechas");
   ctx.font = `${bold ? "bold " : ""}${size}px ${FONT}`; ctx.fillStyle = color; ctx.textAlign = align || "left";
   if (maxW) ctx.fillText(s, x, y, maxW); else ctx.fillText(s, x, y);
@@ -937,6 +936,7 @@ function drawStation(f) {
 // =====================================================================
 // arma vista de cima, apontando para +x
 function drawWeaponShape(w, swing) {
+  // armas com modelo próprio na mão (grip = ponto da empunhadura, de 0 a 1 no comprimento)
   const held = WEAPON_3D[w.id];
   if (held && held.grip != null) {
     const icon = weaponIcon(w, true);
@@ -944,7 +944,7 @@ function drawWeaponShape(w, swing) {
       const width = (w.len || 20) + 18;
       ctx.save();
       ctx.rotate(swing);
-      const originX = w.melee ? 8 : (w.look === "pistol" ? 10 : 0);
+      const originX = w.melee ? 8 : w.look === "pistol" ? 10 : 0;
       const originY = w.melee ? 6 : 0;
       if (held.heldView) ctx.filter = "none";
       ctx.drawImage(icon, originX - width * held.grip, originY - width / 4, width, width / 2);
@@ -953,11 +953,10 @@ function drawWeaponShape(w, swing) {
       return;
     }
   }
-
-  if (w.id === "besta" && CROSSBOW_ZHNETS_ART.complete && CROSSBOW_ZHNETS_ART.naturalWidth) {
+  if (w.id === "besta" && CB_ZHNETS.complete && CB_ZHNETS.naturalWidth) {
     ctx.save();
     ctx.scale(-1, 1);
-    ctx.drawImage(CROSSBOW_ZHNETS_ART, -43, -14, 50, 28);
+    ctx.drawImage(CB_ZHNETS, -43, -14, 50, 28);
     ctx.restore();
     return;
   }

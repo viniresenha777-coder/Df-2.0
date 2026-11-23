@@ -143,6 +143,61 @@ function portraitMouseUp() {
 // ---------------------------------------------------------------- inventário: zonas de arrastar
 // cada quadro registra as zonas (onde soltar) e o que pode ser arrastado
 const INV = { zones: [], drag: null, hover: null, confirm: null, packPage: 0 };
+// Ordem livre do inventário: cada item ganha uma chave (fmKey) e a ordem fica salva em save.fmInventoryOrder.
+let fmInvCounter = 0;
+function fmInvArrange(items) {
+  const counts = {};
+  items.forEach((it, i) => {
+    let k;
+    if (it.area === "ammo") {
+      const t = it.item.t;
+      counts[t] = (counts[t] || 0) + 1;
+      k = "ammo:" + t + ":" + counts[t];
+    } else if ((it.area === "pack" || it.area === "bag") && it.item && typeof it.item === "object") {
+      if (!it.item.fmUiId) it.item.fmUiId = "i" + ++fmInvCounter + "_" + Math.random().toString(36).slice(2, 9);
+      k = "obj:" + it.item.fmUiId;
+    } else {
+      const id = it.item && (it.item.id !== undefined ? it.item.id : it.item.i);
+      k = it.type + ":" + (id === undefined ? i : id);
+    }
+    it.fmKey = k;
+  });
+  if (!INV.fmInvOrder && Array.isArray(save.fmInventoryOrder) && save.fmInventoryOrder.length)
+    INV.fmInvOrder = save.fmInventoryOrder.slice();
+  if (!INV.fmInvOrder) return items;
+  const map = new Map(items.map((it) => [it.fmKey, it])),
+    out = Array(Math.max(items.length, INV.fmInvOrder.length));
+  INV.fmInvOrder.forEach((k, i) => {
+    if (k && map.has(k)) {
+      out[i] = map.get(k);
+      map.delete(k);
+    }
+  });
+  for (const it of map.values()) {
+    let spot = out.findIndex((x) => !x);
+    if (spot < 0) spot = out.length;
+    out[spot] = it;
+  }
+  return out;
+}
+function fmMoveAmmo(from, to) {
+  if (from == null || to == null || from === to) return;
+  const items = invPackEntries(),
+    len = Math.max(items.length, 30 + (fmBackpackEquipped()?.slots || 0));
+  if (from < 0 || to < 0 || from >= len || to >= len) return;
+  const arr = Array.from({ length: len }, (_, i) => (items[i] ? items[i].fmKey : null));
+  [arr[from], arr[to]] = [arr[to], arr[from]];
+  INV.fmInvOrder = arr;
+  save.fmInventoryOrder = arr.slice(0, 150);
+  persist();
+}
+function fmCanChangeBackpack(slots) {
+  const old = fmBackpackEquipped()?.slots || 0;
+  if (packUsed() > fmBackpackBase(player.level) + slots) return false;
+  const items = invPackEntries();
+  for (let i = 30 + slots; i < 30 + old; i++) if (items[i]) return false;
+  return true;
+}
 
 // Uma única grade visual para armas, materiais, munição, coletes e roupas.
 // Roupas e coletes conservam a posse no save; não consomem nem duplicam
@@ -156,7 +211,7 @@ function invPackEntries() {
     let reserve = Math.max(0, Math.floor(player.reserve[t] || 0));
     while (reserve > 0) {
       const amount = Math.min(AMMO_STACK, reserve);
-      entries.push({ area: "ammo", type: "ammo", item: { t, n: amount }, drag: false });
+      entries.push({ area: "ammo", type: "ammo", item: { t, n: amount } });
       reserve -= amount;
     }
   }
@@ -166,14 +221,16 @@ function invPackEntries() {
   });
   CLOTHING_ITEMS.forEach(item => {
     const equipped = save.clothing[item.kind] === item.id;
-    if (!equipped && item.kind !== "pack" &&
-        !save.vault.some(v => v && v.kind === "clothing" && v.id === item.id))
+    // mochilas ficam no slot próprio e no Baú da Base; roupas guardadas no baú também saem daqui
+    if (item.kind !== "pack" && !equipped && !save.vault.some((v) => v && v.kind === "clothing" && v.id === item.id))
       entries.push({ area: "clothes-list", kind: item.kind, type: "clothing", item });
   });
-  return entries;
+  player.bag.forEach((im, i) => entries.push({ area: "bag", i, type: "implant", item: im }));
+  return fmInvArrange(entries);
 }
+// página 1: 30 espaços + os espaços extras da mochila (painel ao lado); depois, páginas de 30
 function invPackPages() {
-  return 1 + Math.ceil(Math.max(0, invPackEntries().length - 30 - backpackExtraSlots()) / 30);
+  return 1 + Math.ceil(Math.max(0, invPackEntries().length - 30 - (fmBackpackEquipped()?.slots || 0)) / 30);
 }
 function invPackChangePage(direction) {
   INV.packPage = Math.max(0, Math.min(invPackPages() - 1, INV.packPage + direction));
@@ -248,62 +305,22 @@ function invClick(z) {
 
 function equipClothing(item) {
   if (!item || CLOTHING_BY_ID[item.id] !== item || !CLOTHING_KINDS.includes(item.kind)) return;
-  if (save.vault.some(v => v && v.kind === "clothing" && v.id === item.id)) {
-    toast("Retire essa peça do Baú da Base antes de equipar."); return;
-  }
-  if (save.clothing[item.kind] === item.id) { unequipClothing(item.kind); return; }   // clicar de novo tira (mochila não tem slot)
+  if (fmStashStoredClothing(item.id)) { toast("Retire esta peça do Baú da Base antes de equipar."); return; }
+  if (save.clothing[item.kind] === item.id) { unequipClothing(item.kind); return; }   // clicar de novo tira
   if (item.kind === "pack") {
-    if (player.level < item.level) { toast("Disponível a partir do nível " + item.level); return; }
-    if (packUsed() > backpackBaseCapacity(player.level) + item.slots) {
-      toast("Retire itens antes de usar uma mochila menor."); return;
-    }
+    if (player.level < item.level) { toast("Disponível no nível " + item.level); return; }
+    if (!fmCanChangeBackpack(item.slots)) { toast("Esvazie os slots excedentes primeiro."); return; }
   }
   save.clothing[item.kind] = item.id;
   persist();
-  toast(item.name + " equipada" + (item.kind === "pack" ? " · +" + item.slots + " espaços" : ""));
+  toast(item.name + " equipada");
 }
 function unequipClothing(kind) {
   if (!CLOTHING_KINDS.includes(kind) || !save.clothing[kind]) return;
-  if (kind === "pack" && packUsed() > backpackBaseCapacity(player.level)) {
-    toast("Esvazie os espaços extras antes de retirar a mochila."); return;
-  }
+  if (kind === "pack" && !fmCanChangeBackpack(0)) { toast("Esvazie os slots extras antes de retirar a mochila."); return; }
   save.clothing[kind] = null; persist();
   toast(CLOTHING_LABELS[kind] + " retirada");
 }
-function equipVaultBackpack(bag) {
-  const previous = save.clothing.pack;
-  if (bag.id === previous) return false;
-  const index = save.vault.findIndex(item => item?.kind === "clothing" && item.id === bag.id);
-  if (index < 0) { toast("Esta mochila não está no Baú da Base."); return false; }
-  if (player.level < bag.level) { toast("Disponível no nível " + bag.level); return false; }
-  if (!(packUsed() <= backpackBaseCapacity(player.level) + bag.slots)) {
-    toast("Esvazie os slots excedentes antes de trocar de mochila.");
-    return false;
-  }
-
-  if (previous && !stashClothingStored(previous)) save.vault[index] = { kind: "clothing", id: previous };
-  else save.vault.splice(index, 1);
-  save.clothing.pack = bag.id;
-  stashPersist();
-  toast(bag.name + " equipada");
-  return true;
-}
-function drawVaultBackpackChooser() {
-  if (!INV.backpackPicker) return;
-  ctx.fillStyle = "rgba(5,7,6,.99)";
-  rr(695, 82, 249, 347, 8); ctx.fill();
-  ctx.strokeStyle = "#b68b4c"; ctx.lineWidth = 1.5; ctx.stroke();
-  txt("MOCHILAS DO BAÚ DA BASE", 711, 103, 13, "#ffd891", "left", true);
-  const bags = BACKPACK_CATALOG.filter(bag => bag.id !== save.clothing.pack && stashClothingStored(bag.id));
-  if (!bags.length) txt("Nenhuma mochila guardada no baú.", 711, 137, 12, "#c6bca7", "left");
-  bags.forEach((bag, i) => {
-    btn(711, 112 + i * 26, 220, 23, bag.name, () => {
-      if (equipVaultBackpack(bag)) INV.backpackPicker = false;
-    });
-  });
-  btn(711, 379, 220, 24, "Fechar", () => { INV.backpackPicker = false; });
-}
-
 function equippedClothingSlot(x, y, kind) {
   const item = clothingGet(kind);
   slotBox(x, y, 58, 58, CLOTHING_LABELS[kind], {
@@ -335,7 +352,6 @@ function moveImplant(im, to) {
     toast(`Instalou ${implantName(im)}`);
   } else {
     if (player.bag.includes(im)) return;
-    if (player.bag.length >= BAG_MAX) { toast("Mochila de implantes cheia"); return; }
     save.installed.splice(save.installed.indexOf(im), 1); player.bag.push(im);
     toast(`Removeu ${implantName(im)}`);
   }
@@ -344,14 +360,13 @@ function moveImplant(im, to) {
 
 function invDrop(src, dst) {
   if (!dst || dst === src) return;
+  if (src.type === "mat" && src.item.id === FM_ADVANCED_CASE_ID && dst.area === "doll") { fmOpenAdvancedImplantCase(src.item); return; }
+  if (src.cell != null && dst.cell != null) { fmMoveAmmo(src.cell, dst.cell); return; }   // troca de lugar na grade
   const inv = packSel();
   // descartar (pede confirmação)
   if (dst.area === "discard") {
     if (src.sel == null) { toast("Isso não dá para descartar aqui"); return; }
     inv.sel = src.sel; INV.confirm = { name: invItemName(src) }; return;
-  }
-  if (src.type === "mat" && src.item.id === FM_ADVANCED_CASE_ID && dst.area === "doll") {
-    openAdvancedImplantCase(src.item); return;
   }
   if (src.type === "mat" && src.item.id === "trindade_eterna" && dst.area === "doll") { INV.confirm = { trindade: true, name: "Trindade · 100 anos" }; return; }
   if (src.type === "mat" && src.item.id === "token_loja" && dst.area === "doll") { INV.confirm = { token: true, name: "Token da Loja" }; return; }
@@ -380,6 +395,7 @@ function invDrop(src, dst) {
     else if (src.area === "vestslot" && (dst.area === "vests" || dst.area === "pack")) unequipVest();
     return;
   }
+  if (src.type === "implant" && src.area === "installed" && dst.area === "pack") { moveImplant(src.item, "bag"); return; }
   if (src.type === "implant") {
     if (dst.area === "doll") openAlloc(src.item);                    // soltar no boneco: distribuir os pontos
     else if (src.area === "bag" && dst.area === "installed") moveImplant(src.item, "installed");
@@ -414,7 +430,9 @@ function invDrop(src, dst) {
 function invCell(x, y, w, h, opt) {
   const hov = mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h;
   const drop = INV.drag && INV.drag.moved && hov;
-  uiCell(x, y, w, h, opt.sel, hov, drop);
+  ctx.fillStyle = opt.sel ? "#2f2d24" : "rgba(22,22,18,0.95)"; rr(x, y, w, h, 5); ctx.fill();
+  ctx.strokeStyle = drop ? "#6fd06a" : opt.sel ? "#ffd96a" : hov ? "#8a7a4a" : "#3d3b30";
+  ctx.lineWidth = drop || opt.sel ? 2 : 1; ctx.stroke();
   if (opt.label) txt(opt.label, x + w / 2, y + h + 13, 11, "#c9c4ad", "center", true);
   return hov;
 }
@@ -429,6 +447,7 @@ function invAmmoCell(st, x, y, w, h) {
 }
 function invIcon(z, x, y, w, h) {
   if (!z.item) return;
+  if (z.type === "ammo") { invAmmoCell(z.item, x, y, w, h); return; }
   if (z.type === "weapon" || z.type === "mat") { drawItemCell(z.item, x, y, w, h, false); return; }
   if (z.type === "clothing") {
     drawClothingIcon(z.item, x, y, w, h);
@@ -486,6 +505,98 @@ function headPieces() {
   };
 }
 
+function fmBagPanel(entries) {
+  const bag = fmBackpackEquipped(),
+    n = bag?.slots || 0;
+  ctx.fillStyle = "rgba(7,10,9,0.94)";
+  rr(736, 86, 212, 292, 7);
+  ctx.fill();
+  ctx.strokeStyle = "#6c583b";
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  txt(bag ? bag.name : "Nenhuma mochila", 746, 104, 11, "#f2d68b", "left", true, 190);
+  txt(
+    bag ? "+" + n + " espaços · -" + bag.speedPenalty + "% velocidade" : "Equipe uma mochila ao lado da máscara",
+    746,
+    124,
+    10,
+    bag ? "#9dc995" : "#c2b8a4",
+    "left",
+    false,
+    190,
+  );
+  for (let i = 0; i < 9; i++) {
+    const x = 744 + (i % 3) * 58,
+      y = 132 + Math.floor(i / 3) * 58,
+      w = 54,
+      h = 50,
+      idx = 30 + i,
+      active = !!bag && i < n,
+      it = active ? entries[idx] : null;
+    if (!active) {
+      invCell(x, y, w, h, {});
+      ctx.fillStyle = "rgba(0,0,0,.55)";
+      ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+      txt("—", x + w / 2, y + 30, 14, "#555043", "center", true);
+      continue;
+    }
+    if (it?.type === "ammo") {
+      invCell(x, y, w, h, {});
+      if (!(INV.drag?.moved && INV.drag.z?.cell === idx)) invAmmoCell(it.item, x, y, w, h);
+      const z = invZone({ ...it, x, y, w, h, cell: idx, fmBagSlot: true });
+      if (mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h) INV.hover = z;
+    } else if (it) slotBox(x, y, w, h, null, { ...it, cell: idx, fmBagSlot: true });
+    else slotBox(x, y, w, h, null, { area: "backpack-extra", cell: idx, fmBagSlot: true, item: null, type: null });
+  }
+  btn(744, 311, 186, 24, "Trocar mochila", () => {
+    INV.fmBagPicker = !INV.fmBagPicker;
+  });
+  if (bag) btn(744, 342, 186, 22, "Retirar mochila", () => unequipClothing("pack"));
+}
+function fmEquipVaultBackpack(bag) {
+  const previous = save.clothing.pack;
+  if (bag.id === previous) return false;
+  const index = save.vault.findIndex((item) => item?.kind === "clothing" && item.id === bag.id);
+  if (index < 0) {
+    toast("Esta mochila não está no Baú da Base.");
+    return false;
+  }
+  if (player.level < bag.level) {
+    toast("Disponível no nível " + bag.level);
+    return false;
+  }
+  if (!fmCanChangeBackpack(bag.slots)) {
+    toast("Esvazie os slots excedentes antes de trocar de mochila.");
+    return false;
+  }
+
+  if (previous && !fmStashStoredClothing(previous)) save.vault[index] = { kind: "clothing", id: previous };
+  else save.vault.splice(index, 1);
+  save.clothing.pack = bag.id;
+  fmStashSave();
+  toast(bag.name + " equipada");
+  return true;
+}
+function fmBagChooser() {
+  if (!INV.fmBagPicker) return;
+  ctx.fillStyle = "rgba(5,7,6,.99)";
+  rr(695, 82, 249, 347, 8);
+  ctx.fill();
+  ctx.strokeStyle = "#b68b4c";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  txt("MOCHILAS DO BAÚ DA BASE", 711, 103, 13, "#ffd891", "left", true);
+  const bags = fmBackpacks.filter((bag) => bag.id !== save.clothing.pack && fmStashStoredClothing(bag.id));
+  if (!bags.length) txt("Nenhuma mochila guardada no baú.", 711, 137, 12, "#c6bca7", "left");
+  bags.forEach((bag, i) => {
+    btn(711, 112 + i * 26, 220, 23, bag.name, () => {
+      if (fmEquipVaultBackpack(bag)) INV.fmBagPicker = false;
+    });
+  });
+  btn(711, 379, 220, 24, "Fechar", () => {
+    INV.fmBagPicker = false;
+  });
+}
 function drawInventory() {
   const inv = packSel();
   INV.zones = []; INV.hover = null;
@@ -498,16 +609,6 @@ function drawInventory() {
     const x = 40 + (i % 3) * 66, y = 110 + Math.floor(i / 3) * 66;
     slotBox(x, y, 60, 60, null, { area: "installed", i, type: "implant", item: save.installed[i] || null });
   }
-  txt("Na mochila", 40, 262, 12, "#c9c4ad", "left", true);
-  txt(`${player.bag.length}/${BAG_MAX}`, 234, 262, 11, "#a9a58f", "right");
-  for (let i = 0; i < BAG_MAX; i++) {
-    const x = 40 + (i % 4) * 49, y = 270 + Math.floor(i / 4) * 49;
-    slotBox(x, y, 45, 45, null, { area: "bag", i, type: "implant", item: player.bag[i] || null });
-  }
-  txt(canSwapImplants() ? "Arraste para instalar, remover ou mudar a ordem" : "Instalar/remover: só na base", 40, 382, 10, canSwapImplants() ? "#6fae4f" : "#a9a58f");
-  txt("Solte no boneco para distribuir os pontos", 40, 393, 10, "#a9a58f");
-  // A barra de suprimentos foi removida do inventário.
-  // Comida, água e medicamentos permanecem nos dados salvos e podem ser usados pelo sistema existente.
 
   // ---- boneco e slots (meio)
   ctx.fillStyle = "rgba(0,0,0,0.3)"; rr(262, 88, 436, 342, 8); ctx.fill();
@@ -525,15 +626,9 @@ function drawInventory() {
   equippedClothingSlot(296, 268, "pants");
   if (clothingGet("mask")) equippedClothingSlot(606, 104, "mask"); else outfitSlot(606, 104, 58, 58, hp.mask ? hp.mask.name : "Máscara", hp.mask);
   slotBox(606, 186, 58, 58, "Colete", { area: "vestslot", type: "vest", item: save.vest >= 0 ? { i: save.vest } : null });
-  // só coletes com modelo vestido (Natalino): escolher se aparece no personagem
-  if (save.vest >= 0 && VESTS[save.vest].wear) {
-    const on = save.vestShow !== false;
-    txt(on ? "◉ Vestido" : "○ Oculto", 635, 258, 10, on ? "#ffd96a" : "#8f8a72", "center", true);
-    regClick(606, 246, 58, 18, () => { save.vestShow = !on; persist(); toast(on ? "Colete escondido no personagem" : "Colete aparecendo no personagem"); });
-  }
   equippedClothingSlot(606, 268, "boots");
-  equippedClothingSlot(674, 104, "pack");
-  regClick(674, 104, 58, 58, () => { INV.backpackPicker = true; });
+  equippedClothingSlot(674, 104, "pack");                     // mochila: clique abre a troca pelo Baú da Base
+  regClick(674, 104, 58, 58, () => { INV.fmBagPicker = true; });
   for (let i = 0; i < SLOT_N; i++) {
     const x = 300 + i * 124, y = 370;
     slotBox(x, y, 112, 52, null, { area: "wslot", i, sel: i, type: "weapon", item: player.slots[i] || null });
@@ -545,32 +640,31 @@ function drawInventory() {
   const inventoryEntries = invPackEntries();
   const physicalCapacity = packCapacity();
   const inventoryPages = invPackPages();
+  fmBagPanel(inventoryEntries);                               // espaços extras da mochila (painel à direita)
   INV.packPage = Math.max(0, Math.min(inventoryPages - 1, INV.packPage));
-  const baseCapacity = backpackBaseCapacity(player.level);
-  const nextCapacity = baseCapacity < 30 ? packSlotUnlockLevel(baseCapacity) : null;
+  const baseCap = fmBackpackBase(player.level), nextCapacity = baseCap < 30 ? packSlotUnlockLevel(baseCap) : null;
   ctx.fillStyle = "rgba(9,10,9,0.93)";
-  rr(31, 420, 901, 163, 8); ctx.fill();
+  rr(31, 439, 901, 118, 8); ctx.fill();
   ctx.strokeStyle = "#49453a"; ctx.lineWidth = 1.4; ctx.stroke();
-  ctx.fillStyle = "#1b1c19"; ctx.fillRect(39, 428, 885, 21);
-  txt("INVENTÁRIO", 44, 444, 14, "#d6d1bd", "left", true);
+  ctx.fillStyle = "#1b1c19"; ctx.fillRect(39, 448, 885, 22);
+  txt("INVENTÁRIO", 44, 465, 14, "#d6d1bd", "left", true);
   txt("Carga " + packUsed() + "/" + physicalCapacity + " · " +
-      (nextCapacity ? "+2 espaços no nível " + nextCapacity :
-        "30 espaços base" + (backpackEquipped() ? " +" + backpackExtraSlots() + " mochila" : "")),
-      273, 443, 11, "#a7a08b", "left", false, 290);
-  txt("Página " + (INV.packPage + 1) + "/" + inventoryPages, 759, 444, 11,
+      (nextCapacity ? "+2 slots no nível " + nextCapacity : "30 espaços base · mochila separada"),
+      273, 464, 11, "#a7a08b", "left", false, 290);
+  txt("Página " + (INV.packPage + 1) + "/" + inventoryPages, 759, 465, 11,
     "#d9b95e", "center", true);
-  btn(829, 427, 42, 22, "◀", () => invPackChangePage(-1), false, INV.packPage === 0);
-  btn(878, 427, 42, 22, "▶", () => invPackChangePage(1), false, INV.packPage >= inventoryPages - 1);
+  btn(829, 448, 42, 22, "◀", () => invPackChangePage(-1), false, INV.packPage === 0);
+  btn(878, 448, 42, 22, "▶", () => invPackChangePage(1), false, INV.packPage >= inventoryPages - 1);
 
-  // 10 colunas x 3 linhas = 30 espaços visíveis. Peças antigas continuam
-  // visíveis mesmo quando a conta carrega um inventário acima do limite atual.
+  // 15 colunas x 2 linhas = 30 espaços. Na página 1 os índices 30+ ficam no painel da mochila;
+  // as páginas seguintes mostram o que passar disso.
   for (let i = 0; i < 30; i++) {
-    const index = INV.packPage === 0 ? i : 30 + backpackExtraSlots() + (INV.packPage - 1) * 30 + i;
-    const col = i % 10, row = Math.floor(i / 10);
-    const x = 40 + col * 89, y = 452 + row * 42;
-    const width = 85, height = 39;
+    const index = INV.packPage === 0 ? i : 30 + (fmBackpackEquipped()?.slots || 0) + (INV.packPage - 1) * 30 + i;
+    const col = i % 15, row = Math.floor(i / 15);
+    const x = 40 + col * 58, y = 475 + row * 38;
+    const width = 55, height = 35;
     const entry = inventoryEntries[index];
-    const locked = !entry && index >= backpackBaseCapacity(player.level);
+    const locked = !entry && index >= fmBackpackBase(player.level);
 
     ctx.fillStyle = locked ? "rgba(11,11,11,0.92)" : "rgba(29,28,25,0.94)";
     rr(x, y, width, height, 3); ctx.fill();
@@ -578,15 +672,18 @@ function drawInventory() {
     ctx.lineWidth = 1.0; ctx.stroke();
 
     if (entry && entry.type === "ammo") {
-      invAmmoCell(entry.item, x, y, width, height);
-      const z = invZone({ ...entry, x, y, w: width, h: height });
+      invCell(x, y, width, height, {});
+      if (!(INV.drag && INV.drag.moved && INV.drag.z && INV.drag.z.cell === index))
+        invAmmoCell(entry.item, x, y, width, height);
+      const z = invZone({ ...entry, x, y, w: width, h: height, cell: index });
       if (mouse.x >= x && mouse.x <= x + width && mouse.y >= y && mouse.y <= y + height)
         INV.hover = z;
     } else if (entry) {
+      entry.cell = index;
       slotBox(x, y, width, height, null, entry);
     } else if (!locked) {
       slotBox(x, y, width, height, null,
-        { area: "pack", i: player.pack.length, item: null, type: null });
+        { area: "pack", i: player.pack.length, item: null, type: null, cell: index });
     } else {
       ctx.fillStyle = "rgba(0,0,0,0.42)"; ctx.fillRect(x + 3, y + 3, width - 6, height - 6);
       txt(index >= 30 ? "MOCHILA" : "NV " + packSlotUnlockLevel(index), x + width / 2, y + 25, 10, "#777164", "center", true);
@@ -597,65 +694,9 @@ function drawInventory() {
     ctx.lineWidth = .8; ctx.strokeRect(x + 1.5, y + 1.5, width - 3, height - 3);
   }
 
-  // ---- PAINEL DIREITO: somente informações, sem segunda lista de equipamentos.
-  txt("Detalhes do item", 716, 100, 14, "#e5e0c8", "left", true);
-  const hz = INV.hover && INV.hover.item ? INV.hover : null;
-  const selIt = selItem(inv.sel);
-  const info = hz || (selIt ? { type: selIt.kind === "weapon" ? "weapon" : "mat", item: selIt } : null);
-  ctx.fillStyle = "rgba(0,0,0,0.34)"; rr(712, 111, 220, 264, 6); ctx.fill();
-  if (INV.hover && INV.hover.type === "outfit") {
-    txt(INV.hover.label, 722, 200, 13, "#f2eedc", "left", true, 200);
-    txt("Parte do traje do personagem", 722, 227, 11, "#a9a58f", "left", false, 200);
-  } else if (info) {
-    if (info.type === "clothing" || info.type === "vest" ||
-        info.type === "weapon" || info.type === "mat")
-      invIcon(info, 784, 121, 76, 76);
-    else if (info.type === "ammo")
-      drawEntryIcon({ type: "ammo", ammo: info.item.t }, 822, 160, 0.8);
-    const name = invItemName(info);
-    txt(name, 722, 216, 14,
-      info.type === "weapon" ? rarColor(WDEF[info.item.id]) : "#f2eedc",
-      "left", true, 203);
-    if (info.type === "clothing") {
-      txt(info.item.setName + " · " + CLOTHING_LABELS[info.item.kind], 722, 241, 11,
-        "#ffd96a", "left", false, 202);
-      if (info.item.kind === "pack") {
-        txt("+" + info.item.slots + " espaços · -" + info.item.speedPenalty + "% velocidade", 722, 261, 11,
-          "#8bed92", "left", true, 202);
-        txt("Nível mínimo " + info.item.level, 722, 283, 11, "#e2cb90");
-      } else txt("Clique ou arraste até o slot da roupa", 722, 261, 11,
-        "#bcb6a2", "left", false, 202);
-    } else if (info.type === "vest") {
-      txt(vestText(VESTS[info.item.i]), 722, 242, 11, "#c9c4ad",
-        "left", false, 202);
-      txt("Clique ou arraste até o colete", 722, 264, 11, "#ffd96a");
-    } else if (info.type === "weapon") {
-      const d = WDEF[info.item.id], st = wStat(info.item);
-      txt(CAT_LABEL[d.cat] + " · dano " + Math.round(st.dmg) + " · " +
-        (1000 / st.delay).toFixed(1) + "/s", 722, 241, 11,
-        "#c9c4ad", "left", false, 202);
-      txt("Exige: " + reqText(d), 722, 264, 11,
-        canUse(d) ? "#6fae4f" : "#e05a4a", "left", true, 202);
-    } else if (info.type === "mat") {
-      txt("Quantidade: " + info.item.qty, 722, 242, 11, "#c9c4ad");
-      txt(MATS[info.item.id].cashProtection ? safeDescription(info.item.id) :
-        "Material para a oficina", 722, 262, 11, "#a9a58f", "left", false, 202);
-    } else if (info.type === "ammo") {
-      txt(info.item.n + " balas · reserva de munição", 722, 241, 11, "#c9c4ad");
-    } else if (info.type === "implant") {
-      txtWrap(implantDesc(info.item), 722, 231, 11, "#c9c4ad", 200, 14, 7);
-    } else if (info.type === "supply") {
-      txt("Quantidade: " + info.item.n, 722, 241, 11, "#c9c4ad");
-      txt("Arraste até o personagem para usar", 722, 265, 11, "#ffd96a");
-    }
-  } else {
-    txt("Passe o mouse sobre um item da mochila.", 722, 204, 11,
-      "#a9a58f", "left", false, 203);
-    txt("Roupas e coletes são equipados aqui.", 722, 235, 11,
-      "#a9a58f", "left", false, 203);
-  }
-  btn(744, 311, 186, 24, "Trocar mochila", () => { INV.backpackPicker = !INV.backpackPicker; });
-  if (backpackEquipped()) btn(744, 342, 186, 22, "Retirar mochila", () => unequipClothing("pack"));
+  fmBagChooser();
+  // detalhes do item: balão junto do mouse (desenhado por último, sobre tudo)
+  const fmItemHover = INV.hover && INV.hover.item ? INV.hover : null;
 
   // Lixeira permanece no inventário. Roupas e coletes não podem ser
   // descartados acidentalmente por esta ação de armas/materiais.
@@ -669,6 +710,7 @@ function drawInventory() {
     const z = INV.drag.z, w = z.w, h = z.h;
     ctx.globalAlpha = 0.85; invIcon(z, mouse.x - w / 2, mouse.y - h / 2, w, h); ctx.globalAlpha = 1;
   }
+  fmBalãoDetalhes(fmItemHover);
   // confirmação de descarte
   if (INV.confirm) {
     ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, W, H);
@@ -678,9 +720,104 @@ function drawInventory() {
     btn(W / 2 - 150, H / 2 + 16, 140, 30, INV.confirm.token ? "Ativar" : INV.confirm.trindade ? "Consumir" : INV.confirm.resetStats ? "Resetar" : "Descartar", () => { const reset = INV.confirm.resetStats, trindade = INV.confirm.trindade, token = INV.confirm.token; INV.confirm = null; if (token) useTokenLoja(); else if (trindade) useTrindadeItem(); else if (reset) useResetStatsCard(); else packDiscard(); }, true);
     btn(W / 2 + 10, H / 2 + 16, 140, 30, "Cancelar", () => { INV.confirm = null; });
   }
-  drawVaultBackpackChooser();
   drawAllocPanel();
-  hint("Inventário unificado · 14–30 espaços de carga por nível · Roda do mouse ou ◀ ▶ · B/Esc fecha");
+}
+function fmBalãoDetalhes(it) {
+  if (!it || !it.item || INV.confirm || (INV.drag && INV.drag.moved)) return;
+  const obj = it.item,
+    kind = it.type,
+    rows = [];
+  const add = (v, color = "#e4dfd1") => rows.push([String(v), color]);
+  let title = "Item";
+  try {
+    title = invItemName(it) || "Item";
+    if (kind === "weapon") {
+      const base = WDEF[obj.id],
+        stat = wStat(obj),
+        up = obj.up || { acc: 0, dmg: 0, rel: 0 };
+      add("Categoria: " + (CAT_LABEL[base.cat] || CATNAME[base.cat] || "Arma"), "#8bc9f5");
+      add("Dano: " + Math.round(stat.dmg), "#f2e9df");
+      add("Ataques por segundo: " + (1000 / stat.delay).toFixed(2), "#eee1d2");
+      if (stat.reload) add("Recarga: " + (stat.reload / 1000).toFixed(2) + " s", "#eee1d2");
+      const sum = (up.acc || 0) + (up.dmg || 0) + (up.rel || 0);
+      if (sum) {
+        add("Aprimoramento total: +" + sum, "#f4c44d");
+        if (up.dmg) add("Dano: +" + up.dmg + " nível" + (up.dmg === 1 ? "" : "s"), "#8bed92");
+        if (up.acc) add("Precisão: +" + up.acc + " nível" + (up.acc === 1 ? "" : "s"), "#8bed92");
+        if (up.rel) add("Recarga: +" + up.rel + " nível" + (up.rel === 1 ? "" : "s"), "#8bed92");
+      }
+      if (obj.gc) add("Craft perfeito", "#c6a4ff");
+      add("Requisitos: " + reqText(base), canUse(base) ? "#88d997" : "#ff8383");
+    } else if (kind === "ammo") {
+      add("Calibre: " + obj.t, "#8bc9f5");
+      add("Quantidade: " + obj.n, "#f4c44d");
+    } else if (kind === "vest") {
+      const vest = VESTS[obj.i];
+      add("Tipo: colete", "#8bc9f5");
+      add("Proteção: " + (vest.armor || 0), "#8bed92");
+    } else if (kind === "clothing") {
+      add("Tipo: " + (obj.kind === "pack" ? "mochila" : "roupa"), "#8bc9f5");
+      if (obj.kind === "pack") {
+        add("+" + obj.slots + " espaços de inventário", "#8bed92");
+        add("-" + obj.speedPenalty + "% velocidade", "#e4dfd1");
+        add("Nível mínimo: " + obj.level, "#d6c58b");
+        add(save.clothing.pack === obj.id ? "Clique para retirar" : "Clique para equipar", "#8bed92");
+      } else {
+        add("Peça: " + (CLOTHING_LABELS[obj.kind] || obj.kind || "equipamento"), "#e4dfd1");
+        add("Clique para equipar", "#8bed92");
+      }
+    } else if (kind === "implant") {
+      add("Tipo: implante", "#8bc9f5");
+      const txt = implantDesc(obj);
+      if (txt) add(txt, "#8bed92");
+    } else if (kind === "mat") {
+      add("Tipo: material", "#8bc9f5");
+      add("Quantidade: " + (obj.n || 1), "#f4c44d");
+    } else if (kind === "supply") {
+      add("Tipo: suprimento", "#8bc9f5");
+      add("Quantidade: " + (obj.n || 1), "#f4c44d");
+    } else add("Item do inventário", "#ddd8c8");
+  } catch (err) {
+    rows.length = 0;
+    add("Detalhes indisponíveis", "#e4dfd1");
+  }
+  ctx.save();
+  const widthMax = 340;
+  const lines = [];
+  const measure = (text, size = 11) => {
+    ctx.font = size + "px " + FONT;
+    return ctx.measureText(String(text)).width;
+  };
+  let w = Math.min(widthMax, Math.max(185, measure(title, 14) + 26, ...rows.map((r) => measure(r[0], 11) + 26)));
+  w = Math.ceil(w);
+  for (const row of rows) {
+    const t = row[0],
+      col = row[1];
+    if (measure(t, 11) <= w - 24) {
+      lines.push([t, col]);
+      continue;
+    }
+    let buff = "";
+    for (const word of t.split(" ")) {
+      const next = buff ? buff + " " + word : word;
+      if (buff && measure(next, 11) > w - 24) {
+        lines.push([buff, col]);
+        buff = word;
+      } else buff = next;
+    }
+    if (buff) lines.push([buff, col]);
+  }
+  const h = 34 + lines.length * 16;
+  const x = Math.max(6, Math.min(W - w - 6, mouse.x + 15)),
+    y = Math.max(6, Math.min(H - h - 6, mouse.y - h - 12));
+  ctx.fillStyle = "rgba(8,8,8,0.97)";
+  ctx.strokeStyle = "#a76d3c";
+  ctx.lineWidth = 1.3;
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  txt(title, x + 12, y + 22, 14, "#ffcf6d", "left", true, w - 24);
+  lines.forEach((r, i) => txt(r[0], x + 12, y + 40 + i * 16, 11, r[1], "left", false, w - 24));
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------- texto em várias linhas

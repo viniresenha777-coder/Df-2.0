@@ -90,23 +90,8 @@ const VESTS = [
   { name: "Armadura de Combate Urbano",     armor: 22, price: 12000, color: "#3a3a3e", rar: 2, stealth: 20 },
   { name: "Armadura de Segurança de Elite", armor: 30, credits: 500, color: "#2a2a2c", rar: 3, hp: 15 },
   { name: "Armadura Tática Avançada",       armor: 34, credits: 500, color: "#7a6a4a", rar: 3 },
-  { name: "Armadura de Assalto Pesada",     armor: 45, craft: true,  color: "#3a4a32", rar: 4, slow: 6, hp: 25, acid: 25 },
-  // Colete de Natal (modelo 3D próprio). dur = durabilidade em pontos (os outros têm 100) ·
-  // creditsVip = preço para VIP (Membros Gold) · repairLevel = nível mínimo para consertar ·
-  // scrap/scrapMC = valor fixo no Ferro Velho (MC = melhorias no máximo) · upCost = preço de cada melhoria
-  { name: "Colete Tático Natalino",         armor: 75, credits: 2000, creditsVip: 1500, color: "#8a1f1f", rar: 4,
-    dur: 350, repairLevel: 75, scrap: 128250, scrapMC: 256500, upCost: 67000,
-    wear: "cl_colete_natal" }   // wear = camada 3D vestida no personagem (img/gear/<wear>_<pose>.png e img/portrait_<wear>.png)
+  { name: "Armadura de Assalto Pesada",     armor: 45, craft: true,  color: "#3a4a32", rar: 4, slow: 6, hp: 25, acid: 25 }
 ];
-// camada 3D do colete equipado, se ele tiver uma e o jogador quiser mostrar vestido (só o Natalino tem)
-function vestWearLayer() {
-  const v = save.vest >= 0 ? VESTS[save.vest] : null;
-  return v && v.wear && save.vestShow !== false ? v.wear : null;
-}
-// quantos pontos de durabilidade o colete tem (100 nos antigos)
-function vestMaxDur(i) { return (VESTS[i] && VESTS[i].dur) || 100; }
-// preço em créditos (VIP paga o preço de membro quando existe)
-function vestCredits(v) { return v.creditsVip && typeof vipActive === "function" && vipActive() ? v.creditsVip : v.credits; }
 
 // ---------- Zumbis ----------
 // from = zona a partir da qual aparecem · pack = aparecem em grupo
@@ -289,7 +274,7 @@ const IMPLANT_CHANCE = { airdrop: 0.25, corpse: 0.02, boss: 1, chest: 0.06, tras
   "Cela": 0.02, "Armário de evidências": 0.04, "Caixa militar": 0.05, "Beliche": 0.03, "Estoque de suprimentos": 0.01 };
 
 // ---------- Implantes ----------
-// Catálogo de implantes, incluindo ofertas exclusivas da Loja de Créditos.
+// Novo catálogo: 29 implantes; o sistema antigo de slots, saque e clínica é preservado.
 // fx = efeitos fixos (%). alloc = pontos que o jogador distribui (arrastando o implante para o boneco).
 // flag = efeito único (não é copiado pelo Mímico). mimic = copia o implante do slot à esquerda.
 // Os seis últimos números ficam visíveis, porém bloqueados: nível máximo 200.
@@ -351,9 +336,12 @@ const IMP = {
   "implante_27": {"name":"Ovo Radioativo","price":2000,"scrap":29000,"kind":1,"fx":{"exp":30,"thick":-25},"event":true},
   "implante_28": {"name":"Coelho Mutante","price":1000,"scrap":29000,"kind":0,"fx":{"ammoLoot":27,"greed":33,"armorFind":27,"hunter":33},"event":true},
   "implante_29": {"name":"Trindade Suprema","price":1000,"scrap":29000,"kind":0,"fx":{"exp":4,"firepower":6,"agility":5},"event":true},
-  "implante_mimic": {"name":"Mimic","price":4000,"vipPrice":3000,"scrap":0,"kind":2,"mimic":true,"kitOnly":true,"text":"Copia os atributos do implante à esquerda. Penalidades copiadas valem em dobro. Equipamento único e intransferível."},
+  // Mimic: só vem no Kit Mimic da Loja de Créditos (não cai nem aparece na clínica).
+  implante_mimic: {
+    name: "Mimic", price: 4000, vipPrice: 3000, scrap: 0, kind: 2, mimic: true, kitOnly: true,
+    text: "Copia os atributos do implante à esquerda. Penalidades copiadas valem em dobro. Equipamento único e intransferível.",
+  },
 };
-const FM_MIMIC_ID = "implante_mimic", FM_ADVANCED_CASE_ID = "caixa_implante_avancada";
 const IMP_IDS = Object.keys(IMP);
 const IMP_COLOR = ["#d4af37", "#e07b5a", "#c58bff"];     // comum · com penalidade · especial
 
@@ -362,6 +350,7 @@ const MAX_LEVEL = 200, ATTR_MAX = 100, PLAYER_HP_CAP = 200;
 // Limites de distribuição: stats gerais até 100, Força até 100,
 // e as cinco proficiências de armas até 120 cada (700 pontos no total).
 const WEAPON_SKILL_IDS = ["str", "melee", "pistols", "rifles", "shotguns", "machinegun"];
+const FM_MIMIC_ID = "implante_mimic", FM_ADVANCED_CASE_ID = "caixa_implante_avancada";
 function weaponSkillCap(id) {
   if (id === "str") return 100;
   return WEAPON_SKILL_IDS.includes(id) ? 120 : ATTR_MAX;

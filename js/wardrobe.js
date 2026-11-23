@@ -52,22 +52,159 @@ for (const item of IMPORTED_CLOTHING) {
   CLOTHING_ITEMS.push(item);
   CLOTHING_BY_ID[item.id] = item;
 }
-
-// Mochilas adaptadas do catálogo Dead Frontier: os números são espaços
-// adicionais à capacidade-base (14-30), não substituem o inventário.
-// Itens liberados para teste por nível; não exigem criação na oficina.
-const BACKPACK_CATALOG = [{"id":"fm_pack_cintura","name":"Mochila do Sobrevivente","slots":1,"speedPenalty":0,"level":1,"color":"#74684d","accent":"#c09b5c","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas","atlasIndex":0},{"id":"fm_pack_transversal","name":"Mochila do Batedor","slots":2,"speedPenalty":1,"level":5,"color":"#6c5242","accent":"#c7a380","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas","atlasIndex":6},{"id":"fm_pack_pequena","name":"Mochila do Saqueador","slots":3,"speedPenalty":2,"level":15,"color":"#596747","accent":"#a0ab76","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas","atlasIndex":2},{"id":"fm_pack_basica","name":"Mochila Camuflada","slots":4,"speedPenalty":3,"level":25,"color":"#3f5452","accent":"#a1b1a6","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas","atlasIndex":3},{"id":"fm_pack_grande","name":"Mochila Médica","slots":5,"speedPenalty":4,"level":50,"color":"#736245","accent":"#c7af81","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas","atlasIndex":4},{"id":"fm_pack_trilha","name":"Mochila do Explorador","slots":6,"speedPenalty":5,"level":75,"color":"#52674f","accent":"#9ab88a","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas","atlasIndex":5},{"id":"fm_pack_militar","name":"Mochila Militar","slots":7,"speedPenalty":6,"level":100,"color":"#4f5844","accent":"#95a27a","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas","atlasIndex":1},{"id":"fm_pack_expedicao","name":"Mochila de Expedição","slots":8,"speedPenalty":7,"level":120,"color":"#495e6b","accent":"#98b0c4","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas","atlasIndex":7},{"id":"fm_pack_expedicao_grande","name":"Mochila Blindada","slots":9,"speedPenalty":8,"level":120,"color":"#6e6352","accent":"#c1a98a","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas","atlasIndex":9},{"id":"fm_pack_trekking","name":"Mochila Furtiva","slots":8,"speedPenalty":2,"level":120,"color":"#475e58","accent":"#b2d0bb","kind":"pack","set":"mochilas","setName":"Mochilas","texture":"canvas","atlasIndex":8}];
-for (const bag of BACKPACK_CATALOG) {
+// ---------- Mochilas (slot "pack"): espaços extras no inventário e penalidade de velocidade ----------
+const fmBackpacks = [
+  {
+    id: "fm_pack_cintura",
+    name: "Mochila do Sobrevivente",
+    slots: 1,
+    speedPenalty: 0,
+    level: 1,
+    color: "#74684d",
+    accent: "#c09b5c",
+    kind: "pack",
+    set: "mochilas",
+    setName: "Mochilas",
+    texture: "canvas",
+    atlasIndex: 0,
+  },
+  {
+    id: "fm_pack_transversal",
+    name: "Mochila do Batedor",
+    slots: 2,
+    speedPenalty: 1,
+    level: 5,
+    color: "#6c5242",
+    accent: "#c7a380",
+    kind: "pack",
+    set: "mochilas",
+    setName: "Mochilas",
+    texture: "canvas",
+    atlasIndex: 6,
+  },
+  {
+    id: "fm_pack_pequena",
+    name: "Mochila do Saqueador",
+    slots: 3,
+    speedPenalty: 2,
+    level: 15,
+    color: "#596747",
+    accent: "#a0ab76",
+    kind: "pack",
+    set: "mochilas",
+    setName: "Mochilas",
+    texture: "canvas",
+    atlasIndex: 2,
+  },
+  {
+    id: "fm_pack_basica",
+    name: "Mochila Camuflada",
+    slots: 4,
+    speedPenalty: 3,
+    level: 25,
+    color: "#3f5452",
+    accent: "#a1b1a6",
+    kind: "pack",
+    set: "mochilas",
+    setName: "Mochilas",
+    texture: "canvas",
+    atlasIndex: 3,
+  },
+  {
+    id: "fm_pack_grande",
+    name: "Mochila Médica",
+    slots: 5,
+    speedPenalty: 4,
+    level: 50,
+    color: "#736245",
+    accent: "#c7af81",
+    kind: "pack",
+    set: "mochilas",
+    setName: "Mochilas",
+    texture: "canvas",
+    atlasIndex: 4,
+  },
+  {
+    id: "fm_pack_trilha",
+    name: "Mochila do Explorador",
+    slots: 6,
+    speedPenalty: 5,
+    level: 75,
+    color: "#52674f",
+    accent: "#9ab88a",
+    kind: "pack",
+    set: "mochilas",
+    setName: "Mochilas",
+    texture: "canvas",
+    atlasIndex: 5,
+  },
+  {
+    id: "fm_pack_militar",
+    name: "Mochila Militar",
+    slots: 7,
+    speedPenalty: 6,
+    level: 100,
+    color: "#4f5844",
+    accent: "#95a27a",
+    kind: "pack",
+    set: "mochilas",
+    setName: "Mochilas",
+    texture: "canvas",
+    atlasIndex: 1,
+  },
+  {
+    id: "fm_pack_expedicao",
+    name: "Mochila de Expedição",
+    slots: 8,
+    speedPenalty: 7,
+    level: 120,
+    color: "#495e6b",
+    accent: "#98b0c4",
+    kind: "pack",
+    set: "mochilas",
+    setName: "Mochilas",
+    texture: "canvas",
+    atlasIndex: 7,
+  },
+  {
+    id: "fm_pack_expedicao_grande",
+    name: "Mochila Blindada",
+    slots: 9,
+    speedPenalty: 8,
+    level: 120,
+    color: "#6e6352",
+    accent: "#c1a98a",
+    kind: "pack",
+    set: "mochilas",
+    setName: "Mochilas",
+    texture: "canvas",
+    atlasIndex: 9,
+  },
+  {
+    id: "fm_pack_trekking",
+    name: "Mochila Furtiva",
+    slots: 8,
+    speedPenalty: 2,
+    level: 120,
+    color: "#475e58",
+    accent: "#b2d0bb",
+    kind: "pack",
+    set: "mochilas",
+    setName: "Mochilas",
+    texture: "canvas",
+    atlasIndex: 8,
+  },
+];
+for (const bag of fmBackpacks) {
   CLOTHING_ITEMS.push(bag);
   CLOTHING_BY_ID[bag.id] = bag;
 }
-function backpackBaseCapacity(level) {
-  const lv = Math.max(1, Math.floor(Number(level) || 1));
-  return Math.min(30, 14 + 2 * Math.floor(lv / 5));
+function fmBackpackBase(lv) {
+  return Math.min(30, 14 + 2 * Math.floor(Math.max(1, Number(lv) || 1) / 5));
 }
-function backpackEquipped() { return clothingGet("pack"); }
-function backpackExtraSlots() { return backpackEquipped()?.slots || 0; }
-function backpackSpeedPenalty() { return backpackEquipped()?.speedPenalty || 0; }
+function fmBackpackEquipped() {
+  return clothingGet("pack");
+}
 function clothingClean(src) {
   const clean = { jacket: null, pants: null, boots: null, pack: null };
   for (const kind of CLOTHING_KINDS) {
@@ -333,41 +470,67 @@ function clothingTintCanvas(base, mask, skin, equipment, portrait) {
   return c;
 }
 const CLOTHING_PNG_CACHE = Object.create(null);
-// Atlas original fornecido para as 10 mochilas, em 5 colunas x 2 linhas.
-const BACKPACK_ATLAS_ART = new Image();
-BACKPACK_ATLAS_ART.src = "img/mochilas_10_atlas.webp?v=231123-png10";
-function drawBackpackIcon(item, x, y, w, h) {
-  if (Number.isInteger(item.atlasIndex) && BACKPACK_ATLAS_ART.complete &&
-      BACKPACK_ATLAS_ART.naturalWidth >= 560 && BACKPACK_ATLAS_ART.naturalHeight >= 224) {
-    const tile = 112, col = item.atlasIndex % 5, row = Math.floor(item.atlasIndex / 5);
-    const size = Math.min(w - 4, h - 4);
-    ctx.drawImage(BACKPACK_ATLAS_ART, col * tile, row * tile, tile, tile,
-      x + (w - size) / 2, y + (h - size) / 2, size, size);
+const fmBackpackAtlas = new Image();
+fmBackpackAtlas.src = "img/mochilas_10_atlas.webp?v=231123-png10";
+function fmDrawBackpackIcon(item, x, y, w, h) {
+  if (
+    Number.isInteger(item.atlasIndex) &&
+    fmBackpackAtlas.complete &&
+    fmBackpackAtlas.naturalWidth >= 560 &&
+    fmBackpackAtlas.naturalHeight >= 224
+  ) {
+    const tile = 112,
+      col = item.atlasIndex % 5,
+      row = Math.floor(item.atlasIndex / 5),
+      size = Math.min(w - 4, h - 4);
+    ctx.drawImage(
+      fmBackpackAtlas,
+      col * tile,
+      row * tile,
+      tile,
+      tile,
+      x + (w - size) / 2,
+      y + (h - size) / 2,
+      size,
+      size,
+    );
     return;
   }
-  const scale = Math.min(w, h) / 60;
+  const k = Math.min(w, h) / 60;
   ctx.save();
   ctx.translate(x + w / 2, y + h / 2);
-  ctx.scale(scale, scale);
+  ctx.scale(k, k);
   ctx.fillStyle = item.color;
   ctx.strokeStyle = item.accent;
   ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(-12, -16); ctx.lineTo(-12, -21);
-  ctx.quadraticCurveTo(0, -30, 12, -21); ctx.lineTo(12, -16); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-12, -16);
+  ctx.lineTo(-12, -21);
+  ctx.quadraticCurveTo(0, -30, 12, -21);
+  ctx.lineTo(12, -16);
+  ctx.stroke();
   ctx.fillRect(-17, -18, 34, 38);
   ctx.strokeRect(-17, -18, 34, 38);
-  ctx.fillStyle = item.accent; ctx.fillRect(-17, -17, 34, 5);
-  ctx.fillStyle = "#28302b"; ctx.fillRect(-12, 0, 24, 15);
+  ctx.fillStyle = item.accent;
+  ctx.fillRect(-17, -17, 34, 5);
+  ctx.fillStyle = "#28302b";
+  ctx.fillRect(-12, 0, 24, 15);
   ctx.strokeRect(-12, 0, 24, 15);
   ctx.fillStyle = item.accent;
-  ctx.fillRect(-22, -8, 5, 20); ctx.fillRect(17, -8, 5, 20);
-  ctx.fillStyle = "#f5e9ca"; ctx.font = "bold 13px sans-serif";
-  ctx.textAlign = "center"; ctx.fillText("+" + item.slots, 0, -5);
+  ctx.fillRect(-22, -8, 5, 20);
+  ctx.fillRect(17, -8, 5, 20);
+  ctx.fillStyle = "#f5e9ca";
+  ctx.font = "bold 13px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("+" + item.slots, 0, -5);
   ctx.restore();
 }
 function drawClothingIcon(item, x, y, w, h) {
   if (!item) return;
-  if (item.kind === 'pack' && item.slots) { drawBackpackIcon(item, x, y, w, h); return; }
+  if (item.kind === "pack" && item.slots) {
+    fmDrawBackpackIcon(item, x, y, w, h);
+    return;
+  }
   if (item.icon) {
     let im = CLOTHING_PNG_CACHE[item.icon];
     if (!im) {
