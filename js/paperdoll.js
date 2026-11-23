@@ -270,6 +270,40 @@ function unequipClothing(kind) {
   save.clothing[kind] = null; persist();
   toast(CLOTHING_LABELS[kind] + " retirada");
 }
+function equipVaultBackpack(bag) {
+  const previous = save.clothing.pack;
+  if (bag.id === previous) return false;
+  const index = save.vault.findIndex(item => item?.kind === "clothing" && item.id === bag.id);
+  if (index < 0) { toast("Esta mochila não está no Baú da Base."); return false; }
+  if (player.level < bag.level) { toast("Disponível no nível " + bag.level); return false; }
+  if (!(packUsed() <= backpackBaseCapacity(player.level) + bag.slots)) {
+    toast("Esvazie os slots excedentes antes de trocar de mochila.");
+    return false;
+  }
+
+  if (previous && !stashClothingStored(previous)) save.vault[index] = { kind: "clothing", id: previous };
+  else save.vault.splice(index, 1);
+  save.clothing.pack = bag.id;
+  stashPersist();
+  toast(bag.name + " equipada");
+  return true;
+}
+function drawVaultBackpackChooser() {
+  if (!INV.backpackPicker) return;
+  ctx.fillStyle = "rgba(5,7,6,.99)";
+  rr(695, 82, 249, 347, 8); ctx.fill();
+  ctx.strokeStyle = "#b68b4c"; ctx.lineWidth = 1.5; ctx.stroke();
+  txt("MOCHILAS DO BAÚ DA BASE", 711, 103, 13, "#ffd891", "left", true);
+  const bags = BACKPACK_CATALOG.filter(bag => bag.id !== save.clothing.pack && stashClothingStored(bag.id));
+  if (!bags.length) txt("Nenhuma mochila guardada no baú.", 711, 137, 12, "#c6bca7", "left");
+  bags.forEach((bag, i) => {
+    btn(711, 112 + i * 26, 220, 23, bag.name, () => {
+      if (equipVaultBackpack(bag)) INV.backpackPicker = false;
+    });
+  });
+  btn(711, 379, 220, 24, "Fechar", () => { INV.backpackPicker = false; });
+}
+
 function equippedClothingSlot(x, y, kind) {
   const item = clothingGet(kind);
   slotBox(x, y, 58, 58, CLOTHING_LABELS[kind], {
@@ -613,8 +647,8 @@ function drawInventory() {
     txt("Roupas e coletes são equipados aqui.", 722, 235, 11,
       "#a9a58f", "left", false, 203);
   }
-  txt("Troque de página usando ◀ ▶ ou a roda do mouse.", 720, 350, 9,
-    "#a9a58f", "left", false, 205);
+  btn(744, 311, 186, 24, "Trocar mochila", () => { INV.backpackPicker = !INV.backpackPicker; });
+  if (backpackEquipped()) btn(744, 342, 186, 22, "Retirar mochila", () => unequipClothing("pack"));
 
   // Lixeira permanece no inventário. Roupas e coletes não podem ser
   // descartados acidentalmente por esta ação de armas/materiais.
@@ -637,6 +671,7 @@ function drawInventory() {
     btn(W / 2 - 150, H / 2 + 16, 140, 30, INV.confirm.token ? "Ativar" : INV.confirm.trindade ? "Consumir" : INV.confirm.resetStats ? "Resetar" : "Descartar", () => { const reset = INV.confirm.resetStats, trindade = INV.confirm.trindade, token = INV.confirm.token; INV.confirm = null; if (token) useTokenLoja(); else if (trindade) useTrindadeItem(); else if (reset) useResetStatsCard(); else packDiscard(); }, true);
     btn(W / 2 + 10, H / 2 + 16, 140, 30, "Cancelar", () => { INV.confirm = null; });
   }
+  drawVaultBackpackChooser();
   drawAllocPanel();
   hint("Inventário unificado · 14–30 espaços de carga por nível · Roda do mouse ou ◀ ▶ · B/Esc fecha");
 }
