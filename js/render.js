@@ -1525,6 +1525,9 @@ function drawHUD() {
   const xpTxt = player.level >= MAX_LEVEL ? "MÁXIMO" : `${Math.floor(player.xp)} / ${xpNeed(player.level)} (${Math.floor((100 * player.xp) / xpNeed(player.level))}%)`;
   hudT(`NÍV ${player.level}: ${xpTxt}`, 12, ny, 11, "#e5e0c8", "left", true); ny += 15;
   hudT(`ENERGIA: ${Math.round(player.stamina)}%${player.exhausted ? " · EXAUSTO" : ""}`, 12, ny, 11, player.exhausted ? "#e05a4a" : "#e5e0c8", "left", true); ny += 15;
+  if (EVENTO_NATAL.ativo) {
+    hudT("★ EVENTO DE NATAL · BÔNUS PARA TODOS", 12, ny, 11, "#ffdb78", "left", true); ny += 15;
+  }
   if (!compact) {
     if (save.vest >= 0) { const vd = Math.round(vestDur()); hudT(`COLETE: ${VESTS[save.vest].name.toUpperCase()} ${vd}%${vd <= 0 ? " · QUEBRADO" : ""}`, 12, ny, 10, vd <= 25 ? "#e05a4a" : "#c9c4ad", "left", true); ny += 14; }
     ny += 6;
