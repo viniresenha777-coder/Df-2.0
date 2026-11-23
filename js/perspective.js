@@ -297,7 +297,7 @@ const WEAPON_3D = {
   katana: { m: "w_katana" }, katana_dragao: { m: "w_katana", f: "sepia(1) saturate(5) hue-rotate(-40deg)" },
   lamina: { m: "w_katana", f: "sepia(1) saturate(4) hue-rotate(220deg)" },
   espada: { m: "w_espada" }, espadafogo: { m: "w_glory" },
-  marreta: { m: "w_marreta" }, machado: { m: "w_machado" }, facao: { m: "w_facao" }, serra: { m: "w_serra" },
+  marreta: { m: "w_marreta" }, machado: { m: "w_machado" }, faca: { m: "w_utility", grip: 0.26 }, facao: { m: "w_ps1_machete", grip: 0.17 }, serra: { m: "w_serra" },
   lancachamas: { m: "w_flamer" },
 };
 // foto de cada arma 3D para a loja e o inventário (img/weapons/<m>.png: de lado, cano para a direita)
@@ -309,7 +309,7 @@ function weaponIcon(d) {
   if (!im) { im = WEAPON_ICON[w.m] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/weapons/${w.m}.png`; }
   return im.bad || !im.complete || !im.naturalWidth ? null : im;
 }
-function weapon3dImg(w, pose) { const d = w && WEAPON_3D[w.id]; return d ? gearImg(d.m, pose) : null; }
+function weapon3dImg(w, pose) { const d = w && WEAPON_3D[w.id]; return d && d.grip == null ? gearImg(d.m, pose) : null; }
 function hexRgb(h) { const n = parseInt((h || "#808080").slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
 // pinta a roupa cinza com as cores do personagem escolhido (uma vez por troca de personagem)
 function tintedSheet(pose) {

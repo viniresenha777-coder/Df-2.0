@@ -937,6 +937,19 @@ function drawStation(f) {
 // =====================================================================
 // arma vista de cima, apontando para +x
 function drawWeaponShape(w, swing) {
+  const held = WEAPON_3D[w.id];
+  if (held && held.grip != null) {
+    const icon = weaponIcon(w);
+    if (icon) {
+      const width = (w.len || 20) + 18;
+      ctx.save();
+      ctx.rotate(swing);
+      ctx.drawImage(icon, 8 - width * held.grip, 6 - width / 4, width, width / 2);
+      ctx.restore();
+      return;
+    }
+  }
+
   if (w.id === "besta" && CROSSBOW_ZHNETS_ART.complete && CROSSBOW_ZHNETS_ART.naturalWidth) {
     ctx.save();
     ctx.scale(-1, 1);
