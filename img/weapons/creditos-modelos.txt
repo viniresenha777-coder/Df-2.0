@@ -84,3 +84,28 @@ Model License:
 If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
 This work is based on "Brügger & Thomet VP9 Silenced Pistol" (https://sketchfab.com/3d-models/brugger-thomet-vp9-silenced-pistol-6889cd070e55437e9a8d75bf21faaa69) by TheAlex (https://sketchfab.com/TheAlex) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
 Adaptação: renderização para inventário e personagem.
+
+Model Information:
+* title:	escopeta
+* source:	https://sketchfab.com/3d-models/escopeta-7eec3bebfa244ea6889e1ece088c3291
+* author:	jhonalexlopez23 (https://sketchfab.com/lopezart98)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "escopeta" (https://sketchfab.com/3d-models/escopeta-7eec3bebfa244ea6889e1ece088c3291) by jhonalexlopez23 (https://sketchfab.com/lopezart98) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+Model Information:
+* title:	Shotgun/Flamethrower
+* source:	https://sketchfab.com/3d-models/shotgunflamethrower-044e09a00a3c451184274e099ad1ca19
+* author:	jesamabin (https://sketchfab.com/jesamabin)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Shotgun/Flamethrower" (https://sketchfab.com/3d-models/shotgunflamethrower-044e09a00a3c451184274e099ad1ca19) by jesamabin (https://sketchfab.com/jesamabin) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+Adaptação: renderização para inventário e personagem.
