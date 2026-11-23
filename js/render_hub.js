@@ -22,6 +22,13 @@ function openStation(kind) {
   if (kind === "junk") { game.menu = "junk"; game.jcur = 0; game.jconfirm = null; return; }
   game.menu = kind === "board" ? "missions" : kind;
   game.atBase = true; game.tab = 0; game.cur = 0; game.input = null; game.vside = 0; game.vcur = 0; game.ccur = 0; game.cstat = 0;
+  if (kind === "clinic") {
+    game.implantDropdown = false;
+    game.implantShowStats = false;
+    game.implantNameDraft = null;
+    game.implantPresetDelete = null;
+    game.implantConfirm = null;
+  }
 }
 
 function shadowTxt(s, x, y, size, color, align, bold, maxW) {
