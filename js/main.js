@@ -229,6 +229,10 @@ canvas.addEventListener("wheel", (e) => {
     return;
   }
   e.preventDefault();
+  if (game.menu === "pack" && !INV.confirm && !allocOpen()) {
+    invPackChangePage(e.deltaY > 0 ? 1 : -1);
+    return;
+  }
   if (game.menu === "map") {                                     // rola a lista de jogadores online
     const r = canvas.getBoundingClientRect();
     mouse.x = (e.clientX - r.left) * (W / r.width); mouse.y = (e.clientY - r.top) * (H / r.height);

@@ -555,6 +555,8 @@ function packDiscard() {
   toast(`Descartou ${it.kind === "weapon" ? instName(it) : `${it.qty}x ${MATS[it.id].name}`}`);
 }
 function packKey(k) {
+  if (k === "pageup") { invPackChangePage(-1); return; }
+  if (k === "pagedown") { invPackChangePage(1); return; }
   if (k === "a" || k === "arrowleft") packMove(-1, 0);
   else if (k === "d" || k === "arrowright") packMove(1, 0);
   else if (k === "w" || k === "arrowup") packMove(0, -1);

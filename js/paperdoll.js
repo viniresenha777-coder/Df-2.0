@@ -142,21 +142,41 @@ function portraitMouseUp() {
 
 // ---------------------------------------------------------------- inventário: zonas de arrastar
 // cada quadro registra as zonas (onde soltar) e o que pode ser arrastado
-const INV = { zones: [], drag: null, hover: null, confirm: null, equipmentPage: 0 };
+const INV = { zones: [], drag: null, hover: null, confirm: null, packPage: 0 };
 
-// Coletes e roupas ficam no MESMO inventário, sem abas separadas.
-// Preserva os dados de posse (vestsOwned e CLOTHING_ITEMS): não move
-// nenhuma peça para a mochila de armas e não modifica o salvamento.
-function invEquipmentItems() {
-  const vests = VESTS.map((v, i) => i).filter(i => save.vestsOwned[i] && i !== save.vest)
-    .map(i => ({ type: "vest", area: "vests", item: { i } }));
-  const clothes = CLOTHING_ITEMS.map(item => ({ type: "clothing", area: "clothes-list", item }));
-  return vests.concat(clothes);
+// Uma única grade visual para armas, materiais, munição, coletes e roupas.
+// Roupas e coletes conservam a posse no save; não consomem nem duplicam
+// os espaços físicos da mochila de armas/materiais.
+function invPackEntries() {
+  const entries = player.pack.map((item, i) => ({
+    area: "pack", i, sel: SLOT_N + i,
+    type: item.kind === "weapon" ? "weapon" : "mat", item
+  }));
+  for (const t of Object.keys(AMMO)) {
+    let reserve = Math.max(0, Math.floor(player.reserve[t] || 0));
+    while (reserve > 0) {
+      const amount = Math.min(AMMO_STACK, reserve);
+      entries.push({ area: "ammo", type: "ammo", item: { t, n: amount }, drag: false });
+      reserve -= amount;
+    }
+  }
+  VESTS.forEach((_, i) => {
+    if (save.vestsOwned[i] && i !== save.vest)
+      entries.push({ area: "vests", type: "vest", item: { i } });
+  });
+  CLOTHING_ITEMS.forEach(item => {
+    if (save.clothing[item.kind] !== item.id)
+      entries.push({ area: "clothes-list", type: "clothing", item });
+  });
+  return entries;
+}
+function invPackPages() { return Math.max(1, Math.ceil(invPackEntries().length / 20)); }
+function invPackChangePage(direction) {
+  INV.packPage = Math.max(0, Math.min(invPackPages() - 1, INV.packPage + direction));
 }
 function invJumpToClothing(kind) {
-  const list = invEquipmentItems();
-  const idx = list.findIndex(entry => entry.type === "clothing" && entry.item.kind === kind);
-  if (idx >= 0) INV.equipmentPage = Math.floor(idx / 9);
+  const idx = invPackEntries().findIndex(e => e.type === "clothing" && e.item.kind === kind);
+  if (idx >= 0) INV.packPage = Math.floor(idx / 20);
 }
 
 function invZone(z) { INV.zones.push(z); return z; }
@@ -172,6 +192,7 @@ function invItemName(z) {
   if (z.type === "weapon") return instName(z.item);
   if (z.type === "mat") return MATS[z.item.id].name;
   if (z.type === "vest") return VESTS[z.item.i].name;
+  if (z.type === "ammo") return "Munição: " + z.item.t;
   if (z.type === "clothing") return z.item.name;
   if (z.type === "implant") return implantName(z.item);
   if (z.type === "supply") return SUPPLY[z.item.id].name;
@@ -291,17 +312,18 @@ function invDrop(src, dst) {
     return;
   }
   if (src.type === "clothing") {
-    if (src.area === "clothes-list" && dst.area === "clothes-slot") {
-      if (src.item.kind === dst.kind) equipClothing(src.item);
-      else toast("Essa roupa nao serve nesse slot");
-    } else if (src.area === "clothes-slot" && (dst.area === "clothes-list" || dst.area === "clothes-slot")) {
-      if (dst.area === "clothes-slot" && dst.kind !== src.kind) toast("Essa roupa nao serve nesse slot");
+    if (src.area === "clothes-list" && (dst.area === "clothes-slot" || dst.area === "doll")) {
+      if (dst.area === "doll" || src.item.kind === dst.kind) equipClothing(src.item);
+      else toast("Essa roupa não serve nesse slot");
+    } else if (src.area === "clothes-slot" &&
+        (dst.area === "pack" || dst.area === "clothes-list" || dst.area === "clothes-slot")) {
+      if (dst.area === "clothes-slot" && dst.kind !== src.kind) toast("Essa roupa não serve nesse slot");
       else unequipClothing(src.kind);
     }
     return;
   }
   if (src.type === "vest") {
-    if (src.area === "vests" && dst.area === "vestslot") equipVest(src.item.i);
+    if (src.area === "vests" && (dst.area === "vestslot" || dst.area === "doll")) equipVest(src.item.i);
     else if (src.area === "vestslot" && (dst.area === "vests" || dst.area === "pack")) unequipVest();
     return;
   }
@@ -461,79 +483,93 @@ function drawInventory() {
     txt(player.cur === i ? `Arma ${i + 1} · na mão` : `Arma ${i + 1}`, x + 56, y - 4, 10, player.cur === i ? "#ffd96a" : "#a9a58f", "center", true);
   }
 
-  // ---- todos os equipamentos no inventário (direita)
-  // Sem abas de "Coletes" ou "Roupas": a grade mistura os itens disponíveis.
-  txt("Equipamentos", 716, 101, 14, "#e5e0c8", "left", true);
-  const equipment = invEquipmentItems();
-  const equipmentPages = Math.max(1, Math.ceil(equipment.length / 9));
-  INV.equipmentPage = Math.max(0, Math.min(equipmentPages - 1, INV.equipmentPage));
-  const equipmentVisible = equipment.slice(INV.equipmentPage * 9, INV.equipmentPage * 9 + 9);
-  for (let k = 0; k < 9; k++) {
-    const entry = equipmentVisible[k], x = 716 + (k % 3) * 54, y = 110 + Math.floor(k / 3) * 54;
-    slotBox(x, y, 50, 50, null, entry
-      ? { ...entry, i: INV.equipmentPage * 9 + k }
-      : { area: "equipment-empty", i: k, item: null });
+  // ---- MOCHILA PRINCIPAL (embaixo): todos os itens em uma grade única.
+  const inventoryEntries = invPackEntries();
+  const inventoryPages = Math.max(1, Math.ceil(inventoryEntries.length / 20));
+  INV.packPage = Math.max(0, Math.min(inventoryPages - 1, INV.packPage));
+  txt("Mochila · armas, munição, materiais, coletes e roupas", 40, 444, 13, "#e5e0c8", "left", true);
+  txt((INV.packPage + 1) + " / " + inventoryPages, 802, 444, 12, "#ffd96a", "center", true);
+  btn(733, 426, 36, 23, "◀", () => invPackChangePage(-1), false, INV.packPage === 0);
+  btn(836, 426, 36, 23, "▶", () => invPackChangePage(1), false, INV.packPage >= inventoryPages - 1);
+  for (let i = 0; i < 20; i++) {
+    const index = INV.packPage * 20 + i;
+    const x = 40 + (i % 10) * 89, y = 452 + Math.floor(i / 10) * 50;
+    const entry = inventoryEntries[index];
+    if (entry && entry.type === "ammo") {
+      invAmmoCell(entry.item, x, y, 85, 46);
+      const z = invZone({ ...entry, x, y, w: 85, h: 46 });
+      if (mouse.x >= x && mouse.x <= x + 85 && mouse.y >= y && mouse.y <= y + 46)
+        INV.hover = z;
+    } else if (entry) {
+      slotBox(x, y, 85, 46, null, entry);
+    } else {
+      slotBox(x, y, 85, 46, null,
+        { area: "pack", i: player.pack.length, item: null, type: null });
+    }
   }
-  if (equipmentPages > 1) {
-    btn(878, 112, 50, 30, "◀",
-      () => { INV.equipmentPage = (INV.equipmentPage + equipmentPages - 1) % equipmentPages; }, false);
-    btn(878, 150, 50, 30, "▶",
-      () => { INV.equipmentPage = (INV.equipmentPage + 1) % equipmentPages; }, false);
-  }
-  txt((INV.equipmentPage + 1) + "/" + equipmentPages, 903, 204, 13, "#ffd96a", "center", true);
-  txt(equipment.length ? "Clique ou arraste para equipar" : "Nenhum equipamento disponível",
-    826, 260, 10, "#b8ad8d", "center");
-  // detalhes do item sob o mouse (ou selecionado)
+
+  // ---- PAINEL DIREITO: somente informações, sem segunda lista de equipamentos.
+  txt("Detalhes do item", 716, 100, 14, "#e5e0c8", "left", true);
   const hz = INV.hover && INV.hover.item ? INV.hover : null;
   const selIt = selItem(inv.sel);
   const info = hz || (selIt ? { type: selIt.kind === "weapon" ? "weapon" : "mat", item: selIt } : null);
-  ctx.fillStyle = "rgba(0,0,0,0.3)"; rr(712, 276, 220, 98, 6); ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,0.34)"; rr(712, 111, 220, 264, 6); ctx.fill();
   if (INV.hover && INV.hover.type === "outfit") {
-    txt(INV.hover.label, 722, 296, 13, "#f2eedc", "left", true, 200);
-    txt(INV.hover.label === "Mochila militar" ? `${PACK_MAX} espaços` : `Vem com a roupa "${(SKINS[save.skin] || SKINS[0]).name}"`, 722, 314, 10, "#a9a58f", "left", false, 200);
-    if (INV.hover.label !== "Mochila militar") txt("Clique para trocar de roupa", 722, 330, 10, "#ffd96a");
+    txt(INV.hover.label, 722, 200, 13, "#f2eedc", "left", true, 200);
+    txt("Parte do traje do personagem", 722, 227, 11, "#a9a58f", "left", false, 200);
   } else if (info) {
-    const nm = invItemName(info);
-    txt(nm, 722, 296, 13, info.type === "weapon" ? rarColor(WDEF[info.item.id]) : "#f2eedc", "left", true, 200);
+    if (info.type === "clothing" || info.type === "vest" ||
+        info.type === "weapon" || info.type === "mat")
+      invIcon(info, 784, 121, 76, 76);
+    else if (info.type === "ammo")
+      drawEntryIcon({ type: "ammo", ammo: info.item.t }, 822, 160, 0.8);
+    const name = invItemName(info);
+    txt(name, 722, 216, 14,
+      info.type === "weapon" ? rarColor(WDEF[info.item.id]) : "#f2eedc",
+      "left", true, 203);
     if (info.type === "clothing") {
-      txt(info.item.setName + " · " + CLOTHING_LABELS[info.item.kind], 722, 314, 10, "#ffd96a", "left", false, 200);
-      txt(info.item.id === save.clothing[info.item.kind] ? "Equipado · clique para remover" : "Arraste para o slot ou clique", 722, 330, 10, "#a9a58f", "left", false, 200);
+      txt(info.item.setName + " · " + CLOTHING_LABELS[info.item.kind], 722, 241, 11,
+        "#ffd96a", "left", false, 202);
+      txt("Clique ou arraste até o slot da roupa", 722, 261, 11,
+        "#bcb6a2", "left", false, 202);
+    } else if (info.type === "vest") {
+      txt(vestText(VESTS[info.item.i]), 722, 242, 11, "#c9c4ad",
+        "left", false, 202);
+      txt("Clique ou arraste até o colete", 722, 264, 11, "#ffd96a");
     } else if (info.type === "weapon") {
       const d = WDEF[info.item.id], st = wStat(info.item);
-      txt(`${CAT_LABEL[d.cat]} · dano ${Math.round(st.dmg)}${d.pellets ? ` x${d.pellets}` : ""} · ${(1000 / st.delay).toFixed(1)}/s`, 722, 314, 10, "#c9c4ad", "left", false, 200);
-      txt(d.melee ? "corpo a corpo" : d.infinite ? "munição infinita" : `${d.ammo} · reserva ${player.reserve[d.ammo] || 0}`, 722, 330, 10, "#a9a58f", "left", false, 200);
-      txt(`Exige: ${reqText(d)}`, 722, 346, 10, canUse(d) ? "#6fae4f" : "#e05a4a", "left", true, 200);
+      txt(CAT_LABEL[d.cat] + " · dano " + Math.round(st.dmg) + " · " +
+        (1000 / st.delay).toFixed(1) + "/s", 722, 241, 11,
+        "#c9c4ad", "left", false, 202);
+      txt("Exige: " + reqText(d), 722, 264, 11,
+        canUse(d) ? "#6fae4f" : "#e05a4a", "left", true, 202);
     } else if (info.type === "mat") {
-      txt(`Quantidade: ${info.item.qty}`, 722, 314, 10, "#c9c4ad");
-      txt(info.item.id === "token_loja" ? "Arraste até o personagem: Loja da base de graça por 1 dia" : MATS[info.item.id].cashProtection ? safeDescription(info.item.id) : "Material para a oficina", 722, 330, 10, info.item.id === "token_loja" ? "#ffd96a" : "#a9a58f", "left", false, 200);
-    } else if (info.type === "vest") {
-      const v = VESTS[info.item.i];
-      txt(vestText(v), 722, 314, 10, "#c9c4ad", "left", false, 200);
-      if (info.item.i === save.vest) txt(`Durabilidade ${Math.round(vestDur())}%`, 722, 330, 10, "#a9a58f");
+      txt("Quantidade: " + info.item.qty, 722, 242, 11, "#c9c4ad");
+      txt(MATS[info.item.id].cashProtection ? safeDescription(info.item.id) :
+        "Material para a oficina", 722, 262, 11, "#a9a58f", "left", false, 202);
+    } else if (info.type === "ammo") {
+      txt(info.item.n + " balas · reserva de munição", 722, 241, 11, "#c9c4ad");
     } else if (info.type === "implant") {
-      txtWrap(implantDesc(info.item), 722, 311, 10, "#c9c4ad", 200, 11, 6);
+      txtWrap(implantDesc(info.item), 722, 231, 11, "#c9c4ad", 200, 14, 7);
     } else if (info.type === "supply") {
-      txt(`Quantidade: ${info.item.n}`, 722, 314, 10, "#c9c4ad");
-      txt("Arraste até o personagem para usar", 722, 330, 10, "#ffd96a", "left", false, 200);
+      txt("Quantidade: " + info.item.n, 722, 241, 11, "#c9c4ad");
+      txt("Arraste até o personagem para usar", 722, 265, 11, "#ffd96a");
     }
-  } else txt("Passe o mouse num item", 822, 330, 11, "#6d6a58", "center");
+  } else {
+    txt("Passe o mouse sobre um item da mochila.", 722, 204, 11,
+      "#a9a58f", "left", false, 203);
+    txt("Roupas e coletes são equipados aqui.", 722, 235, 11,
+      "#a9a58f", "left", false, 203);
+  }
+  txt("Troque de página usando ◀ ▶ ou a roda do mouse.", 720, 350, 9,
+    "#a9a58f", "left", false, 205);
 
-  // lixeira
+  // Lixeira permanece no inventário. Roupas e coletes não podem ser
+  // descartados acidentalmente por esta ação de armas/materiais.
   const dz = invZone({ area: "discard", x: 712, y: 380, w: 220, h: 42 });
   const dh = invCell(dz.x, dz.y, dz.w, dz.h, {});
-  txt("Descartar (arraste aqui)", dz.x + dz.w / 2, dz.y + 26, 12, dh && INV.drag ? "#e05a4a" : "#8a6a5a", "center", true);
-
-  // ---- mochila (embaixo)
-  txt("Mochila", 40, 446, 13, "#e5e0c8", "left", true);
-  txt(`munição: 1 espaço a cada ${AMMO_STACK} balas`, 926, 446, 10, "#a9a58f", "right");
-  const stacks = [];
-  for (const t of Object.keys(AMMO)) { let r = player.reserve[t] || 0; while (r > 0) { stacks.push({ t, n: Math.min(AMMO_STACK, r) }); r -= AMMO_STACK; } }
-  for (let i = 0; i < PACK_MAX; i++) {
-    const x = 40 + (i % 10) * 89, y = 452 + Math.floor(i / 10) * 50;
-    if (i >= player.pack.length && i < player.pack.length + stacks.length) { invAmmoCell(stacks[i - player.pack.length], x, y, 85, 46); continue; }
-    const it = player.pack[i] || null;
-    slotBox(x, y, 85, 46, null, { area: "pack", i, sel: it ? SLOT_N + i : null, type: it ? (it.kind === "weapon" ? "weapon" : "mat") : null, item: it });
-  }
+  txt("Descartar (arraste aqui)", dz.x + dz.w / 2, dz.y + 26, 12,
+    dh && INV.drag ? "#e05a4a" : "#8a6a5a", "center", true);
 
   // item sendo arrastado acompanha o mouse
   if (INV.drag && INV.drag.moved) {
@@ -550,7 +586,7 @@ function drawInventory() {
     btn(W / 2 + 10, H / 2 + 16, 140, 30, "Cancelar", () => { INV.confirm = null; });
   }
   drawAllocPanel();
-  hint("Equipamentos: clique ou arraste ao boneco · Armas: arraste aos slots · B/Esc fecha");
+  hint("Tudo na mochila: armas, munição, roupas e coletes · ◀ ▶ páginas · B/Esc fecha");
 }
 
 // ---------------------------------------------------------------- texto em várias linhas
