@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 165 110">
+<defs>
+ <linearGradient id="wool" x1="0" y1="0" x2=".5" y2="1"><stop stop-color="#d3382c"/><stop offset=".37" stop-color="#a91b1c"/><stop offset=".74" stop-color="#6f1317"/><stop offset="1" stop-color="#3e0e12"/></linearGradient>
+ <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fffaf0"/><stop offset=".43" stop-color="#e6e7d9"/><stop offset="1" stop-color="#9fa69d"/></linearGradient>
+ <filter id="shade"><feGaussianBlur stdDeviation="2.2"/></filter>
+</defs>
+<path d="M15 72 Q18 33 65 16 Q104 5 130 28 Q145 43 142 61 Q137 75 126 80 Q110 64 85 65 L38 85Z" fill="url(#wool)" stroke="#490f0c" stroke-width="3"/>
+<path d="M58 18 Q79 8 102 12 Q118 13 129 24" fill="none" stroke="#efaba0" stroke-width="3" opacity=".36"/>
+<path d="M137 55 Q151 47 155 58 Q162 73 144 85 Q129 90 122 76 Q117 64 137 55Z" fill="url(#fur)" stroke="#b5aaa0" stroke-width="2.5"/>
+<path d="M8 70 Q47 52 94 59 Q120 60 128 79 Q111 96 77 97 Q32 99 2 89 Q1 77 8 70Z" fill="url(#fur)" stroke="#d2ccc0" stroke-width="2"/>
+<path d="M14 73 Q57 59 108 71" fill="none" stroke="#fff9ee" stroke-width="4" opacity=".78"/>
+<path d="M11 85 Q60 103 119 81" fill="none" stroke="#879089" stroke-width="2" opacity=".6"/>
+<g fill="#fff9ed" opacity=".72"><circle cx="36" cy="76" r="1.5"/><circle cx="56" cy="69" r="1.9"/><circle cx="86" cy="73" r="1.5"/><circle cx="109" cy="78" r="2.2"/><circle cx="129" cy="68" r="1.8"/><circle cx="142" cy="72" r="2"/></g>
+</svg>

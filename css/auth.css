@@ -63,3 +63,81 @@ body {
 .fm-token-odds strong { color: #e0402a; }
 @keyframes fm-token-float { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-7px) rotate(2deg); } }
 @media (prefers-reduced-motion: reduce) { .fm-token-ad img { animation: none; } }
+
+
+/* ================================================================
+   TELA DE LOGIN · EVENTO DE NATAL
+   Decoração visual: não substitui campos de login nem interfere no jogo.
+   ================================================================ */
+body:has(#login:not([hidden])) {
+  background:
+    linear-gradient(180deg, rgba(4,7,10,.18), rgba(3,7,9,.14) 48%, rgba(4,5,7,.28)),
+    url("../img/natal_decor.svg?v=20261123-natal01") center / cover no-repeat fixed,
+    url("../img/fm_exterior.webp?v=20261116-outside2") center / cover no-repeat fixed;
+  background-color: #080a0b;
+}
+body:has(#login:not([hidden]))::after {
+  content: ""; pointer-events: none; position: fixed; inset: 0; z-index: 20;
+  background-image:
+    radial-gradient(1.5px 1.5px at 18px 32px, rgba(250,251,247,.81) 91%, transparent),
+    radial-gradient(2px 2px at 79px 104px, rgba(255,252,240,.69) 91%, transparent),
+    radial-gradient(1px 1px at 119px 21px, rgba(255,255,255,.85) 91%, transparent),
+    radial-gradient(1.2px 1.2px at 40px 76px, rgba(255,255,255,.68) 91%, transparent);
+  background-size: 154px 179px, 223px 203px, 127px 117px, 94px 135px;
+  opacity: .57;
+  animation: fm-natal-neve 30s linear infinite;
+}
+@keyframes fm-natal-neve {
+  from { background-position: 0 0, 0 0, 0 0, 0 0; }
+  to { background-position: -34px 740px, 52px 585px, -18px 460px, 25px 350px; }
+}
+#login:not([hidden]) {
+  position: relative; z-index: 1;
+  background: rgba(5,7,8,.075);
+}
+#login:not([hidden]) .fm-auth-panel,
+#login:not([hidden]) .fm-token-ad {
+  position: relative;
+  background: linear-gradient(145deg,rgba(8,18,13,.98),rgba(8,15,13,.975));
+  border-color: #ab8835;
+  box-shadow: 0 20px 64px rgba(0,0,0,.76), 0 0 22px rgba(223,174,66,.055);
+}
+#login:not([hidden]) .fm-token-ad {
+  background: radial-gradient(ellipse at 50% 36%, rgba(28,66,38,.72), rgba(7,16,11,.98) 70%);
+  box-shadow: 0 0 22px rgba(218,172,64,.11), 0 24px 75px rgba(0,0,0,.76);
+}
+#login:not([hidden]) .fm-auth-panel::before,
+#login:not([hidden]) .fm-token-ad::before {
+  content:""; position:absolute; left:16px; right:16px; top:0; height:2px;
+  border-radius:50%; pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(238,242,222,.24) 24%,rgba(240,245,238,.42) 51%,rgba(221,225,207,.18) 78%,transparent);
+}
+#login:not([hidden]) .fm-token-hero {
+  width: 174px; height: 178px;
+  margin: 7px auto 7px;
+  position: relative;
+  animation: fm-token-float 3.2s ease-in-out infinite;
+}
+#login:not([hidden]) .fm-token-hero > img:first-child {
+  display: block; width: 170px; height: 170px;
+  margin: 0 auto;
+  animation: none;
+  filter: drop-shadow(0 0 14px rgba(235,178,58,.34));
+}
+#login:not([hidden]) .fm-token-hero > .fm-natal-hat {
+  display: block; position: absolute;
+  width: 101px; height: 78px;
+  top: -16px; left: -11px;
+  margin: 0; transform: rotate(-18deg);
+  animation: none; filter: drop-shadow(2px 4px 4px rgba(0,0,0,.75));
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  body:has(#login:not([hidden]))::after { animation: none; }
+  #login:not([hidden]) .fm-token-hero { animation: none; }
+}
+@media (max-width: 820px) {
+  #login:not([hidden]) { overflow-y:auto; max-height: 100svh; }
+  #login:not([hidden]) .fm-auth-panel { box-sizing:border-box; }
+  body:has(#login:not([hidden])) { background-attachment: scroll; }
+}
