@@ -1171,6 +1171,7 @@ function drawMonster(z) {
 }
 function drawZombie(z) {
   if (z.hp <= 0) return;
+  if (z.type === "alce_natal") { drawChristmasBoss(z, "alce"); drawZombieFx(z); return; }
   if (z.boss && z.bossId) { drawBoss(z); return; }
   if (!z.boss && z.type === "dog") { drawZombieFx(z); if (drawZombieSprite(z)) return; }  // cão 3D (spritesheet)
   if (!z.boss && (z.type === "dog" || z.type === "mutant" || z.type === "abomination" || z.type === "demon")) {
