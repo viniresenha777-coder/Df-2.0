@@ -306,57 +306,101 @@ const CROSSBOW_ZHNETS_ART = new Image();
 CROSSBOW_ZHNETS_ART.src = "img/weapons/crossbow_zhnets.webp?v=231126-zh1";
 const FLECHAS_ZHNETS_ART = new Image();
 FLECHAS_ZHNETS_ART.src = "img/flechas_zh.svg?v=231126-zh1";
-function drawWeaponEnergy(surface, id, x, y, width, equipped) {
+const weaponEmissionImages = new Map();
+function drawWeaponEnergy(g, id, x, y, width, equipped, flash = 0) {
   if (id !== "trovao" && id !== "minigun_inf" && id !== "incendiaria") return;
   const t = performance.now() / 1000;
-  surface.save();
-  surface.translate(x, y);
-  surface.scale(width / 128, width / 128);
-  surface.globalCompositeOperation = "lighter";
-  surface.lineCap = "round";
-  function glow(cx, cy, radius, color) {
-    const light = surface.createRadialGradient(cx, cy, 0, cx, cy, radius);
-    light.addColorStop(0, color);
-    light.addColorStop(1, "rgba(0,0,0,0)");
-    surface.fillStyle = light;
-    surface.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+  const frame = Math.floor(t * 12) % 16;
+  const key = id + (equipped ? "_held" : "");
+  let image = weaponEmissionImages.get(key);
+  if (!image) {
+    image = new Image();
+    image.src = "img/weapons/" + key + "_emission.webp";
+    weaponEmissionImages.set(key, image);
+  }
+  const fire = Math.min(1, Math.max(0, flash / 60));
+  g.save();
+  g.translate(x, y);
+  g.scale(width / 128, width / 128);
+  g.globalCompositeOperation = "lighter";
+  g.lineJoin = g.lineCap = "round";
+  if (image.complete && image.naturalWidth) {
+    g.drawImage(image, (frame % 4) * 384, Math.floor(frame / 4) * 192, 384, 192, 0, 0, 128, 64);
   }
   if (id === "trovao") {
     const cy = equipped ? 32 : 33;
-    glow(63, cy, 9, "rgba(30,155,255,.68)");
-    glow(118, cy, 6, "rgba(65,180,255,.74)");
-    surface.beginPath();
-    surface.moveTo(62, cy);
-    for (let i = 1; i < 10; i++) {
-      const bend = Math.sin(i * 12.3 + t * 7) * Math.cos(i * 1.8 - t * 4);
-      surface.lineTo(62 + i * 5.6, cy - 2 + bend * (i % 2 ? 3.2 : 1.2));
+    const charge = (t * .76) % 1;
+    // Each coil wakes in turn. The discharge bridges the last coil and the muzzle.
+    for (let i = 0; i < 4; i++) {
+      const pulse = Math.max(0, 1 - Math.abs(charge * 4 - i) * 1.5);
+      g.beginPath();
+      g.ellipse(60 + 4.4 * i, cy, 1.2, 3.8, .16, -.8, 4.1);
+      g.strokeStyle = 'rgba(95,215,255,' + (.18 + pulse * .76) + ')';
+      g.lineWidth = .7 + pulse * .45;
+      g.stroke();
     }
-    surface.lineTo(118, cy);
-    surface.strokeStyle = "rgba(35,129,255,.50)";
-    surface.lineWidth = 2.5;
-    surface.stroke();
-    surface.strokeStyle = "#a4eaff";
-    surface.lineWidth = 0.75;
-    surface.stroke();
+    if (charge > .68 || fire > 0) {
+      const length = fire ? 53 : 43 * Math.min(1,(charge-.68)*6);
+      const tick = Math.floor(t * 18);
+      g.beginPath();
+      g.moveTo(76,cy);
+      for (let i=1;i<=8;i++) {
+        const px=76+i*length/8;
+        const py=cy + Math.sin(i*13.2+tick*2.3)*Math.sin(i*Math.PI/8)*3.3;
+        g.lineTo(px,py);
+        if(i===5) { g.lineTo(px+2,py-3); g.lineTo(px+6,py-4); g.moveTo(px,py); }
+      }
+      g.strokeStyle='rgba(35,104,255,.55)'; g.lineWidth=2.3; g.stroke();
+      g.strokeStyle='#c1f9ff'; g.lineWidth=.65; g.stroke();
+    }
   } else if (id === "minigun_inf") {
-    const cy = equipped ? 25 : 30;
-    const pulse = (1 + Math.sin(t * 3.1)) / 2;
-    glow(40, cy, 6 + 3 * pulse, "rgba(255,77,9,.83)");
-    for (let i = 0; i < 3; i++) {
-      glow(83 + i * 7, 29 + Math.sin(t * 3 + i) * 1.4, 4 + pulse, "rgba(255,53,6,.64)");
+    const cy=equipped ? 30 : 27;
+    // A hot streak follows one barrel at a time around the cylinder.
+    for(let i=0;i<6;i++) {
+      const a=t*5+i*Math.PI/3;
+      const depth=Math.cos(a);
+      if(depth<0) continue;
+      const h=Math.sin(a)*4.1;
+      const band=g.createLinearGradient(77,0,123,0);
+      band.addColorStop(0,'rgba(156,24,4,0)');
+      band.addColorStop(.60,'rgba(225,48,4,'+(.24+depth*.44)+')');
+      band.addColorStop(1,'rgba(255,142,37,'+(.38+depth*.55)+')');
+      g.strokeStyle=band; g.lineWidth=.8+depth*.65; g.beginPath();
+      g.moveTo(76,cy+h); g.lineTo(122,cy+h); g.stroke();
+      g.fillStyle=fire?'#fff2a0':'#ff9a44'; g.beginPath();
+      g.ellipse(122.5,cy+h,.95,.75,0,0,Math.PI*2); g.fill();
+    }
+    if(fire) {
+      const reach=12*fire;
+      g.fillStyle='rgba(255,94,18,.88)'; g.beginPath(); g.moveTo(121,cy-2);
+      g.lineTo(126+reach,cy-1); g.lineTo(127,cy+.6); g.lineTo(130+reach*.3,cy+2);
+      g.lineTo(121,cy+2); g.fill();
     }
   } else {
-    const cy = equipped ? 25 : 15;
-    glow(102, cy, 7, "rgba(255,95,13,.57)");
-    for (let i = 0; i < 5; i++) {
-      const age = (t * .72 + i * .21) % 1;
-      const sx = 94 + i * 4 + Math.sin(t * 1.8 + i) * age * 3;
-      const sy = cy - 2 - age * (7 + i % 3);
-      surface.fillStyle = "rgba(255,175,55," + (1 - age) + ")";
-      surface.fillRect(sx, sy, 0.85, 1.6);
+    const mx=equipped?123:120, my=equipped?35:26;
+    // The pilot splits into an amber envelope and a pale, narrow core.
+    const flicker=.5+.5*Math.sin(17*t+Math.sin(9*t));
+    const reach=3.6+2.2*flicker+20*fire;
+    const curl=1.5*Math.sin(12*t)-2.3;
+    const flame=(length,radius,color,tip)=>{
+      g.fillStyle=color; g.beginPath(); g.moveTo(mx-1,my+radius);
+      g.bezierCurveTo(mx+length*.32,my+radius*1.5,mx+length*.73,my+tip+radius,mx+length,my+tip);
+      g.bezierCurveTo(mx+length*.46,my+tip*.5,mx+length*.26,my-radius*2,mx-1,my-radius);
+      g.closePath(); g.fill();
+    };
+    flame(reach,1.3+fire*2.3,'rgba(255,79,8,.85)',curl);
+    flame(reach*.68,.7+fire,'#ffd272',curl*.55);
+    flame(2.1+fire*3,.5,'#d9f4ff',0);
+    if(fire) {
+      for(let i=0;i<4;i++) {
+        const age=(t*3.5+i*.27)%1;
+        const sx=mx+4+age*19, sy=my+(i-1.5)*age*4;
+        g.strokeStyle='rgba(255,186,72,'+fire*(1-age)+')';g.lineWidth=.75;
+        g.beginPath();g.moveTo(sx,sy);g.lineTo(sx+2.4,sy+(i-1.5)*.5);g.stroke();
+      }
     }
   }
-  surface.restore();
+  g.restore();
 }
 
 function drawWeaponSide(d, cx, cy, s) {

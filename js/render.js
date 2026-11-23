@@ -948,7 +948,7 @@ function drawWeaponShape(w, swing) {
       const originY = w.melee ? 6 : 0;
       if (held.heldView) ctx.filter = "none";
       ctx.drawImage(icon, originX - width * held.grip, originY - width / 4, width, width / 2);
-      drawWeaponEnergy(ctx, w.id, originX - width * held.grip, originY - width / 4, width, true);
+      drawWeaponEnergy(ctx, w.id, originX - width * held.grip, originY - width / 4, width, true, player.flashT);
       ctx.restore();
       return;
     }
