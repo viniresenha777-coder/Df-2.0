@@ -356,7 +356,8 @@ function drawAreaMap(x, y, w, h) {
   }
   // chefe da área
   const boss = zombies.find((z) => z.boss && z.hp > 0);
-  if (boss) hudT("☠", X(boss.x), Y(boss.y) + 6, 16, "#ff4a3a", "center", true);
+  if (boss) hudT("☠", X(boss.x), Y(boss.y) + 6, 16,
+    boss.bossId === "santa_natal" ? "#68f18c" : "#ff4a3a", "center", true);
   // Posição dos jogadores conectados nesta área.
   for (const online of fmSocial.inSector()) {
     const xOnline = X(online.x), yOnline = Y(online.y);

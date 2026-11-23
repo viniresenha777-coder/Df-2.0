@@ -363,13 +363,35 @@ function spawnBoss(x, y, zone, forceId) {
     abil: 2500 + Math.random() * 1500, abilT: 0, phase: 0, minions: 0, announced: false });
   zombies.push(z);
   if (id === "santa_natal") {
-    // O alce acompanha o trenó, mas tem vida, colisão e cabeçada próprias.
-    const p = { x: clamp(x + 95, 52, WORLD_W - 52), y: clamp(y + 45, 52, WORLD_H - 52) };
-    const alce = makeZombie(p.x, p.y, "alce_natal", zone);
-    Object.assign(alce, { hp: Math.round(maxHp * 0.32), maxHp: Math.round(maxHp * 0.32),
-      dmg: natalBossDamage(zone) * 0.55, speed: z.speed * 1.30,
-      hitDelay: 1800, abil: 2000, abilT: 0, mother: z, r: 24 });
-    zombies.push(alce); alertZombie(alce);
+    // Um Papai Noel e quatro alces, cada um com própria vida e cabeçada.
+    // Coloca as renas ao redor do boss (sem nascerem uma dentro da outra).
+    const positions = [];
+    for (let i = 0; i < 4; i++) {
+      let pos = null;
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const a = z.angle + i * Math.PI / 2 + Math.floor(attempt / 4) * 0.28;
+        const radius = 112 + Math.floor(attempt / 4) * 22;
+        const ax = clamp(z.x + Math.cos(a) * radius, 38, WORLD_W - 38);
+        const ay = clamp(z.y + Math.sin(a) * radius, 38, WORLD_H - 38);
+        if (positions.some(p => Math.hypot(p.x - ax, p.y - ay) < 62)) continue;
+        if (walkable(ax, ay, 27)) { pos = { x: ax, y: ay }; break; }
+      }
+      if (!pos) {
+        // Plano B quando o boss estiver muito perto de obstáculos.
+        const a = z.angle + i * Math.PI / 2;
+        pos = { x: clamp(z.x + Math.cos(a) * 155, 38, WORLD_W - 38),
+          y: clamp(z.y + Math.sin(a) * 155, 38, WORLD_H - 38) };
+      }
+      positions.push(pos);
+      const alce = makeZombie(pos.x, pos.y, "alce_natal", zone);
+      const hpAlce = Math.round(maxHp * 0.28);
+      Object.assign(alce, { hp: hpAlce, maxHp: hpAlce,
+        dmg: natalBossDamage(zone) * 0.45, speed: z.speed * 1.25,
+        hitDelay: 1800, abil: 2000 + i * 200, abilT: 0,
+        mother: z, r: 24, christmasPack: true });
+      pushOut(alce, alce.r);
+      zombies.push(alce); alertZombie(alce);
+    }
   }
   return z;
 }

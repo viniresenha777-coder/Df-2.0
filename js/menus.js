@@ -797,8 +797,12 @@ function drawMap() {
     if (c.op != null) txt("⌂", x + cs / 2, y + cs / 2 + 7, 20, save.outposts[c.op] ? "#ffffff" : "rgba(255,255,255,0.45)", "center", true);
     if (c.boss) {
       const p = 0.7 + 0.3 * Math.sin(now / 220 + cx);
+      const natal = c.boss === "santa_natal";
       ctx.fillStyle = `rgba(0,0,0,${0.45 * p})`; circle(x + cs / 2, y + cs / 2, 12);
-      txt("☠", x + cs / 2, y + cs / 2 + 7, 19, `rgba(255,${Math.round(90 * p)},${Math.round(70 * p)},1)`, "center", true);
+      // A caveira é a mesma dos outros chefes; só muda para verde natalino.
+      const skullColor = natal ? `rgb(${Math.round(70 + 30 * p)},255,${Math.round(95 + 40 * p)})`
+        : `rgba(255,${Math.round(90 * p)},${Math.round(70 * p)},1)`;
+      txt("☠", x + cs / 2, y + cs / 2 + 7, 19, skullColor, "center", true);
     }
     if (c.tier === 8 && player.level < GRAY_LEVEL) txt("🔒", x + cs - 9, y + 12, 9, "#fff", "center");
     if (c === here) { ctx.strokeStyle = "#ffd96a"; ctx.lineWidth = 2.5 + Math.sin(now / 200); ctx.strokeRect(x + 2, y + 2, cs - 4, cs - 4); }
@@ -832,7 +836,8 @@ function drawMap() {
     ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1; ctx.strokeRect(x, y - 10, 14, 14);
     txt(`${RG.name} · ${RG.diff}`, x + 19, y + 2, 11, "#c9c4ad", "left", true);
   });
-  txt("⌂ base  ☠ chefe  H hospital  P prisão  B bunker  amarelo = você  azul = online  verde = amigo", gx, ly + 66, 11, "#a9a58f");
+  txt("⌂ base  ☠ vermelho = chefe comum  ☠ verde = Natal  H hospital  P prisão  B bunker", gx, ly + 66, 11, "#a9a58f");
+  txt("Amarelo = você  ·  Azul = jogador online  ·  Verde = amigo", gx, ly + 81, 11, "#a9a58f");
   // área escolhida
   const sel = cellAt(game.mapSel.cx, game.mapSel.cy), lx = 540;
   const sectorOnline = fmSocial.online().filter(p => p.cx === game.mapSel.cx && p.cy === game.mapSel.cy);
@@ -848,7 +853,12 @@ function drawMap() {
     let y = 182;
     if (sel.op != null) { txt(`⌂ ${save.outposts[sel.op] ? OUTPOSTS[sel.op].name : "Base ainda não descoberta"}`, lx, y, 13, save.outposts[sel.op] ? "#6fd08a" : "#6d6a58", "left", true); y += 18; }
     if (sel.landmark) { txt(`★ ${BTYPES[sel.landmark].name}: o melhor saque da região`, lx, y, 13, "#ffb070", "left", true, 380); y += 18; }
-    if (sel.boss) { const B = BOSSES[sel.boss]; txt(`☠ ${B.name} · deixa: ${B.drop}`, lx, y, 13, "#e04a4a", "left", true, 380); y += 18; }
+    if (sel.boss) {
+      const B = BOSSES[sel.boss], natal = sel.boss === "santa_natal";
+      const label = natal ? " · 4 alces · 1 Papai Noel" : ` · deixa: ${B.drop}`;
+      txt(`☠ ${B.name}${label}`, lx, y, 13, natal ? "#68f18c" : "#e04a4a", "left", true, 380);
+      y += 18;
+    }
     if (sel.tier === 8) { txt(`Só a partir do nível ${GRAY_LEVEL}${player.level >= GRAY_LEVEL ? " (liberada)" : ` · você está no ${player.level}`}`, lx, y, 12, player.level >= GRAY_LEVEL ? "#8fd08a" : "#ff8a6a", "left", true); y += 18; }
     const dist = Math.abs(sel.cx - here.cx) + Math.abs(sel.cy - here.cy);
     txt(sel === here ? "Você está aqui" : `A ${dist} ${dist > 1 ? "áreas" : "área"} de você`, lx, y, 12, "#ffd96a", "left", true); y += 24;

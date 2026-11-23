@@ -442,21 +442,24 @@ function drawBossCompass() {
   const t = nearestBoss();
   if (!t) return;
   const B = BOSSES[t.cell.boss], RG = REGIONS[t.cell.tier];
+  const isNatal = t.cell.boss === "santa_natal";
+  const bossAccent = isNatal ? "#68f18c" : "#e04a4a";
   const label = t.dist === 0 ? `☠ ${B.name} está nesta área` : `☠ ${B.name} · ${t.cell.code} (${RG.name}) · ${t.dist} ${t.dist > 1 ? "áreas" : "área"}`;
   ctx.font = `bold 12px ${FONT}`;
   const tw = ctx.measureText(label).width + 44, x = W / 2 - tw / 2 + 60, y = 58;
   ctx.globalAlpha = hudFade("bc", x, y, tw, 26);
   ctx.fillStyle = "rgba(20,8,8,0.72)"; rr(x, y, tw, 26, 13); ctx.fill();
-  ctx.strokeStyle = "rgba(224,74,74,0.6)"; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.strokeStyle = isNatal ? "rgba(104,241,140,0.65)" : "rgba(224,74,74,0.6)";
+  ctx.lineWidth = 1.2; ctx.stroke();
   ctx.save(); ctx.translate(x + 16, y + 13); ctx.rotate(t.ang);
-  poly([[8, 0], [-5, -6], [-2, 0], [-5, 6]], "#e04a4a"); ctx.restore();
-  txt(label, x + 28, y + 17, 12, "#f2d0c8", "left", true);
+  poly([[8, 0], [-5, -6], [-2, 0], [-5, 6]], bossAccent); ctx.restore();
+  txt(label, x + 28, y + 17, 12, isNatal ? "#daffe1" : "#f2d0c8", "left", true);
   ctx.globalAlpha = 1;
   // seta vermelha girando em volta do personagem
   if (!game.inside) {
     const px = player.x - cam.x, py = player.y - cam.y, pulse = 0.55 + 0.35 * Math.sin(performance.now() / 250);
     ctx.save(); ctx.translate(px + Math.cos(t.ang) * 46, py + Math.sin(t.ang) * 46); ctx.rotate(t.ang);
-    ctx.globalAlpha = pulse; poly([[9, 0], [-5, -7], [-1, 0], [-5, 7]], "#e04a4a"); ctx.restore();
+    ctx.globalAlpha = pulse; poly([[9, 0], [-5, -7], [-1, 0], [-5, 7]], bossAccent); ctx.restore();
     ctx.globalAlpha = 1;
   }
 }

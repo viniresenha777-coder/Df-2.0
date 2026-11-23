@@ -37,12 +37,22 @@ function makeMap(seed) {
   }
   MAP = { cells, bossT: 240000, bossRandom: mulberry(seed + 1234507) };
   for (let i = 0; i < BOSS_MAX; i++) placeBoss();
-  // Um encontro natalino extra em cada cor, sem substituir os chefes normais.
-  if (EVENTO_NATAL.ativo) for (let tier = 0; tier < REGIONS.length; tier++) {
-    const opts = cells.flat().filter(c => c && c.tier === tier && c.op == null && !c.boss && !(tier === 0 && c.cx === 0 && c.cy === 0));
-    if (!opts.length) continue;
-    const c = opts[Math.floor(MAP.bossRandom() * opts.length)];
-    c.boss = "santa_natal"; c.bossHp = null; c.cleared = false;
+  // Um encontro natalino diferente em cada cor. As áreas mudam por dia UTC,
+  // mas são iguais para todos os jogadores (evita mapas discordantes online).
+  // Nunca ocupa uma base ou um setor de boss normal.
+  if (EVENTO_NATAL.ativo) {
+    const natalDay = Math.floor(Date.now() / 86400000);
+    const natalToday = mulberry(seed + 20261225 + natalDay * 4093);
+    const natalYesterday = mulberry(seed + 20261225 + (natalDay - 1) * 4093);
+    for (let tier = 0; tier < REGIONS.length; tier++) {
+      const opts = cells.flat().filter(c => c && c.tier === tier && c.op == null && !c.boss);
+      if (!opts.length) continue;
+      // Evita repetir a área sorteada no dia anterior, quando houver opção.
+      const previous = opts[Math.floor(natalYesterday() * opts.length)];
+      const choices = opts.length > 1 ? opts.filter(c => c !== previous) : opts;
+      const c = choices[Math.floor(natalToday() * choices.length)];
+      c.boss = "santa_natal"; c.bossHp = null; c.cleared = false;
+    }
   }
 }
 function cellAt(cx, cy) { return (MAP.cells[cy] && MAP.cells[cy][cx]) || null; }
