@@ -8,6 +8,8 @@
 function menuKey(k) {
   if (game.menu === "market" && game.marketBusy) return;
   if (game.input) { inputKey(k); return; }
+  // Bloqueia fechar a Clínica sem resolver a confirmação de venda/descarte.
+  if (game.menu === "clinic" && game.implantConfirm) { clinicConfirmKey(k); return; }
   if (game.menu === "admin") { if (!canUseAdmin()) { game.menu = null; game.input = null; return; } adminKey(k); return; }
   if (game.menu === "name") { nameKey(k); return; }
   if (game.menu === "friends") { friendsKey(k); return; }
@@ -202,6 +204,7 @@ function clinicKey(k) {
   else if (k === "s" || k === "arrowdown") game.cur = Math.max(0, Math.min(len - 1, game.cur + 1));
   else if (k === "enter") clinicAct();
   else if (k === "v" && game.tab === 0) sellImplant();
+  else if (k === "x" && game.tab === 0) discardImplant();
   else if (k === "a" && game.tab === 0) { const it = clinicItems()[game.cur]; if (it) openAlloc(it.im); }
   else if ((k === "q" || k === "arrowleft") && game.tab === 0) shiftImplant(-1);
   else if ((k === "d" || k === "arrowright") && game.tab === 0) shiftImplant(1);
@@ -242,13 +245,51 @@ function buyImplant(i) {
   player.bag.push(im); persist();
   toast(`Comprou ${implantName(im)}`);
 }
-function sellImplant() {
-  const it = clinicItems()[game.cur];
-  if (!it || it.src !== "bag") { toast("Só dá para vender implantes da mochila"); return; }
-  const v = IMP[it.im.id].scrap;
-  player.bag.splice(player.bag.indexOf(it.im), 1); game.money += v;
-  toast(`Vendeu ${implantName(it.im)} por $${v}`);
+// A venda e o descarte afetam somente os implantes na mochila.
+// Os instalados precisam ser retirados antes, para evitar perda acidental.
+function confirmClinicImplant(action) {
+  if (game.tab !== 0) return;
+  const selected = clinicItems()[game.cur];
+  if (!selected || selected.src !== "bag") {
+    toast("Remova o implante instalado antes de vender ou descartar.");
+    return;
+  }
+  if (selected.im.tokenBound) {
+    toast("Implantes comprados com o Token Mestre não podem ser vendidos nem descartados.");
+    return;
+  }
+  game.implantConfirm = { action, im: selected.im };
+}
+function sellImplant() { confirmClinicImplant("sell"); }
+function discardImplant() { confirmClinicImplant("discard"); }
+function clinicConfirmKey(k) {
+  if (k === "escape" || k === "n" || k === "e") { game.implantConfirm = null; return; }
+  if (k === "enter" || k === "y" || k === "s") applyClinicImplantConfirm();
+}
+function applyClinicImplantConfirm() {
+  const pending = game.implantConfirm;
+  if (!pending) return;
+  game.implantConfirm = null;
+  const i = player.bag.indexOf(pending.im);
+  if (i < 0 || !IMP[pending.im.id] || pending.im.tokenBound) {
+    toast("Implante não disponível para essa operação.");
+    return;
+  }
+  const name = implantName(pending.im);
+  player.bag.splice(i, 1);
+  if (pending.action === "sell") {
+    const price = IMP[pending.im.id].scrap;
+    game.money += price;
+    sfx.buy();
+    toast(`Vendeu ${name} por $${price.toLocaleString("pt-BR")}`);
+  } else if (pending.action === "discard") {
+    sfx.empty();
+    toast(`Descartou ${name} sem receber dinheiro.`);
+  } else return;
   game.cur = Math.max(0, Math.min(game.cur, clinicItems().length - 1));
+  // O dinheiro e a mochila fazem parte da partida: persist() sozinho salva
+  // só o perfil, por isso é necessário gravar também o checkpoint completo.
+  checkpoint(pending.action === "sell" ? "venda de implante" : "descarte de implante");
 }
 
 
@@ -737,12 +778,22 @@ function drawClinic() {
     txt("Na mochila (preservados ao morrer)", 40, 126, 13, "#a9a58f");
     txt("Instalados, na ordem dos slots (permanentes)", 500, 126, 13, "#a9a58f");
     const pts = (im) => (IMP[im.id].alloc ? `${allocUsed(im)}/${IMP[im.id].alloc.points} pts` : IMP[im.id].mimic ? "copia ←" : "");
-    player.bag.forEach((im, i) => drawImplantRow(40, 134 + i * 32, 440, im, game.cur === i, pts(im)));
-    save.installed.forEach((im, j) => drawImplantRow(500, 134 + j * 32, 420, im, game.cur === player.bag.length + j, `${j + 1}º  ${pts(im)}`));
+    player.bag.forEach((im, i) => {
+      drawImplantRow(40, 134 + i * 32, 440, im, game.cur === i, pts(im));
+      regClick(40, 134 + i * 32, 440, 28, () => { game.cur = i; });
+    });
+    save.installed.forEach((im, j) => {
+      drawImplantRow(500, 134 + j * 32, 420, im, game.cur === player.bag.length + j, `${j + 1}º  ${pts(im)}`);
+      regClick(500, 134 + j * 32, 420, 28, () => { game.cur = player.bag.length + j; });
+    });
     if (!player.bag.length && !save.installed.length) txt("Nenhum implante ainda. Compre na loja (Tab) ou ache em saques raros.", 40, 160, 15, "#6d6a58");
     const it = clinicItems()[game.cur];
     drawImplantInfo(it ? it.im : null);
-    hint("W/S move · Enter instala/remove · A distribui pontos · Q/D muda a ordem · V vende · Tab loja · E fecha");
+    const canRemove = !!it && it.src === "bag" && !it.im.tokenBound;
+    const salePrice = canRemove ? IMP[it.im.id].scrap : 0;
+    btn(535, 545, 188, 28, "Vender (V) · $" + salePrice.toLocaleString("pt-BR"), sellImplant, false, !canRemove);
+    btn(733, 545, 174, 28, "Descartar (X)", discardImplant, false, !canRemove);
+    hint("W/S seleciona · Enter instala/remove · V vende · X descarta · Q/D ordena · Tab loja · E fecha");
   } else {
     const N = 9, first = Math.max(0, Math.min(game.stock.length - N, game.cur - 4));
     for (let r = 0; r < N && first + r < game.stock.length; r++) {
@@ -758,6 +809,23 @@ function drawClinic() {
     hint("Implantes únicos, pagos com créditos (compre créditos no banco) · W/S move · Enter compra · Tab volta · E fecha");
   }
   drawAllocPanel();
+  if (game.implantConfirm) {
+    const c = game.implantConfirm;
+    const price = IMP[c.im.id] ? IMP[c.im.id].scrap : 0;
+    const label = c.action === "sell" ? "Vender" : "Descartar";
+    // Bloqueia cliques nos botões e itens atrás da caixa de confirmação.
+    ctx.fillStyle = "rgba(0,0,0,0.80)"; ctx.fillRect(0, 0, W, H);
+    regClick(0, 0, W, H, () => {});
+    ctx.fillStyle = "#23241d"; rr(208, 197, 544, 198, 12); ctx.fill();
+    ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 2; ctx.stroke();
+    txt(label + " implante?", W / 2, 230, 24, "#ffd96a", "center", true);
+    txt(implantName(c.im), W / 2, 263, 17, "#f2eedc", "center", true, 500);
+    txt(c.action === "sell" ? "Receber $" + price.toLocaleString("pt-BR") + " de dinheiro do jogo."
+      : "O implante será destruído sem recompensa.", W / 2, 290, 14, "#ddd3b8", "center");
+    txt("Esta ação não pode ser desfeita.", W / 2, 310, 12, "#e9a294", "center");
+    btn(298, 333, 165, 42, "Confirmar (Enter)", applyClinicImplantConfirm, true);
+    btn(495, 333, 165, 42, "Cancelar (Esc)", () => { game.implantConfirm = null; });
+  }
 }
 
 function drawTravel() {

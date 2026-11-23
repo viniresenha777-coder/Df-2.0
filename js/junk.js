@@ -39,12 +39,19 @@ function junkItems() {
   if (player.water > 0) L.push({ kind: "water", name: "Garrafa de água", unit: JUNK_CONS.water, qty: player.water, sub: "água" });
   if (player.med > 0) L.push({ kind: "med", name: "Kit médico", unit: JUNK_CONS.med, qty: player.med, sub: "remédio" });
   if (player.anti > 0) L.push({ kind: "anti", name: "Antibiótico", unit: JUNK_CONS.anti, qty: player.anti, sub: "remédio" });
-  player.bag.forEach((im) => L.push({ kind: "implant", im, name: implantName(im), unit: implantSellPrice(im), qty: 1, rare: true, sub: "implante (não instalado)" }));
+  player.bag.forEach((im) => {
+    if (im.tokenBound) return; // itens do Token Mestre não são revendáveis
+    L.push({ kind: "implant", im, name: implantName(im), unit: implantSellPrice(im), qty: 1, rare: true, sub: "implante (não instalado)" });
+  });
   VESTS.forEach((v, i) => { if (save.vestsOwned[i] && i !== save.vest) L.push({ kind: "vest", idx: i, name: v.name, unit: Math.round(v.price * 0.3 * (vestDur(i) / 100)) || 20, qty: 1, rare: v.rar >= 2, sub: `colete guardado · ${Math.round(vestDur(i))}%` }); });
   return L;
 }
 function sellableAmmo(t) { return Math.max(0, player.reserve[t] - (player.tokenAmmo[t] || 0)); }
 function sellEntry(e, n) {
+  if (e.kind === "implant" && (e.im.tokenBound || !player.bag.includes(e.im))) {
+    toast("Implante não disponível para venda.");
+    return;
+  }
   if (e.kind === "ammo") {
     n = Math.min(n, sellableAmmo(e.t));
     if (n <= 0) return;
