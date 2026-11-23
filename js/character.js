@@ -67,6 +67,13 @@ function recalcImplants() {
   });
   const pf = prof(); // bônus e penalidades da profissão
   if (pf && pf.fx) for (const k in pf.fx) { all[k] = (all[k] || 0) + pf.fx[k]; safe[k] = (safe[k] || 0) + pf.fx[k]; }
+  // O evento usa o mesmo sistema FX de implantes/profissões, mas não ocupa slot.
+  // Inserir no recálculo (e não no save) impede acúmulo ao reconectar ou trocar implantes.
+  if (EVENTO_NATAL.ativo) for (const k in EVENTO_NATAL.bonus) {
+    const bonus = EVENTO_NATAL.bonus[k];
+    all[k] = (all[k] || 0) + bonus;
+    safe[k] = (safe[k] || 0) + bonus;
+  }
   player.fxAll = all; player.fxSafe = safe; player.flags = flags; player.fx = all;
   const vest = save.vest >= 0 ? VESTS[save.vest] : null;
   // Endurance vale a mesma quantidade em HP. Colete e implantes acrescentam
