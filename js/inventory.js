@@ -459,21 +459,27 @@ function drawPause() {
   ctx.fillStyle = "rgba(6,7,5,0.82)"; ctx.fillRect(0, 0, W, H);
   txt("PAUSADO", W / 2, 100, 46, "#f2eedc", "center", true);
   txt(`${playerName()}${prof() ? ` · ${prof().name}` : ""}`, W / 2, 124, 14, "#ffd96a", "center", true);
-  btn(W / 2 - 280, 290, 160, 34, "Amigos", openFriends);
-  btn(W / 2 - 280, 330, 160, 34, "Mensagens" + (inboxUnread() ? " · " + inboxUnread() : ""), openMessages);
-  btn(W / 2 - 280, 170, 160, 42, "Salvar progresso", manualSave);
   txt("Boneco: novo", W / 2 - 200, 113, 16, "#e5e0c8", "center", true);
   const ago = game.lastSave ? Math.round((performance.now() - game.lastSave) / 1000) : null;
   txt(ago == null ? "ainda não salvou nesta sessão" : ago < 3 ? "salvo agora!" : `último checkpoint: há ${ago < 60 ? `${ago}s` : `${Math.floor(ago / 60)} min`}`, W / 2 - 200, 164, 10, ago != null && ago < 3 ? "#8fe08a" : "rgba(229,224,200,0.55)", "center");
-  btn(W / 2 - 130, 518, 260, 42, NATIVE ? "Salvar e sair do jogo" : "Salvar e sair", saveAndQuit, true);
   txt(`${clockText()} · Área ${world.cell.code} (${REGIONS[world.cell.tier].name}) · $${econ().bounty} por abate · ${game.kills} abates`, W / 2, 140, 14, "#a9a58f", "center");
-  btn(W / 2 - 110, 170, 220, 42, "Continuar (Esc)", togglePause, true);
-  btn(W / 2 - 110, 220, 220, 38, `Som: ${SND.muted ? "desligado" : "ligado"}`, () => { sndMute(!SND.muted); save.muted = SND.muted; persist(); });
-  btn(W / 2 - 110, 266, 220, 38, "Áudio, ambiente e brilho", () => { game.settingsOpen = true; game.settingsDrag = null; });
-  btn(W / 2 + 120, 220, 150, 38, `Música: ${save.music ? "ligada" : "desligada"}`, () => { save.music = !save.music; musicSetOn(save.music); persist(); });
-  btn(W / 2 + 120, 266, 150, 38, "Objetivos", () => { game.paused = false; game.menu = "obj"; game.oscroll = 0; });
-  btn(W / 2 - 110, 312, 220, 38, `HUD: ${save.hud === 1 ? "compacto" : "completo"}`, () => { save.hud = save.hud === 1 ? 0 : 1; persist(); });
-  btn(W / 2 + 120, 170, 150, 42, "Missões", () => { game.paused = false; game.menu = "missions"; game.cur = 0; game.atBase = inSafe(); }, true);
+  let buttonY = 149;
+  function pauseButton(label, action, highlight = false) {
+    btn(W / 2 - 108, buttonY, 216, 24, label, action, highlight);
+    buttonY += 28;
+  }
+  pauseButton("Continuar (Esc)", togglePause, true);
+  pauseButton("Salvar progresso", manualSave);
+  pauseButton("Missões", () => { game.paused = false; game.menu = "missions"; game.cur = 0; game.atBase = inSafe(); }, true);
+  pauseButton("Objetivos", () => { game.paused = false; game.menu = "obj"; game.oscroll = 0; });
+  pauseButton("Amigos", openFriends);
+  pauseButton("Mensagens" + (inboxUnread() ? " · " + inboxUnread() : ""), openMessages);
+  pauseButton(`Som: ${SND.muted ? "desligado" : "ligado"}`, () => { sndMute(!SND.muted); save.muted = SND.muted; persist(); });
+  pauseButton(`Música: ${save.music ? "ligada" : "desligada"}`, () => { save.music = !save.music; musicSetOn(save.music); persist(); });
+  pauseButton("Áudio, ambiente e brilho", () => { game.settingsOpen = true; game.settingsDrag = null; });
+  pauseButton(`Gráficos: ${(GFX_Q[save.gfx] || "").split(" ")[0]}`, () => gfxSetQuality(((save.gfx || 0) + 2) % 3));
+  pauseButton(`HUD: ${save.hud === 1 ? "compacto" : "completo"}`, () => { save.hud = save.hud === 1 ? 0 : 1; persist(); });
+  pauseButton(NATIVE ? "Salvar e sair do jogo" : "Salvar e sair", saveAndQuit, true);
   // missões ativas direto na pausa
   const mx = 640, my = 330;
   txt(`MISSÕES ATIVAS (${save.missions.length}/3)`, mx, my, 12, "#ffd96a", "left", true);
@@ -488,7 +494,6 @@ function drawPause() {
     ctx.fillStyle = done ? "#6fae4f" : "#ffd96a"; ctx.fillRect(mx + 8, y + 28, 150 * f, 6);
     txt(done ? "entregar no posto" : `${Math.min(m.progress, m.target)}/${m.target}`, mx + 282, y + 35, 10, done ? "#6fae4f" : "#a9a58f", "right", true);
   });
-  btn(W / 2 - 280, 220, 160, 38, `Gráficos: ${(GFX_Q[save.gfx] || "").split(" ")[0]}`, () => gfxSetQuality(((save.gfx || 0) + 2) % 3));
   txt(GFX.on ? (save.gfx >= 2 ? "luz, sombras, brilho e clima" : "luz, sombras e clima, sem brilho") : GFX.failed ? "WebGL indisponível neste PC" : "modo antigo, mais leve", W / 2 - 200, 274, 11, "rgba(229,224,200,0.55)", "center");
   txt("Créditos: armas extras do pacote \"2D Guns\" de Kay Lousberg (OpenGameArt.org, CC0)", W / 2, H - 14, 11, "rgba(229,224,200,0.45)", "center");
   txt("WASD andar · Shift correr · mouse mirar e atacar · 1 2 3 / roda trocar arma · R recarregar · E usar · B mochila · M mapa · N cidade · Enter chat",
