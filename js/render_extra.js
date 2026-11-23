@@ -5,8 +5,50 @@
 //  de bônus ativos na lateral esquerda.
 // =====================================================================
 
+// Atlas 8 direções x 8 quadros, renderizado a partir dos GLBs rigados.
+// A cena continua 2D, portanto não exige renderizar 50 MB de GLB em tempo real.
+const CHRISTMAS_BOSS_SPRITES = {};
+for (const kind of ["santa", "alce"]) {
+  const image = new Image();
+  image.src = "img/boss_natal_" + kind + "_atlas.png?v=20261123-eventboss01";
+  CHRISTMAS_BOSS_SPRITES[kind] = image;
+}
+function drawChristmasBoss(z, kind) {
+  const img = CHRISTMAS_BOSS_SPRITES[kind];
+  const rad = z.r, size = kind === "santa" ? rad * 4.0 : rad * 4.25;
+  // Golpes e movimento desenhados em quadros diferentes.
+  const attacking = z.abilT > 0;
+  const moving = z.state === "chase" && !attacking;
+  const frame = attacking ? 5 + Math.min(2, Math.floor((1 - z.abilT / (kind === "santa" ? 670 : 510)) * 3))
+    : moving ? 1 + Math.floor(game.time / 110) % 4 : 0;
+  const facing = ((Math.round(-z.angle * 4 / Math.PI) % 8) + 8) % 8;
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,.40)";
+  ellipse(z.x + 4, z.y + 9, size * .38, size * .15);
+  // Anel natalino discreto distingue o evento dos inimigos normais.
+  const glow = ctx.createRadialGradient(z.x, z.y, rad * .3, z.x, z.y, rad * 2.0);
+  glow.addColorStop(0, kind === "santa" ? "rgba(212,38,28,.30)" : "rgba(114,173,65,.25)");
+  glow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = glow; circle(z.x,z.y,rad*2);
+  if (img && img.complete && img.naturalWidth >= 1920) {
+    ctx.drawImage(img, frame * 240, facing * 240, 240, 240,
+      z.x - size / 2, z.y - size * .63, size, size);
+  } else {
+    ctx.fillStyle = kind === "santa" ? "#ac2729" : "#526244";
+    ellipse(z.x, z.y, rad, rad * .75);
+    ctx.fillStyle = "#f1eee0"; circle(z.x + rad * .40, z.y - rad * .4, rad * .3);
+  }
+  if (z.flash > 0) { ctx.globalAlpha = .28; ctx.fillStyle = "#fff"; circle(z.x,z.y,rad); }
+  ctx.restore();
+  if (z.hp < z.maxHp) {
+    ctx.fillStyle = "#130b0b"; ctx.fillRect(z.x - rad, z.y - rad - 19, 2*rad, 5);
+    ctx.fillStyle = "#e24737"; ctx.fillRect(z.x - rad, z.y - rad - 19, 2*rad*Math.max(0,z.hp/z.maxHp), 5);
+  }
+}
+
 // ---------- Chefes (vistos de cima, apontando para +x) ----------
 function drawBoss(z) {
+  if (z.bossId === "santa_natal") { drawChristmasBoss(z, "santa"); return; }
   const B = BOSSES[z.bossId] || BOSSES.acougueiro, s = z.r / 28, t = game.time, sway = Math.sin(z.anim) * 4 * s;
   const fade = z.bossId === "ceifador" && z.phase > 0 ? 0.18 : 1;
   ctx.globalAlpha = fade;
