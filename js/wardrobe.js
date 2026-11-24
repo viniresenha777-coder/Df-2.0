@@ -38,6 +38,22 @@ const IMPORTED_CLOTHING = [W3D("cape_hood", "cape", "cape_hood", "Capa com capuz
   W3D("cl_pants_baked", "pants", "cl_pants_baked", "Calça Baked", "Baked"),
   // calça cargo masculina (CC-BY, Alexander Kurmanin): encaixada à mão no Roger e presa ao esqueleto
   W3D("cl_pants_cargo", "pants", "cl_pants_cargo", "Calça Cargo", "Cargo")];
+// Capa e máscaras: compradas na Loja de Créditos (o resto das roupas o personagem já tem desde o início)
+const CREDIT_CLOTHING = { cape_hood: 500, mask_vendetta: 1000, mask_hope: 2000 };
+function clothingOwned(id) { return !CREDIT_CLOTHING[id] || !!(save.clothesOwned && save.clothesOwned[id]); }
+function buyCreditClothing(id) {
+  const item = CLOTHING_BY_ID[id], price = CREDIT_CLOTHING[id];
+  if (!item || !price) return;
+  if (clothingOwned(id)) { toast("Você já tem " + item.name); return; }
+  if (!atBase()) { toast("Use a Loja de Créditos na base."); return; }
+  if (save.credits < price) { toast(`Precisa de ${price.toLocaleString("pt-BR")} créditos (compre no banco)`); return; }
+  save.credits -= price;
+  save.clothesOwned = save.clothesOwned || {};
+  save.clothesOwned[id] = true;
+  persist();
+  checkpoint("compra de roupa");
+  toast(item.name + " comprada! Equipe no inventário.");
+}
 // camada 3D da peça equipada (ou null)
 function clothingLayer(kind, equipment) {
   const item = clothingGet(kind, equipment);

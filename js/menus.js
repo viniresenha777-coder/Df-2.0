@@ -433,12 +433,12 @@ function creditShopRows(section) {
       currency: "money",
     }));
   if (section === "clothing")
-    return CLOTHING_ITEMS.map((item) => ({
-      kind: "clothing",
-      item,
-      title: item.name,
-      owned: save.clothing[item.kind] === item.id,
-    }));
+    // capa e máscaras (à venda) primeiro; as outras roupas o personagem já tem
+    return CLOTHING_ITEMS.slice()
+      .sort((a, b) => !!CREDIT_CLOTHING[b.id] - !!CREDIT_CLOTHING[a.id])
+      .map((item) => CREDIT_CLOTHING[item.id]
+        ? { kind: "clothing", item, title: item.name, owned: clothingOwned(item.id), equipped: save.clothing[item.kind] === item.id, price: CREDIT_CLOTHING[item.id], currency: "credits" }
+        : { kind: "clothing", item, title: item.name, owned: save.clothing[item.kind] === item.id });
   return WLIST.filter(
     (item) => !item.fists && (section === "explosive" ? item.grenade : item.cat === section && !item.grenade),
   ).map((item) => ({ kind: "weapon", item, title: item.name }));
@@ -446,6 +446,7 @@ function creditShopRows(section) {
 function creditShopCost(row) {
   if (row.kind === "vest" && row.owned) return "Já possui";
   if (row.kind === "implant" && row.owned) return "Já possui";
+  if (row.kind === "clothing" && row.price) return row.owned ? (row.equipped ? "Em uso" : "Já possui") : row.price.toLocaleString("pt-BR") + " cr";
   if (row.kind === "clothing") return row.owned ? "Em uso" : "Vestuário";
   if (row.kind === "weapon") return RARITY[row.item.rar].name;
   if (row.kind === "vest" && row.price == null) return "Oficina";
@@ -473,6 +474,9 @@ function creditShopConfirm() {
     case "mat":
     case "implant":
       creditShopBuy(row.id);
+      break;
+    case "clothing":
+      buyCreditClothing(row.item.id);
       break;
     case "vest":
       if (save.vestsOwned[row.id]) return;

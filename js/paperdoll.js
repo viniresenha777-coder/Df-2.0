@@ -222,7 +222,7 @@ function invPackEntries() {
   CLOTHING_ITEMS.forEach(item => {
     const equipped = save.clothing[item.kind] === item.id;
     // mochilas ficam no slot próprio e no Baú da Base; roupas guardadas no baú também saem daqui
-    if (item.kind !== "pack" && !equipped && !save.vault.some((v) => v && v.kind === "clothing" && v.id === item.id))
+    if (item.kind !== "pack" && !equipped && clothingOwned(item.id) && !save.vault.some((v) => v && v.kind === "clothing" && v.id === item.id))
       entries.push({ area: "clothes-list", kind: item.kind, type: "clothing", item });
   });
   player.bag.forEach((im, i) => entries.push({ area: "bag", i, type: "implant", item: im }));
@@ -306,6 +306,7 @@ function invClick(z) {
 function equipClothing(item) {
   if (!item || CLOTHING_BY_ID[item.id] !== item || !CLOTHING_KINDS.includes(item.kind)) return;
   if (fmStashStoredClothing(item.id)) { toast("Retire esta peça do Baú da Base antes de equipar."); return; }
+  if (!clothingOwned(item.id)) { toast(`Compre ${item.name} na Loja de Créditos (${CREDIT_CLOTHING[item.id].toLocaleString("pt-BR")} créditos)`); return; }
   if (save.clothing[item.kind] === item.id) { unequipClothing(item.kind); return; }   // clicar de novo tira
   if (item.kind === "pack") {
     if (player.level < item.level) { toast("Disponível no nível " + item.level); return; }

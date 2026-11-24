@@ -7,7 +7,7 @@ const SAVE_KEY = "fronteira-morta";
 const save = {
   bank: 0, vault: [], vaultRows: 5, installed: [], implantPresets: [], credits: 0, gm: false, vipUntil: 0, trindadeUntil: 0, shopFreeUntil: 0, missions: [], receivedGifts: [], inbox: [],
   vest: -1, fmInventoryOrder: [], clothing: { jacket: null, pants: null, boots: null }, outposts: OUTPOSTS.map((o, i) => i === 0), muted: false, hud: 0, skin: 0, cape: 0, prof: null, name: "", classicChar: false, vestDur: {}, vestUpgrades: {}, vestShow: true, music: true, gfx: 2, ambientVolume: 0.55, brightness: 1.0,
-  stats: {}, story: 0, ach: {}, daily: null, coll: [], vestsOwned: VESTS.map(() => false), vestVer: 2,
+  stats: {}, story: 0, ach: {}, daily: null, coll: [], vestsOwned: VESTS.map(() => false), clothesOwned: {}, vestVer: 2,
   char: { level: 1, xp: 0, points: 0, wpoints: 0, attrs: defaultAttrs() }
 };
 
@@ -90,6 +90,12 @@ function loadSave() {
       save.vestUpgrades[i] = cleanVestUpgrade(s.vestUpgrades && s.vestUpgrades[i]);
     save.outposts = OUTPOSTS.map((o, i) => i === 0 || !!(s.outposts && s.outposts[i]));
     save.muted = !!s.muted; save.hud = s.hud === 1 ? 1 : 0; save.skin = clamp(s.skin | 0, 0, SKINS.length - 1); save.clothing = clothingClean(s.clothing);
+    // capa e máscaras compradas; save antigo: quem já estava usando uma fica com ela
+    save.clothesOwned = {};
+    for (const id in CREDIT_CLOTHING) {
+      if (s.clothesOwned ? s.clothesOwned[id] === true : Object.values(save.clothing).includes(id)) save.clothesOwned[id] = true;
+    }
+    for (const kind of CLOTHING_KINDS) if (save.clothing[kind] && !clothingOwned(save.clothing[kind])) save.clothing[kind] = null;
     save.fmInventoryOrder = Array.isArray(s.fmInventoryOrder) ? s.fmInventoryOrder.filter((k) => k === null || typeof k === "string").slice(0, 150) : [];
     save.cape = clamp(s.cape | 0, 0, CAPES.length - 1); save.vestShow = s.vestShow !== false; save.prof = typeof s.prof === "string" ? s.prof : null; save.name = typeof s.name === "string" ? s.name.slice(0, 16) : ""; save.classicChar = false; // Somente o novo boneco está disponível.
     save.vestDur = s.vestDur && typeof s.vestDur === "object" ? s.vestDur : {};
