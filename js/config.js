@@ -19,9 +19,9 @@ const FONT = "'Trebuchet MS', 'Segoe UI', sans-serif";
 // Ruas perimetrais mais largas (70 -> 110), sem alterar a avenida central (140).
 // ruas todas da mesma largura (como no Dead Frontier): a rua da borda tem meia largura e
 // junta com a meia rua da área vizinha.
-const AREA_EDGE = 140, BLOCK_W = 620, BLOCK_H = 640, ST_W = 280;
-const WORLD_W = 2 * AREA_EDGE + 2 * BLOCK_W + ST_W;   // 1800
-const WORLD_H = 2 * AREA_EDGE + 2 * BLOCK_H + ST_W;   // 1840
+const AREA_EDGE = 196, BLOCK_W = 620, BLOCK_H = 640, ST_W = 280;   // ruas laterais (borda) 40% mais largas
+const WORLD_W = 2 * AREA_EDGE + 2 * BLOCK_W + ST_W;   // 1912
+const WORLD_H = 2 * AREA_EDGE + 2 * BLOCK_H + ST_W;   // 1952
 const SIDEWALK = 26;
 const MID_X = AREA_EDGE + BLOCK_W + ST_W / 2, MID_Y = AREA_EDGE + BLOCK_H + ST_W / 2;
 // ruas: faixas [início, fim] na horizontal (y) e na vertical (x)
