@@ -388,6 +388,7 @@ function gearOrder(list, back) {
 // qual pose de braços cada arma usa
 function weaponPose(w) {
   if (!w || w.fists) return "punhos";
+  if (w.dual) return "punhos";                         // duas armas: pose de punhos, uma arma em cada mão
   if (w.look === "chainsaw") return "pesada";
   if (w.melee) return "melee";
   if (w.look === "pistol" || w.look === "revolver") return "pistola";
@@ -473,9 +474,20 @@ function updateWeaponAim() {
   // estabilizada pela zona morta aplicada no movimento.
   player.gunAngle = player.angle;
 }
+// duas armas (uma em cada mão): escala da arma e ponta do cano de cada mão
+const DUAL_SCALE = 0.8;
+function dualLenPx(w, pose) {
+  const A = posePt("a", pose), B = posePt("b", pose);
+  return Math.hypot(B.x - A.x, B.y - A.y) * weaponMeters(w) * DUAL_SCALE;
+}
 function muzzlePoint() {
   if (!useSpriteChar()) return null;
   const w = curW(); if (w.melee || w.fists) return null;
+  if (w.dual) {
+    const pose = weaponPose(w) + TW.suf, H = posePt(player.dualSide ? "hl" : "hr", pose);
+    const a = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle, L = dualLenPx(w, pose) * 0.72;
+    return { x: H.x + Math.cos(a) * L, y: H.y + Math.sin(a) * L };
+  }
   const grip = gunGripAndLength(w);
   const a = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle;
   return { x: grip.x + Math.cos(a) * grip.length, y: grip.y + Math.sin(a) * grip.length };
@@ -485,6 +497,17 @@ function chestPoint() { return useSpriteChar() ? posePt("c") : { x: player.x, y:
 // desenha a arma em uso nas mãos, seguindo o eixo da pose naquele quadro
 function drawHeldWeapon(w, pose) {
   if (w.fists) return;
+  if (w.dual) {
+    const ang = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle;
+    const model = (w.len || 20) + 20, k = dualLenPx(w, pose) / model;
+    for (const key of ["hl", "hr"]) {           // mão de trás primeiro, a da frente por cima
+      const H = posePt(key, pose);
+      ctx.save(); ctx.translate(H.x, H.y); ctx.rotate(ang); ctx.scale(k, k * 0.9);
+      drawWeaponShape(w, 0);
+      ctx.restore();
+    }
+    return;
+  }
   const A = posePt("a", pose), B = posePt("b", pose), U = posePt("u", pose);
   const m = weaponMeters(w), axX = B.x - A.x, axY = B.y - A.y;
   const lenPx = Math.hypot(axX, axY) * m, pxPerM = PSHEET.size / PSHEET.cell * 64;

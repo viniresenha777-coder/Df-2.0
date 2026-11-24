@@ -263,6 +263,7 @@ function attack() {
   const aim = player.angle;
   let mx = player.x + Math.cos(aim) * (w.len + 12);
   let my = player.y + Math.sin(aim) * (w.len + 12);
+  if (w.dual) player.dualSide = !player.dualSide;   // alterna o tiro entre a mão direita e a esquerda
   const mz = muzzlePoint();
   if (mz) { mx = mz.x; my = mz.y; }
   player.shotAng = aim;
