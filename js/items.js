@@ -315,7 +315,52 @@ CB_ZHNETS.src = "img/weapons/crossbow_zhnets.webp?v=231126-zh1";
 const ARROW_ZHNETS = new Image();
 ARROW_ZHNETS.src = "img/flechas_zh.svg?v=231126-zh1";
 const weaponEmissionImages = new Map();
+// Shotgun Sweet: pisca-pisca de Natal enrolado nos canos (espiral), acendendo em onda; ao atirar, todas brilham
+const SWEET_BULBS = ["255,70,60", "255,206,90", "90,230,120", "110,180,255"];
+function drawSweetLights(g, x, y, width, flash) {
+  const t = performance.now() / 1000, fire = Math.min(1, Math.max(0, flash / 60));
+  const wy = (px) => 30.5 + 4.6 * Math.sin((px - 58) * 0.33);       // fio enrolado nos dois canos
+  const front = (px) => Math.cos((px - 58) * 0.33) > -0.2;           // parte da volta que fica na frente
+  g.save();
+  g.translate(x, y);
+  g.scale(width / 128, width / 128);
+  g.lineCap = g.lineJoin = "round";
+  // fio verde-escuro: só os trechos da frente aparecem por cima da arma
+  g.strokeStyle = "rgba(24,70,30,0.95)"; g.lineWidth = 0.55;
+  g.beginPath();
+  let pen = false;
+  for (let px = 58; px <= 124; px += 0.5) {
+    if (front(px)) { if (pen) g.lineTo(px, wy(px)); else { g.moveTo(px, wy(px)); pen = true; } } else pen = false;
+  }
+  g.stroke();
+  g.globalCompositeOperation = "lighter";
+  for (let i = 0, px = 60; px <= 123; i++, px += 4.1) {
+    const py = wy(px), c = SWEET_BULBS[i % SWEET_BULBS.length];
+    const on = Math.max(fire, 0.25 + 0.75 * Math.max(0, Math.sin(t * 4.2 - i * 0.85)));
+    const depth = front(px) ? 1 : 0.35;                              // lâmpadas atrás do cano ficam mais fracas
+    const gr = 5 + 2.5 * on;
+    const glow = g.createRadialGradient(px, py, 0, px, py, gr);
+    glow.addColorStop(0, `rgba(${c},${0.85 * on * depth})`);
+    glow.addColorStop(0.35, `rgba(${c},${0.35 * on * depth})`);
+    glow.addColorStop(1, `rgba(${c},0)`);
+    g.fillStyle = glow;
+    g.beginPath(); g.arc(px, py, gr, 0, 6.283); g.fill();
+    g.fillStyle = `rgba(${c},${(0.55 + 0.45 * on) * depth})`;
+    g.beginPath(); g.ellipse(px, py, 1.25, 1.6, 0, 0, 6.283); g.fill();
+    g.fillStyle = `rgba(255,255,255,${0.75 * on * depth})`;
+    g.beginPath(); g.arc(px - 0.35, py - 0.5, 0.45, 0, 6.283); g.fill();
+  }
+  // brilhinho de neve que passa pelo cano de vez em quando
+  const s = (t * 0.45) % 1;
+  if (s < 0.5) {
+    const sx = 60 + s * 2 * 64, sy = 27 + Math.sin(s * 9) * 1.5, a = Math.sin(s * 2 * Math.PI);
+    g.strokeStyle = `rgba(255,255,255,${0.8 * a})`; g.lineWidth = 0.35;
+    g.beginPath(); g.moveTo(sx - 1.6, sy); g.lineTo(sx + 1.6, sy); g.moveTo(sx, sy - 1.6); g.lineTo(sx, sy + 1.6); g.stroke();
+  }
+  g.restore();
+}
 function drawWeaponEnergy(g, id, x, y, width, equipped, flash = 0) {
+  if (id === "dose") { drawSweetLights(g, x, y, width, flash); return; }
   if (id !== "trovao" && id !== "minigun_inf" && id !== "incendiaria") return;
   const t = performance.now() / 1000;
   const frame = Math.floor(t * 12) % 16;
