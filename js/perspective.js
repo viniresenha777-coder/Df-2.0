@@ -305,6 +305,8 @@ const WEAPON_3D = {
   ak47: { m: "w_ak" }, ak_ouro: { m: "w_fm_ak_ouro", grip: 0.36, heldView: true },
   m4: { m: "w_m4" }, baioneta: { m: "w_m4" }, fal: { m: "w_fal" }, scar: { m: "w_scar" },
   uzi: { m: "w_uzi" }, vector: { m: "w_vector" }, m249: { m: "w_m249" },
+  // MP5 e P90 não tinham modelo: usam o da Vector (P90 esverdeada), em vez do desenho 2D solto da mão
+  mp5: { m: "w_vector", f: "grayscale(0.6) brightness(0.9)" }, p90: { m: "w_vector", f: "hue-rotate(60deg) saturate(0.8)" },
   minigun: { m: "w_minigun" }, minigun_inf: { m: "w_fm_minigun_inf_hd", grip: 0.3, heldView: true },
   canoduplo: { m: "w_canoduplo" },
   // grip: arma com arte própria na mão (img/weapons/<m>_held.png quando heldView), segurada nesse ponto do comprimento
@@ -322,7 +324,7 @@ const WEAPON_3D = {
   marreta: { m: "w_marreta" }, machado: { m: "w_machado" }, faca: { m: "w_utility", grip: 0.26 }, facao: { m: "w_ps1_machete", grip: 0.17 }, serra: { m: "w_serra" },
   lancachamas: { m: "w_flamer" },
   // evento de Natal (modelos 3D enviados pelo criador, fotografados de lado)
-  pistola_natal: { m: "w_fm_pistola_natal", grip: 0.22, heldView: true }, dose: { m: "w_fm_dose", grip: 0.25, heldView: true },
+  pistola_natal: { m: "w_fm_pistola_natal", grip: 0.21, heldView: true }, dose: { m: "w_fm_dose", grip: 0.27, heldView: true },
 };
 // foto de cada arma 3D para a loja e o inventário (img/weapons/<m>.png: de lado, cano para a direita)
 const WEAPON_ICON = {};

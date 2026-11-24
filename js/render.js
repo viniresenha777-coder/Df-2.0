@@ -958,7 +958,7 @@ function drawWeaponShape(w, swing) {
   if (w.id === "besta" && CB_ZHNETS.complete && CB_ZHNETS.naturalWidth) {
     ctx.save();
     ctx.scale(-1, 1);
-    ctx.drawImage(CB_ZHNETS, -43, -14, 50, 28);
+    ctx.drawImage(CB_ZHNETS, -38, -10, 42, 21);   // menor e com a coronha na mão
     ctx.restore();
     return;
   }
@@ -973,7 +973,12 @@ function drawWeaponShape(w, swing) {
         if (w.legendary || w.special) { ctx.shadowColor = c; ctx.shadowBlur = 12; }
         ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(20, 4); ctx.lineTo(20 + L, 5); ctx.lineTo(20 + L - 6, w.look === "machete" ? 10 : 8); ctx.lineTo(20, 8); ctx.closePath(); ctx.fill();
         ctx.shadowBlur = 0; break;
-      case "bat": poly([[8, 4], [8 + L, 2], [8 + L, 10], [8, 8]], c); break;
+      case "bat": {   // taco afinando para o cabo (fita preta) e com pregos na ponta
+        poly([[8, 5], [8 + L * 0.45, 4.2], [8 + L, 3], [8 + L + 1.5, 6], [8 + L, 9], [8 + L * 0.45, 7.8], [8, 7]], c);
+        ctx.fillStyle = "#2a2622"; ctx.fillRect(6, 4.8, 9, 2.4);
+        ctx.fillStyle = "#b9bcc0"; for (let i = 0; i < 4; i++) ctx.fillRect(8 + L * (0.7 + i * 0.08), i % 2 ? 2.2 : 8.6, 1.2, 1.4);
+        break;
+      }
       case "hammer": ctx.fillStyle = "#5a3d22"; ctx.fillRect(8, 4, L, 4); ctx.fillStyle = c; ctx.fillRect(4 + L, -4, 12, 20); break;
       case "chainsaw":
         ctx.fillStyle = c; ctx.fillRect(4, 0, 16, 14); ctx.fillStyle = "#9aa0a6"; ctx.fillRect(20, 3, L, 8);
