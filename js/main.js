@@ -446,6 +446,7 @@ function update(dt) {
 }
 
 function updateCam(dt) {
+  camLeanTick(dt);
   // dentro de prédios grandes a câmera também segue o personagem
   const tx = clamp(player.x - VIEW_W / 2 + (viewMouseX() - VIEW_W / 2) * 0.18, 0, Math.max(0, IW() - VIEW_W));
   const ty = clamp(player.y - VIEW_H / 2 + (viewMouseY() - VIEW_H / 2) * 0.18, 0, Math.max(0, IH() - VIEW_H));
