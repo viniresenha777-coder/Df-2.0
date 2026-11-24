@@ -22,12 +22,18 @@ function withView(fn) {
 // mouse em coordenadas do mundo visível (a tela mostra VIEW_W x VIEW_H)
 function viewMouseX() { return mouse.x / VIEW_ZOOM; }
 function viewMouseY() { return mouse.y / VIEW_ZOOM; }
+// Nitidez: o jogo desenha no tamanho em que aparece na tela (lógica 960x600 x escala da janela x densidade
+// do monitor). Antes desenhava em 960x600 e o navegador esticava ~2x num monitor Full HD, deixando tudo borrado.
+// Teto de densidade para não pesar: gráficos simples 1,5x; normal 3x.
 function fitCanvas() {
-  DPR = Math.min(2, window.devicePixelRatio || 1);
-  canvas.width = W * DPR; canvas.height = H * DPR;
   const s = Math.max(0.3, Math.min((window.innerWidth - 36) / W, (window.innerHeight - 70) / H));
-  canvas.style.width = Math.floor(W * s) + "px";
-  canvas.style.height = Math.floor(H * s) + "px";
+  const cssW = Math.floor(W * s), cssH = Math.floor(H * s);
+  const cap = save && save.gfx === 0 ? 1.5 : 3;
+  DPR = Math.max(1, Math.min(cap, (window.devicePixelRatio || 1) * cssW / W));
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  canvas.style.width = cssW + "px";
+  canvas.style.height = cssH + "px";
+  canvas.getContext("2d").imageSmoothingQuality = "high";   // trocar o tamanho do canvas zera essa opção
   if (typeof gfxResize === "function") gfxResize();
 }
 

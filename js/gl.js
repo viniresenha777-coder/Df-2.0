@@ -234,6 +234,7 @@ function gfxSetQuality(q) {
   save.gfx = q; persist();
   if (q === 0) gfxStop();
   else if (!gfxStart()) { save.gfx = 0; toast("Este computador não tem WebGL: só o modo Baixo funciona"); }
+  fitCanvas();                                   // a densidade máxima depende da qualidade
 }
 
 // ---------- Clima ----------
