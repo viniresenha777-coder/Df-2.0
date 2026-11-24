@@ -426,6 +426,16 @@ function dualReady(key) {
   const im = PSHEET.sheets[key], mk = PSHEET.masks[key];
   return !!(im && im.complete && im.naturalWidth && mk && mk.complete && mk.naturalWidth && SPRITE_POSES[key]);
 }
+// peça do tronco (capa, colete, moletom, máscara...) cuja camada nesse ângulo não existe (a imagem deu erro)
+function torsoLayerMissing(key) {
+  for (const id of playerGear()) {
+    if (/^cl_(boots|pants)/.test(id)) continue;      // pernas não giram: usam a camada normal
+    gearImg(id, key);                                  // pede a imagem (carrega sob demanda)
+    const im = GEAR_IMG[id + "_" + key];
+    if (im && im.bad) return true;
+  }
+  return false;
+}
 function dualTwistTick() {
   const p = player, pose = "punhos", aim = p.angle;
   if (p.legRow == null) p.legRow = p.sRow;
@@ -440,7 +450,10 @@ function dualTwistTick() {
   let best = "", bestE = Infinity;
   for (const deg of DUAL_TW) {
     const suf = dualSuf(deg);
-    if (suf) { ensureTwistSheet(pose + suf); if (!dualReady(pose + suf)) continue; }
+    if (suf) {
+      ensureTwistSheet(pose + suf); if (!dualReady(pose + suf)) continue;
+      if (torsoLayerMissing(pose + suf)) continue;    // roupa do tronco sem esse ângulo: não torce
+    }
     const a = twistBaseAngle(pose + suf, p.legRow, col);
     const e = a == null ? Infinity : Math.abs(angDelta(a, aim));
     if (e < bestE) { bestE = e; best = suf; }
