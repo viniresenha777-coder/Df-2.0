@@ -315,7 +315,7 @@ function buyTrindade() {
   sfx.buy(); checkpoint("compra de Trindade");
   toast("Trindade adquirida! Arraste-a sobre o personagem para consumir.");
 }
-// armas vendidas por créditos (Dose de Açúcar, evento de Natal)
+// armas vendidas por créditos (Shotgun Sweet, evento de Natal)
 function buyCreditWeapon(id) {
   const d = WDEF[id];
   if (!d || !d.credits) return;
