@@ -413,7 +413,36 @@ function spriteTick(dt) {
   p.dispAng = p.angle;
   p.sRow = sheetRow(Math.cos(p.angle), Math.sin(p.angle));
   if (p.moving) p.stepDist = (p.stepDist || 0) + (p.lastSp || 0) * dt / 16.67;
-  TW.suf = pickTwistSuffix(weaponPose(curW()));
+  if (curW().dual) dualTwistTick();
+  else { p.legRow = null; TW.suf = pickTwistSuffix(weaponPose(curW())); }
+}
+// ---------- Armas duplas: tronco gira até 90° com as pernas paradas ----------
+// Variantes da pose punhos com o tronco torcido de 15 em 15° (geradas no Blender com --twist, quadril e pernas
+// parados). As pernas ficam numa das 8 direções; o tronco escolhe a variante mais perto da mira. Quando a mira
+// passa de 90° para um dos lados, as pernas viram para a direção da mira e o tronco recomeça do meio.
+const DUAL_TW = [-90, -75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75, 90];   // graus na tela (+ = horário)
+function dualSuf(deg) { return deg === 0 ? "" : (deg > 0 ? "_tm" : "_tp") + Math.abs(deg); }
+function dualReady(key) {
+  const im = PSHEET.sheets[key], mk = PSHEET.masks[key];
+  return !!(im && im.complete && im.naturalWidth && mk && mk.complete && mk.naturalWidth && SPRITE_POSES[key]);
+}
+function dualTwistTick() {
+  const p = player, pose = "punhos", aim = p.angle;
+  if (p.legRow == null) p.legRow = p.sRow;
+  let legAng = -Math.PI / 2 + p.legRow * Math.PI / 4, d = angDelta(legAng, aim);
+  if (Math.abs(d) > Math.PI / 2 + 0.13) {           // passou de 90°: as pernas viram e o tronco recomeça
+    p.legRow = sheetRow(Math.cos(aim), Math.sin(aim));
+    legAng = -Math.PI / 2 + p.legRow * Math.PI / 4; d = angDelta(legAng, aim);
+  }
+  p.sRow = p.legRow;
+  let best = "", bestE = Infinity, bestOff = 0;
+  for (const deg of DUAL_TW) {
+    const suf = dualSuf(deg);
+    if (suf) { ensureTwistSheet(pose + suf); if (!dualReady(pose + suf)) continue; }
+    const off = deg * Math.PI / 180, e = Math.abs(angDelta(off, d));
+    if (e < bestE) { bestE = e; best = suf; bestOff = off; }
+  }
+  TW.suf = best; p.dualBase = legAng + bestOff;
 }
 // ---------- Tronco girando com a mira ----------
 // Além das 8 direções, cada pose tem variantes com o tronco torcido 15° para cada lado (_tm15 / _tp15),
@@ -476,13 +505,11 @@ function updateWeaponAim() {
 }
 // duas armas (uma em cada mão): escala da arma e ponta do cano de cada mão
 const DUAL_SCALE = 0.8;
-// Com armas duplas o corpo inteiro gira até ±22,5° na direção da mira (entre as 8 poses)
-// e as armas ficam paradas nas mãos, apontando para a frente da pose.
+// Com armas duplas as armas ficam paradas nas mãos, apontando para a frente do tronco (que gira: dualTwistTick).
 function dualTwist(pose) {
-  const rowAng = -Math.PI / 2 + (player.sRow | 0) * Math.PI / 4;
-  const aim = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle;
+  const base = Number.isFinite(player.dualBase) ? player.dualBase : -Math.PI / 2 + (player.sRow | 0) * Math.PI / 4;
   const c = posePt("c", pose);
-  return { base: rowAng, d: angDelta(rowAng, aim), px: c.x, py: c.y };
+  return { base, d: 0, px: c.x, py: c.y };
 }
 function twistPt(pt, t) {
   const s = Math.sin(t.d), co = Math.cos(t.d), dx = pt.x - t.px, dy = pt.y - t.py;
@@ -598,8 +625,6 @@ function drawPlayerSprite() {
     ctx.restore();
   }
   const kick = p.flashT > 0 ? 2 : 0, o = spriteOrigin(), info = SPRITE_POSES[pose][row][col];
-  const twist = w.dual ? dualTwist(pose) : null;
-  if (twist) { ctx.save(); ctx.translate(twist.px, twist.py); ctx.rotate(twist.d); ctx.translate(-twist.px, -twist.py); }
   const w3 = weapon3dImg(w, pose);
   if (info.bh && !w3) drawHeldWeapon(w, pose);       // arma atrás do corpo (de costas)
   drawEyeTrails();                                    // rastro dos olhos fica atrás do corpo
@@ -631,7 +656,8 @@ function drawPlayerSprite() {
   // de lado e de costas ela vai depois do colete (fica por cima dele)
   const gearList = gearOrder(playerGear(), row !== 3 && row !== 4 && row !== 5);
   for (const id of gearList) {
-    const g = gearImg(id, pose);
+    // tronco torcido sem a camada dessa peça: usa a da pose normal (calça e botas batem, as pernas não giram)
+    const g = gearImg(id, pose) || (TW.suf && w.dual ? gearImg(id, pose.slice(0, -TW.suf.length)) : null);
     if (g) ctx.drawImage(g, col * c, row * c, c, c, ox, oy, S, S);
   }
   if (w3 && !info.bh) drawW3();
@@ -650,7 +676,6 @@ function drawPlayerSprite() {
     ctx.fillStyle = "#1c1c1c"; ctx.fillRect(L.x - 2.5, L.y - 2, 5, 4);
     ctx.fillStyle = flashlightActive() ? "#fff4cf" : "#595850"; circle(L.x, L.y, 1.6);
   }
-  if (twist) ctx.restore();
   // clarão do tiro na ponta do cano
   if (p.flashT > 0 && !w.melee) {
     const m = muzzlePoint(), ang = p.shotAng != null ? p.shotAng : (p.gunAngle != null ? p.gunAngle : p.angle);
