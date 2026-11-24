@@ -10,6 +10,7 @@ const JUNK_CONS = { comum: 8, fresca: 16, podre: 2, water: 6, med: 25, anti: 40 
 
 function weaponSellPrice(inst) {
   const d = WDEF[inst.id];
+  if (d.scrap) return inst.gc ? d.scrapMC || d.scrap : d.scrap;   // valor fixo de sucata (MC = craft perfeito)
   return Math.round(Math.max(JUNK_RAR[d.rar] || 40, (d.price || 0) * 0.3) * (1 + upSum(inst) * 0.12));
 }
 function weaponParts(inst) {

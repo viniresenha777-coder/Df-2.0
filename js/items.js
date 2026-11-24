@@ -14,7 +14,7 @@ const AMMO = {
   "7.62":        { box: 20, price: 40 },
   "cartucho":    { box: 8,  price: 26 },
   "combustível": { box: 60, price: 45 },
-  "virote":      { box: 6,  price: 30, name: "Flechas" },
+  "virote":      { box: 6,  price: 30 },
   "granada":     { box: 4,  price: 120 }
 };
 // ---------- Raridade ----------
@@ -87,6 +87,11 @@ const WLIST = [
   { id: "espadafogo", name: "Espada Flamejante", short: "Esp. Fogo", cat: "melee", look: "sword", dmg: 100, delay: 666.67, range: 82, arc: 1.05, price: 0, req: [70, 120], len: 42, color: "#ff8a3a", burn: 40 },
   // munição infinita, mas superaquece: segure o tiro com cuidado
   { id: "minigun_inf", name: "Minigun Infernal", short: "Infernal", cat: "machinegun", look: "minigun", dmg: 23, pellets: 3, delay: 81.67, mag: 600, reload: 3250, ammo: "", price: 0, req: [100, 120], minLevel: 25, len: 36, color: "#8a6a4a", slow: 20, infinite: true, noCrit: true, spread: 0.2, sound: [1, 1] },
+  // ---------- Evento de Natal (dano Cryo: deixa o zumbi mais lento e atacando mais devagar) ----------
+  // cai só nas Caixas de Natal (1%), intransferível
+  { id: "pistola_natal", name: "Pistola Natalina", short: "P. Natalina", cat: "pistols", look: "pistol", dmg: 35, delay: 666.67, mag: 18, reload: 1750, ammo: ".50", price: 0, req: [0, 0], minLevel: 25, len: 18, color: "#b02a2a", noCrit: true, cryo: 0.5, cryoMs: 1000, scrap: 50, scrapMC: 100, upCost: 81000, eventOnly: true, noTrade: true },
+  // só na Loja de Créditos (300 créditos). Modelo: "Candy Shotgun" por Yogensia (sketchfab.com/yogensia), CC-BY-NC-SA-4.0
+  { id: "dose", name: "Shotgun Sweet", short: "Sweet", cat: "shotguns", look: "shotgun", dmg: 12, pellets: 20, delay: 500, mag: 35, reload: 3250, ammo: "cartucho", price: 0, req: [50, 0], minLevel: 25, len: 27, color: "#c8323c", spread: 0.33, life: 380, noCrit: true, cryo: 0.2, cryoMs: 1000, scrap: 57650, scrapMC: 115300, upCost: 126830, credits: 300, eventOnly: true, dual: true },
   // sem arma na mão
   { id: "punhos",   name: "Punhos",        cat: "melee", look: "fists",   dmg: 8,   delay: 400,  range: 34, arc: 0.7,  price: 0,    req: [0, 0],   len: 8,  color: "#d2b48c", fists: true }
 ];
@@ -97,7 +102,7 @@ const W_RAR = {
   deagle: 2, p90: 2, ak47: 2, m4: 2, fal: 2, spas: 2, sniper: 2, marreta: 2, besta: 2, serra: 2,
   vector: 3, scar: 3, m249: 3, aa12: 3, barrett: 3, espada: 3, minigun: 3, lancachamas: 3, lamina: 3,
   revolver_orn: 3, incendiaria: 3, choque: 3, baioneta: 3, lancador: 3,
-  ak_ouro: 4, katana_dragao: 4, trovao: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, punhos: 0
+  ak_ouro: 4, katana_dragao: 4, trovao: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, pistola_natal: 4, dose: 3, punhos: 0
 };
 // arte das folhas em img/ usada por cada arma (tint = filtro de cor)
 const W_SPR = {
@@ -128,7 +133,7 @@ WLIST.forEach((d) => {
   d.craftOnly = CRAFT_ONLY.includes(d.id);
   if (d.id === "taco") { d.name = "Taco com pregos"; d.bleed = 0.25; }
 });
-// Compatibilidade com itens antigos e anúncios ainda em circulação.
+// armas retiradas: saves antigos com esses ids continuam funcionando (viram Revólver e M4)
 Object.defineProperties(WDEF, { revolver_orn: { value: WDEF.revolver }, baioneta: { value: WDEF.m4 } });
 function rarColor(d) { return RARITY[d.rar].color; }
 // IDs do jogo antigo (armas por número) para migrar saves
@@ -139,7 +144,8 @@ const MATS = {
   reset_stats: { name: "Cartão Reset de Stats", price: 5000 },
   trindade_eterna: { name: "Trindade · 100 anos", price: 20000000 },
   token_loja: { name: "Token da Loja", price: 0 },
-  "caixa_implante_avancada": { name: "Caixa Avançada de Implante", price: 0 },
+  gorro_natal: { name: "Gorro de Natal", price: 0 },
+  caixa_implante_avancada: { name: "Caixa Avançada de Implante", price: 0 },
   sucata:      { name: "Sucata de metal",          price: 40 },
   pecas:       { name: "Peças de arma",            price: 90 },
   eletronicos: { name: "Componentes eletrônicos",  price: 140 },
@@ -163,7 +169,9 @@ const RECIPES = [
   { id: "trovao",      mats: { pecas: 10, eletronicos: 6, nucleo: 2 },    money: 8000, level: 40 },
   { id: "minigun_inf", mats: { pecas: 14, eletronicos: 10, nucleo: 4 },   money: 15000, level: 60 },
   // colete nº 10: craft difícil (precisa ter o nº 9, que é consumido)
-  { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 50000, level: 100, needVest: 8 }
+  { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 50000, level: 100, needVest: 8 },
+  // evento de Natal: Gorros caem nas Caixas de Natal
+  { implant: "implante_natal", mats: { gorro_natal: 10 }, money: 2000000, level: 1 }
 ];
 // chance de achar material em cada lugar
 const MAT_CHANCE = { airdrop: 1, corpse: 0.08, boss: 1, chest: 0.4, trash: 0.12, dumpster: 0.3, crate: 0.4, car: 0.35, "Bancada": 0.6, "Armário de armas": 0.3, "Vitrine": 0.2, "Mesa": 0.08, "Arquivo": 0.06 };
@@ -186,6 +194,7 @@ function rollUpgrades(stats, max, random = Math.random) {
 }
 function upgradeCost(inst) {
   const d = WDEF[inst.id];
+  if (d.upCost) return { money: d.upCost, mats: { sucata: 2 } };
   return { money: Math.round(240 + (d.special || d.legendary ? 3000 : d.price) * 0.24), mats: { sucata: 2 } };
 }
 const VEST_UP_MAX = 24;
@@ -212,7 +221,7 @@ function vestSpeedBonus() { return vestUpgrade().speed; }
 const SLOT_N = 3, PACK_MAX = 39, VAULT_MAX = 400;
 function packCapacity(level = player.level) {
   const lv = Math.max(1, Number.isFinite(Number(level)) ? Math.floor(Number(level)) : 1);
-  return Math.min(PACK_MAX, backpackBaseCapacity(lv) + backpackExtraSlots());
+  return Math.min(PACK_MAX, fmBackpackBase(lv) + (fmBackpackEquipped()?.slots || 0));
 }
 function packSlotUnlockLevel(index) {
   return index < 14 ? 1 : 5 * (Math.floor((index - 14) / 2) + 1);
@@ -248,7 +257,8 @@ function addWeapon(inst) {
 }
 function addMat(id, n, list, max, loot = false) {
   list = list || player.pack;
-  max = list === player.pack ? Math.min(max || PACK_MAX, packCapacity()) : list === save.vault ? Math.min(max || VAULT_MAX, vaultCapacity()) : (max || VAULT_MAX);
+  max = list === player.pack ? Math.min(max || PACK_MAX, packCapacity())
+    : list === save.vault ? Math.min(max || VAULT_MAX, fmVaultCapacity()) : (max || VAULT_MAX);
   const st = list.find((it) => it.kind === "mat" && it.id === id && !!it.loot === loot);
   if (st) { st.qty += n; return true; }
   if ((list === player.pack ? packUsed() : list.length) >= max) return false;
@@ -287,7 +297,7 @@ function rollRarity(zone, boost) {
 function randomWeaponDrop(zone, boost) {
   let rar = rollRarity(zone, boost || 0);
   for (; rar >= 0; rar--) {
-    const list = WLIST.filter((d) => d.rar === rar && !d.craftOnly && !d.fists && d.id !== "pistola");
+    const list = WLIST.filter((d) => d.rar === rar && !d.craftOnly && !d.eventOnly && !d.fists && d.id !== "pistola");
     if (list.length) return pick(list).id;
   }
   return "colt";
@@ -300,14 +310,57 @@ const MED_SPR = ["medkit", "pills", "bandage", "syringes"];
 // =====================================================================
 function R_(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
 function RR_(x, y, w, h, ang, c) { ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.fillStyle = c; ctx.fillRect(0, 0, w, h); ctx.restore(); }
-// Ícone renderizado a partir do modelo CrossBow ZHNETS (CC BY 4.0).
-// A arma continua usando o ID "besta" para preservar os saves.
-const CROSSBOW_ZHNETS_ART = new Image();
-CROSSBOW_ZHNETS_ART.src = "img/weapons/crossbow_zhnets.webp?v=231126-zh1";
-const FLECHAS_ZHNETS_ART = new Image();
-FLECHAS_ZHNETS_ART.src = "img/flechas_zh.svg?v=231126-zh1";
+const CB_ZHNETS = new Image();
+CB_ZHNETS.src = "img/weapons/crossbow_zhnets.webp?v=231126-zh1";
+const ARROW_ZHNETS = new Image();
+ARROW_ZHNETS.src = "img/flechas_zh.svg?v=231126-zh1";
 const weaponEmissionImages = new Map();
+// Shotgun Sweet: pisca-pisca de Natal enrolado nos canos (espiral), acendendo em onda; ao atirar, todas brilham
+const SWEET_BULBS = ["255,70,60", "255,206,90", "90,230,120", "110,180,255"];
+function drawSweetLights(g, x, y, width, flash) {
+  const t = performance.now() / 1000, fire = Math.min(1, Math.max(0, flash / 60));
+  const wy = (px) => 30.5 + 4.6 * Math.sin((px - 58) * 0.33);       // fio enrolado nos dois canos
+  const front = (px) => Math.cos((px - 58) * 0.33) > -0.2;           // parte da volta que fica na frente
+  g.save();
+  g.translate(x, y);
+  g.scale(width / 128, width / 128);
+  g.lineCap = g.lineJoin = "round";
+  // fio verde-escuro: só os trechos da frente aparecem por cima da arma
+  g.strokeStyle = "rgba(24,70,30,0.95)"; g.lineWidth = 0.55;
+  g.beginPath();
+  let pen = false;
+  for (let px = 58; px <= 124; px += 0.5) {
+    if (front(px)) { if (pen) g.lineTo(px, wy(px)); else { g.moveTo(px, wy(px)); pen = true; } } else pen = false;
+  }
+  g.stroke();
+  g.globalCompositeOperation = "lighter";
+  for (let i = 0, px = 60; px <= 123; i++, px += 4.1) {
+    const py = wy(px), c = SWEET_BULBS[i % SWEET_BULBS.length];
+    const on = Math.max(fire, 0.25 + 0.75 * Math.max(0, Math.sin(t * 4.2 - i * 0.85)));
+    const depth = front(px) ? 1 : 0.35;                              // lâmpadas atrás do cano ficam mais fracas
+    const gr = 5 + 2.5 * on;
+    const glow = g.createRadialGradient(px, py, 0, px, py, gr);
+    glow.addColorStop(0, `rgba(${c},${0.85 * on * depth})`);
+    glow.addColorStop(0.35, `rgba(${c},${0.35 * on * depth})`);
+    glow.addColorStop(1, `rgba(${c},0)`);
+    g.fillStyle = glow;
+    g.beginPath(); g.arc(px, py, gr, 0, 6.283); g.fill();
+    g.fillStyle = `rgba(${c},${(0.55 + 0.45 * on) * depth})`;
+    g.beginPath(); g.ellipse(px, py, 1.25, 1.6, 0, 0, 6.283); g.fill();
+    g.fillStyle = `rgba(255,255,255,${0.75 * on * depth})`;
+    g.beginPath(); g.arc(px - 0.35, py - 0.5, 0.45, 0, 6.283); g.fill();
+  }
+  // brilhinho de neve que passa pelo cano de vez em quando
+  const s = (t * 0.45) % 1;
+  if (s < 0.5) {
+    const sx = 60 + s * 2 * 64, sy = 27 + Math.sin(s * 9) * 1.5, a = Math.sin(s * 2 * Math.PI);
+    g.strokeStyle = `rgba(255,255,255,${0.8 * a})`; g.lineWidth = 0.35;
+    g.beginPath(); g.moveTo(sx - 1.6, sy); g.lineTo(sx + 1.6, sy); g.moveTo(sx, sy - 1.6); g.lineTo(sx, sy + 1.6); g.stroke();
+  }
+  g.restore();
+}
 function drawWeaponEnergy(g, id, x, y, width, equipped, flash = 0) {
+  if (id === "dose") { drawSweetLights(g, x, y, width, flash); return; }
   if (id !== "trovao" && id !== "minigun_inf" && id !== "incendiaria") return;
   const t = performance.now() / 1000;
   const frame = Math.floor(t * 12) % 16;
@@ -329,86 +382,120 @@ function drawWeaponEnergy(g, id, x, y, width, equipped, flash = 0) {
   }
   if (id === "trovao") {
     const cy = equipped ? 32 : 33;
-    const charge = (t * .76) % 1;
+    const charge = (t * 0.76) % 1;
     // Each coil wakes in turn. The discharge bridges the last coil and the muzzle.
     for (let i = 0; i < 4; i++) {
       const pulse = Math.max(0, 1 - Math.abs(charge * 4 - i) * 1.5);
       g.beginPath();
-      g.ellipse(60 + 4.4 * i, cy, 1.2, 3.8, .16, -.8, 4.1);
-      g.strokeStyle = 'rgba(95,215,255,' + (.18 + pulse * .76) + ')';
-      g.lineWidth = .7 + pulse * .45;
+      g.ellipse(60 + 4.4 * i, cy, 1.2, 3.8, 0.16, -0.8, 4.1);
+      g.strokeStyle = "rgba(95,215,255," + (0.18 + pulse * 0.76) + ")";
+      g.lineWidth = 0.7 + pulse * 0.45;
       g.stroke();
     }
-    if (charge > .68 || fire > 0) {
-      const length = fire ? 53 : 43 * Math.min(1,(charge-.68)*6);
+    if (charge > 0.68 || fire > 0) {
+      const length = fire ? 53 : 43 * Math.min(1, (charge - 0.68) * 6);
       const tick = Math.floor(t * 18);
       g.beginPath();
-      g.moveTo(76,cy);
-      for (let i=1;i<=8;i++) {
-        const px=76+i*length/8;
-        const py=cy + Math.sin(i*13.2+tick*2.3)*Math.sin(i*Math.PI/8)*3.3;
-        g.lineTo(px,py);
-        if(i===5) { g.lineTo(px+2,py-3); g.lineTo(px+6,py-4); g.moveTo(px,py); }
+      g.moveTo(76, cy);
+      for (let i = 1; i <= 8; i++) {
+        const px = 76 + (i * length) / 8;
+        const py = cy + Math.sin(i * 13.2 + tick * 2.3) * Math.sin((i * Math.PI) / 8) * 3.3;
+        g.lineTo(px, py);
+        if (i === 5) {
+          g.lineTo(px + 2, py - 3);
+          g.lineTo(px + 6, py - 4);
+          g.moveTo(px, py);
+        }
       }
-      g.strokeStyle='rgba(35,104,255,.55)'; g.lineWidth=2.3; g.stroke();
-      g.strokeStyle='#c1f9ff'; g.lineWidth=.65; g.stroke();
+      g.strokeStyle = "rgba(35,104,255,.55)";
+      g.lineWidth = 2.3;
+      g.stroke();
+      g.strokeStyle = "#c1f9ff";
+      g.lineWidth = 0.65;
+      g.stroke();
     }
   } else if (id === "minigun_inf") {
-    const cy=equipped ? 30 : 27;
+    const cy = equipped ? 30 : 27;
     // A hot streak follows one barrel at a time around the cylinder.
-    for(let i=0;i<6;i++) {
-      const a=t*5+i*Math.PI/3;
-      const depth=Math.cos(a);
-      if(depth<0) continue;
-      const h=Math.sin(a)*4.1;
-      const band=g.createLinearGradient(77,0,123,0);
-      band.addColorStop(0,'rgba(156,24,4,0)');
-      band.addColorStop(.60,'rgba(225,48,4,'+(.24+depth*.44)+')');
-      band.addColorStop(1,'rgba(255,142,37,'+(.38+depth*.55)+')');
-      g.strokeStyle=band; g.lineWidth=.8+depth*.65; g.beginPath();
-      g.moveTo(76,cy+h); g.lineTo(122,cy+h); g.stroke();
-      g.fillStyle=fire?'#fff2a0':'#ff9a44'; g.beginPath();
-      g.ellipse(122.5,cy+h,.95,.75,0,0,Math.PI*2); g.fill();
+    for (let i = 0; i < 6; i++) {
+      const a = t * 5 + (i * Math.PI) / 3;
+      const depth = Math.cos(a);
+      if (depth < 0) continue;
+      const h = Math.sin(a) * 4.1;
+      const band = g.createLinearGradient(77, 0, 123, 0);
+      band.addColorStop(0, "rgba(156,24,4,0)");
+      band.addColorStop(0.6, "rgba(225,48,4," + (0.24 + depth * 0.44) + ")");
+      band.addColorStop(1, "rgba(255,142,37," + (0.38 + depth * 0.55) + ")");
+      g.strokeStyle = band;
+      g.lineWidth = 0.8 + depth * 0.65;
+      g.beginPath();
+      g.moveTo(76, cy + h);
+      g.lineTo(122, cy + h);
+      g.stroke();
+      g.fillStyle = fire ? "#fff2a0" : "#ff9a44";
+      g.beginPath();
+      g.ellipse(122.5, cy + h, 0.95, 0.75, 0, 0, Math.PI * 2);
+      g.fill();
     }
-    if(fire) {
-      const reach=12*fire;
-      g.fillStyle='rgba(255,94,18,.88)'; g.beginPath(); g.moveTo(121,cy-2);
-      g.lineTo(126+reach,cy-1); g.lineTo(127,cy+.6); g.lineTo(130+reach*.3,cy+2);
-      g.lineTo(121,cy+2); g.fill();
+    if (fire) {
+      const reach = 12 * fire;
+      g.fillStyle = "rgba(255,94,18,.88)";
+      g.beginPath();
+      g.moveTo(121, cy - 2);
+      g.lineTo(126 + reach, cy - 1);
+      g.lineTo(127, cy + 0.6);
+      g.lineTo(130 + reach * 0.3, cy + 2);
+      g.lineTo(121, cy + 2);
+      g.fill();
     }
   } else {
-    const mx=equipped?123:120, my=equipped?35:26;
+    const mx = equipped ? 123 : 120,
+      my = equipped ? 35 : 26;
     // The pilot splits into an amber envelope and a pale, narrow core.
-    const flicker=.5+.5*Math.sin(17*t+Math.sin(9*t));
-    const reach=3.6+2.2*flicker+20*fire;
-    const curl=1.5*Math.sin(12*t)-2.3;
-    const flame=(length,radius,color,tip)=>{
-      g.fillStyle=color; g.beginPath(); g.moveTo(mx-1,my+radius);
-      g.bezierCurveTo(mx+length*.32,my+radius*1.5,mx+length*.73,my+tip+radius,mx+length,my+tip);
-      g.bezierCurveTo(mx+length*.46,my+tip*.5,mx+length*.26,my-radius*2,mx-1,my-radius);
-      g.closePath(); g.fill();
+    const flicker = 0.5 + 0.5 * Math.sin(17 * t + Math.sin(9 * t));
+    const reach = 3.6 + 2.2 * flicker + 20 * fire;
+    const curl = 1.5 * Math.sin(12 * t) - 2.3;
+    const flame = (length, radius, color, tip) => {
+      g.fillStyle = color;
+      g.beginPath();
+      g.moveTo(mx - 1, my + radius);
+      g.bezierCurveTo(
+        mx + length * 0.32,
+        my + radius * 1.5,
+        mx + length * 0.73,
+        my + tip + radius,
+        mx + length,
+        my + tip,
+      );
+      g.bezierCurveTo(mx + length * 0.46, my + tip * 0.5, mx + length * 0.26, my - radius * 2, mx - 1, my - radius);
+      g.closePath();
+      g.fill();
     };
-    flame(reach,1.3+fire*2.3,'rgba(255,79,8,.85)',curl);
-    flame(reach*.68,.7+fire,'#ffd272',curl*.55);
-    flame(2.1+fire*3,.5,'#d9f4ff',0);
-    if(fire) {
-      for(let i=0;i<4;i++) {
-        const age=(t*3.5+i*.27)%1;
-        const sx=mx+4+age*19, sy=my+(i-1.5)*age*4;
-        g.strokeStyle='rgba(255,186,72,'+fire*(1-age)+')';g.lineWidth=.75;
-        g.beginPath();g.moveTo(sx,sy);g.lineTo(sx+2.4,sy+(i-1.5)*.5);g.stroke();
+    flame(reach, 1.3 + fire * 2.3, "rgba(255,79,8,.85)", curl);
+    flame(reach * 0.68, 0.7 + fire, "#ffd272", curl * 0.55);
+    flame(2.1 + fire * 3, 0.5, "#d9f4ff", 0);
+    if (fire) {
+      for (let i = 0; i < 4; i++) {
+        const age = (t * 3.5 + i * 0.27) % 1;
+        const sx = mx + 4 + age * 19,
+          sy = my + (i - 1.5) * age * 4;
+        g.strokeStyle = "rgba(255,186,72," + fire * (1 - age) + ")";
+        g.lineWidth = 0.75;
+        g.beginPath();
+        g.moveTo(sx, sy);
+        g.lineTo(sx + 2.4, sy + (i - 1.5) * 0.5);
+        g.stroke();
       }
     }
   }
   g.restore();
 }
-
 function drawWeaponSide(d, cx, cy, s) {
-  if (d.id === "besta" && CROSSBOW_ZHNETS_ART.complete && CROSSBOW_ZHNETS_ART.naturalWidth) {
+  if (d.id === "besta" && CB_ZHNETS.complete && CB_ZHNETS.naturalWidth) {
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.scale(-1, 1); // boca da besta aponta para a direita
-    ctx.drawImage(CROSSBOW_ZHNETS_ART, -64 * s, -32 * s, 128 * s, 64 * s);
+    ctx.scale(-1, 1);
+    ctx.drawImage(CB_ZHNETS, -64 * s, -32 * s, 128 * s, 64 * s);
     ctx.restore();
     return;
   }
@@ -509,6 +596,7 @@ TRINDADE_ICON.src = "img/trindade_icon.webp?v=20261116-highres1";
 const MAT_ART = {};
 for (const id of ["sucata", "pecas"]) { const im = new Image(); im.src = `img/mats/${id}.png?v=20261120-mats03`; MAT_ART[id] = im; }
 { const im = new Image(); im.src = "img/token_loja.webp?v=20261121-token01"; MAT_ART.token_loja = im; }
+{ const im = new Image(); im.src = "img/mats/gorro_natal.webp?v=20261123-natal1"; MAT_ART.gorro_natal = im; }
 // Token da Loja: raríssimo em qualquer saque (chance fixa, nenhum bônus do jogo aumenta). Arrastado até o
 // personagem, deixa a Loja da base de graça por 1 dia.
 const TOKEN_LOJA_CHANCE = 0.0001, TOKEN_LOJA_MS = 24 * 3600 * 1000;
@@ -599,10 +687,12 @@ function drawCreditIcon(cx, cy, s) {
 }
 // Arte oficial dos 29 implantes, atlas 6 colunas × 5 linhas (160 px por célula).
 function fmImplantTransparentAtlas(image, output) {
-  const width = image.naturalWidth, height = image.naturalHeight;
+  const width = image.naturalWidth,
+    height = image.naturalHeight;
   if (!width || !height) return;
   const scratch = document.createElement("canvas");
-  scratch.width = width; scratch.height = height;
+  scratch.width = width;
+  scratch.height = height;
   const g = scratch.getContext("2d", { willReadFrequently: true });
   g.drawImage(image, 0, 0);
   const pixels = g.getImageData(0, 0, width, height);
@@ -611,65 +701,98 @@ function fmImplantTransparentAtlas(image, output) {
   // ligado às bordas evita apagar componentes internos escuros.
   for (let baseY = 0; baseY < height; baseY += 160) {
     for (let baseX = 0; baseX < width; baseX += 160) {
-      const cw = Math.min(160, width - baseX), ch = Math.min(160, height - baseY);
-      const seen = new Uint8Array(cw * ch), queue = new Int32Array(cw * ch);
-      let front = 0, back = 0;
+      const cw = Math.min(160, width - baseX),
+        ch = Math.min(160, height - baseY);
+      const seen = new Uint8Array(cw * ch),
+        queue = new Int32Array(cw * ch);
+      let front = 0,
+        back = 0;
       function visit(x, y) {
         if (x < 0 || x >= cw || y < 0 || y >= ch) return;
         const n = y * cw + x;
         if (seen[n]) return;
         const p = 4 * ((baseY + y) * width + baseX + x);
         if (Math.max(data[p], data[p + 1], data[p + 2]) > 70) return;
-        seen[n] = 1; queue[back++] = n;
+        seen[n] = 1;
+        queue[back++] = n;
       }
-      for (let x = 0; x < cw; x++) { visit(x, 0); visit(x, ch - 1); }
-      for (let y = 0; y < ch; y++) { visit(0, y); visit(cw - 1, y); }
+      for (let x = 0; x < cw; x++) {
+        visit(x, 0);
+        visit(x, ch - 1);
+      }
+      for (let y = 0; y < ch; y++) {
+        visit(0, y);
+        visit(cw - 1, y);
+      }
       while (front < back) {
-        const n = queue[front++], x = n % cw, y = Math.floor(n / cw);
+        const n = queue[front++],
+          x = n % cw,
+          y = Math.floor(n / cw);
         const p = 4 * ((baseY + y) * width + baseX + x);
         const light = Math.max(data[p], data[p + 1], data[p + 2]);
         const a = Math.max(0, Math.min(1, (light - 6) / 64));
         data[p + 3] = Math.round(data[p + 3] * a);
-        visit(x - 1, y); visit(x + 1, y); visit(x, y - 1); visit(x, y + 1);
-        visit(x - 1, y - 1); visit(x + 1, y - 1);
-        visit(x - 1, y + 1); visit(x + 1, y + 1);
+        visit(x - 1, y);
+        visit(x + 1, y);
+        visit(x, y - 1);
+        visit(x, y + 1);
+        visit(x - 1, y - 1);
+        visit(x + 1, y - 1);
+        visit(x - 1, y + 1);
+        visit(x + 1, y + 1);
       }
     }
   }
   g.putImageData(pixels, 0, 0);
-  output.width = width; output.height = height;
+  output.width = width;
+  output.height = height;
   output.getContext("2d").drawImage(scratch, 0, 0);
 }
-const NEW_IMPLANTS_ATLAS = new Image();
-const NEW_IMPLANTS_TRANSPARENT = document.createElement("canvas");
+// cmClean: cópia do atlas sem o fundo preto (feita quando a imagem carrega)
+const NEW_IMPLANTS_ATLAS = new Image(), cmClean = document.createElement("canvas");
 NEW_IMPLANTS_ATLAS.addEventListener("load", () => {
-  try { fmImplantTransparentAtlas(NEW_IMPLANTS_ATLAS, NEW_IMPLANTS_TRANSPARENT); }
-  catch (e) { NEW_IMPLANTS_TRANSPARENT.width = 0; }
+  try {
+    fmImplantTransparentAtlas(NEW_IMPLANTS_ATLAS, cmClean);
+  } catch (e) {
+    cmClean.width = 0;
+  }
 });
 NEW_IMPLANTS_ATLAS.src = "img/implantes_29_atlas.webp?v=20261116-atlas6x5";
-// ícone de qualquer coisa encontrada ou guardada
 const FM_MIMIC_ART = new Image();
 FM_MIMIC_ART.src = "img/implante_mimic.webp";
+// implantes com arte própria (fora do atlas): IMP[id].art
+const IMP_ART = {};
+for (const id of IMP_IDS) if (IMP[id].art) { const im = new Image(); im.src = IMP[id].art; IMP_ART[id] = im; }
+// ícone de qualquer coisa encontrada ou guardada
 function drawEntryIcon(e, cx, cy, s) {
-  const t = e.type || e.kind;
-  if (t === "implant" && e.im?.id === FM_MIMIC_ID && FM_MIMIC_ART.complete && FM_MIMIC_ART.naturalWidth) {
+  if ((e.type || e.kind) === "implant" && e.im?.id === FM_MIMIC_ID && FM_MIMIC_ART.complete && FM_MIMIC_ART.naturalWidth) {
     const size = 76 * s;
     ctx.drawImage(FM_MIMIC_ART, cx - size / 2, cy - size / 2, size, size);
     return;
   }
-  if (t === "ammo" && e.ammo === "virote" && FLECHAS_ZHNETS_ART.complete && FLECHAS_ZHNETS_ART.naturalWidth) {
-    ctx.drawImage(FLECHAS_ZHNETS_ART, cx - 32 * s, cy - 28 * s, 64 * s, 56 * s);
+  if (e && e.type === "ammo" && e.ammo === "virote" && ARROW_ZHNETS.complete && ARROW_ZHNETS.naturalWidth) {
+    ctx.drawImage(ARROW_ZHNETS, cx - 32 * s, cy - 28 * s, 64 * s, 56 * s);
     txt("Flechas", cx, cy + 26 * s, Math.max(10, 11 * s), "#e0d8a0", "center", true);
     return;
   }
-  if (t === "implant" && e.im && e.im.id !== FM_MIMIC_ID && IMP[e.im.id] && NEW_IMPLANTS_ATLAS.complete && NEW_IMPLANTS_ATLAS.naturalWidth) {
+  const art = (e.type || e.kind) === "implant" && e.im ? IMP_ART[e.im.id] : null;
+  if (art && art.complete && art.naturalWidth) {
+    const size = 70 * s;
+    ctx.save(); ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(art, cx - size / 2, cy - size / 2, size, size);
+    ctx.restore();
+    if (typeof drawImplantFx === "function") drawImplantFx(art, 0, 0, art.naturalWidth, cx, cy, size, IMP_IDS.indexOf(e.im.id));
+    return;
+  }
+  const t = e.type || e.kind;
+  if (t === "implant" && e.im && e.im.id !== FM_MIMIC_ID && !IMP[e.im.id]?.art && IMP[e.im.id] && NEW_IMPLANTS_ATLAS.complete && NEW_IMPLANTS_ATLAS.naturalWidth) {
     const idx = IMP_IDS.indexOf(e.im.id);
     if (idx >= 0) {
       const tile = 160, col = idx % 6, row = Math.floor(idx / 6), size = 64 * s;
       ctx.save();
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      const atlas = NEW_IMPLANTS_TRANSPARENT.width ? NEW_IMPLANTS_TRANSPARENT : NEW_IMPLANTS_ATLAS;
+      const atlas = cmClean.width ? cmClean : NEW_IMPLANTS_ATLAS;
       ctx.drawImage(atlas, col * tile, row * tile, tile, tile, cx - size / 2, cy - size / 2, size, size);
       ctx.restore();
       if (typeof drawImplantFx === "function") drawImplantFx(atlas, col * tile, row * tile, tile, cx, cy, size, idx);   // brilho pulsando e faíscas

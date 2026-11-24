@@ -128,7 +128,41 @@ function objectivesTick() {
 // =====================================================================
 //  Eventos: caixa de suprimentos e horda
 // =====================================================================
+// ---------- Evento de Natal: Caixas de Natal na rua (20% de chance em cada região, 2 caixas) ----------
+const NATAL_BOX_CHANCE = 0.2, NATAL_BOX_COUNT = 2;
+// música (2min40): solo de guitarra + arranjo de "Jingle Bells" (domínio público) feito para o jogo
+const NATAL_MUSIC = new Audio("audio/natal_caixa.m4a?v=20261124-natal2");
+NATAL_MUSIC.loop = true; NATAL_MUSIC.volume = 0; NATAL_MUSIC.preload = "auto";
+const NATAL_BOX_ART = new Image();
+NATAL_BOX_ART.src = "img/caixa_natal.webp?v=20261124-natal2";   // baú de presente (modelo 3D enviado pelo criador)
+function spawnNatalBoxes() {
+  if (Math.random() >= NATAL_BOX_CHANCE) return;
+  let made = 0;
+  for (let t = 0; t < 400 && made < NATAL_BOX_COUNT; t++) {
+    const x = rand(80, WORLD_W - 80), y = rand(80, WORLD_H - 80);
+    if (!walkable(x, y, 26) || Math.hypot(x - player.x, y - player.y) < 260) continue;
+    if (game.airdrops.some((a) => a.natal && Math.hypot(a.x - x, a.y - y) < 400)) continue;
+    const o = { x: x - 15, y: y - 14, w: 30, h: 28, kind: "natalbox", table: "natal", name: "Caixa de Natal", opened: false, fall: 0, expire: Infinity, natal: true };
+    o.world = world; world.loot.add(o); game.airdrops.push(o); made++;
+  }
+  if (made) game.banner = { text: "Caixas de Natal na região!", sub: `${made} presente${made > 1 ? "s" : ""} escondido${made > 1 ? "s" : ""} pela rua · podem ter a Pistola Natalina e Gorros de Natal`, t: 3600, gold: true };
+}
+// música de Natal enquanto houver caixa fechada na rua desta região:
+// baixinha de longe e mais alta conforme você chega perto da caixa mais próxima
+let natalMusicVol = 0;
+function natalMusicTick() {
+  let near = Infinity;
+  if (!game.inside && !game.over && MUSIC.on)
+    for (const a of game.airdrops) if (a.natal && !a.opened) near = Math.min(near, Math.hypot(a.x + a.w / 2 - player.x, a.y + a.h / 2 - player.y));
+  const want = near < Infinity;
+  const target = want ? 0.06 + 0.64 * Math.pow(1 - Math.min(1, near / 1500), 1.7) : 0;
+  natalMusicVol += (target - natalMusicVol) * 0.08;                 // muda o volume aos poucos
+  if (want && NATAL_MUSIC.paused) NATAL_MUSIC.play().catch(() => {});
+  if (!want && natalMusicVol < 0.01 && !NATAL_MUSIC.paused) NATAL_MUSIC.pause();
+  NATAL_MUSIC.volume = Math.max(0, Math.min(1, natalMusicVol));
+}
 function eventsTick(dt) {
+  natalMusicTick();
   if (game.inside || game.over) return;
   game.evAir -= dt; game.evHorde -= dt;
   if (game.evAir <= 0) { spawnAirdrop(); game.evAir = rand(300000, 480000); }
@@ -190,9 +224,40 @@ function startHorde() {
 // =====================================================================
 //  Desenho: caixa no mapa, setas, rastreador e menu de objetivos
 // =====================================================================
+// presente embrulhado, com laço e brilho pulsando
+function drawNatalBox(a) {
+  const cx = a.x + a.w / 2, cy = a.y + a.h / 2, t = game.time / 1000, p = 0.5 + 0.5 * Math.sin(t * 3);
+  if (NATAL_BOX_ART.complete && NATAL_BOX_ART.naturalWidth) {
+    const g = ctx.createRadialGradient(cx, cy, 4, cx, cy, 40 + 6 * p);
+    g.addColorStop(0, `rgba(255,190,90,${0.16 + 0.1 * p})`); g.addColorStop(1, "rgba(255,80,60,0)");
+    ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; circle(cx, cy, 40 + 6 * p); ctx.globalCompositeOperation = "source-over";
+  } else {
+    ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = `rgba(255,70,60,${0.12 + 0.12 * p})`; circle(cx, cy, 34 + 6 * p);
+    ctx.fillStyle = `rgba(255,220,120,${0.08 + 0.08 * p})`; circle(cx, cy, 20); ctx.globalCompositeOperation = "source-over";
+  }
+  if (NATAL_BOX_ART.complete && NATAL_BOX_ART.naturalWidth) {
+    const w = 46, h = w * NATAL_BOX_ART.naturalHeight / NATAL_BOX_ART.naturalWidth;
+    ctx.fillStyle = "rgba(0,0,0,0.38)"; ctx.beginPath(); ctx.ellipse(cx + 3, a.y + a.h - 1, w * 0.48, 7, 0, 0, 6.283); ctx.fill();
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(NATAL_BOX_ART, cx - w / 2, a.y + a.h - h, w, h);
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    for (let i = 0; i < 4; i++) { const ang = t * 0.8 + i * 1.571; circle(cx + Math.cos(ang) * 28, cy + Math.sin(ang) * 20 - 6, 1.6); }
+    return;
+  }
+  ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(a.x + 4, a.y + 5, a.w, a.h);
+  ctx.fillStyle = "#b8202a"; ctx.fillRect(a.x, a.y + 5, a.w, a.h - 5);        // caixa
+  ctx.fillStyle = "#d83a3a"; ctx.fillRect(a.x - 2, a.y, a.w + 4, 8);          // tampa
+  ctx.fillStyle = "#f3d06a"; ctx.fillRect(cx - 3, a.y, 6, a.h); ctx.fillRect(a.x, cy - 1, a.w, 5);   // fita
+  ctx.fillStyle = "#ffe08a";                                                   // laço
+  ctx.beginPath(); ctx.ellipse(cx - 7, a.y - 3, 7, 4, -0.5, 0, 6.283); ctx.ellipse(cx + 7, a.y - 3, 7, 4, 0.5, 0, 6.283); ctx.fill();
+  ctx.fillStyle = "#c99a2e"; circle(cx, a.y - 1, 3);
+  ctx.fillStyle = "rgba(255,255,255,0.8)";                                     // flocos de neve em volta
+  for (let i = 0; i < 4; i++) { const ang = t * 0.8 + i * 1.571; circle(cx + Math.cos(ang) * 24, cy + Math.sin(ang) * 18 - 4, 1.6); }
+}
 function drawAirdrops() {
   for (const a of game.airdrops) {
     if (!inView(a.x - 80, a.y - 200, a.w + 160, a.h + 260)) continue;
+    if (a.natal) { drawNatalBox(a); continue; }
     const cx = a.x + a.w / 2, cy = a.y + a.h / 2;
     if (a.fall > 0) {
       const k = a.fall / 5000, sy = cy - k * 160, sc = 1 + k * 0.6;
@@ -215,7 +280,8 @@ function drawAirdrops() {
 function drawEventHud() {
   if (game.inside) return;
   for (const a of game.airdrops) {
-    const cx = a.x + a.w / 2 - cam.x, cy = a.y + a.h / 2 - cam.y;
+    if (a.natal) continue;   // Caixas de Natal: sem seta, é preciso procurar
+    const cx = (a.x + a.w / 2 - cam.x) * VIEW_ZOOM, cy = (a.y + a.h / 2 - cam.y) * VIEW_ZOOM;
     if (cx > 20 && cx < W - 20 && cy > 20 && cy < H - 20) continue;
     const ang = Math.atan2(cy - H / 2, cx - W / 2), r = Math.min(W / 2 - 40, H / 2 - 40) / Math.max(Math.abs(Math.cos(ang)) * (H / W) * 1.6, Math.abs(Math.sin(ang))) * 0.62;
     const ax = clamp(W / 2 + Math.cos(ang) * r * 1.6, 40, W - 40), ay = clamp(H / 2 + Math.sin(ang) * r, 40, H - 40);

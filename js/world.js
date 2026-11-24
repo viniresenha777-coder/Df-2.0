@@ -9,7 +9,7 @@
 let world = null;   // área atual
 let MAP = null;     // grade com todas as áreas
 const MS = 0.1;     // escala do minimapa
-const BOSS_MAX = 12;
+const BOSS_MAX = 60;   // grade 30 x 30: mais áreas, mais chefes espalhados
 const CAR_COLORS = ["#a33b32", "#3d5f8a", "#c9c3b0", "#5b6b4a", "#7a5a2e", "#2f2f33", "#8a8f96", "#6a2f4a"];
 
 // ---------- Grade de áreas ----------
@@ -70,7 +70,8 @@ function bossCells() { return allCells().filter((c) => c.boss); }
 // sorteia uma área sem chefe (nunca a base, nem a área onde você está) e coloca um chefe lá
 function placeBoss() {
   const cur = world && world.cell;
-  const free = allCells().filter((c) => !c.boss && c.op == null && c !== cur && !(c.tier === 0 && c.cx === 0));
+  const home = OUTPOSTS[0];
+  const free = allCells().filter((c) => !c.boss && c.op == null && c !== cur && !(Math.abs(c.cx - home.cx) <= 1 && Math.abs(c.cy - home.cy) <= 1));
   if (!free.length) return null;
   // escolhe primeiro o chefe que está aparecendo menos, depois uma área da cor certa para ele
   const count = (id) => bossCells().filter((c) => c.boss === id).length;
@@ -621,6 +622,7 @@ function gotoCell(cell, pos) {
   const RG = REGIONS[cell.tier];
   game.banner = { text: `${cell.code} · ${cell.name}`, sub: `Área ${RG.name} · ${RG.diff}${cell.op != null ? " · posto seguro" : ""}`, t: 2600, color: RG.color };
   activateArea();
+  if (!game.restoring && cell.op == null) spawnNatalBoxes();   // evento de Natal
   if (!game.restoring) checkpoint("troca de zona");
 }
 // chegou na borda: tenta passar para a área vizinha

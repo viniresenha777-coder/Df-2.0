@@ -9,7 +9,23 @@
 //  atmosfera (cone da lanterna, neblina azulada e vinheta).
 // =====================================================================
 const CAM_H = 1100;        // altura da câmera (px do mundo): perspectiva radial
-const LEAN = 0.5;          // inclinação: quanto o alto "sobe" na tela por px de altura (~tan 27°, leve)
+let LEAN = 0.5;            // inclinação: quanto o alto "sobe" na tela por px de altura (~tan 27°, leve)
+// Como no Dead Frontier: atrás de um prédio (o telhado ia cobrir você), a câmera sobe e fica quase
+// vertical (LEAN perto de 0), em transição suave; ao sair de trás do prédio, volta à inclinação normal.
+const LEAN_BASE = 0.5, LEAN_TOP = 0.05;
+function playerBehindBuilding() {
+  if (game.inside || !world || !world.buildings) return false;
+  for (const b of world.buildings) {
+    if (player.x < b.x - 16 || player.x > b.x + b.w + 16 || player.y > b.y + 8) continue;
+    if (b.y - player.y < bHeight(b) * LEAN_BASE * 1.2 + 36) return true;   // dentro da faixa que o telhado cobre
+  }
+  return false;
+}
+function camLeanTick(dt) {
+  const target = playerBehindBuilding() ? LEAN_TOP : LEAN_BASE;
+  LEAN += (target - LEAN) * Math.min(1, dt / 260);
+  if (Math.abs(target - LEAN) < 0.002) LEAN = target;
+}
 const PERSPECTIVE = true;
 
 function eye() { return { x: cam.x + W / 2, y: cam.y + H / 2 }; }
@@ -289,16 +305,26 @@ const WEAPON_3D = {
   ak47: { m: "w_ak" }, ak_ouro: { m: "w_fm_ak_ouro", grip: 0.36, heldView: true },
   m4: { m: "w_m4" }, baioneta: { m: "w_m4" }, fal: { m: "w_fal" }, scar: { m: "w_scar" },
   uzi: { m: "w_uzi" }, vector: { m: "w_vector" }, m249: { m: "w_m249" },
+  // MP5 e P90 não tinham modelo: usam o da Vector (P90 esverdeada), em vez do desenho 2D solto da mão
+  mp5: { m: "w_vector", f: "grayscale(0.6) brightness(0.9)" }, p90: { m: "w_vector", f: "hue-rotate(60deg) saturate(0.8)" },
   minigun: { m: "w_minigun" }, minigun_inf: { m: "w_fm_minigun_inf_hd", grip: 0.3, heldView: true },
-  choque: { m: "w_fm_mks50", grip: 0.22, heldView: true }, trovao: { m: "w_fm_trovao_hd", grip: 0.3, heldView: true }, pistolalamina: { m: "w_fm_presa", grip: 0.15, heldView: true }, escopeta: { m: "w_fm_escopeta", grip: 0.29, heldView: true }, incendiaria: { m: "w_fm_incendiaria_hd", grip: 0.23, heldView: true }, canoduplo: { m: "w_canoduplo" }, spas: { m: "w_spas" }, aa12: { m: "w_aa12" },
+  canoduplo: { m: "w_canoduplo" },
+  // grip: arma com arte própria na mão (img/weapons/<m>_held.png quando heldView), segurada nesse ponto do comprimento
+  choque: { m: "w_fm_mks50", grip: 0.22, heldView: true }, trovao: { m: "w_fm_trovao_hd", grip: 0.3, heldView: true },
+  pistolalamina: { m: "w_fm_presa", grip: 0.15, heldView: true }, escopeta: { m: "w_fm_escopeta", grip: 0.29, heldView: true },
+  incendiaria: { m: "w_fm_incendiaria_hd", grip: 0.23, heldView: true },
+  spas: { m: "w_spas" }, aa12: { m: "w_aa12" },
   caca: { m: "w_caca" }, sniper: { m: "w_sniper" }, barrett: { m: "w_barrett" },
-  pistola: { m: "w_fm_pistola", grip: 0.24, heldView: true }, glock: { m: "w_fm_glock", grip: 0.24, heldView: true }, silenciada: { m: "w_fm_vp9", grip: 0.23, heldView: true }, colt: { m: "w_fm_colt", grip: 0.23, heldView: true }, deagle: { m: "w_deagle" },
+  pistola: { m: "w_fm_pistola", grip: 0.24, heldView: true }, glock: { m: "w_fm_glock", grip: 0.24, heldView: true },
+  silenciada: { m: "w_fm_vp9", grip: 0.23, heldView: true }, colt: { m: "w_fm_colt", grip: 0.23, heldView: true }, deagle: { m: "w_deagle" },
   revolver: { m: "w_peacemaker" }, revolver_orn: { m: "w_peacemaker", f: "sepia(0.8) saturate(2.2) brightness(1.1)" },
   katana: { m: "w_katana" }, katana_dragao: { m: "w_fm_katana_dragao", grip: 0.13, heldView: true },
   lamina: { m: "w_fm_lamina", grip: 0.1, heldView: true },
   espada: { m: "w_espada" }, espadafogo: { m: "w_glory" },
   marreta: { m: "w_marreta" }, machado: { m: "w_machado" }, faca: { m: "w_utility", grip: 0.26 }, facao: { m: "w_ps1_machete", grip: 0.17 }, serra: { m: "w_serra" },
   lancachamas: { m: "w_flamer" },
+  // evento de Natal (modelos 3D enviados pelo criador, fotografados de lado)
+  pistola_natal: { m: "w_fm_pistola_natal" }, dose: { m: "w_fm_dose", grip: 0.27, heldView: true },
 };
 // foto de cada arma 3D para a loja e o inventário (img/weapons/<m>.png: de lado, cano para a direita)
 const WEAPON_ICON = {};
@@ -362,6 +388,7 @@ function gearOrder(list, back) {
 // qual pose de braços cada arma usa
 function weaponPose(w) {
   if (!w || w.fists) return "punhos";
+  if (w.dual) return "punhos";                         // duas armas: pose de punhos, uma arma em cada mão
   if (w.look === "chainsaw") return "pesada";
   if (w.melee) return "melee";
   if (w.look === "pistol" || w.look === "revolver") return "pistola";
@@ -386,7 +413,52 @@ function spriteTick(dt) {
   p.dispAng = p.angle;
   p.sRow = sheetRow(Math.cos(p.angle), Math.sin(p.angle));
   if (p.moving) p.stepDist = (p.stepDist || 0) + (p.lastSp || 0) * dt / 16.67;
-  TW.suf = pickTwistSuffix(weaponPose(curW()));
+  if (curW().dual) dualTwistTick();
+  else { p.legRow = null; TW.suf = pickTwistSuffix(weaponPose(curW())); }
+}
+// ---------- Armas duplas: tronco gira até 90° com as pernas paradas ----------
+// Variantes da pose punhos com o tronco torcido de 15 em 15° (geradas no Blender com --twist, quadril e pernas
+// parados). As pernas ficam numa das 8 direções; o tronco escolhe a variante mais perto da mira. Quando a mira
+// passa de 90° para um dos lados, as pernas viram para a direção da mira e o tronco recomeça do meio.
+const DUAL_TW = [-90, -75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75, 90];   // graus na tela (+ = horário)
+function dualSuf(deg) { return deg === 0 ? "" : (deg > 0 ? "_tm" : "_tp") + Math.abs(deg); }
+function dualReady(key) {
+  const im = PSHEET.sheets[key], mk = PSHEET.masks[key];
+  return !!(im && im.complete && im.naturalWidth && mk && mk.complete && mk.naturalWidth && SPRITE_POSES[key]);
+}
+// peça do tronco (capa, colete, moletom, máscara...) cuja camada nesse ângulo não existe (a imagem deu erro)
+function torsoLayerMissing(key) {
+  for (const id of playerGear()) {
+    if (/^cl_(boots|pants)/.test(id)) continue;      // pernas não giram: usam a camada normal
+    gearImg(id, key);                                  // pede a imagem (carrega sob demanda)
+    const im = GEAR_IMG[id + "_" + key];
+    if (im && im.bad) return true;
+  }
+  return false;
+}
+function dualTwistTick() {
+  const p = player, pose = "punhos", aim = p.angle;
+  if (p.legRow == null) p.legRow = p.sRow;
+  let legAng = -Math.PI / 2 + p.legRow * Math.PI / 4, d = angDelta(legAng, aim);
+  if (Math.abs(d) > Math.PI / 2 + 0.13) {           // passou de 90°: as pernas viram e o tronco recomeça
+    p.legRow = sheetRow(Math.cos(aim), Math.sin(aim));
+    legAng = -Math.PI / 2 + p.legRow * Math.PI / 4; d = angDelta(legAng, aim);
+  }
+  p.sRow = p.legRow;
+  // variante cujo eixo dos braços (a→b do quadro renderizado) fica mais perto da mira
+  const col = spriteFrame();
+  let best = "", bestE = Infinity;
+  for (const deg of DUAL_TW) {
+    const suf = dualSuf(deg);
+    if (suf) {
+      ensureTwistSheet(pose + suf); if (!dualReady(pose + suf)) continue;
+      if (torsoLayerMissing(pose + suf)) continue;    // roupa do tronco sem esse ângulo: não torce
+    }
+    const a = twistBaseAngle(pose + suf, p.legRow, col);
+    const e = a == null ? Infinity : Math.abs(angDelta(a, aim));
+    if (e < bestE) { bestE = e; best = suf; }
+  }
+  TW.suf = best;
 }
 // ---------- Tronco girando com a mira ----------
 // Além das 8 direções, cada pose tem variantes com o tronco torcido 15° para cada lado (_tm15 / _tp15),
@@ -447,9 +519,31 @@ function updateWeaponAim() {
   // estabilizada pela zona morta aplicada no movimento.
   player.gunAngle = player.angle;
 }
+// duas armas (uma em cada mão): escala da arma e ponta do cano de cada mão
+const DUAL_SCALE = 0.8;
+// Com armas duplas as armas ficam paradas nas mãos, apontando para a frente do tronco (que gira: dualTwistTick).
+function dualTwist(pose) {
+  // direção dos braços NESTE quadro (eixo a→b da pose renderizada): a arma fica presa às mãos
+  const A = posePt("a", pose), B = posePt("b", pose), base = Math.atan2(B.y - A.y, B.x - A.x);
+  const c = posePt("c", pose);
+  return { base, d: 0, px: c.x, py: c.y };
+}
+function twistPt(pt, t) {
+  const s = Math.sin(t.d), co = Math.cos(t.d), dx = pt.x - t.px, dy = pt.y - t.py;
+  return { x: t.px + dx * co - dy * s, y: t.py + dx * s + dy * co };
+}
+function dualLenPx(w, pose) {
+  const A = posePt("a", pose), B = posePt("b", pose);
+  return Math.hypot(B.x - A.x, B.y - A.y) * weaponMeters(w) * DUAL_SCALE;
+}
 function muzzlePoint() {
   if (!useSpriteChar()) return null;
   const w = curW(); if (w.melee || w.fists) return null;
+  if (w.dual) {
+    const pose = weaponPose(w) + TW.suf, t = dualTwist(pose), H = twistPt(posePt(player.dualSide ? "hl" : "hr", pose), t);
+    const a = t.base + t.d, L = dualLenPx(w, pose) * 0.72;
+    return { x: H.x + Math.cos(a) * L, y: H.y + Math.sin(a) * L };
+  }
   const grip = gunGripAndLength(w);
   const a = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle;
   return { x: grip.x + Math.cos(a) * grip.length, y: grip.y + Math.sin(a) * grip.length };
@@ -459,6 +553,17 @@ function chestPoint() { return useSpriteChar() ? posePt("c") : { x: player.x, y:
 // desenha a arma em uso nas mãos, seguindo o eixo da pose naquele quadro
 function drawHeldWeapon(w, pose) {
   if (w.fists) return;
+  if (w.dual) {
+    const ang = dualTwist(pose).base;            // presa ao corpo: o giro vem do corpo todo
+    const model = (w.len || 20) + 20, k = dualLenPx(w, pose) / model;
+    for (const key of ["hl", "hr"]) {           // mão de trás primeiro, a da frente por cima
+      const H = posePt(key, pose);
+      ctx.save(); ctx.translate(H.x, H.y); ctx.rotate(ang); ctx.scale(k, k * 0.9);
+      drawWeaponShape(w, 0);
+      ctx.restore();
+    }
+    return;
+  }
   const A = posePt("a", pose), B = posePt("b", pose), U = posePt("u", pose);
   const m = weaponMeters(w), axX = B.x - A.x, axY = B.y - A.y;
   const lenPx = Math.hypot(axX, axY) * m, pxPerM = PSHEET.size / PSHEET.cell * 64;
@@ -568,7 +673,8 @@ function drawPlayerSprite() {
   // de lado e de costas ela vai depois do colete (fica por cima dele)
   const gearList = gearOrder(playerGear(), row !== 3 && row !== 4 && row !== 5);
   for (const id of gearList) {
-    const g = gearImg(id, pose);
+    // tronco torcido sem a camada dessa peça: usa a da pose normal (calça e botas batem, as pernas não giram)
+    const g = gearImg(id, pose) || (TW.suf && w.dual ? gearImg(id, pose.slice(0, -TW.suf.length)) : null);
     if (g) ctx.drawImage(g, col * c, row * c, c, c, ox, oy, S, S);
   }
   if (w3 && !info.bh) drawW3();

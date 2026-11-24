@@ -24,6 +24,8 @@ function openLibrary() { game.menu = "library"; LIB.cat = -1; LIB.sel = 0; LIB.s
 // onde se consegue a arma
 function libSource(d) {
   if (RECIPES.some((r) => r.id === d.id)) return "Criada na oficina";
+  if (d.credits) return `Loja de Créditos · ${d.credits.toLocaleString("pt-BR")} créditos (evento de Natal)`;
+  if (d.eventOnly) return "Caixas de Natal (1%) · evento de Natal";
   if (d.legendary) return "Saques de VIP (lendária)";
   if (d.minLevel) return `Saques raros · a partir do nível ${d.minLevel}`;
   return d.price ? `Saques no mapa · vende por até $${Math.round(d.price * 0.3).toLocaleString("pt-BR")}` : "Saques raros no mapa";
@@ -32,6 +34,9 @@ function libSource(d) {
 function libEffects(d) {
   const e = [];
   if (d.pierce) e.push("atravessa zumbis");
+  if (d.cryo) e.push(`❄ Cryo: deixa o zumbi ${Math.round(d.cryo * 100)}% mais lento por ${(d.cryoMs || 1000) / 1000}s`);
+  if (d.noCrit) e.push("nunca dá crítico");
+  if (d.noTrade) e.push("intransferível");
   if (d.explode) e.push(`explode (raio ${d.explode})`);
   if (d.burn) e.push(`fogo ${d.burn}/s`);
   if (d.fire) e.push("lança fogo");

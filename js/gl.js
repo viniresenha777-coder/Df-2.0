@@ -183,7 +183,7 @@ function glTarget(gl, w, h, old) {
 function gfxInit() {
   GFX.cv = document.getElementById("gl");
   GFX.scene = document.createElement("canvas"); GFX.sctx = GFX.scene.getContext("2d");
-  GFX.mask = document.createElement("canvas"); GFX.mask.width = W / 2; GFX.mask.height = H / 2; GFX.mctx = GFX.mask.getContext("2d");
+  GFX.mask = document.createElement("canvas"); GFX.mask.width = VIEW_W / 2; GFX.mask.height = VIEW_H / 2; GFX.mctx = GFX.mask.getContext("2d");
   if (save.gfx == null) save.gfx = 2;
   if (save.gfx > 0) gfxStart();
   else gfxStop();
@@ -218,7 +218,8 @@ function gfxStop() {
   if (GFX.cv) GFX.cv.style.display = "none";
   canvas.classList.remove("overlay");
 }
-function gfxResize() {
+function gfxResize() { withView(gfxResizeView); }
+function gfxResizeView() {
   if (!GFX.scene) return;
   GFX.scene.width = W * DPR; GFX.scene.height = H * DPR;
   if (!GFX.on) return;

@@ -9,8 +9,8 @@ const FLASH_SHADOW_LENGTH = 1900;
 function flashCanvas() {
   if (!FLASH_BLOCK.canvas) {
     FLASH_BLOCK.canvas = document.createElement("canvas");
-    FLASH_BLOCK.canvas.width = Math.ceil(W / 2);
-    FLASH_BLOCK.canvas.height = Math.ceil(H / 2);
+    FLASH_BLOCK.canvas.width = Math.ceil(VIEW_W / 2);
+    FLASH_BLOCK.canvas.height = Math.ceil(VIEW_H / 2);
     FLASH_BLOCK.ctx = FLASH_BLOCK.canvas.getContext("2d");
   }
   return FLASH_BLOCK.canvas;
@@ -18,8 +18,8 @@ function flashCanvas() {
 function flashCutCanvas() {
   if (!FLASH_BLOCK.cut) {
     FLASH_BLOCK.cut = document.createElement("canvas");
-    FLASH_BLOCK.cut.width = W;
-    FLASH_BLOCK.cut.height = H;
+    FLASH_BLOCK.cut.width = VIEW_W;
+    FLASH_BLOCK.cut.height = VIEW_H;
     FLASH_BLOCK.cutCtx = FLASH_BLOCK.cut.getContext("2d");
   }
   return FLASH_BLOCK.cut;

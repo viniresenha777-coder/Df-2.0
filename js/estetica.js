@@ -173,7 +173,7 @@ function uiRow(x, y, w, h, sel, accent) {
 // ---------- implantes: as partes que brilham no ícone pulsam e soltam faíscas ----------
 // Do atlas, separa o que já é claro e colorido (luzes, frascos, telas) num mapa de brilho por implante.
 const IMP_FX = {};
-function implantFx(src, sx, sy, tile) {
+function uiImplantGlowMap(src, sx, sy, tile) {
   const key = sx + "," + sy;
   if (IMP_FX[key] !== undefined) return IMP_FX[key];
   IMP_FX[key] = null;
@@ -196,7 +196,7 @@ function implantFx(src, sx, sy, tile) {
   return IMP_FX[key];
 }
 function drawImplantFx(src, sx, sy, tile, cx, cy, size, seed) {
-  const fx = implantFx(src, sx, sy, tile);
+  const fx = uiImplantGlowMap(src, sx, sy, tile);
   if (!fx || fx.n < 20) return;
   const t = uiNow() + (seed || 0) * 0.37, pulse = 0.5 + 0.5 * Math.sin(t * 2.6);
   const col = fx.col, soft = col.replace(/,1\)$/, ",0.6)");

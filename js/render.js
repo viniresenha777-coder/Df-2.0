@@ -7,7 +7,7 @@ let lightC = null, lctx = null, vignetteC = null;
 
 // ---------- Primitivas ----------
 function rr(x, y, w, h, r) {
-  r = Math.min(r, w / 2, h / 2);
+  r = Math.max(0, Math.min(r, w / 2, h / 2));   // largura negativa não quebra o desenho
   ctx.beginPath(); ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
@@ -20,7 +20,6 @@ function poly(pts, color) {
   ctx.closePath(); ctx.fill();
 }
 function txt(s, x, y, size, color, align, bold, maxW) {
-  // Nome de exibição; internamente permanece "virote" para compatibilidade com saves.
   if (typeof s === "string") s = s.replace(/\bvirote\b/gi, "Flechas");
   ctx.font = `${bold ? "bold " : ""}${size}px ${FONT}`; ctx.fillStyle = color; ctx.textAlign = align || "left";
   if (maxW) ctx.fillText(s, x, y, maxW); else ctx.fillText(s, x, y);
@@ -217,11 +216,13 @@ function initRender() {
   }));
   PAT.carpet = P(tex(128, "#44495a", [["rgba(255,255,255,0.05)", 900, 1, 1], ["rgba(0,0,0,0.15)", 900, 1, 1]]));
   PAT.concrete = P(tex(256, "#55554f", [["rgba(0,0,0,0.15)", 700, 1, 3], ["rgba(255,255,255,0.05)", 400, 1, 2]], gridLines(128, "rgba(0,0,0,0.2)")));
-  lightC = document.createElement("canvas"); lightC.width = W; lightC.height = H; lctx = lightC.getContext("2d");
-  vignetteC = document.createElement("canvas"); vignetteC.width = W; vignetteC.height = H;
-  const v = vignetteC.getContext("2d"), g = v.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.95);
+  // luz e vinheta são do mundo: no tamanho da área vista pela câmera
+  const VW = VIEW_W, VH = VIEW_H;
+  lightC = document.createElement("canvas"); lightC.width = VW; lightC.height = VH; lctx = lightC.getContext("2d");
+  vignetteC = document.createElement("canvas"); vignetteC.width = VW; vignetteC.height = VH;
+  const v = vignetteC.getContext("2d"), g = v.createRadialGradient(VW / 2, VH / 2, VH * 0.35, VW / 2, VH / 2, VH * 0.95);
   g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.55)");
-  v.fillStyle = g; v.fillRect(0, 0, W, H);
+  v.fillStyle = g; v.fillRect(0, 0, VW, VH);
 }
 
 // =====================================================================
@@ -339,8 +340,8 @@ function drawRoadMarks() {
   for (let y = hy0 + 10; y < hy1 - 12; y += 20) { ctx.fillRect(vx0 - 30, y, 24, 11); ctx.fillRect(vx1 + 6, y, 24, 11); }
   // linha branca nas ruas da borda
   ctx.fillStyle = "rgba(230,230,220,0.3)";
-  for (let x = 10; x < WORLD_W; x += 64) { ctx.fillRect(x, AREA_EDGE / 2 - 1, 30, 2); ctx.fillRect(x, WORLD_H - AREA_EDGE / 2 - 1, 30, 2); }
-  for (let y = 10; y < WORLD_H; y += 64) { ctx.fillRect(AREA_EDGE / 2 - 1, y, 2, 30); ctx.fillRect(WORLD_W - AREA_EDGE / 2 - 1, y, 2, 30); }
+  for (let x = 10; x < WORLD_W; x += 64) { ctx.fillRect(x, 1, 30, 2); ctx.fillRect(x, WORLD_H - 3, 30, 2); }
+  for (let y = 10; y < WORLD_H; y += 64) { ctx.fillRect(1, y, 2, 30); ctx.fillRect(WORLD_W - 3, y, 2, 30); }
 }
 
 function drawDecal(d) {
@@ -937,6 +938,7 @@ function drawStation(f) {
 // =====================================================================
 // arma vista de cima, apontando para +x
 function drawWeaponShape(w, swing) {
+  // armas com modelo próprio na mão (grip = ponto da empunhadura, de 0 a 1 no comprimento)
   const held = WEAPON_3D[w.id];
   if (held && held.grip != null) {
     const icon = weaponIcon(w, true);
@@ -944,7 +946,7 @@ function drawWeaponShape(w, swing) {
       const width = (w.len || 20) + 18;
       ctx.save();
       ctx.rotate(swing);
-      const originX = w.melee ? 8 : (w.look === "pistol" ? 10 : 0);
+      const originX = w.melee ? 8 : w.look === "pistol" ? 10 : 0;
       const originY = w.melee ? 6 : 0;
       if (held.heldView) ctx.filter = "none";
       ctx.drawImage(icon, originX - width * held.grip, originY - width / 4, width, width / 2);
@@ -953,11 +955,10 @@ function drawWeaponShape(w, swing) {
       return;
     }
   }
-
-  if (w.id === "besta" && CROSSBOW_ZHNETS_ART.complete && CROSSBOW_ZHNETS_ART.naturalWidth) {
+  if (w.id === "besta" && CB_ZHNETS.complete && CB_ZHNETS.naturalWidth) {
     ctx.save();
     ctx.scale(-1, 1);
-    ctx.drawImage(CROSSBOW_ZHNETS_ART, -43, -14, 50, 28);
+    ctx.drawImage(CB_ZHNETS, -38, -10, 42, 21);   // menor e com a coronha na mão
     ctx.restore();
     return;
   }
@@ -972,7 +973,12 @@ function drawWeaponShape(w, swing) {
         if (w.legendary || w.special) { ctx.shadowColor = c; ctx.shadowBlur = 12; }
         ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(20, 4); ctx.lineTo(20 + L, 5); ctx.lineTo(20 + L - 6, w.look === "machete" ? 10 : 8); ctx.lineTo(20, 8); ctx.closePath(); ctx.fill();
         ctx.shadowBlur = 0; break;
-      case "bat": poly([[8, 4], [8 + L, 2], [8 + L, 10], [8, 8]], c); break;
+      case "bat": {   // taco afinando para o cabo (fita preta) e com pregos na ponta
+        poly([[8, 5], [8 + L * 0.45, 4.2], [8 + L, 3], [8 + L + 1.5, 6], [8 + L, 9], [8 + L * 0.45, 7.8], [8, 7]], c);
+        ctx.fillStyle = "#2a2622"; ctx.fillRect(6, 4.8, 9, 2.4);
+        ctx.fillStyle = "#b9bcc0"; for (let i = 0; i < 4; i++) ctx.fillRect(8 + L * (0.7 + i * 0.08), i % 2 ? 2.2 : 8.6, 1.2, 1.4);
+        break;
+      }
       case "hammer": ctx.fillStyle = "#5a3d22"; ctx.fillRect(8, 4, L, 4); ctx.fillStyle = c; ctx.fillRect(4 + L, -4, 12, 20); break;
       case "chainsaw":
         ctx.fillStyle = c; ctx.fillRect(4, 0, 16, 14); ctx.fillStyle = "#9aa0a6"; ctx.fillRect(20, 3, L, 8);
@@ -1432,7 +1438,7 @@ function drawInteriorMinimap(x, y, w, h) {
   }
   // área visível na tela
   ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 1;
-  if (iw > W || ih > H) ctx.strokeRect(ox + cam.x * k, oy + cam.y * k, Math.min(W, iw) * k, Math.min(H, ih) * k);
+  if (iw > VIEW_W || ih > VIEW_H) ctx.strokeRect(ox + cam.x * k, oy + cam.y * k, Math.min(VIEW_W, iw) * k, Math.min(VIEW_H, ih) * k);
   ctx.save(); ctx.translate(ox + player.x * k, oy + player.y * k); ctx.rotate(player.angle);
   poly([[7, 0], [-5, -5], [-2, 0], [-5, 5]], "#ffd96a"); ctx.restore();
   const fl = buildingFloors(b);
@@ -1486,11 +1492,12 @@ function drawMinimap(x, y, w, h) {
 // Painel fica quase transparente quando algo importante está embaixo dele
 function hudFade(key, x, y, w, h) {
   const m = 24, over = (px, py) => px > x - m && px < x + w + m && py > y - m && py < y + h + m;
-  let hit = !game.over && (over(player.x - cam.x, player.y - cam.y) || (key !== "bn" && over(mouse.x, mouse.y)));
-  if (!hit) for (const z of Zs()) if (z.hp > 0 && over(z.x - cam.x, z.y - cam.y)) { hit = true; break; }
+  const Z = VIEW_ZOOM;   // mundo → tela (a câmera mostra o mundo VIEW_ZOOM vezes maior)
+  let hit = !game.over && (over((player.x - cam.x) * Z, (player.y - cam.y) * Z) || (key !== "bn" && over(mouse.x, mouse.y)));
+  if (!hit) for (const z of Zs()) if (z.hp > 0 && over((z.x - cam.x) * Z, (z.y - cam.y) * Z)) { hit = true; break; }
   if (!hit && key !== "mm") { // o minimapa só some pelo personagem, zumbis ou mouse
-    const objs = game.inside ? game.inside.interior : world.loot.query(cam.x + x - m, cam.y + y - m, cam.x + x + w + m, cam.y + y + h + m);
-    for (const o of objs) if (o.x - cam.x < x + w && o.x + o.w - cam.x > x && o.y - cam.y < y + h && o.y + o.h - cam.y > y) { hit = true; break; }
+    const objs = game.inside ? game.inside.interior : world.loot.query(cam.x + (x - m) / Z, cam.y + (y - m) / Z, cam.x + (x + w + m) / Z, cam.y + (y + h + m) / Z);
+    for (const o of objs) if ((o.x - cam.x) * Z < x + w && (o.x + o.w - cam.x) * Z > x && (o.y - cam.y) * Z < y + h && (o.y + o.h - cam.y) * Z > y) { hit = true; break; }
   }
   game.hudA = game.hudA || {};
   const cur = game.hudA[key] == null ? 1 : game.hudA[key];
@@ -1527,11 +1534,11 @@ function drawHUD() {
   const compact = save.hud === 1;
   ctx.globalAlpha = 1;
   // nome em cima do personagem
-  if (!game.over) hudT(playerName(), player.x - cam.x, player.y - cam.y - (useSpriteChar() ? 54 : 28), 10, "#8fe08a", "center", true);
+  if (!game.over) hudT(playerName(), (player.x - cam.x) * VIEW_ZOOM, (player.y - cam.y - (useSpriteChar() ? 54 : 28)) * VIEW_ZOOM, 11, "#8fe08a", "center", true);
   // prédio do resgate: "SOS" piscando em cima do telhado (por cima da luz)
   const rb = !game.inside && rescueBuilding();
   if (rb) {
-    const p = 0.55 + 0.45 * Math.sin(game.time / 200), sx = rb.x + rb.w / 2 - cam.x, sy = rb.y + rb.h / 2 - cam.y;
+    const p = 0.55 + 0.45 * Math.sin(game.time / 200), sx = (rb.x + rb.w / 2 - cam.x) * VIEW_ZOOM, sy = (rb.y + rb.h / 2 - cam.y) * VIEW_ZOOM;
     ctx.globalAlpha = p; ctx.fillStyle = "rgba(0,40,10,0.6)"; rr(sx - 30, sy - 16, 60, 26, 8); ctx.fill();
     hudT("SOS", sx, sy + 4, 18, "#6fff9a", "center", true); ctx.globalAlpha = 1;
   }

@@ -6,13 +6,39 @@
 const SAVE_KEY = "fronteira-morta";
 const save = {
   bank: 0, vault: [], vaultRows: 5, installed: [], implantPresets: [], credits: 0, gm: false, vipUntil: 0, trindadeUntil: 0, shopFreeUntil: 0, missions: [], receivedGifts: [], inbox: [],
-  vest: -1, fmInventoryOrder: [], clothing: { jacket: null, pants: null, boots: null, pack: null }, outposts: OUTPOSTS.map((o, i) => i === 0), muted: false, hud: 0, skin: 0, cape: 0, prof: null, name: "", classicChar: false, vestDur: {}, vestUpgrades: {}, vestShow: true, music: true, gfx: 2, ambientVolume: 0.55, brightness: 1.0,
-  stats: {}, story: 0, ach: {}, daily: null, coll: [], vestsOwned: VESTS.map(() => false), vestVer: 2,
+  vest: -1, fmInventoryOrder: [], clothing: { jacket: null, pants: null, boots: null }, outposts: OUTPOSTS.map((o, i) => i === 0), muted: false, hud: 0, skin: 0, cape: 0, prof: null, name: "", classicChar: false, vestDur: {}, vestUpgrades: {}, vestShow: true, music: true, gfx: 2, ambientVolume: 0.55, brightness: 1.0,
+  stats: {}, story: 0, ach: {}, daily: null, coll: [], vestsOwned: VESTS.map(() => false), clothesOwned: {}, vestVer: 2,
   char: { level: 1, xp: 0, points: 0, wpoints: 0, attrs: defaultAttrs() }
 };
 
 function validItem(it) {
   if (!it) return false;
+  // o Baú da Base guarda qualquer tipo de item (munição, implante, colete, roupa, comida e suprimentos)
+  if (it.kind === "ammo") {
+    if (!Object.prototype.hasOwnProperty.call(AMMO, it.id)) return false;
+    it.qty = Math.min(500000, Math.floor(Number(it.qty) || 0));
+    it.tokenQty = Math.max(0, Math.min(it.qty, Math.floor(Number(it.tokenQty) || 0)));
+    return it.qty > 0;
+  }
+  if (it.kind === "implant") {
+    if (!IMP[it.id]) return false;
+    const obj = cleanImplant(it);
+    if (!obj) return false;
+    it.alloc = obj.alloc;
+    it.tokenBound = obj.tokenBound === true;
+    return true;
+  }
+  if (it.kind === "vest") return Number.isInteger(it.id) && !!VESTS[it.id];
+  if (it.kind === "clothing") return !!CLOTHING_BY_ID[it.id];
+  if (it.kind === "food") {
+    if (!["fresca", "comum", "podre"].includes(it.id)) return false;
+    it.qty = Math.min(500000, Math.floor(Number(it.qty) || 0));
+    return it.qty > 0;
+  }
+  if (["water", "med", "anti"].includes(it.kind)) {
+    it.qty = Math.min(500000, Math.floor(Number(it.qty) || 0));
+    return it.qty > 0;
+  }
   if (it.kind === "weapon") {
     if (it.id === "revolver_orn") it.id = "revolver";
     if (it.id === "baioneta") it.id = "m4";
@@ -21,30 +47,6 @@ function validItem(it) {
     for (const s of UP_STATS) it.up[s.id] = clamp(Math.floor(it.up[s.id] || 0), 0, UP_MAX);
     it.ammo = clamp(it.ammo || 0, 0, WDEF[it.id].mag || 0);
     return true;
-  }
-  if (it.kind === "ammo") {
-    if (!Object.prototype.hasOwnProperty.call(AMMO, it.id)) return false;
-    it.qty = Math.min(500000, Math.floor(Number(it.qty) || 0));
-    it.tokenQty = Math.max(0, Math.min(it.qty, Math.floor(Number(it.tokenQty) || 0)));
-    return it.qty > 0;
-  }
-  if (it.kind === "implant") {
-    const cleaned = cleanImplant(it);
-    if (!cleaned) return false;
-    it.alloc = cleaned.alloc;
-    it.tokenBound = cleaned.tokenBound === true;
-    return true;
-  }
-  if (it.kind === "vest") return Number.isInteger(it.id) && it.id >= 0 && it.id < VESTS.length;
-  if (it.kind === "clothing") return !!CLOTHING_BY_ID[it.id];
-  if (it.kind === "food") {
-    if (!FOOD_Q[it.id]) return false;
-    it.qty = Math.min(500000, Math.floor(Number(it.qty) || 0));
-    return it.qty > 0;
-  }
-  if (["water", "med", "anti"].includes(it.kind)) {
-    it.qty = Math.min(500000, Math.floor(Number(it.qty) || 0));
-    return it.qty > 0;
   }
   return it.kind === "mat" && !!MATS[it.id] && it.qty > 0;
 }
@@ -79,7 +81,6 @@ function loadSave() {
           createdAt: Number(x.createdAt) || Date.now(), read: !!x.read })) : [];
     save.receivedGifts = Array.isArray(s.receivedGifts) ? s.receivedGifts.filter(id => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)).slice(-2000) : [];
     save.missions = (s.missions || []).filter((m) => m && m.type && m.target).slice(0, 3);
-    save.fmInventoryOrder = Array.isArray(s.fmInventoryOrder) ? s.fmInventoryOrder.filter(k => k === null || typeof k === "string").slice(0, 150) : [];
     save.vest = typeof s.vest === "number" ? s.vest : -1;
     if (s.vestVer !== 2 && save.vest >= 0) save.vest = [0, 2, 4][save.vest] != null ? [0, 2, 4][save.vest] : 0; // coletes do save antigo
     save.vest = clamp(save.vest, -1, VESTS.length - 1);
@@ -88,7 +89,15 @@ function loadSave() {
     for (let i = 0; i < VESTS.length; i++) if (save.vestsOwned[i])
       save.vestUpgrades[i] = cleanVestUpgrade(s.vestUpgrades && s.vestUpgrades[i]);
     save.outposts = OUTPOSTS.map((o, i) => i === 0 || !!(s.outposts && s.outposts[i]));
-    save.muted = !!s.muted; save.hud = s.hud === 1 ? 1 : 0; save.skin = clamp(s.skin | 0, 0, SKINS.length - 1); save.clothing = clothingClean(s.clothing); save.cape = clamp(s.cape | 0, 0, CAPES.length - 1); save.vestShow = s.vestShow !== false; save.prof = typeof s.prof === "string" ? s.prof : null; save.name = typeof s.name === "string" ? s.name.slice(0, 16) : ""; save.classicChar = false; // Somente o novo boneco está disponível.
+    save.muted = !!s.muted; save.hud = s.hud === 1 ? 1 : 0; save.skin = clamp(s.skin | 0, 0, SKINS.length - 1); save.clothing = clothingClean(s.clothing);
+    // capa e máscaras compradas; save antigo: quem já estava usando uma fica com ela
+    save.clothesOwned = {};
+    for (const id in CREDIT_CLOTHING) {
+      if (s.clothesOwned ? s.clothesOwned[id] === true : Object.values(save.clothing).includes(id)) save.clothesOwned[id] = true;
+    }
+    for (const kind of CLOTHING_KINDS) if (save.clothing[kind] && !clothingOwned(save.clothing[kind])) save.clothing[kind] = null;
+    save.fmInventoryOrder = Array.isArray(s.fmInventoryOrder) ? s.fmInventoryOrder.filter((k) => k === null || typeof k === "string").slice(0, 150) : [];
+    save.cape = clamp(s.cape | 0, 0, CAPES.length - 1); save.vestShow = s.vestShow !== false; save.prof = typeof s.prof === "string" ? s.prof : null; save.name = typeof s.name === "string" ? s.name.slice(0, 16) : ""; save.classicChar = false; // Somente o novo boneco está disponível.
     save.vestDur = s.vestDur && typeof s.vestDur === "object" ? s.vestDur : {};
     save.music = s.music !== false;
     // sliders do menu: dados antigos recebem padrões seguros

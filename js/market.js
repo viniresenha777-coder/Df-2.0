@@ -28,14 +28,10 @@ function marketItemName(item) {
 function marketInventory() {
   const rows = [];
   const add = (item, local, index = 0) => {
-    if (item && !item.tokenBound) rows.push({ item, local, index });
+    if (item && !item.tokenBound && !(item.kind === "weapon" && WDEF[item.id]?.noTrade)) rows.push({ item, local, index });
   };
   for (const [local, items] of [["slots", player.slots], ["pack", player.pack], ["vault", save.vault]])
-    items.forEach((item, index) => {
-      // O Mercado Negro ainda não comercializa equipamentos de roupa armazenados.
-      if (local === "vault" && item && item.kind === "clothing") return;
-      add(item, local, index);
-    });
+    items.forEach((item, index) => add(item, local, index));
   player.bag.forEach((item, index) => add({ ...item, kind: "implant" }, "bag", index));
   VESTS.forEach((_, index) => {
     if (save.vestsOwned[index] && save.vest !== index)

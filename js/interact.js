@@ -82,6 +82,7 @@ function lootEntry(cat, t, table, zone) {
 // sorteia QUANTOS itens e depois QUAIS (tipos diferentes, pesados pelo que cada lugar costuma ter)
 function rollLoot(table, zone) {
   if (table === "airdrop") return rollLootFull(table, zone);
+  if (table === "natal") return natalBoxLoot(zone);
   const ec = EMPTY_CHANCE[table] != null ? EMPTY_CHANCE[table] : EMPTY_CHANCE.furniture;
   if (Math.random() < ec * (game.inside && game.inside.landmark ? 0.45 : 1) * Math.max(0, 1 - player.fx.lootSpots / 100)) return [];
   const t = TABLES[table] || {}, sc = 1 + player.fx.scavenger / 100, vip = vipActive() ? 1.6 : 1, pool = [];
@@ -152,6 +153,16 @@ function bossLoot(id, zone) {
   return out;
 }
 
+// Caixa de Natal (evento): sempre uma arma, de comum até lendária; 1% de ser a Pistola Natalina.
+// 5% de vir um Gorro de Natal (10 Gorros + $2.000.000 fazem o Implante Natalino na Oficina).
+const NATAL_PISTOL_CHANCE = 0.01, NATAL_GORRO_CHANCE = 0.05;
+function natalBoxLoot(zone) {
+  const out = [];
+  const id = Math.random() < NATAL_PISTOL_CHANCE ? "pistola_natal" : randomWeaponDrop(zone, vipActive() ? 1 : 0);
+  out.push({ type: "weapon", inst: newInst(id) });
+  if (Math.random() < NATAL_GORRO_CHANCE) out.push({ type: "mat", id: "gorro_natal", amt: 1 });
+  return out;
+}
 // saque cheio (caixa de suprimentos): cada tipo é sorteado separado
 function rollLootFull(table, zone) {
   const t = TABLES[table] || {}, out = [];
@@ -209,7 +220,7 @@ function interact() {
   game.search = { spot: s, t: 0, dur: searchTime(s) };
 }
 function searchTime(s) {
-  const base = s.kind === "airdrop" || s.table === "boss" ? 2200 : s.kind === "chest" || s.table === "chest" ? 1600 : s.table === "trash" || s.table === "body" ? 800 : 1200;
+  const base = s.kind === "airdrop" || s.table === "boss" ? 2200 : s.kind === "natalbox" ? 1600 : s.kind === "chest" || s.table === "chest" ? 1600 : s.table === "trash" || s.table === "body" ? 800 : 1200;
   return base / Math.max(0.3, 1 + player.fx.searchSpeed / 100);
 }
 // chamado todo quadro: enche a barra enquanto E está apertado e você continua perto

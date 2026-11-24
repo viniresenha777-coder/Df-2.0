@@ -228,6 +228,8 @@ function hurt(z, dmg, ang, quiet, fx) {
     if (fx.burn) { z.burn = 3000; z.burnDps = fx.burn * (1 + player.fx.firepower / 100); }
     if (fx.bleed && Math.random() < fx.bleed) { z.bleed = 4000; z.bleedDps = Math.max(z.bleedDps || 0, d * 0.15); }
     if (fx.stun && Math.random() < fx.stun) z.stun = z.boss ? 300 : 900;
+    // Cryo (armas de Natal): fica mais lento para andar e atacar por um tempo
+    if (fx.cryo) { z.chillMul = Math.min(z.chill > 0 ? z.chillMul || 1 : 1, 1 - fx.cryo); z.chill = fx.cryoMs || 1000; }
   }
   if (!quiet) {
     bloodSpray(z.x, z.y, ang == null ? Math.random() * 6.283 : ang, crit ? 10 : 5);
@@ -261,6 +263,7 @@ function attack() {
   const aim = player.angle;
   let mx = player.x + Math.cos(aim) * (w.len + 12);
   let my = player.y + Math.sin(aim) * (w.len + 12);
+  if (w.dual) player.dualSide = !player.dualSide;   // alterna o tiro entre a mão direita e a esquerda
   const mz = muzzlePoint();
   if (mz) { mx = mz.x; my = mz.y; }
   player.shotAng = aim;
@@ -625,6 +628,13 @@ function updateZombies(dt, k) {
     }
     if (z.hp <= 0) { if (!z.dead) killZombie(z); continue; }
     if (z.stun > 0) { z.stun -= dt; z.atkT = 0; continue; }
+    // gelo (Cryo): o tempo do zumbi passa mais devagar
+    const chill = z.chill > 0 ? z.chillMul || 1 : 1;
+    if (z.chill > 0) {
+      z.chill -= dt;
+      if (z.chill <= 0) z.chillMul = 1;
+      if (Math.random() < dt / 90) game.parts.push({ x: z.x + rand(-z.r, z.r), y: z.y + rand(-z.r, z.r), vx: rand(-0.3, 0.3), vy: rand(-0.6, -0.1), life: 420, max: 420, color: pick(["#bfe8ff", "#e8f7ff", "#7fc8ff"]), size: rand(1.5, 3), fr: 0.96 });
+    }
     const dx = player.x - z.x, dy = player.y - z.y, d = Math.hypot(dx, dy) || 1;
     if (adm.freeze) continue;
     const zt = ZTYPES[z.type];
@@ -688,7 +698,7 @@ function updateZombies(dt, k) {
     if (z.state === "chase") {
       let ang = Math.atan2(dy, dx);
       if (z.detourT > 0) { z.detourT -= dt; ang += z.detourDir * 1.2; }
-      step = z.speed * k;
+      step = z.speed * k * chill;
       // cão recua depois de morder
       if (z.recoilT > 0) { z.recoilT -= dt; ang += Math.PI; step = z.speed * 0.6 * k; }
       // infectado desvia quando você mira nele
@@ -727,7 +737,7 @@ function updateZombies(dt, k) {
       } else z.stuckT = 0;
     }
     z.anim += Math.abs(step) * 0.12;
-    z.hitCd -= dt;
+    z.hitCd -= dt * chill;
     // Colosso: você empurra os infectados comuns; correndo, derruba (e corta o cuspe)
     if (player.flags.jugger && !z.boss && d < z.r + player.r + 4) {
       z.x -= (dx / d) * 3; z.y -= (dy / d) * 3;
@@ -741,7 +751,7 @@ function updateZombies(dt, k) {
     }
     if (z.type === "alce_natal" || z.bossId === "santa_natal") continue;
     if (z.atkT > 0) {                    // golpe em andamento: o dano sai no meio dele
-      z.atkT -= dt;
+      z.atkT -= dt * chill;
       z.angle = Math.atan2(dy, dx);
       if (!z.atkHit && z.atkT <= ZATK_MS * (1 - ZATK_HIT)) {
         z.atkHit = true;
