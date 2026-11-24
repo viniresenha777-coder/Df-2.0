@@ -727,6 +727,11 @@ function drawCanopies() {
 function drawInterior() {
   const h = game.inside, IWd = h.iw || W, IHd = h.ih || H, lvl = h.level | 0;
   ctx.fillStyle = PAT[h.safe ? "concrete" : h.def.floor]; ctx.fillRect(0, 0, IWd, IHd);
+  // cômodos das casas: piso de azulejo no banheiro e na cozinha, nome do cômodo bem apagado no chão
+  if (h.rooms) for (const r of h.rooms) {
+    if (r.floor) { ctx.fillStyle = PAT[r.floor]; ctx.fillRect(r.x, r.y, r.w, r.h); }
+    txt(r.name.toUpperCase(), r.x + r.w / 2, r.y + r.h / 2 + 9, 26, "rgba(255,255,255,0.05)", "center", true);
+  }
   if (h.rug) {
     ctx.fillStyle = h.rug.c; ctx.globalAlpha = 0.75; ctx.fillRect(h.rug.x, h.rug.y, h.rug.w, h.rug.h);
     ctx.strokeStyle = "rgba(230,200,140,0.35)"; ctx.lineWidth = 3; ctx.strokeRect(h.rug.x + 8, h.rug.y + 8, h.rug.w - 16, h.rug.h - 16); ctx.globalAlpha = 1;
@@ -734,7 +739,7 @@ function drawInterior() {
   if (h.safe) {
     ctx.fillStyle = "rgba(60,120,80,0.12)"; ctx.fillRect(40, 40, IWd - 80, IHd - 80);
     txt(h.name.toUpperCase(), IWd / 2, IHd / 2 + 10, 40, "rgba(200,230,200,0.08)", "center", true);
-  } else if (h.levels && (h.levels.length > 1 || buildingFloors(h) > 1)) {
+  } else if (!h.rooms && h.levels && (h.levels.length > 1 || buildingFloors(h) > 1)) {
     txt(floorName(h, lvl).toUpperCase(), IWd / 2, IHd / 2 + 14, 46, "rgba(255,255,255,0.05)", "center", true);
   }
   drawBloodList(h.decals);
@@ -786,6 +791,13 @@ function drawFurniture(f) {
 }
 function drawFurnitureBase(f) {
   const { x, y, w, h } = f;
+  if (f.kind === "wall") {                          // parede interna das casas
+    ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(x + 5, y + 5, w, h);
+    ctx.fillStyle = f.color; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.fillRect(x, y, w, 3);
+    ctx.strokeStyle = "rgba(0,0,0,0.45)"; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.75, y + 0.75, w - 1.5, h - 1.5);
+    return;
+  }
   ctx.globalAlpha = f.opened ? 0.6 : 1;
   const n = f.name;
   // móveis com modelo 3D (models.js): ocupam o mesmo lugar no chão
@@ -916,6 +928,24 @@ function drawDecor(f) {
     ctx.fillStyle = "#e8ecec"; rr(x, y, w, h, 4); ctx.fill();
     ctx.fillStyle = f.color; circle(x + w / 2, y + h / 2, 8);
     ctx.fillStyle = "rgba(80,150,210,0.6)"; circle(x + w / 2, y + h / 2, 5);
+  } else if (n === "Vaso sanitário") {
+    ctx.fillStyle = shade(f.color, -0.12); rr(x + 3, y, w - 6, 10, 3); ctx.fill();          // caixa d'água
+    ctx.fillStyle = f.color; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h * 0.62, w / 2 - 1, h * 0.36, 0, 0, 6.283); ctx.fill();
+    ctx.fillStyle = "rgba(120,170,200,0.45)"; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h * 0.64, w / 2 - 6, h * 0.22, 0, 0, 6.283); ctx.fill();
+  } else if (n === "Pia") {
+    ctx.fillStyle = f.color; rr(x, y, w, h, 4); ctx.fill();
+    ctx.fillStyle = "rgba(110,150,170,0.45)"; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h / 2 + 2, w / 2 - 7, h / 2 - 6, 0, 0, 6.283); ctx.fill();
+    ctx.fillStyle = "#9aa3a8"; ctx.fillRect(x + w / 2 - 2, y + 2, 4, 7);
+  } else if (n === "Banheira") {
+    ctx.fillStyle = shade(f.color, -0.1); rr(x, y, w, h, 12); ctx.fill();
+    ctx.fillStyle = "rgba(120,170,200,0.5)"; rr(x + 7, y + 7, w - 14, h - 14, 9); ctx.fill();
+    ctx.fillStyle = "#9aa3a8"; ctx.fillRect(x + w - 12, y + h / 2 - 3, 8, 6);
+  } else if (n === "Fogão") {
+    ctx.fillStyle = f.color; rr(x, y, w, h, 3); ctx.fill();
+    ctx.fillStyle = "#2a2c2e"; ctx.fillRect(x + 3, y + 3, w - 6, h - 12);
+    ctx.strokeStyle = "#6a6e72"; ctx.lineWidth = 2;
+    for (const [a, b] of [[0.3, 0.3], [0.7, 0.3], [0.3, 0.62], [0.7, 0.62]]) { ctx.beginPath(); ctx.arc(x + w * a, y + (h - 9) * b + 3, 6, 0, 6.283); ctx.stroke(); }
+    ctx.fillStyle = "#3a3c3e"; for (let i = 0; i < 4; i++) ctx.fillRect(x + 7 + i * 10, y + h - 7, 5, 4);
   } else { ctx.fillStyle = f.color; rr(x, y, w, h, 3); ctx.fill(); }
 }
 function drawStation(f) {
@@ -1420,6 +1450,7 @@ function drawInteriorMinimap(x, y, w, h) {
   for (const f of b.interior) {
     let c;
     if (f.kind === "stairs") c = "#ffd96a";
+    else if (f.kind === "wall") c = "#1d1f1b";
     else if (f.kind === "decor") c = "#4e524a";
     else if (SAFE_KINDS.includes(f.kind)) c = "#6fae4f";
     else c = f.opened || f.searchable === false ? "#5a5a52" : "#c9a040";

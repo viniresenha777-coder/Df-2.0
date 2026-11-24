@@ -297,11 +297,15 @@ function makeInterior(h, list, lvl) {
       return;
     }
   };
-  for (let i = 0; i < n; i++) { const name = choose(d.furn); add(name, "furniture", name); }
-  if (R() < (d.landmark ? 0.35 : 0.22)) add("Baú", "chest", "chest");
-  // enfeites (sem saque) para o lugar parecer mobiliado; não mudam a quantidade de saque
-  if (d.decor) { const nd = Math.round((2 + Math.floor(R() * 3)) * Math.sqrt(area)); for (let i = 0; i < nd; i++) add(choose(d.decor), "decor", null); }
-  h.rug = d.floor === "wood" || d.floor === "carpet" ? { x: range(200, iw - 600), y: range(170, ih - 360), w: range(240, 380), h: range(140, 200), c: choose(["#6e3b3b", "#3b4e6e", "#5a6e3b", "#6e5a3b"]) } : null;
+  h.rooms = null;
+  if (h.type === "casa" && !h.safe) houseRooms(h, list, lvl, R, iw, ih, n, keepClear);
+  else {
+    for (let i = 0; i < n; i++) { const name = choose(d.furn); add(name, "furniture", name); }
+    if (R() < (d.landmark ? 0.35 : 0.22)) add("Baú", "chest", "chest");
+    // enfeites (sem saque) para o lugar parecer mobiliado; não mudam a quantidade de saque
+    if (d.decor) { const nd = Math.round((2 + Math.floor(R() * 3)) * Math.sqrt(area)); for (let i = 0; i < nd; i++) add(choose(d.decor), "decor", null); }
+    h.rug = d.floor === "wood" || d.floor === "carpet" ? { x: range(200, iw - 600), y: range(170, ih - 360), w: range(240, 380), h: range(140, 200), c: choose(["#6e3b3b", "#3b4e6e", "#5a6e3b", "#6e5a3b"]) } : null;
+  }
   // Only search availability changes; furniture, decorations and collisions stay fixed.
   const candidates = list.filter(f => f.kind === "furniture" || f.kind === "chest");
   const shuffled = candidates.slice();
@@ -312,6 +316,69 @@ function makeInterior(h, list, lvl) {
   const available = new Set(shuffled.slice(0, Math.max(1, Math.ceil(candidates.length * 0.75))));
   for (const f of candidates) f.searchable = available.has(f);
   return list;
+}
+
+// ---------- Cômodos das casas ----------
+// Paredes internas dividem a casa em 4 cômodos: térreo = banheiro, cozinha, quarto e sala (a porta de saída fica
+// na sala); andares de cima = banheiro e dois quartos + sala. As paredes entram na lista do interior como
+// kind "wall": bloqueiam passagem e tiro, já nascem "abertas" (nunca aparecem para revistar).
+const HOUSE_ROOMS = {
+  banheiro: { name: "Banheiro", floor: "tile", furn: ["Armário do banheiro"], decor: ["Vaso sanitário", "Pia", "Banheira"] },
+  quarto:   { name: "Quarto", furn: ["Cama", "Guarda-roupa", "Criado-mudo", "Cômoda"], decor: ["Planta"] },
+  cozinha:  { name: "Cozinha", floor: "tile", furn: ["Geladeira", "Armário de cozinha", "Armário de cozinha", "Mesa"], decor: ["Fogão", "Cadeira", "Cadeira"] },
+  sala:     { name: "Sala", furn: ["Sofá", "Estante", "Prateleira de parede"], decor: ["TV", "Poltrona", "Planta"] },
+};
+const ITEM_DOTS = ["#c0392b", "#e0b040", "#4aa3df", "#6fae4f", "#e5e0c8", "#a35bd0", "#d9822b"];
+function houseRooms(h, list, lvl, R, iw, ih, n, keepClear) {
+  const T = 18, DG = 86, x0 = 40, y0 = 40, x1 = iw - 40, y1 = ih - 40;
+  const VX = Math.round(iw * 0.40), HY = Math.round(ih * 0.42);
+  const wc = shade("#b9ae99", (bHash(h, 9) - 0.5) * 0.25);   // reboco claro, um tom por casa
+  const wall = (x, y, w, hh) => { if (w > 1 && hh > 1) list.push({ x, y, w, h: hh, kind: "wall", name: "Parede", color: wc, opened: true, items: [] }); };
+  const gV = HY + 40;                                    // passagem quarto <-> sala (parede vertical)
+  wall(VX - T / 2, y0, T, gV - y0); wall(VX - T / 2, gV + DG, T, y1 - gV - DG);
+  const gL = VX - 40 - DG;                               // passagem banheiro <-> quarto (horizontal, esquerda)
+  wall(x0, HY - T / 2, gL - x0, T); wall(gL + DG, HY - T / 2, VX - T / 2 - gL - DG, T);
+  const GR = 120, gR = Math.round((VX + x1) / 2 - GR / 2);   // passagem larga cozinha <-> sala (horizontal, direita)
+  wall(VX + T / 2, HY - T / 2, gR - VX - T / 2, T); wall(gR + GR, HY - T / 2, x1 - gR - GR, T);
+  const top = lvl === 0 ? ["banheiro", "cozinha"] : ["banheiro", "quarto"];
+  const rooms = [
+    { k: top[0], x: x0, y: y0, w: VX - T / 2 - x0, h: HY - T / 2 - y0 },
+    { k: "quarto", x: x0, y: HY + T / 2, w: VX - T / 2 - x0, h: y1 - HY - T / 2 },
+    { k: top[1], x: VX + T / 2, y: y0, w: x1 - VX - T / 2, h: HY - T / 2 - y0 },
+    { k: "sala", x: VX + T / 2, y: HY + T / 2, w: x1 - VX - T / 2, h: y1 - HY - T / 2 },
+  ];
+  const clear = [keepClear, { x: VX - 60, y: gV - 6, w: 120, h: DG + 12 }, { x: gL - 6, y: HY - 60, w: DG + 12, h: 120 }, { x: gR - 6, y: HY - 60, w: GR + 12, h: 120 }];
+  const addIn = (r, name, kind, table) => {
+    const f = FURN[name] || { w: 26, h: 20, color: "#8a5a2b" }, m = 6;
+    if (r.w < f.w + 2 * m || r.h < f.h + 2 * m) return;
+    for (let t = 0; t < 60; t++) {
+      let x, y; const s = R();
+      if (s < 0.3) { x = r.x + m + R() * (r.w - 2 * m - f.w); y = r.y + m; }                       // parede de cima
+      else if (s < 0.5) { x = r.x + m; y = r.y + m + R() * (r.h - 2 * m - f.h); }                  // esquerda
+      else if (s < 0.7) { x = r.x + r.w - m - f.w; y = r.y + m + R() * (r.h - 2 * m - f.h); }      // direita
+      else if (s < 0.85) { x = r.x + m + R() * (r.w - 2 * m - f.w); y = r.y + r.h - m - f.h; }     // de baixo
+      else { x = r.x + 40 + R() * Math.max(1, r.w - 80 - f.w); y = r.y + 40 + R() * Math.max(1, r.h - 80 - f.h); }
+      if (hits(list, x, y, f.w, f.h, kind === "decor" ? 10 : 16) || hits(clear, x, y, f.w, f.h, 0)) continue;
+      const items = [];
+      for (let i = 0; i < 10; i++) items.push({ u: R(), v: R(), c: ITEM_DOTS[Math.floor(R() * ITEM_DOTS.length)] });
+      list.push({ x, y, w: f.w, h: f.h, color: f.color, kind, table, name, opened: false, items, room: r.k });
+      return;
+    }
+  };
+  // móveis com saque: a mesma quantidade de antes (n, no mínimo um por cômodo), repartidos entre os cômodos
+  const pool = [];
+  for (const r of rooms) for (const name of HOUSE_ROOMS[r.k].furn) pool.push([r, name]);
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  // o móvel principal de cada cômodo vem sempre (cama, geladeira, sofá, armário do banheiro); o resto é sorteado
+  const chosen = rooms.map(r => pool.find(p => p[0] === r && p[1] === HOUSE_ROOMS[r.k].furn[0])).filter(Boolean);
+  for (const p of pool) { if (chosen.length >= Math.max(n, rooms.length)) break; if (!chosen.includes(p)) chosen.push(p); }
+  for (const [r, name] of chosen) addIn(r, name, "furniture", name);
+  if (R() < 0.22) addIn(rooms[1 + Math.floor(R() * 3)], "Baú", "chest", "chest");
+  for (const r of rooms) for (const name of HOUSE_ROOMS[r.k].decor) addIn(r, name, "decor", null);
+  h.rooms = rooms.map(r => ({ x: r.x, y: r.y, w: r.w, h: r.h, name: HOUSE_ROOMS[r.k].name, floor: HOUSE_ROOMS[r.k].floor || null }));
+  const s = rooms[3];                                    // tapete na sala
+  h.rug = { x: s.x + 40 + R() * Math.max(1, s.w - 340), y: s.y + 30 + R() * Math.max(1, s.h - 200), w: 240 + R() * 60, h: 130 + R() * 30,
+            c: ["#6e3b3b", "#3b4e6e", "#5a6e3b", "#6e5a3b"][Math.floor(R() * 4)] };
 }
 
 // ---------- Andares ----------
@@ -343,7 +410,7 @@ function makeLevel(h, lvl) {
   if (lvl < floors - 1) list.push(stairs(h, lvl, 1, iw, ih));
   if (lvl > 0) list.push(stairs(h, lvl, -1, iw, ih));
   makeInterior(h, list, lvl);
-  const L = { iw, ih, interior: list, zombies: [], corpses: [], decals: [], rug: h.rug };
+  const L = { iw, ih, interior: list, zombies: [], corpses: [], decals: [], rug: h.rug, rooms: h.rooms };
   const chance = h.def.zchance * (lvl > 0 && !h.landmark ? 0.8 : 1);
   if (Math.random() < chance) {
     const area = Math.sqrt((iw * ih) / (W * H));
@@ -360,7 +427,7 @@ function makeLevel(h, lvl) {
 }
 function mountLevel(h, l) {
   const L = h.levels[l];
-  h.level = l; h.interior = L.interior; h.zombies = L.zombies; h.corpses = L.corpses; h.decals = L.decals; h.iw = L.iw; h.ih = L.ih; h.rug = L.rug;
+  h.level = l; h.interior = L.interior; h.zombies = L.zombies; h.corpses = L.corpses; h.decals = L.decals; h.iw = L.iw; h.ih = L.ih; h.rug = L.rug; h.rooms = L.rooms || null;
 }
 function saveLevel(h) {
   const L = h.levels && h.levels[h.level | 0];

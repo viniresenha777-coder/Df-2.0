@@ -34,10 +34,11 @@ function projK(h) { return CAM_H / (CAM_H - h); }
 function proj(x, y, h, e) { const k = projK(h); return { x: e.x + (x - e.x) * k, y: e.y + (y - e.y) * k - h * LEAN }; }
 
 function bHeight(b) {
-  if (b.safe) return 70;
-  if (b.type === "guarita" || b.noDoor) return 38;
+  // ~1,6x mais altos que antes (30 + 34/andar): o personagem não fica mais quase do tamanho de uma casa
+  if (b.safe) return 110;
+  if (b.type === "guarita" || b.noDoor) return 60;
   const f = buildingFloors(b);
-  return b.landmark ? 46 + f * 40 : 30 + f * 34;
+  return b.landmark ? 64 + f * 60 : 46 + f * 54;
 }
 function bFloorsVis(b) { return b.safe ? 2 : b.noDoor ? 1 : buildingFloors(b); }
 // telha laranja para os telhados inclinados (cada casa com um tom)
