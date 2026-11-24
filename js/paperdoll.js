@@ -772,8 +772,21 @@ function fmBalãoDetalhes(it) {
       }
     } else if (kind === "implant") {
       add("Tipo: implante", "#8bc9f5");
-      const txt = implantDesc(obj);
-      if (txt) add(txt, "#8bed92");
+      if (IMP[obj.id].mimic) {
+        // Mimic: mostra o implante copiado e os atributos que ele está dando agora
+        const i = save.installed.indexOf(obj), left = i > 0 ? save.installed[i - 1] : null;
+        if (left && IMP[left.id] && !IMP[left.id].mimic) {
+          add("Copiando: " + implantName(left), "#c58bff");
+          const fx = implantFx(obj, i, save.installed);
+          const keys = Object.keys(fx).filter((k) => fx[k]);
+          if (keys.length) keys.forEach((k) => add(sgn(fx[k]) + "% " + (FX_LABEL[k] || k), fx[k] < 0 ? "#ff8383" : "#8bed92"));
+          else add("O implante copiado não dá atributos", "#e4dfd1");
+        } else add(i < 0 ? "Instale ao lado direito de outro implante para copiar" : "Nada para copiar à esquerda", "#d6c58b");
+        add("Penalidades copiadas valem em dobro", "#e4dfd1");
+      } else {
+        const desc = implantDesc(obj);
+        if (desc) add(desc, "#8bed92");
+      }
     } else if (kind === "mat") {
       add("Tipo: material", "#8bc9f5");
       add("Quantidade: " + (obj.n || 1), "#f4c44d");
