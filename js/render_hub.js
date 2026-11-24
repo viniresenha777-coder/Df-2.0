@@ -191,7 +191,63 @@ function drawHubArt() {
   return true;
 }
 
+// ---------- Base no clima de Natal (img/hub_natal.webp: tela inteira com as salas, botões e a árvore) ----------
+const HUB_NATAL = new Image();
+HUB_NATAL.onerror = () => { HUB_NATAL.bad = true; };
+HUB_NATAL.src = "img/hub_natal.webp?v=20261123-natal1";
+// posição das 9 salas e dos 3 botões dentro da arte, já na escala da tela (960x600)
+const HUB_NATAL_COLS = [[311, 506], [519, 714], [727, 921]], HUB_NATAL_ROWS = [[66, 204], [213, 346], [354, 494]];
+const HUB_NATAL_BTNS = { credit: [28, 10, 132, 29], market: [697, 10, 126, 29], exit: [845, 10, 90, 29] };
+function hubNatalReady() { return !HUB_NATAL.bad && HUB_NATAL.complete && HUB_NATAL.naturalWidth > 0; }
+// brilho dourado em volta de um botão ou sala quando o mouse passa
+function hubNatalHover(x, y, w, h, r) {
+  const t = uiNow();
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = "rgba(255,214,120," + (0.08 + 0.04 * Math.sin(t * 5)) + ")";
+  rr(x, y, w, h, r); ctx.fill();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.shadowColor = "#ffd96a"; ctx.shadowBlur = 16;
+  ctx.strokeStyle = "#ffe08a"; ctx.lineWidth = 2;
+  rr(x + 1, y + 1, w - 2, h - 2, r); ctx.stroke();
+  ctx.restore();
+}
+function hubNatalButton(key, fn) {
+  const [x, y, w, h] = HUB_NATAL_BTNS[key];
+  if (!game.menu && mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h) hubNatalHover(x, y, w, h, 6);
+  regClick(x, y, w, h, fn);
+}
+function drawHubNatalRooms() {
+  HUB_ROOMS.forEach((r, i) => {
+    const [x0, x1] = HUB_NATAL_COLS[i % 3], [y0, y1] = HUB_NATAL_ROWS[Math.floor(i / 3)];
+    const hov = r.kind !== "shopc" && !game.menu && !game.shop && !game.found && mouse.x >= x0 && mouse.x <= x1 && mouse.y >= y0 && mouse.y <= y1;
+    if (hov) hubNatalHover(x0, y0, x1 - x0, y1 - y0, 6);
+    regClick(x0, y0, x1 - x0, y1 - y0, () => openStation(r.kind));
+  });
+}
+// pisca-pisca: lâmpadas acesas por cima das luzes da moldura, cada uma no seu ritmo
+const HUB_NATAL_BULBS = (() => {
+  const out = [], add = (x, y) => out.push({ x, y, c: out.length % 5 === 2 ? 0 : out.length % 7 === 3 ? 2 : 1, p: (out.length * 2.399) % 6.283 });
+  for (let x = 14; x <= 946; x += 15) { add(x, 46); add(x, 596); }
+  for (let y = 60; y <= 584; y += 15) { add(12, y); add(948, y); add(263, y); }
+  return out;
+})();
+const HUB_NATAL_BULB_COLORS = ["rgba(255,80,60,1)", "rgba(255,206,110,1)", "rgba(120,230,140,1)"];
+function drawHubNatalLights() {
+  const t = uiNow(), wave = t * 2.2;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const b of HUB_NATAL_BULBS) {
+    // onda que corre pela moldura + cintilação própria de cada lâmpada
+    const on = 0.5 + 0.5 * Math.sin(wave - (b.x + b.y) * 0.02 + b.p);
+    const a = 0.12 + 0.55 * on * on;
+    uiGlow(b.x, b.y, 7 + 4 * on, HUB_NATAL_BULB_COLORS[b.c], a);
+  }
+  ctx.restore();
+}
+
 function drawHub() {
+  if (hubNatalReady()) { drawHubNatal(); return; }
   const h = game.inside;
   ctx.fillStyle = "#0b0c0a"; ctx.fillRect(0, 0, W, H);
   // Arte original do interior do abrigo: atrás dos painéis e das salas.
@@ -238,11 +294,23 @@ function drawHub() {
   txt("Clique numa sala para usar · Esc ou E volta para a rua", 566, 520, 12, "#8a8672", "center");
   if (inSafe() && player.hp < player.maxHp) txt("Descansando na base: a vida volta aos poucos", 566, 540, 12, "#6fd06a", "center");
 
+  drawHubPanel(false);
+}
+
+// painel do personagem (esquerda): links, retrato, estado, bônus e armas
+function drawHubPanel(natal) {
   // painel do personagem (esquerda)
   const px = 8, pw = 248;
-  // O interior continua visível atrás do retrato; textos e barras ficam por cima.
-  ctx.fillStyle = "rgba(20,19,15,0.22)"; rr(px, 44, pw, H - 52, 8); ctx.fill();
-  ctx.strokeStyle = "#5a4a2a"; ctx.lineWidth = 2; ctx.stroke();
+  if (natal) {
+    // Natal: a árvore da arte fica atrás, escurecida para os textos e o retrato aparecerem
+    const g = ctx.createLinearGradient(0, 50, 0, 400);
+    g.addColorStop(0, "rgba(6,3,3,0.72)"); g.addColorStop(0.55, "rgba(6,3,3,0.6)"); g.addColorStop(1, "rgba(6,3,3,0.45)");
+    ctx.fillStyle = g; ctx.fillRect(16, 50, 244, 350);
+  } else {
+    // O interior continua visível atrás do retrato; textos e barras ficam por cima.
+    ctx.fillStyle = "rgba(20,19,15,0.22)"; rr(px, 44, pw, H - 52, 8); ctx.fill();
+    ctx.strokeStyle = "#5a4a2a"; ctx.lineWidth = 2; ctx.stroke();
+  }
   pollSaleMail();
   const links = [["Mochila e equipamento", "pack"], ["Atributos", "stats"], ["Objetivos", "obj"], ["Correio", "saleMail"]];   // o mapa continua na tecla N
   links.forEach(([label, m], i) => {
@@ -328,6 +396,22 @@ function drawHub() {
   }
 }
 
+function drawHubNatal() {
+  const h = game.inside;
+  ctx.fillStyle = "#0b0c0a"; ctx.fillRect(0, 0, W, H);
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(HUB_NATAL, 0, 0, W, H);
+  uiSnow(268, 50, 678, 545, 0.5);                    // neve caindo sobre as salas
+  shadowTxt(h.name.toUpperCase(), 438, 31, 20, "#ffe2a8", "center", true, 420);
+  hubNatalButton("credit", openCreditShop);
+  hubNatalButton("market", openMarket);
+  hubNatalButton("exit", () => leaveHouse());
+  drawHubNatalRooms();
+  if (inSafe() && player.hp < player.maxHp) shadowTxt("Descansando na base: a vida volta aos poucos", 590, 538, 12, "#8bed92", "center", true);
+  drawHubPanel(true);
+  uiSnow(14, 50, 248, 545, 0.35);                    // neve leve também na frente do painel
+  drawHubNatalLights();
+}
 // =====================================================================
 //  Mapa do setor (tecla M): a área onde você está, ou o prédio + a área
 // =====================================================================
