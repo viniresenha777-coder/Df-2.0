@@ -52,8 +52,10 @@ function modelRect(id, gx, gy, k) {
 // (fronteiraMorta_src/blender/cars.py), cada um em 4 direções: car_<n>_<giro>.png em img/props.
 // Assim o carro fica reto na rua, com o teto e as laterais na perspectiva da câmera, sem girar
 // a imagem (girar uma foto 3/4 é o que deixava os carros tortos e "colados" no asfalto).
-// 0-3: Zhiguli inteiros (vermelho, verde, azul, branco) · 4, 5, 7: destroçados.
-const CAR_WHOLE = [0, 1, 2, 3], CAR_WRECK = [4, 5, 7];
+// Inteiros (repetidos = mais comuns): 0-3 Zhiguli (vermelho, verde, azul, branco) · 8, 9, 13 carro velho
+// enferrujado (verde-água, vermelho, bege) · 10 viatura de polícia · 11 Porsche 911 GT3 R (raro).
+// Destroçados: 12, 14, 15, 16 = carro destruído 07 (azul, vermelho, verde, prata). Todos em 3D fatiado (CAR_STACK).
+const CAR_WHOLE = [0, 1, 2, 3, 0, 1, 2, 3, 8, 9, 13, 8, 9, 13, 10, 10, 11], CAR_WRECK = [12, 14, 15, 16];
 function carHash(c) {
   return (Math.imul(Math.floor(c.x * 7.13), 73856093) ^ Math.imul(Math.floor(c.y * 3.71), 19349663)) >>> 0;
 }
@@ -69,11 +71,25 @@ function carModel(c) { return `car_${carVariant(c)}_${carYaw(c)}`; }
 // fronteiraMorta_src/cars/zhiguli_soviet_cars). Cada fatia é desenhada na sua altura, na perspectiva da câmera
 // (proj, como os prédios): a lateral, a frente e a traseira aparecem do lado certo conforme a posição na tela.
 // O miolo de cada fatia foi apagado (a de cima cobre), então a folha fica leve (~140 KB por carro).
-const CAR_STACK = {"car_0": {"w": 336, "h": 150, "n": 29, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 74.7, "fw": 4.1}, "car_1": {"w": 336, "h": 150, "n": 29, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 74.7, "fw": 4.1}, "car_2": {"w": 336, "h": 148, "n": 28, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 73.7, "fw": 4.1}, "car_3": {"w": 336, "h": 152, "n": 29, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 75.7, "fw": 4.1}};
+const CAR_STACK = {
+  "car_0": {"w": 336, "h": 150, "n": 29, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 74.7, "fw": 4.1},
+  "car_1": {"w": 336, "h": 150, "n": 29, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 74.7, "fw": 4.1},
+  "car_2": {"w": 336, "h": 148, "n": 28, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 73.7, "fw": 4.1},
+  "car_3": {"w": 336, "h": 152, "n": 29, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 75.7, "fw": 4.1},
+  "car_8": {"w": 376, "h": 141, "n": 24, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 70.1, "fw": 4.6},
+  "car_9": {"w": 376, "h": 141, "n": 24, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 70.1, "fw": 4.6},
+  "car_10": {"w": 408, "h": 156, "n": 30, "ppm": 80, "dz": 0.05, "cx": 204.0, "cy": 77.9, "fw": 5.0},
+  "car_11": {"w": 376, "h": 171, "n": 25, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 85.0, "fw": 4.6},
+  "car_12": {"w": 376, "h": 184, "n": 42, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 91.6, "fw": 4.6},
+  "car_13": {"w": 376, "h": 141, "n": 24, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 70.1, "fw": 4.6},
+  "car_14": {"w": 376, "h": 184, "n": 42, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 91.6, "fw": 4.6},
+  "car_15": {"w": 376, "h": 184, "n": 42, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 91.6, "fw": 4.6},
+  "car_16": {"w": 376, "h": 184, "n": 42, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 91.6, "fw": 4.6}
+};
 const CAR_STACK_IMG = {};
 function carStackImg(key) {
   let im = CAR_STACK_IMG[key];
-  if (!im) { im = CAR_STACK_IMG[key] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/props/${key}_fatias.webp?v=1`; }
+  if (!im) { im = CAR_STACK_IMG[key] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/props/${key}_fatias.webp?v=2`; }
   return im.complete && !im.bad && im.naturalWidth ? im : null;
 }
 function drawCarStack(c, key) {
@@ -92,6 +108,7 @@ function drawCarStack(c, key) {
   ctx.save();
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
   if (active) ctx.filter = "brightness(1.12) contrast(1.06)";
+  else if (c.burnt) ctx.filter = "brightness(.55) saturate(.4) contrast(1.1)";   // queimado
   const base = ctx.getTransform();
   let top = null;
   for (let i = 0; i < m.n; i++) {
