@@ -9,7 +9,7 @@
 let world = null;   // área atual
 let MAP = null;     // grade com todas as áreas
 const MS = 0.1;     // escala do minimapa
-const BOSS_MAX = 30;   // grade 20 x 20: mais áreas, mais chefes espalhados
+const BOSS_MAX = 60;   // grade 30 x 30: mais áreas, mais chefes espalhados
 const CAR_COLORS = ["#a33b32", "#3d5f8a", "#c9c3b0", "#5b6b4a", "#7a5a2e", "#2f2f33", "#8a8f96", "#6a2f4a"];
 
 // ---------- Grade de áreas ----------

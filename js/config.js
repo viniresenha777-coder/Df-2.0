@@ -19,9 +19,9 @@ const FONT = "'Trebuchet MS', 'Segoe UI', sans-serif";
 // Ruas perimetrais mais largas (70 -> 110), sem alterar a avenida central (140).
 // ruas todas da mesma largura (como no Dead Frontier): a rua da borda tem meia largura e
 // junta com a meia rua da área vizinha.
-const AREA_EDGE = 100, BLOCK_W = 620, BLOCK_H = 640, ST_W = 200;
-const WORLD_W = 2 * AREA_EDGE + 2 * BLOCK_W + ST_W;   // 1640
-const WORLD_H = 2 * AREA_EDGE + 2 * BLOCK_H + ST_W;   // 1680
+const AREA_EDGE = 140, BLOCK_W = 620, BLOCK_H = 640, ST_W = 280;
+const WORLD_W = 2 * AREA_EDGE + 2 * BLOCK_W + ST_W;   // 1800
+const WORLD_H = 2 * AREA_EDGE + 2 * BLOCK_H + ST_W;   // 1840
 const SIDEWALK = 26;
 const MID_X = AREA_EDGE + BLOCK_W + ST_W / 2, MID_Y = AREA_EDGE + BLOCK_H + ST_W / 2;
 // ruas: faixas [início, fim] na horizontal (y) e na vertical (x)
@@ -32,30 +32,40 @@ const V_STREETS = [[0, AREA_EDGE], [AREA_EDGE + BLOCK_W, AREA_EDGE + BLOCK_W + S
 // B azul · G verde · Y amarelo · O laranja · R vermelho · D vermelho-escuro
 // K preta (muito difícil) · P roxa (extrema) · X cinza (só a partir do nível 100) · . sem passagem
 // O oeste é tranquilo; quanto mais ao leste, mais perigoso.
-// Grade de 20 x 20 áreas (cada área = 2 x 2 quadras → 40 x 40 quadras, como a grade 39 x 39 do
-// Dead Frontier). O perigo cresce em degradê a partir do Refúgio (oeste), mais rápido para o leste.
-const MAP_VERSION = 2;   // muda quando a grade muda: posições salvas da grade antiga voltam ao Refúgio
+// Grade de 30 x 30 áreas (cada área = 2 x 2 quadras → 60 x 60 quadras, no tamanho do Inner City do
+// Dead Frontier com as expansões). O perigo cresce em degradê a partir do Refúgio (oeste), mais rápido para o leste.
+const MAP_VERSION = 3;   // muda quando a grade muda: posições salvas da grade antiga voltam ao Refúgio
 const MAP_GRID = [
-  "OOOOORRRRRDDDKKKPXXX",
-  "OOOOOOORRR.DDDKKPXXX",
-  ".OOOOOOOORRRDDDKKXXX",
-  "YYYYYYOO.ORRRDDKKPPP",
-  "YYYYYYYOOOORRRDDKKPP",
-  "GGGGY.YYOOOR.RDDKKPP",
-  "GGGGGGYYYOOORRDDDKKP",
-  "GGGGGGGYYYOORRRDDK.P",
-  "B.BBGGGYYYOOORRDDKKP",
-  "BBBBBGGGYYOOORRDDKKP",
-  "BBBBBGGGYYOOORRDDKKP",
-  "BBBBBGGGYYOOORRDDKKP",
-  "BBBBGGGYYYOOORRDD.KP",
-  "GGG.GGGYYYOORRRDDKKP",
-  "GGGGGGYYYO.ORRDDDKKP",
-  "G.GGYYYYOOORRRDDKK.P",
-  "YYYYYYYOOOORRRDDKKPP",
-  "YYYYYYOOOORRRDDKKPPP",
-  "OOOOOOOOORRRDDDKKPPP",
-  "OOOOOOORRRRDDDKKPPPP",
+  "OOOOOOORRRRRRRRDDDDKK.KPPPXXXX",
+  "OOOOOOOOOORRRRRRDDDDKKKKPPXXXX",
+  "OOOOOOO..OOORRRRRDDDDKKKPPXXXX",
+  "OOOOOOOOOOOOORRRRRDDDDKKKPXXXX",
+  "Y.YYYYYOOOOOOORRRRRDDDKKKKPPPP",
+  "YYYYYYYYYOOOOOO.RRRD.DDKKK.PPP",
+  "YYYYYYYYYYYOOOOORRRRDDDKKKKPPP",
+  "YYGGGYYYYYYYOOOOORRRRDDDKKKPPP",
+  "GGGGGGGYYYYYYOOOORRRRDDDKKKPPP",
+  "GGGGGGGGGYYYYYOOOORRRDDDDKKKPP",
+  "GGGGGGGGGGYYYYOOOORRRRD.DKKKPP",
+  "GGBBBGGGGGYYYYYOOORRRRDDDKKKPP",
+  "BBBBBBGGGGGYYYYOOOORRRDDDKKKPP",
+  "BBBBBBBGGGGYYYYOOOORRRDDDKKKPP",
+  "BBBBBBBBGGGYYYYOOOO..RDD.KKKPP",
+  "BBBBBBBBGGGGYYYOOOORRRRDDKKKPP",
+  "BBBBBBBBGGGYYYYOOOORRRDDDKKKPP",
+  "BBBBBBBGGGGYYY.OOOORRRDDDKKKPP",
+  ".BBBBBGG.GGYYYYOOOORRRDDDK.KPP",
+  "GGBBBGGGGGYYYYYOOORRRRDDDKKKPP",
+  "GGGGGGGGGGYYYYOOOORRRRDDDKKKPP",
+  "G.GGGGGGGYYYYYOOOORRRDDDDKKKPP",
+  "GGGGGGGYYYYYYOOOORRRRDDDK.KPPP",
+  "YYGGGYYYYYYYOOOOORRRRDDDK.KPPP",
+  ".YYYYYYYYYYOO.OORRRRDDDKKKKPPP",
+  "YYYYYYY.YOOOOOORRRRDDDDKKKPPPP",
+  "YYYYYYYO.OOOOORRRRRDDDKKKKPPPP",
+  "OOOOOOOOOOOOORRRRRDDDDKKKPPPPP",
+  "OOOO.OOOO.OORRRRR.DDDKKKPPPPPP",
+  "OOOOOOOOOORRRRRRD.DDKKKKPPPPPP",
 ];
 const MAP_W = MAP_GRID[0].length, MAP_H = MAP_GRID.length;
 const TIER_OF = { B: 0, G: 1, Y: 2, O: 3, R: 4, D: 5, K: 6, P: 7, X: 8 };
@@ -65,16 +75,18 @@ const HOODS = ["Vila Esquecida", "Jardim Seco", "Alto da Forca", "Vila dos Trilh
   "Beco dos Corvos", "Vila do Quartel", "Jardim das Covas", "Alto do Moinho", "Vila Sem Nome", "Centro Velho", "Cidade Baixa",
   "Vila da Usina", "Distrito Norte", "Vila das Palmeiras", "Bairro da Ponte", "Bairro do Hospital", "Vila das Sombras", "Ladeira Torta",
   "Pátio dos Trens", "Vila Cemitério", "Setor Quarentena", "Zona do Fim", "Vale dos Ossos", "Vila Fumaça", "Bairro Queimado"];
-function cellCode(cx, cy) { return `${String.fromCharCode(65 + cx)}${cy + 1}`; }
+// colunas A..Z, depois AA, AB... (a grade passou de 26 colunas)
+function colName(cx) { return cx < 26 ? String.fromCharCode(65 + cx) : String.fromCharCode(64 + Math.floor(cx / 26)) + String.fromCharCode(65 + (cx % 26)); }
+function cellCode(cx, cy) { return `${colName(cx)}${cy + 1}`; }
 
 // Postos seguros (loja, banco, clínica, missões e viagem rápida)
 const OUTPOSTS = [
-  { id: 0, name: "Base 1 · Refúgio",   cx: 2,  cy: 10 },
-  { id: 1, name: "Base 2 · Ferrovia",  cx: 5,  cy: 7 },
-  { id: 2, name: "Base 3 · Forte",     cx: 8,  cy: 12 },
-  { id: 3, name: "Base 4 · Bastião",   cx: 10, cy: 8 },
-  { id: 4, name: "Base 5 · Muralha",   cx: 13, cy: 11 },
-  { id: 5, name: "Base 6 · Sentinela", cx: 15, cy: 14 }
+  { id: 0, name: "Base 1 · Refúgio",   cx: 3,  cy: 15 },
+  { id: 1, name: "Base 2 · Ferrovia",  cx: 8,  cy: 11 },
+  { id: 2, name: "Base 3 · Forte",     cx: 12, cy: 18 },
+  { id: 3, name: "Base 4 · Bastião",   cx: 15, cy: 12 },
+  { id: 4, name: "Base 5 · Muralha",   cx: 20, cy: 17 },
+  { id: 5, name: "Base 6 · Sentinela", cx: 23, cy: 21 }
 ];
 // Faixas de dificuldade (cores do mapa): hp/dmg = multiplicadores dos zumbis · loot = chance de cada raridade
 const REGIONS = [

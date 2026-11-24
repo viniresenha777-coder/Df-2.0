@@ -1602,8 +1602,8 @@ function drawMap() {
     circle(x, y, 6);
     txt(String(group.length), x, y + 3, 8, "#101613", "center", true);
   }
-  for (let cx = 0; cx < MAP_W; cx++) txt(String.fromCharCode(65 + cx), gx + cx * cs + cs / 2, gy - 6, 9, "#a9a58f", "center", true);
-  for (let cy = 0; cy < MAP_H; cy++) txt(String(cy + 1), gx - 6, gy + cy * cs + cs / 2 + 3, 9, "#a9a58f", "right", true);
+  for (let cx = 0; cx < MAP_W; cx++) txt(colName(cx), gx + cx * cs + cs / 2, gy - 6, cs < 14 ? 7 : 9, "#a9a58f", "center", true);
+  for (let cy = 0; cy < MAP_H; cy++) txt(String(cy + 1), gx - 6, gy + cy * cs + cs / 2 + 3, cs < 14 ? 7 : 9, "#a9a58f", "right", true);
   // legenda das cores
   const ly = gy + MAP_H * cs + 18;
   REGIONS.forEach((RG, i) => {
