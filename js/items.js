@@ -89,7 +89,7 @@ const WLIST = [
   { id: "minigun_inf", name: "Minigun Infernal", short: "Infernal", cat: "machinegun", look: "minigun", dmg: 23, pellets: 3, delay: 81.67, mag: 600, reload: 3250, ammo: "", price: 0, req: [100, 120], minLevel: 25, len: 36, color: "#8a6a4a", slow: 20, infinite: true, noCrit: true, spread: 0.2, sound: [1, 1] },
   // ---------- Evento de Natal (dano Cryo: deixa o zumbi mais lento e atacando mais devagar) ----------
   // cai só nas Caixas de Natal (1%), intransferível
-  { id: "pistola_natal", name: "Pistola Natalina", short: "P. Natalina", cat: "pistols", look: "pistol", dmg: 35, delay: 666.67, mag: 18, reload: 1750, ammo: ".50", price: 0, req: [0, 0], minLevel: 25, len: 13, color: "#b02a2a", noCrit: true, cryo: 0.5, cryoMs: 1000, scrap: 50, scrapMC: 100, upCost: 81000, eventOnly: true, noTrade: true },
+  { id: "pistola_natal", name: "Pistola Natalina", short: "P. Natalina", cat: "pistols", look: "pistol", dmg: 35, delay: 666.67, mag: 18, reload: 1750, ammo: ".50", price: 0, req: [0, 0], minLevel: 25, len: 18, color: "#b02a2a", noCrit: true, cryo: 0.5, cryoMs: 1000, scrap: 50, scrapMC: 100, upCost: 81000, eventOnly: true, noTrade: true },
   // só na Loja de Créditos (300 créditos). Modelo: "Candy Shotgun" por Yogensia (sketchfab.com/yogensia), CC-BY-NC-SA-4.0
   { id: "dose", name: "Shotgun Sweet", short: "Sweet", cat: "shotguns", look: "shotgun", dmg: 12, pellets: 20, delay: 500, mag: 35, reload: 3250, ammo: "cartucho", price: 0, req: [50, 0], minLevel: 25, len: 27, color: "#c8323c", spread: 0.33, life: 380, noCrit: true, cryo: 0.2, cryoMs: 1000, scrap: 57650, scrapMC: 115300, upCost: 126830, credits: 300, eventOnly: true },
   // sem arma na mão
