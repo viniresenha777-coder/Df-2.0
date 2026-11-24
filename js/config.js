@@ -351,6 +351,11 @@ const IMP = {
   "implante_27": {"name":"Ovo Radioativo","price":2000,"scrap":29000,"kind":1,"fx":{"exp":30,"thick":-25},"event":true},
   "implante_28": {"name":"Coelho Mutante","price":1000,"scrap":29000,"kind":0,"fx":{"ammoLoot":27,"greed":33,"armorFind":27,"hunter":33},"event":true},
   "implante_29": {"name":"Trindade Suprema","price":1000,"scrap":29000,"kind":0,"fx":{"exp":4,"firepower":6,"agility":5},"event":true},
+  // Evento de Natal: feito na Oficina com 10 Gorros de Natal + $2.000.000 (não cai, não vende na clínica nem na Loja de Créditos)
+  implante_natal: {
+    name: "Implante Natalino", price: 0, scrap: 29000, kind: 0, event: true, craftOnly: true, art: "img/implante_natal.webp?v=20261123-natal1",
+    fx: { agility: 10, lootSpots: 10, thick: 5 },
+  },
   // Mimic: só vem no Kit Mimic da Loja de Créditos (não cai nem aparece na clínica).
   implante_mimic: {
     name: "Mimic", price: 4000, vipPrice: 3000, scrap: 0, kind: 2, mimic: true, kitOnly: true,

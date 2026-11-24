@@ -96,3 +96,5 @@ Calça adaptada de [Pants Baked Ver](https://sketchfab.com/3d-models/pants-baked
 - Origem: https://sketchfab.com/3d-models/crossbow-zhnets-df1cdde9889348c590c701303496b6d1
 - Licença: Creative Commons Attribution 4.0 (CC BY 4.0), conforme `license.txt` do arquivo fornecido.
 - Adaptação: ícone 2D renderizado da geometria e texturas fornecidas para a besta no jogo.
+
+- **Dose de Açúcar** (escopeta do evento de Natal): "Candy Shotgun" por Yogensia — https://sketchfab.com/3d-models/candy-shotgun-c9059c3f912342b6a1245ec36cc4fdfb — CC-BY-NC-SA-4.0 (uso não comercial; versões modificadas com a mesma licença).

@@ -621,6 +621,7 @@ function gotoCell(cell, pos) {
   const RG = REGIONS[cell.tier];
   game.banner = { text: `${cell.code} · ${cell.name}`, sub: `Área ${RG.name} · ${RG.diff}${cell.op != null ? " · posto seguro" : ""}`, t: 2600, color: RG.color };
   activateArea();
+  if (!game.restoring && cell.op == null) spawnNatalBoxes();   // evento de Natal
   if (!game.restoring) checkpoint("troca de zona");
 }
 // chegou na borda: tenta passar para a área vizinha

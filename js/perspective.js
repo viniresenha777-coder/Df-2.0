@@ -305,6 +305,8 @@ const WEAPON_3D = {
   espada: { m: "w_espada" }, espadafogo: { m: "w_glory" },
   marreta: { m: "w_marreta" }, machado: { m: "w_machado" }, faca: { m: "w_utility", grip: 0.26 }, facao: { m: "w_ps1_machete", grip: 0.17 }, serra: { m: "w_serra" },
   lancachamas: { m: "w_flamer" },
+  // evento de Natal (modelos 3D enviados pelo criador, fotografados de lado)
+  pistola_natal: { m: "w_fm_pistola_natal", grip: 0.22, heldView: true }, dose: { m: "w_fm_dose", grip: 0.25, heldView: true },
 };
 // foto de cada arma 3D para a loja e o inventário (img/weapons/<m>.png: de lado, cano para a direita)
 const WEAPON_ICON = {};

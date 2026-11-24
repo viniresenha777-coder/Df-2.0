@@ -315,6 +315,18 @@ function buyTrindade() {
   sfx.buy(); checkpoint("compra de Trindade");
   toast("Trindade adquirida! Arraste-a sobre o personagem para consumir.");
 }
+// armas vendidas por créditos (Dose de Açúcar, evento de Natal)
+function buyCreditWeapon(id) {
+  const d = WDEF[id];
+  if (!d || !d.credits) return;
+  if (!atBase()) { toast("Use a Loja de Créditos na base."); return; }
+  if (save.credits < d.credits) { toast(`Precisa de ${d.credits.toLocaleString("pt-BR")} créditos (compre no banco)`); return; }
+  if (player.slots.indexOf(null) < 0 && packUsed() >= packCapacity()) { toast("Mochila cheia"); return; }
+  save.credits -= d.credits;
+  addWeapon(newInst(id)); registerWeapon(id);
+  persist(); checkpoint("compra de arma por créditos"); sfx.level();
+  game.banner = { text: `${d.name} comprada!`, sub: "Abra a mochila (B) para equipar", t: 2600, gold: true };
+}
 function fmOwnsCreditImplant(id) {
   return (
     player.bag.some((im) => im.id === id) ||
@@ -406,7 +418,7 @@ function creditShopSelectSection(section) {
 }
 function creditShopRows(section) {
   if (section === "implant")
-    return IMP_IDS.map((id) => ({
+    return IMP_IDS.filter((id) => !IMP[id].craftOnly).map((id) => ({
       kind: "implant",
       id,
       title: id === FM_MIMIC_ID ? "Kit Mimic" : IMP[id].name,
@@ -441,13 +453,16 @@ function creditShopRows(section) {
         : { kind: "clothing", item, title: item.name, owned: save.clothing[item.kind] === item.id });
   return WLIST.filter(
     (item) => !item.fists && (section === "explosive" ? item.grenade : item.cat === section && !item.grenade),
-  ).map((item) => ({ kind: "weapon", item, title: item.name }));
+  ).map((item) => (item.credits
+    ? { kind: "weapon", item, title: item.name, price: item.credits, currency: "credits" }
+    : { kind: "weapon", item, title: item.name }));
 }
 function creditShopCost(row) {
   if (row.kind === "vest" && row.owned) return "Já possui";
   if (row.kind === "implant" && row.owned) return "Já possui";
   if (row.kind === "clothing" && row.price) return row.owned ? (row.equipped ? "Em uso" : "Já possui") : row.price.toLocaleString("pt-BR") + " cr";
   if (row.kind === "clothing") return row.owned ? "Em uso" : "Vestuário";
+  if (row.kind === "weapon" && row.price) return row.price.toLocaleString("pt-BR") + " cr";
   if (row.kind === "weapon") return RARITY[row.item.rar].name;
   if (row.kind === "vest" && row.price == null) return "Oficina";
   if (row.price === 0) return "Grátis";
@@ -477,6 +492,9 @@ function creditShopConfirm() {
       break;
     case "clothing":
       buyCreditClothing(row.item.id);
+      break;
+    case "weapon":
+      buyCreditWeapon(row.item.id);
       break;
     case "vest":
       if (save.vestsOwned[row.id]) return;

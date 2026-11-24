@@ -9,7 +9,7 @@ function newImplant(id) {
   if (id === FM_MIMIC_ID) im.tokenBound = true;      // o Mimic do kit é intransferível
   return im;
 }
-function randomImplant() { return newImplant(pick(IMP_IDS.filter((id) => !IMP[id].kitOnly))); }
+function randomImplant() { return newImplant(pick(IMP_IDS.filter((id) => !IMP[id].kitOnly && !IMP[id].craftOnly))); }
 function impColor(im) { return IMP_COLOR[IMP[im.id].kind || 0]; }
 function implantName(im) { return IMP[im.id].name; }
 function allocUsed(im) { let n = 0; for (const k in im.alloc || {}) n += im.alloc[k]; return n; }
@@ -104,7 +104,7 @@ function lastStandTick() {
   if (!player.fxAll) return;
   player.fx = player.flags.lastStand && player.hp / player.maxHp < 0.25 ? player.fxSafe : player.fxAll;
 }
-function makeStock() { return IMP_IDS.filter((id) => !IMP[id].kitOnly).map((id) => ({ id, price: IMP[id].price })); }
+function makeStock() { return IMP_IDS.filter((id) => !IMP[id].kitOnly && !IMP[id].craftOnly).map((id) => ({ id, price: IMP[id].price })); }
 
 
 // ---------- Esquemas de implantes (presets) ----------

@@ -1312,7 +1312,7 @@ function craftKey(k) {
 }
 // o implante Artesão dá desconto no dinheiro da oficina
 function craftMoney(m) { return Math.round(m * (1 - Math.min(0.5, player.fx.craftDisc / 100))); }
-function recipeName(r) { return r.vest != null ? VESTS[r.vest].name : WDEF[r.id].name; }
+function recipeName(r) { return r.implant ? IMP[r.implant].name : r.vest != null ? VESTS[r.vest].name : WDEF[r.id].name; }
 function craftRecipe() {
   const r = RECIPES[game.ccur], cost = craftMoney(r.money);
   if (player.level < r.level) { toast(`Precisa do nível ${r.level}`); return; }
@@ -1320,7 +1320,7 @@ function craftRecipe() {
   if (r.vest != null && save.vestsOwned[r.vest]) { toast("Você já tem esse colete"); return; }
   if (game.money < cost) { toast(`Precisa de $${cost} na mochila`); return; }
   if (!hasMats(r.mats)) { toast("Faltam materiais"); return; }
-  if (r.vest == null && player.slots.indexOf(null) < 0 && packUsed() >= packCapacity()) { toast("Mochila cheia"); return; }
+  if (!r.implant && r.vest == null && player.slots.indexOf(null) < 0 && packUsed() >= packCapacity()) { toast("Mochila cheia"); return; }
   for (const m in r.mats) takeMat(m, r.mats[m]);
   game.money -= cost; stat("crafts");
   if (r.vest != null) {
@@ -1328,9 +1328,10 @@ function craftRecipe() {
     if (save.vestUpgrades) delete save.vestUpgrades[r.needVest];
     if (save.vest === r.needVest) save.vest = -1;
     gainVest(r.vest); save.vest = r.vest; recalcImplants();
-  } else { addWeapon(newInst(r.id)); registerWeapon(r.id); }
+  } else if (r.implant) player.bag.push(newImplant(r.implant));
+  else { addWeapon(newInst(r.id)); registerWeapon(r.id); }
   persist(); sfx.level();
-  game.banner = { text: `${recipeName(r)} criado!`, sub: r.vest != null ? "Colete equipado" : "Abra a mochila (B) para equipar", t: 2600, gold: true };
+  game.banner = { text: `${recipeName(r)} criado!`, sub: r.vest != null ? "Colete equipado" : r.implant ? "Instale na Clínica ou na mochila (B)" : "Abra a mochila (B) para equipar", t: 2600, gold: true };
 }
 function payUpgrade(c) {
   const cost = craftMoney(c.money);
@@ -1410,14 +1411,22 @@ function drawCraft() {
       const ok = player.level >= r.level && game.money >= cost && hasMats(r.mats) && (r.needVest == null || save.vestsOwned[r.needVest]);
       rowBox(40, y, 520, 52, sel, ok ? "#6fae4f" : null);
       rowClick(40, y, 520, 52, sel, () => { game.ccur = i; }, craftRecipe);
-      if (r.vest != null) drawVestIcon(r.vest, 96, y + 26, 0.7); else drawWeaponSide(WDEF[r.id], 96, y + 26, 0.36);
-      txt(recipeName(r), 160, y + 19, 14, r.vest != null ? RARITY[VESTS[r.vest].rar].color : rarColor(WDEF[r.id]), "left", true, 280);
+      if (r.implant) drawEntryIcon({ type: "implant", im: { id: r.implant } }, 96, y + 26, 0.62);
+      else if (r.vest != null) drawVestIcon(r.vest, 96, y + 26, 0.7); else drawWeaponSide(WDEF[r.id], 96, y + 26, 0.36);
+      txt(recipeName(r), 160, y + 19, 14, r.implant ? "#ff8a6a" : r.vest != null ? RARITY[VESTS[r.vest].rar].color : rarColor(WDEF[r.id]), "left", true, 280);
       matsLine(r.mats, 160, y + 41);
       txt(`$${cost}`, 548, y + 19, 13, game.money >= cost ? "#6fae4f" : "#e05a4a", "right", true);
       txt(`nível ${r.level}`, 548, y + 40, 11, player.level >= r.level ? "#6fae4f" : "#e05a4a", "right", true);
     });
     const r = RECIPES[game.ccur];
-    if (r.vest != null) {
+    if (r.implant) {
+      const d = IMP[r.implant];
+      drawEntryIcon({ type: "implant", im: { id: r.implant } }, px + pw / 2, 210, 1.9);
+      txt(d.name, px, 300, 17, "#ff8a6a", "left", true, pw);
+      Object.keys(d.fx).forEach((k, i) => txt(sgn(d.fx[k]) + "% " + (FX_LABEL[k] || k), px, 324 + i * 18, 13, d.fx[k] < 0 ? "#ff8383" : "#8bed92", "left", true, pw));
+      txt(`Gorros de Natal: ${matCount("gorro_natal")}/${r.mats.gorro_natal}`, px, 390, 12, hasMats(r.mats) ? "#6fae4f" : "#e05a4a", "left", true, pw);
+      txt("Os Gorros caem nas Caixas de Natal espalhadas pela cidade", px, 410, 11, "#ffd96a", "left", false, pw);
+    } else if (r.vest != null) {
       const v = VESTS[r.vest];
       drawVestIcon(r.vest, px + pw / 2, 200, 2.2);
       txt(v.name, px, 290, 17, RARITY[v.rar].color, "left", true, pw);

@@ -87,6 +87,11 @@ const WLIST = [
   { id: "espadafogo", name: "Espada Flamejante", short: "Esp. Fogo", cat: "melee", look: "sword", dmg: 100, delay: 666.67, range: 82, arc: 1.05, price: 0, req: [70, 120], len: 42, color: "#ff8a3a", burn: 40 },
   // munição infinita, mas superaquece: segure o tiro com cuidado
   { id: "minigun_inf", name: "Minigun Infernal", short: "Infernal", cat: "machinegun", look: "minigun", dmg: 23, pellets: 3, delay: 81.67, mag: 600, reload: 3250, ammo: "", price: 0, req: [100, 120], minLevel: 25, len: 36, color: "#8a6a4a", slow: 20, infinite: true, noCrit: true, spread: 0.2, sound: [1, 1] },
+  // ---------- Evento de Natal (dano Cryo: deixa o zumbi mais lento e atacando mais devagar) ----------
+  // cai só nas Caixas de Natal (1%), intransferível
+  { id: "pistola_natal", name: "Pistola Natalina", short: "P. Natalina", cat: "pistols", look: "pistol", dmg: 35, delay: 666.67, mag: 18, reload: 1750, ammo: ".50", price: 0, req: [0, 0], minLevel: 25, len: 16, color: "#b02a2a", noCrit: true, cryo: 0.5, cryoMs: 1000, scrap: 50, scrapMC: 100, upCost: 81000, eventOnly: true, noTrade: true },
+  // só na Loja de Créditos (300 créditos). Modelo: "Candy Shotgun" por Yogensia (sketchfab.com/yogensia), CC-BY-NC-SA-4.0
+  { id: "dose", name: "Dose de Açúcar", short: "Dose", cat: "shotguns", look: "shotgun", dmg: 12, pellets: 20, delay: 500, mag: 35, reload: 3250, ammo: "cartucho", price: 0, req: [50, 0], minLevel: 25, len: 30, color: "#c8323c", spread: 0.33, life: 380, noCrit: true, cryo: 0.2, cryoMs: 1000, scrap: 57650, scrapMC: 115300, upCost: 126830, credits: 300, eventOnly: true },
   // sem arma na mão
   { id: "punhos",   name: "Punhos",        cat: "melee", look: "fists",   dmg: 8,   delay: 400,  range: 34, arc: 0.7,  price: 0,    req: [0, 0],   len: 8,  color: "#d2b48c", fists: true }
 ];
@@ -97,7 +102,7 @@ const W_RAR = {
   deagle: 2, p90: 2, ak47: 2, m4: 2, fal: 2, spas: 2, sniper: 2, marreta: 2, besta: 2, serra: 2,
   vector: 3, scar: 3, m249: 3, aa12: 3, barrett: 3, espada: 3, minigun: 3, lancachamas: 3, lamina: 3,
   revolver_orn: 3, incendiaria: 3, choque: 3, baioneta: 3, lancador: 3,
-  ak_ouro: 4, katana_dragao: 4, trovao: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, punhos: 0
+  ak_ouro: 4, katana_dragao: 4, trovao: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, pistola_natal: 4, dose: 3, punhos: 0
 };
 // arte das folhas em img/ usada por cada arma (tint = filtro de cor)
 const W_SPR = {
@@ -139,6 +144,7 @@ const MATS = {
   reset_stats: { name: "Cartão Reset de Stats", price: 5000 },
   trindade_eterna: { name: "Trindade · 100 anos", price: 20000000 },
   token_loja: { name: "Token da Loja", price: 0 },
+  gorro_natal: { name: "Gorro de Natal", price: 0 },
   caixa_implante_avancada: { name: "Caixa Avançada de Implante", price: 0 },
   sucata:      { name: "Sucata de metal",          price: 40 },
   pecas:       { name: "Peças de arma",            price: 90 },
@@ -163,7 +169,9 @@ const RECIPES = [
   { id: "trovao",      mats: { pecas: 10, eletronicos: 6, nucleo: 2 },    money: 8000, level: 40 },
   { id: "minigun_inf", mats: { pecas: 14, eletronicos: 10, nucleo: 4 },   money: 15000, level: 60 },
   // colete nº 10: craft difícil (precisa ter o nº 9, que é consumido)
-  { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 50000, level: 100, needVest: 8 }
+  { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 50000, level: 100, needVest: 8 },
+  // evento de Natal: Gorros caem nas Caixas de Natal
+  { implant: "implante_natal", mats: { gorro_natal: 10 }, money: 2000000, level: 1 }
 ];
 // chance de achar material em cada lugar
 const MAT_CHANCE = { airdrop: 1, corpse: 0.08, boss: 1, chest: 0.4, trash: 0.12, dumpster: 0.3, crate: 0.4, car: 0.35, "Bancada": 0.6, "Armário de armas": 0.3, "Vitrine": 0.2, "Mesa": 0.08, "Arquivo": 0.06 };
@@ -186,6 +194,7 @@ function rollUpgrades(stats, max, random = Math.random) {
 }
 function upgradeCost(inst) {
   const d = WDEF[inst.id];
+  if (d.upCost) return { money: d.upCost, mats: { sucata: 2 } };
   return { money: Math.round(240 + (d.special || d.legendary ? 3000 : d.price) * 0.24), mats: { sucata: 2 } };
 }
 const VEST_UP_MAX = 24;
@@ -288,7 +297,7 @@ function rollRarity(zone, boost) {
 function randomWeaponDrop(zone, boost) {
   let rar = rollRarity(zone, boost || 0);
   for (; rar >= 0; rar--) {
-    const list = WLIST.filter((d) => d.rar === rar && !d.craftOnly && !d.fists && d.id !== "pistola");
+    const list = WLIST.filter((d) => d.rar === rar && !d.craftOnly && !d.eventOnly && !d.fists && d.id !== "pistola");
     if (list.length) return pick(list).id;
   }
   return "colt";
@@ -542,6 +551,7 @@ TRINDADE_ICON.src = "img/trindade_icon.webp?v=20261116-highres1";
 const MAT_ART = {};
 for (const id of ["sucata", "pecas"]) { const im = new Image(); im.src = `img/mats/${id}.png?v=20261120-mats03`; MAT_ART[id] = im; }
 { const im = new Image(); im.src = "img/token_loja.webp?v=20261121-token01"; MAT_ART.token_loja = im; }
+{ const im = new Image(); im.src = "img/mats/gorro_natal.webp?v=20261123-natal1"; MAT_ART.gorro_natal = im; }
 // Token da Loja: raríssimo em qualquer saque (chance fixa, nenhum bônus do jogo aumenta). Arrastado até o
 // personagem, deixa a Loja da base de graça por 1 dia.
 const TOKEN_LOJA_CHANCE = 0.0001, TOKEN_LOJA_MS = 24 * 3600 * 1000;
@@ -705,6 +715,9 @@ NEW_IMPLANTS_ATLAS.addEventListener("load", () => {
 NEW_IMPLANTS_ATLAS.src = "img/implantes_29_atlas.webp?v=20261116-atlas6x5";
 const FM_MIMIC_ART = new Image();
 FM_MIMIC_ART.src = "img/implante_mimic.webp";
+// implantes com arte própria (fora do atlas): IMP[id].art
+const IMP_ART = {};
+for (const id of IMP_IDS) if (IMP[id].art) { const im = new Image(); im.src = IMP[id].art; IMP_ART[id] = im; }
 // ícone de qualquer coisa encontrada ou guardada
 function drawEntryIcon(e, cx, cy, s) {
   if ((e.type || e.kind) === "implant" && e.im?.id === FM_MIMIC_ID && FM_MIMIC_ART.complete && FM_MIMIC_ART.naturalWidth) {
@@ -717,8 +730,17 @@ function drawEntryIcon(e, cx, cy, s) {
     txt("Flechas", cx, cy + 26 * s, Math.max(10, 11 * s), "#e0d8a0", "center", true);
     return;
   }
+  const art = (e.type || e.kind) === "implant" && e.im ? IMP_ART[e.im.id] : null;
+  if (art && art.complete && art.naturalWidth) {
+    const size = 70 * s;
+    ctx.save(); ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(art, cx - size / 2, cy - size / 2, size, size);
+    ctx.restore();
+    if (typeof drawImplantFx === "function") drawImplantFx(art, 0, 0, art.naturalWidth, cx, cy, size, IMP_IDS.indexOf(e.im.id));
+    return;
+  }
   const t = e.type || e.kind;
-  if (t === "implant" && e.im && e.im.id !== FM_MIMIC_ID && IMP[e.im.id] && NEW_IMPLANTS_ATLAS.complete && NEW_IMPLANTS_ATLAS.naturalWidth) {
+  if (t === "implant" && e.im && e.im.id !== FM_MIMIC_ID && !IMP[e.im.id]?.art && IMP[e.im.id] && NEW_IMPLANTS_ATLAS.complete && NEW_IMPLANTS_ATLAS.naturalWidth) {
     const idx = IMP_IDS.indexOf(e.im.id);
     if (idx >= 0) {
       const tile = 160, col = idx % 6, row = Math.floor(idx / 6), size = 64 * s;
