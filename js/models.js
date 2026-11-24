@@ -64,7 +64,49 @@ function carVariant(c) {
 // direção do carro: horizontal = frente para a direita (0) ou esquerda (180); vertical = para cima (90) ou baixo (270)
 function carYaw(c) { return c.vert ? (c.dir ? 270 : 90) : (c.dir ? 180 : 0); }
 function carModel(c) { return `car_${carVariant(c)}_${carYaw(c)}`; }
+// Carros inteiros em 3D ("sprite stacking"): o modelo 3D do Zhiguli fatiado de 5 em 5 cm de altura
+// (img/props/car_N_fatias.webp, uma fatia embaixo da outra; gerado por fatias/fatiar2.py com o modelo de
+// fronteiraMorta_src/cars/zhiguli_soviet_cars). Cada fatia é desenhada na sua altura, na perspectiva da câmera
+// (proj, como os prédios): a lateral, a frente e a traseira aparecem do lado certo conforme a posição na tela.
+// O miolo de cada fatia foi apagado (a de cima cobre), então a folha fica leve (~140 KB por carro).
+const CAR_STACK = {"car_0": {"w": 336, "h": 150, "n": 29, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 74.7, "fw": 4.1}, "car_1": {"w": 336, "h": 150, "n": 29, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 74.7, "fw": 4.1}, "car_2": {"w": 336, "h": 148, "n": 28, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 73.7, "fw": 4.1}, "car_3": {"w": 336, "h": 152, "n": 29, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 75.7, "fw": 4.1}};
+const CAR_STACK_IMG = {};
+function carStackImg(key) {
+  let im = CAR_STACK_IMG[key];
+  if (!im) { im = CAR_STACK_IMG[key] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/props/${key}_fatias.webp?v=1`; }
+  return im.complete && !im.bad && im.naturalWidth ? im : null;
+}
+function drawCarStack(c, key) {
+  const m = CAR_STACK[key], im = carStackImg(key);
+  if (!im) return false;
+  const cx = c.x + c.w / 2, cy = c.y + c.h / 2, e = eye(), active = lootSpotActive(c);
+  const L = Math.max(c.w, c.h), WU = L / m.fw, wpp = L / (m.fw * m.ppm);   // mundo por metro / mundo por pixel da fatia
+  const ang = -carYaw(c) * Math.PI / 180 + (c.rot || 0);
+  ctx.fillStyle = "rgba(0,0,0,0.32)";                                      // sombra no chão
+  ellipse(cx + 4, cy + 5, c.w * 0.58, c.h * 0.58);
+  if (active) {
+    const glow = ctx.createRadialGradient(cx, cy, 5, cx, cy, L * 0.75);
+    glow.addColorStop(0, "rgba(255,215,101,0.20)"); glow.addColorStop(1, "rgba(255,205,94,0)");
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, L * 0.75, 0, 6.283); ctx.fill();
+  }
+  ctx.save();
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  if (active) ctx.filter = "brightness(1.12) contrast(1.06)";
+  const base = ctx.getTransform();
+  let top = null;
+  for (let i = 0; i < m.n; i++) {
+    const hgt = (i + 1) * m.dz * WU, p = proj(cx, cy, hgt, e), s = wpp * projK(hgt);
+    ctx.setTransform(base); ctx.translate(p.x, p.y); ctx.rotate(ang); ctx.scale(s, s);
+    ctx.drawImage(im, 0, i * m.h, m.w, m.h, -m.cx, -m.cy, m.w, m.h);
+    top = p;
+  }
+  ctx.restore();
+  if (active) drawLootQuestion(c, top.x, top.y - Math.min(c.w, c.h) * 0.5 - 12);
+  return true;
+}
 function drawCarModel(c) {
+  const sk = `car_${carVariant(c)}`;
+  if (CAR_STACK[sk] && drawCarStack(c, sk)) return true;               // carro inteiro: 3D fatiado
   const id = carModel(c);
   if (!modelOk(id) || !modelImg(id)) { drawCar(c); return true; }      // até a imagem carregar
   const d = PROP_SPR[id], active = lootSpotActive(c);
