@@ -784,8 +784,16 @@ function fmBalãoDetalhes(it) {
         } else add(i < 0 ? "Instale ao lado direito de outro implante para copiar" : "Nada para copiar à esquerda", "#d6c58b");
         add("Penalidades copiadas valem em dobro", "#e4dfd1");
       } else {
-        const desc = implantDesc(obj);
-        if (desc) add(desc, "#8bed92");
+        // um atributo por linha: bônus em verde, penalidade (negativo) em vermelho
+        const d = IMP[obj.id];
+        const fxRow = (k, v) => add(sgn(v) + "% " + (FX_LABEL[k] || k), v < 0 ? "#ff8383" : "#8bed92");
+        for (const k in d.fx || {}) if (d.fx[k]) fxRow(k, d.fx[k]);
+        if (d.alloc) {
+          const used = allocUsed(obj);
+          add("Pontos " + used + "/" + d.alloc.points + (used ? "" : " (arraste para o boneco para distribuir)"), "#d6c58b");
+          for (const o of d.alloc.opts) { const n = (obj.alloc && obj.alloc[o.key]) || 0; if (n) fxRow(o.key, n * o.per); }
+        }
+        if (d.text) add(d.text, "#e4dfd1");
       }
     } else if (kind === "mat") {
       add("Tipo: material", "#8bc9f5");
