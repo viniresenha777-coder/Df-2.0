@@ -1562,25 +1562,25 @@ function drawMap() {
   const here = world.cell;
   if (!game.mapSel) game.mapSel = { cx: here.cx, cy: here.cy };
   menuFrame("Mapa da cidade", `${allCells().length} áreas · ${fmSocial.online().length + 1} jogador(es) online · ☠ = chefe vivo (${bossCells().length})`);
-  const cs = 34, gx = 34, gy = 96, now = performance.now();
+  const cs = Math.floor(Math.min(490 / MAP_W, 360 / MAP_H)), gx = 34, gy = 96, now = performance.now(), fs = cs / 34;
   for (let cy = 0; cy < MAP_H; cy++) for (let cx = 0; cx < MAP_W; cx++) {
     const c = cellAt(cx, cy), x = gx + cx * cs, y = gy + cy * cs;
     if (!c) { ctx.fillStyle = "#121210"; ctx.fillRect(x + 1, y + 1, cs - 2, cs - 2); continue; }
     const RG = REGIONS[c.tier];
     ctx.fillStyle = RG.color; ctx.globalAlpha = c.visited ? 0.95 : 0.6; ctx.fillRect(x + 1, y + 1, cs - 2, cs - 2); ctx.globalAlpha = 1;
     if (c.tier === 6) { ctx.strokeStyle = "#55555c"; ctx.lineWidth = 1; ctx.strokeRect(x + 1.5, y + 1.5, cs - 3, cs - 3); }
-    if (c.landmark) { ctx.fillStyle = "rgba(0,0,0,0.55)"; rr(x + 3, y + cs - 17, 14, 14, 3); ctx.fill(); txt({ hospital: "H", prisao: "P", bunker: "B" }[c.landmark], x + 10, y + cs - 6, 10, { hospital: "#ff7a6a", prisao: "#ffc060", bunker: "#a8e07a" }[c.landmark], "center", true); }
-    if (c.op != null) txt("⌂", x + cs / 2, y + cs / 2 + 7, 20, save.outposts[c.op] ? "#ffffff" : "rgba(255,255,255,0.45)", "center", true);
+    if (c.landmark) { ctx.fillStyle = "rgba(0,0,0,0.55)"; rr(x + 2, y + cs - 12, 10, 10, 2); ctx.fill(); txt({ hospital: "H", prisao: "P", bunker: "B" }[c.landmark], x + 7, y + cs - 4, 8, { hospital: "#ff7a6a", prisao: "#ffc060", bunker: "#a8e07a" }[c.landmark], "center", true); }
+    if (c.op != null) txt("⌂", x + cs / 2, y + cs / 2 + 7 * fs, Math.round(20 * fs), save.outposts[c.op] ? "#ffffff" : "rgba(255,255,255,0.45)", "center", true);
     if (c.boss) {
       const p = 0.7 + 0.3 * Math.sin(now / 220 + cx);
       const natal = c.boss === "santa_natal";
-      ctx.fillStyle = `rgba(0,0,0,${0.45 * p})`; circle(x + cs / 2, y + cs / 2, 12);
+      ctx.fillStyle = `rgba(0,0,0,${0.45 * p})`; circle(x + cs / 2, y + cs / 2, 12 * fs);
       // A caveira é a mesma dos outros chefes; só muda para verde natalino.
       const skullColor = natal ? `rgb(${Math.round(70 + 30 * p)},255,${Math.round(95 + 40 * p)})`
         : `rgba(255,${Math.round(90 * p)},${Math.round(70 * p)},1)`;
-      txt("☠", x + cs / 2, y + cs / 2 + 7, 19, skullColor, "center", true);
+      txt("☠", x + cs / 2, y + cs / 2 + 7 * fs, Math.round(19 * fs), skullColor, "center", true);
     }
-    if (c.tier === 8 && player.level < GRAY_LEVEL) txt("🔒", x + cs - 9, y + 12, 9, "#fff", "center");
+    if (c.tier === 8 && player.level < GRAY_LEVEL) txt("🔒", x + cs - 6, y + 9, 7, "#fff", "center");
     if (c === here) { ctx.strokeStyle = "#ffd96a"; ctx.lineWidth = 2.5 + Math.sin(now / 200); ctx.strokeRect(x + 2, y + 2, cs - 4, cs - 4); }
     if (game.mapSel.cx === cx && game.mapSel.cy === cy) { ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.strokeRect(x + 4, y + 4, cs - 8, cs - 8); ctx.setLineDash([]); }
     regClick(x, y, cs, cs, () => {
@@ -1597,13 +1597,13 @@ function drawMap() {
   }
   for (const [key, group] of locations) {
     const [cx, cy] = key.split(",").map(Number);
-    const x = gx + cx * cs + cs - 9, y = gy + cy * cs + 9;
+    const x = gx + cx * cs + cs - 6, y = gy + cy * cs + 6;
     ctx.fillStyle = group.some(p => fmSocial.isFriend(p.uid)) ? "#8fe0a8" : "#73ceff";
-    circle(x, y, 9);
-    txt(String(group.length), x, y + 4, 11, "#101613", "center", true);
+    circle(x, y, 6);
+    txt(String(group.length), x, y + 3, 8, "#101613", "center", true);
   }
-  for (let cx = 0; cx < MAP_W; cx++) txt(String.fromCharCode(65 + cx), gx + cx * cs + cs / 2, gy - 6, 10, "#a9a58f", "center", true);
-  for (let cy = 0; cy < MAP_H; cy++) txt(String(cy + 1), gx - 8, gy + cy * cs + cs / 2 + 4, 10, "#a9a58f", "right", true);
+  for (let cx = 0; cx < MAP_W; cx++) txt(String.fromCharCode(65 + cx), gx + cx * cs + cs / 2, gy - 6, 9, "#a9a58f", "center", true);
+  for (let cy = 0; cy < MAP_H; cy++) txt(String(cy + 1), gx - 6, gy + cy * cs + cs / 2 + 3, 9, "#a9a58f", "right", true);
   // legenda das cores
   const ly = gy + MAP_H * cs + 18;
   REGIONS.forEach((RG, i) => {

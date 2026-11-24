@@ -473,7 +473,7 @@ function drawBossCompass() {
   ctx.globalAlpha = 1;
   // seta vermelha girando em volta do personagem
   if (!game.inside) {
-    const px = player.x - cam.x, py = player.y - cam.y, pulse = 0.55 + 0.35 * Math.sin(performance.now() / 250);
+    const px = (player.x - cam.x) * VIEW_ZOOM, py = (player.y - cam.y) * VIEW_ZOOM, pulse = 0.55 + 0.35 * Math.sin(performance.now() / 250);
     ctx.save(); ctx.translate(px + Math.cos(t.ang) * 46, py + Math.sin(t.ang) * 46); ctx.rotate(t.ang);
     ctx.globalAlpha = pulse; poly([[9, 0], [-5, -7], [-1, 0], [-5, 7]], bossAccent); ctx.restore();
     ctx.globalAlpha = 1;

@@ -5,7 +5,11 @@
 //  atributos e o layout da cidade (1 avenida principal + quadras).
 // =====================================================================
 
-const W = 960, H = 600;                       // resolução lógica da tela
+// resolução lógica da tela (HUD e menus). Durante o desenho do mundo, W/H/DPR viram a área
+// vista pela câmera (VIEW_ZOOM mais perto, estilo Dead Frontier) — veja withView() em main.js.
+let W = 960, H = 600;
+const UI_W = 960, UI_H = 600;
+const VIEW_ZOOM = 1.5, VIEW_W = UI_W / VIEW_ZOOM, VIEW_H = UI_H / VIEW_ZOOM;   // 640 x 400 de mundo na tela
 const FONT = "'Trebuchet MS', 'Segoe UI', sans-serif";
 
 // ---------- Cidade em grade de áreas ----------
@@ -13,9 +17,11 @@ const FONT = "'Trebuchet MS', 'Segoe UI', sans-serif";
 // os lados; ao sair pela borda de uma área a tela escurece e carrega a vizinha.
 // Cada área tem 2 x 2 quadras com ruas em cruz no meio e ruas nas bordas.
 // Ruas perimetrais mais largas (70 -> 110), sem alterar a avenida central (140).
-const AREA_EDGE = 150, BLOCK_W = 620, BLOCK_H = 640, ST_W = 140;
-const WORLD_W = 2 * AREA_EDGE + 2 * BLOCK_W + ST_W;   // 1680
-const WORLD_H = 2 * AREA_EDGE + 2 * BLOCK_H + ST_W;   // 1720
+// ruas todas da mesma largura (como no Dead Frontier): a rua da borda tem meia largura e
+// junta com a meia rua da área vizinha.
+const AREA_EDGE = 100, BLOCK_W = 620, BLOCK_H = 640, ST_W = 200;
+const WORLD_W = 2 * AREA_EDGE + 2 * BLOCK_W + ST_W;   // 1640
+const WORLD_H = 2 * AREA_EDGE + 2 * BLOCK_H + ST_W;   // 1680
 const SIDEWALK = 26;
 const MID_X = AREA_EDGE + BLOCK_W + ST_W / 2, MID_Y = AREA_EDGE + BLOCK_H + ST_W / 2;
 // ruas: faixas [início, fim] na horizontal (y) e na vertical (x)
@@ -26,14 +32,30 @@ const V_STREETS = [[0, AREA_EDGE], [AREA_EDGE + BLOCK_W, AREA_EDGE + BLOCK_W + S
 // B azul · G verde · Y amarelo · O laranja · R vermelho · D vermelho-escuro
 // K preta (muito difícil) · P roxa (extrema) · X cinza (só a partir do nível 100) · . sem passagem
 // O oeste é tranquilo; quanto mais ao leste, mais perigoso.
+// Grade de 20 x 20 áreas (cada área = 2 x 2 quadras → 40 x 40 quadras, como a grade 39 x 39 do
+// Dead Frontier). O perigo cresce em degradê a partir do Refúgio (oeste), mais rápido para o leste.
+const MAP_VERSION = 2;   // muda quando a grade muda: posições salvas da grade antiga voltam ao Refúgio
 const MAP_GRID = [
-  "BGGYYOOORRRKKX",
-  "BGGYYOORRRRKKX",
-  "BBGGYYOORRDDK.",
-  "BBGGYOOORRDDD.",
-  "BGGYYO.ORRDDPP",
-  "BGYY.OORRDDDPP",
-  "....XXX......."
+  "OOOOORRRRRDDDKKKPXXX",
+  "OOOOOOORRR.DDDKKPXXX",
+  ".OOOOOOOORRRDDDKKXXX",
+  "YYYYYYOO.ORRRDDKKPPP",
+  "YYYYYYYOOOORRRDDKKPP",
+  "GGGGY.YYOOOR.RDDKKPP",
+  "GGGGGGYYYOOORRDDDKKP",
+  "GGGGGGGYYYOORRRDDK.P",
+  "B.BBGGGYYYOOORRDDKKP",
+  "BBBBBGGGYYOOORRDDKKP",
+  "BBBBBGGGYYOOORRDDKKP",
+  "BBBBBGGGYYOOORRDDKKP",
+  "BBBBGGGYYYOOORRDD.KP",
+  "GGG.GGGYYYOORRRDDKKP",
+  "GGGGGGYYYO.ORRDDDKKP",
+  "G.GGYYYYOOORRRDDKK.P",
+  "YYYYYYYOOOORRRDDKKPP",
+  "YYYYYYOOOORRRDDKKPPP",
+  "OOOOOOOOORRRDDDKKPPP",
+  "OOOOOOORRRRDDDKKPPPP",
 ];
 const MAP_W = MAP_GRID[0].length, MAP_H = MAP_GRID.length;
 const TIER_OF = { B: 0, G: 1, Y: 2, O: 3, R: 4, D: 5, K: 6, P: 7, X: 8 };
@@ -47,12 +69,12 @@ function cellCode(cx, cy) { return `${String.fromCharCode(65 + cx)}${cy + 1}`; }
 
 // Postos seguros (loja, banco, clínica, missões e viagem rápida)
 const OUTPOSTS = [
-  { id: 0, name: "Base 1 · Refúgio",   cx: 0,  cy: 3 },
-  { id: 1, name: "Base 2 · Ferrovia",  cx: 2,  cy: 1 },
-  { id: 2, name: "Base 3 · Forte",     cx: 4,  cy: 4 },
-  { id: 3, name: "Base 4 · Bastião",   cx: 6,  cy: 2 },
-  { id: 4, name: "Base 5 · Muralha",   cx: 9,  cy: 3 },
-  { id: 5, name: "Base 6 · Sentinela", cx: 11, cy: 4 }
+  { id: 0, name: "Base 1 · Refúgio",   cx: 2,  cy: 10 },
+  { id: 1, name: "Base 2 · Ferrovia",  cx: 5,  cy: 7 },
+  { id: 2, name: "Base 3 · Forte",     cx: 8,  cy: 12 },
+  { id: 3, name: "Base 4 · Bastião",   cx: 10, cy: 8 },
+  { id: 4, name: "Base 5 · Muralha",   cx: 13, cy: 11 },
+  { id: 5, name: "Base 6 · Sentinela", cx: 15, cy: 14 }
 ];
 // Faixas de dificuldade (cores do mapa): hp/dmg = multiplicadores dos zumbis · loot = chance de cada raridade
 const REGIONS = [

@@ -11,6 +11,17 @@ const mouse = { x: W / 2, y: H / 2, down: false };
 const cam = { x: 0, y: 0 };
 let player, bullets, zombies, game;
 
+// Câmera mais próxima (estilo Dead Frontier): enquanto o mundo é desenhado, a "tela" vira a área
+// vista (VIEW_W x VIEW_H) e o DPR cresce na mesma proporção, então os mesmos pixels mostram menos mundo
+// com mais detalhe. HUD e menus continuam em UI_W x UI_H.
+function withView(fn) {
+  const w = W, h = H, d = DPR;
+  W = VIEW_W; H = VIEW_H; DPR = d * VIEW_ZOOM;
+  try { return fn(); } finally { W = w; H = h; DPR = d; }
+}
+// mouse em coordenadas do mundo visível (a tela mostra VIEW_W x VIEW_H)
+function viewMouseX() { return mouse.x / VIEW_ZOOM; }
+function viewMouseY() { return mouse.y / VIEW_ZOOM; }
 function fitCanvas() {
   DPR = Math.min(2, window.devicePixelRatio || 1);
   canvas.width = W * DPR; canvas.height = H * DPR;
@@ -359,8 +370,8 @@ function update(dt) {
   // Zona morta da mira em torno do tronco: quando o mouse encosta no
   // personagem, mantém a última direção válida. O pivô visual fica
   // acima dos pés, onde o corpo realmente está desenhado.
-  const aimDX = mouse.x + ox - player.x;
-  const aimDY = mouse.y + oy - (player.y - 14);
+  const aimDX = viewMouseX() + ox - player.x;
+  const aimDY = viewMouseY() + oy - (player.y - 14);
   if (Math.hypot(aimDX, aimDY) > 34) {
     player.angle = Math.atan2(aimDY, aimDX);
   }
@@ -436,8 +447,8 @@ function update(dt) {
 
 function updateCam(dt) {
   // dentro de prédios grandes a câmera também segue o personagem
-  const tx = clamp(player.x - W / 2 + (mouse.x - W / 2) * 0.18, 0, Math.max(0, IW() - W));
-  const ty = clamp(player.y - H / 2 + (mouse.y - H / 2) * 0.18, 0, Math.max(0, IH() - H));
+  const tx = clamp(player.x - VIEW_W / 2 + (viewMouseX() - VIEW_W / 2) * 0.18, 0, Math.max(0, IW() - VIEW_W));
+  const ty = clamp(player.y - VIEW_H / 2 + (viewMouseY() - VIEW_H / 2) * 0.18, 0, Math.max(0, IH() - VIEW_H));
   if (game.snapCam) { cam.x = tx; cam.y = ty; game.snapCam = false; return; }
   const f = Math.min(1, dt / 90);
   cam.x += (tx - cam.x) * f; cam.y += (ty - cam.y) * f;
@@ -458,12 +469,18 @@ function draw() {
     drawTransition();
     return;
   }
-  // cena: com WebGL vai para uma tela escondida; sem WebGL, direto na tela do jogo
+  const sh = game.shake > 0.3 ? game.shake : 0;
+  const shx = (Math.random() - 0.5) * sh, shy = (Math.random() - 0.5) * sh;
+  withView(() => drawWorldView(shx, shy));
+  ctx = mainCtx; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawHUD();
+  drawUiLayer();
+}
+// mundo (cena, luz, efeitos e números de dano), desenhado dentro de withView()
+function drawWorldView(shx, shy) {
   ctx = GFX.on ? GFX.sctx : mainCtx;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.fillStyle = "#0d0e0c"; ctx.fillRect(0, 0, W, H);
-  const sh = game.shake > 0.3 ? game.shake : 0;
-  const shx = (Math.random() - 0.5) * sh, shy = (Math.random() - 0.5) * sh;
   ctx.save();
   ctx.translate(-Math.round(cam.x) + shx, -Math.round(cam.y) + shy);
   if (game.inside) drawInterior(); else { drawWorld(); drawAirdrops(); }
@@ -505,7 +522,8 @@ function draw() {
   }
   ctx.globalAlpha = 1;
   ctx.restore();
-  drawHUD();
+}
+function drawUiLayer() {
   if (game.openWait && !game.menu && !game.paused) {
     const s = Math.max(0, Math.ceil(game.openWait.t / 1000));
     // só o texto e o tempo, embaixo da tela, sem caixa

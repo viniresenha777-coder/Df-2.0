@@ -255,7 +255,7 @@ function drawEventHud() {
   if (game.inside) return;
   for (const a of game.airdrops) {
     if (a.natal) continue;   // Caixas de Natal: sem seta, é preciso procurar
-    const cx = a.x + a.w / 2 - cam.x, cy = a.y + a.h / 2 - cam.y;
+    const cx = (a.x + a.w / 2 - cam.x) * VIEW_ZOOM, cy = (a.y + a.h / 2 - cam.y) * VIEW_ZOOM;
     if (cx > 20 && cx < W - 20 && cy > 20 && cy < H - 20) continue;
     const ang = Math.atan2(cy - H / 2, cx - W / 2), r = Math.min(W / 2 - 40, H / 2 - 40) / Math.max(Math.abs(Math.cos(ang)) * (H / W) * 1.6, Math.abs(Math.sin(ang))) * 0.62;
     const ax = clamp(W / 2 + Math.cos(ang) * r * 1.6, 40, W - 40), ay = clamp(H / 2 + Math.sin(ang) * r, 40, H - 40);
