@@ -1453,7 +1453,7 @@ function drawInteriorMinimap(x, y, w, h) {
     else if (f.kind === "wall") c = "#1d1f1b";
     else if (f.kind === "decor") c = "#4e524a";
     else if (SAFE_KINDS.includes(f.kind)) c = "#6fae4f";
-    else c = f.opened || f.searchable === false ? "#5a5a52" : "#c9a040";
+    else c = lootSpotActive(f) ? "#c9a040" : "#5a5a52";     // amarelo só onde dá para revistar de verdade (igual ao destaque no chão)
     ctx.fillStyle = c; ctx.fillRect(ox + f.x * k, oy + f.y * k, Math.max(2, f.w * k), Math.max(2, f.h * k));
     if (f.kind === "stairs") txt(f.dir > 0 ? (b.def.under ? "▼" : "▲") : b.def.under ? "▲" : "▼", ox + (f.x + f.w / 2) * k, oy + (f.y + f.h / 2) * k + 4, 10, "#141410", "center", true);
   }
@@ -1503,7 +1503,7 @@ function drawMinimap(x, y, w, h) {
   if (player.fx.lootSense > 0 && !game.inside) {
     const R = player.fx.lootSense;
     for (const o of world.loot.query(player.x - R, player.y - R, player.x + R, player.y + R)) {
-      if (o.opened || o.kind === "door" || Math.hypot(o.x - player.x, o.y - player.y) > R) continue;
+      if (!lootSpotActive(o) || Math.hypot(o.x - player.x, o.y - player.y) > R) continue;
       ctx.fillStyle = "#ffd96a"; ctx.fillRect(x + ((o.x + o.w / 2) * MS - sx) * k - 1.5, y + ((o.y + o.h / 2) * MS - sy) * k - 1.5, 3, 3);
     }
   }
