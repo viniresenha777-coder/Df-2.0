@@ -25,10 +25,21 @@ function spots() {
   }
   return near;
 }
+// Lugar ao alcance (até 32 do personagem). Com mais de um ao alcance (lixeira ao lado da porta, corpo em cima da
+// caçamba), vale o que está sob o mouse ou mais perto dele; antes ganhava sempre o mais próximo do personagem,
+// e o objeto ficava amarelo mas o E abria a porta (ou o vizinho).
 function nearSpot() {
-  let best = null, bd = 32;
-  for (const s of spots()) { if (s.table && !spotHasRealLoot(s)) continue; const d = rectDist(player.x, player.y, s); if (d < bd) { bd = d; best = s; } }
-  return best;
+  const cand = [];
+  for (const s of spots()) { if (s.table && !spotHasRealLoot(s)) continue; const d = rectDist(player.x, player.y, s); if (d < 32) cand.push([s, d]); }
+  if (!cand.length) return null;
+  if (cand.length > 1 && typeof viewMouseX === "function") {
+    const mx = cam.x + viewMouseX(), my = cam.y + viewMouseY();
+    let best = null, bd = 70;
+    for (const [s] of cand) { const d = rectDist(mx, my, s); if (d < bd) { bd = d; best = s; } }
+    if (best) return best;
+  }
+  cand.sort((a, b) => a[1] - b[1]);
+  return cand[0][0];
 }
 function spotPrompt(s) {
   if (s.kind === "grounddrop") return "E: recolher item (" + Math.ceil(Math.max(0, s.expiresAt - performance.now()) / 1000) + "s)";
