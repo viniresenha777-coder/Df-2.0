@@ -303,9 +303,21 @@ function drawHubPanel(natal) {
   const px = 8, pw = 248;
   if (natal) {
     // Natal: a árvore da arte fica atrás, escurecida para os textos e o retrato aparecerem
-    const g = ctx.createLinearGradient(0, 50, 0, 400);
-    g.addColorStop(0, "rgba(6,3,3,0.72)"); g.addColorStop(0.55, "rgba(6,3,3,0.6)"); g.addColorStop(1, "rgba(6,3,3,0.45)");
-    ctx.fillStyle = g; ctx.fillRect(16, 50, 244, 350);
+    // Natal: só o topo escurece um pouco (links e nome); a árvore fica acesa e brilhando
+    const g = ctx.createLinearGradient(0, 50, 0, 190);
+    g.addColorStop(0, "rgba(6,3,3,0.5)"); g.addColorStop(1, "rgba(6,3,3,0)");
+    ctx.fillStyle = g; ctx.fillRect(16, 50, 244, 140);
+    const t = uiNow();
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    uiGlow(142, 225, 95, "rgba(255,170,80,1)", 0.16 + 0.05 * Math.sin(t * 1.7));          // brilho quente da árvore
+    uiGlow(142, 112, 26 + 4 * Math.sin(t * 3), "rgba(255,230,140,1)", 0.55);              // estrela
+    for (let i = 0; i < 14; i++) {                                                         // luzinhas da árvore piscando
+      const a = (i * 2.399) % 6.283, r = 18 + ((i * 37) % 70), y = 150 + r * 1.55;
+      const x = 142 + Math.cos(a) * r * 0.75, on = 0.5 + 0.5 * Math.sin(t * 2.6 + i * 1.3);
+      uiGlow(x, y, 6 + 3 * on, i % 3 ? "rgba(255,200,110,1)" : "rgba(255,80,70,1)", 0.25 + 0.5 * on * on);
+    }
+    ctx.restore();
   } else {
     // O interior continua visível atrás do retrato; textos e barras ficam por cima.
     ctx.fillStyle = "rgba(20,19,15,0.22)"; rr(px, 44, pw, H - 52, 8); ctx.fill();
@@ -328,7 +340,7 @@ function drawHubPanel(natal) {
   shadowTxt(`Créditos: ${save.credits.toLocaleString("pt-BR")}`, rx, 131, 12, "#e5e0c8", "right", true, 130);
 
   // retrato de frente (arte do personagem); capa aparece por trás dos ombros
-  const cp = CAPES[save.cape | 0], hx = px + 74, hy = 214;
+  const cp = CAPES[save.cape | 0], hx = px + 74, hy = natal ? 268 : 214;   // Natal: pés no chão, na frente dos presentes
   const cape = () => {
     if (!cp || !cp.color || cape3d()) return;
     const sw = Math.sin(game.time / 400 + performance.now() / 700) * 3;
@@ -374,8 +386,10 @@ function drawHubPanel(natal) {
     ["Velocidade " + signed(Math.round((sprintMultiplier - 1) * 100)), "#85c5ff"],
     ["Armadura " + Math.round(armorRed() * 100) + "%", "#a8d5a3"]
   ];
+  if (natal) { ctx.fillStyle = "rgba(8,4,4,0.55)"; rr(px + pw - 112, 330, 108, 56, 6); ctx.fill(); }
   hubBonuses.forEach(([label, color], i) =>
-    shadowTxt(label, px + 12, 330 + i * 19, 12, color, "left", true, pw - 24));
+    natal ? shadowTxt(label, px + pw - 8, 344 + i * 18, 12, color, "right", true, 130)   // Natal: na coluna da direita, longe das pernas
+      : shadowTxt(label, px + 12, 330 + i * 19, 12, color, "left", true, pw - 24));
 
   // armas equipadas com a munição embaixo
   ctx.fillStyle = "#3d3220"; ctx.fillRect(px + 10, 404, pw - 20, 2);
