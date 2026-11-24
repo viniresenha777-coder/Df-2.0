@@ -435,14 +435,17 @@ function dualTwistTick() {
     legAng = -Math.PI / 2 + p.legRow * Math.PI / 4; d = angDelta(legAng, aim);
   }
   p.sRow = p.legRow;
-  let best = "", bestE = Infinity, bestOff = 0;
+  // variante cujo eixo dos braços (a→b do quadro renderizado) fica mais perto da mira
+  const col = spriteFrame();
+  let best = "", bestE = Infinity;
   for (const deg of DUAL_TW) {
     const suf = dualSuf(deg);
     if (suf) { ensureTwistSheet(pose + suf); if (!dualReady(pose + suf)) continue; }
-    const off = deg * Math.PI / 180, e = Math.abs(angDelta(off, d));
-    if (e < bestE) { bestE = e; best = suf; bestOff = off; }
+    const a = twistBaseAngle(pose + suf, p.legRow, col);
+    const e = a == null ? Infinity : Math.abs(angDelta(a, aim));
+    if (e < bestE) { bestE = e; best = suf; }
   }
-  TW.suf = best; p.dualBase = legAng + bestOff;
+  TW.suf = best;
 }
 // ---------- Tronco girando com a mira ----------
 // Além das 8 direções, cada pose tem variantes com o tronco torcido 15° para cada lado (_tm15 / _tp15),
@@ -507,7 +510,8 @@ function updateWeaponAim() {
 const DUAL_SCALE = 0.8;
 // Com armas duplas as armas ficam paradas nas mãos, apontando para a frente do tronco (que gira: dualTwistTick).
 function dualTwist(pose) {
-  const base = Number.isFinite(player.dualBase) ? player.dualBase : -Math.PI / 2 + (player.sRow | 0) * Math.PI / 4;
+  // direção dos braços NESTE quadro (eixo a→b da pose renderizada): a arma fica presa às mãos
+  const A = posePt("a", pose), B = posePt("b", pose), base = Math.atan2(B.y - A.y, B.x - A.x);
   const c = posePt("c", pose);
   return { base, d: 0, px: c.x, py: c.y };
 }
