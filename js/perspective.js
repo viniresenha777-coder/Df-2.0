@@ -476,6 +476,18 @@ function updateWeaponAim() {
 }
 // duas armas (uma em cada mão): escala da arma e ponta do cano de cada mão
 const DUAL_SCALE = 0.8;
+// Com armas duplas o corpo inteiro gira até ±22,5° na direção da mira (entre as 8 poses)
+// e as armas ficam paradas nas mãos, apontando para a frente da pose.
+function dualTwist(pose) {
+  const rowAng = -Math.PI / 2 + (player.sRow | 0) * Math.PI / 4;
+  const aim = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle;
+  const c = posePt("c", pose);
+  return { base: rowAng, d: angDelta(rowAng, aim), px: c.x, py: c.y };
+}
+function twistPt(pt, t) {
+  const s = Math.sin(t.d), co = Math.cos(t.d), dx = pt.x - t.px, dy = pt.y - t.py;
+  return { x: t.px + dx * co - dy * s, y: t.py + dx * s + dy * co };
+}
 function dualLenPx(w, pose) {
   const A = posePt("a", pose), B = posePt("b", pose);
   return Math.hypot(B.x - A.x, B.y - A.y) * weaponMeters(w) * DUAL_SCALE;
@@ -484,8 +496,8 @@ function muzzlePoint() {
   if (!useSpriteChar()) return null;
   const w = curW(); if (w.melee || w.fists) return null;
   if (w.dual) {
-    const pose = weaponPose(w) + TW.suf, H = posePt(player.dualSide ? "hl" : "hr", pose);
-    const a = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle, L = dualLenPx(w, pose) * 0.72;
+    const pose = weaponPose(w) + TW.suf, t = dualTwist(pose), H = twistPt(posePt(player.dualSide ? "hl" : "hr", pose), t);
+    const a = t.base + t.d, L = dualLenPx(w, pose) * 0.72;
     return { x: H.x + Math.cos(a) * L, y: H.y + Math.sin(a) * L };
   }
   const grip = gunGripAndLength(w);
@@ -498,7 +510,7 @@ function chestPoint() { return useSpriteChar() ? posePt("c") : { x: player.x, y:
 function drawHeldWeapon(w, pose) {
   if (w.fists) return;
   if (w.dual) {
-    const ang = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle;
+    const ang = dualTwist(pose).base;            // presa ao corpo: o giro vem do corpo todo
     const model = (w.len || 20) + 20, k = dualLenPx(w, pose) / model;
     for (const key of ["hl", "hr"]) {           // mão de trás primeiro, a da frente por cima
       const H = posePt(key, pose);
@@ -586,6 +598,8 @@ function drawPlayerSprite() {
     ctx.restore();
   }
   const kick = p.flashT > 0 ? 2 : 0, o = spriteOrigin(), info = SPRITE_POSES[pose][row][col];
+  const twist = w.dual ? dualTwist(pose) : null;
+  if (twist) { ctx.save(); ctx.translate(twist.px, twist.py); ctx.rotate(twist.d); ctx.translate(-twist.px, -twist.py); }
   const w3 = weapon3dImg(w, pose);
   if (info.bh && !w3) drawHeldWeapon(w, pose);       // arma atrás do corpo (de costas)
   drawEyeTrails();                                    // rastro dos olhos fica atrás do corpo
@@ -636,6 +650,7 @@ function drawPlayerSprite() {
     ctx.fillStyle = "#1c1c1c"; ctx.fillRect(L.x - 2.5, L.y - 2, 5, 4);
     ctx.fillStyle = flashlightActive() ? "#fff4cf" : "#595850"; circle(L.x, L.y, 1.6);
   }
+  if (twist) ctx.restore();
   // clarão do tiro na ponta do cano
   if (p.flashT > 0 && !w.melee) {
     const m = muzzlePoint(), ang = p.shotAng != null ? p.shotAng : (p.gunAngle != null ? p.gunAngle : p.angle);
