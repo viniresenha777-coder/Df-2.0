@@ -122,6 +122,11 @@ function makeArea(cell) {
     });
     cell._savedLoot = null;
   }
+  // saque de dentro das casas salvo no checkpoint: cada prédio guarda o seu, aplicado quando o andar é gerado
+  if (cell._savedIn && typeof cell._savedIn === "object") {
+    for (const k in cell._savedIn) { const b = wd.buildings[+k]; if (b && Array.isArray(cell._savedIn[k])) b._savedIn = cell._savedIn[k].map((t) => (typeof t === "string" ? t : "")); }
+    cell._savedIn = null;
+  }
   wd.mini = buildMinimap(wd);
   world = prev || wd;
   return wd;

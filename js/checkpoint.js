@@ -44,7 +44,8 @@ function runSnapshot() {
       cells: allCells().map((cell) => ({
         cx: cell.cx, cy: cell.cy, boss: cell.boss, bossHp: cell.bossHp,
         cleared: !!cell.cleared, leftAt: cell.leftAt, visited: !!cell.visited,
-        loot: cell.w ? cell.w.lootList.map((it) => !!it.opened) : cell._savedLoot || null
+        loot: cell.w ? cell.w.lootList.map((it) => !!it.opened) : cell._savedLoot || null,
+        ins: cell.w ? insideLootState(cell.w) : cell._savedIn || null
       }))
     } : null
   };
@@ -150,6 +151,7 @@ function restoreRun() {
         cell.leftAt = Number.isFinite(previous.leftAt) ? previous.leftAt : -1e9;
         cell.visited = !!previous.visited;
         cell._savedLoot = Array.isArray(previous.loot) ? previous.loot.slice() : null;
+        cell._savedIn = previous.ins && typeof previous.ins === "object" ? previous.ins : null;
       }
       // O checkpoint antigo sobrescrevia toda a grade após makeMap(),
       // apagando os bosses natalinos antes de exibir o mapa.

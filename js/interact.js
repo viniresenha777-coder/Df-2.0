@@ -484,6 +484,9 @@ function makeLevel(h, lvl) {
   if (lvl < floors - 1) list.push(stairs(h, lvl, 1, iw, ih));
   if (lvl > 0) list.push(stairs(h, lvl, -1, iw, ih));
   makeInterior(h, list, lvl);
+  // saque de dentro das casas já aberto (vem do checkpoint): continua aberto depois de relogar
+  const sv = h._savedIn && h._savedIn[lvl];
+  if (typeof sv === "string") list.forEach((f, i) => { if (sv[i] === "1" && f.kind !== "wall" && f.kind !== "stairs") { f.opened = true; f.openedAt = 0; f.preparedLoot = []; } });
   const L = { iw, ih, interior: list, zombies: [], corpses: [], decals: [], rug: h.rug, rooms: h.rooms };
   const chance = h.def.zchance * (lvl > 0 && !h.landmark ? 0.8 : 1);
   if (Math.random() < chance) {
@@ -686,4 +689,16 @@ function teleportZone(r) {
   if (game.inside) leaveHouse();
   const list = allCells().sort((a, b) => Math.abs(a.zone - r) - Math.abs(b.zone - r));
   gotoCell(list[0], { x: MID_X, y: MID_Y });
+}
+
+// Estado do saque dentro das casas de uma área, para o checkpoint: { índice do prédio: ["0101...", ...por andar] }
+function insideLootState(wd) {
+  const out = {};
+  (wd.buildings || []).forEach((b, i) => {
+    if (b.safe) return;
+    const lv = b.levels ? b.levels.map((L, l) => L && L.interior ? L.interior.map((f) => (f.opened && f.kind !== "wall" && f.kind !== "stairs" ? 1 : 0)).join("")
+      : (b._savedIn && b._savedIn[l]) || "") : b._savedIn;
+    if (lv && lv.some((t) => t && t.indexOf("1") >= 0)) out[i] = lv;
+  });
+  return out;
 }
