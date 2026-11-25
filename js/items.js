@@ -506,7 +506,7 @@ function drawWeaponSide(d, cx, cy, s) {
   if (d.id === "besta" && CB_ZHNETS.complete && CB_ZHNETS.naturalWidth) {
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.scale(-1, 1);
+    ctx.scale(-1, -1);   // vira também na vertical: a luneta fica em cima e o gatilho embaixo
     ctx.drawImage(CB_ZHNETS, -64 * s, -32 * s, 128 * s, 64 * s);
     ctx.restore();
     return;
