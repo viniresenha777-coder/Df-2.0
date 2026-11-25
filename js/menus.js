@@ -140,7 +140,7 @@ function missionText(m) {
 }
 function makeOffers() {
   const L = player.level, cats = Object.keys(CATNAME), offers = [];
-  const mk = (type, target, f, extra) => offers.push(Object.assign({ type, target, progress: 0, money: Math.round((30 + 12 * L) * f * econ(game.best).reward), xp: Math.round(xpNeed(L) * 0.6 * f) }, extra || {}));
+  const mk = (type, target, f, extra) => offers.push(Object.assign({ type, target, progress: 0, money: Math.round((300 + 120 * L) * f * econ(game.best).reward), xp: Math.round(xpNeed(L) * 0.6 * f) }, extra || {}));
   mk("kill", Math.min(80, 8 + Math.floor(L * 0.6)), 1);
   mk("killcat", Math.min(40, 6 + Math.floor(L / 8)), 1.1, { cat: pick(cats) });
   const types = Object.keys(ZTYPES).filter((t) => t !== "walker" && ZTYPES[t].from <= Math.max(game.best, 2));
@@ -290,7 +290,7 @@ function applyClinicImplantConfirm() {
   const name = implantName(pending.im);
   player.bag.splice(i, 1);
   if (pending.action === "sell") {
-    const price = IMP[pending.im.id].scrap;
+    const price = implantSellPrice(pending.im);
     game.money += price;
     sfx.buy();
     toast(`Vendeu ${name} por $${price.toLocaleString("pt-BR")}`);
@@ -316,9 +316,22 @@ function buyTrindade() {
   sfx.buy(); checkpoint("compra de Trindade");
   toast("Trindade adquirida! Arraste-a sobre o personagem para consumir.");
 }
+// armas iniciais vendidas por dinheiro da mochila (Pistola 9mm e Escopeta)
+function buyShopWeapon(id) {
+  const d = WDEF[id];
+  if (!d || !d.shop) return;
+  if (!atBase()) { toast("Compre armas na Loja da base."); return; }
+  if (game.money < d.shop) { toast(`Precisa de $${d.shop.toLocaleString("pt-BR")} na mochila`); return; }
+  if (player.slots.indexOf(null) < 0 && packUsed() >= packCapacity()) { toast("Mochila cheia"); return; }
+  game.money -= d.shop;
+  addWeapon(newInst(id)); registerWeapon(id);
+  checkpoint("compra de arma na loja"); sfx.buy();
+  game.banner = { text: `${d.name} comprada!`, sub: "Abra a mochila (B) para equipar", t: 2600, gold: true };
+}
 // armas vendidas por créditos (Shotgun Sweet, evento de Natal)
 function buyCreditWeapon(id) {
   const d = WDEF[id];
+  if (d && !d.credits && d.shop) { buyShopWeapon(id); return; }
   if (!d || !d.credits) return;
   if (!atBase()) { toast("Use a Loja de Créditos na base."); return; }
   if (save.credits < d.credits) { toast(`Precisa de ${d.credits.toLocaleString("pt-BR")} créditos (compre no banco)`); return; }
@@ -346,7 +359,7 @@ function fmOpenAdvancedImplantCase(item) {
     toast("Libere espaço para receber o implante.");
     return;
   }
-  const pool = IMP_IDS.filter((id) => IMP[id].kind === 2 && !IMP[id].mimic && !IMP[id].event);
+  const pool = IMP_IDS.filter((id) => IMP[id].kind === 2 && !IMP[id].mimic && !IMP[id].event && !IMP[id].tier);
   const im = newImplant(pick(pool));
   if (--item.qty === 0) player.pack.splice(index, 1);
   player.bag.push(im);
@@ -363,7 +376,7 @@ function buyCreditImplant(id) {
     toast("Libere espaço para receber o implante.");
     return;
   }
-  if (fmOwnsCreditImplant(id)) {
+  if (!def.tier && fmOwnsCreditImplant(id)) {
     toast("Você já possui este implante.");
     return;
   }
@@ -419,11 +432,13 @@ function creditShopSelectSection(section) {
 }
 function creditShopRows(section) {
   if (section === "implant")
-    return IMP_IDS.filter((id) => !IMP[id].craftOnly).map((id) => ({
+    // do mais fraco (mais barato) para o mais forte; o Kit Mimic fica no fim
+    return IMP_IDS.filter((id) => !IMP[id].craftOnly && (IMP[id].price > 0 || IMP[id].kitOnly))
+      .sort((a, b) => !!IMP[a].kitOnly - !!IMP[b].kitOnly || IMP[a].price - IMP[b].price).map((id) => ({
       kind: "implant",
       id,
       title: id === FM_MIMIC_ID ? "Kit Mimic" : IMP[id].name,
-      owned: fmOwnsCreditImplant(id),
+      owned: !IMP[id].tier && fmOwnsCreditImplant(id),   // tier 2 pode comprar vários (3 fazem um X na Oficina)
       price: fmCreditImplantPrice(id),
       currency: "credits",
     }));
@@ -442,7 +457,7 @@ function creditShopRows(section) {
       id,
       index,
       title: id === "virote" ? "Flechas" : id,
-      price: shopFree() ? 0 : AMMO_PACK_PRICE,
+      price: shopFree() ? 0 : ammoPackPrice(id),
       currency: "money",
     }));
   if (section === "clothing")
@@ -456,6 +471,8 @@ function creditShopRows(section) {
     (item) => !item.fists && (section === "explosive" ? item.grenade : item.cat === section && !item.grenade),
   ).map((item) => (item.credits
     ? { kind: "weapon", item, title: item.name, price: item.credits, currency: "credits" }
+    : item.shop
+    ? { kind: "weapon", item, title: item.name, price: item.shop, currency: "money" }
     : { kind: "weapon", item, title: item.name }));
 }
 function creditShopCost(row) {
@@ -463,6 +480,7 @@ function creditShopCost(row) {
   if (row.kind === "implant" && row.owned) return "Já possui";
   if (row.kind === "clothing" && row.price) return row.owned ? (row.equipped ? "Em uso" : "Já possui") : row.price.toLocaleString("pt-BR") + " cr";
   if (row.kind === "clothing") return row.owned ? "Em uso" : "Vestuário";
+  if (row.kind === "weapon" && row.price && row.currency === "money") return "$" + row.price.toLocaleString("pt-BR");
   if (row.kind === "weapon" && row.price) return row.price.toLocaleString("pt-BR") + " cr";
   if (row.kind === "weapon") return RARITY[row.item.rar].name;
   if (row.kind === "vest" && row.price == null) return "Oficina";
@@ -1136,7 +1154,7 @@ function adminKey(k) {
 //  Desenho dos menus
 // =====================================================================
 // moldura e linhas dos menus: desenho em js/estetica.js (clima de Natal da tela inicial)
-function menuFrame(title, sub) { uiFrame(title, sub); }
+function menuFrame(title, sub, bg) { uiFrame(title, sub, bg); }
 function rowBox(x, y, w, h, sel, accent) { uiRow(x, y, w, h, sel, accent); }
 function hint(t) { txt(t, W / 2, H - 24, 13, "#a9a58f", "center"); }
 function menuToast() {
@@ -1362,7 +1380,7 @@ function drawImplantInfo(im) {
   ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(40, 424, W - 80, 118, 8); ctx.fill();
   if (!im) { txt("Selecione um implante para ver os efeitos", W / 2, 488, 14, "#6d6a58", "center"); return; }
   txt(implantName(im), 56, 448, 17, impColor(im), "left", true);
-  txt(`Único (só um instalado) · sucata $${IMP[im.id].scrap}`, W - 56, 448, 12, "#a9a58f", "right");
+  txt(`Único (só um instalado) · sucata $${implantSellPrice(im).toLocaleString("pt-BR")}`, W - 56, 448, 12, "#a9a58f", "right");
   txtWrap(implantDesc(im), 56, 470, 13, "#d8d2ba", W - 112, 17, 4);
 }
 function drawClinic() {
@@ -1433,7 +1451,7 @@ function drawClinic() {
     const it = clinicItems()[game.cur];
     drawImplantInfo(it ? it.im : null);
     const canRemove = !!it && it.src === "bag" && !it.im.tokenBound;
-    btn(523, 545, 190, 29, "Vender (V) · $" + (canRemove ? IMP[it.im.id].scrap : 0).toLocaleString("pt-BR"),
+    btn(523, 545, 190, 29, "Vender (V) · $" + (canRemove ? implantSellPrice(it.im) : 0).toLocaleString("pt-BR"),
       sellImplant, false, !canRemove);
     btn(723, 545, 188, 29, "Descartar (X)", discardImplant, false, !canRemove);
     hint("Enter instala/remove · Q/D ordena · A pontos · V vende · X descarta · Tab loja · E fecha");
@@ -1544,7 +1562,7 @@ function drawClinic() {
   // Confirmação de venda/descarte preexistente, preservada.
   if (game.implantConfirm) {
     const c = game.implantConfirm;
-    const price = IMP[c.im.id] ? IMP[c.im.id].scrap : 0;
+    const price = IMP[c.im.id] ? implantSellPrice(c.im) : 0;
     const label = c.action === "sell" ? "Vender" : "Descartar";
     ctx.fillStyle = "rgba(0,0,0,0.80)"; ctx.fillRect(0, 0, W, H);
     regClick(0, 0, W, H, () => {});

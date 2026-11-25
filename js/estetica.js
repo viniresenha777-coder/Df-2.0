@@ -102,7 +102,29 @@ function uiPanel(x, y, w, h, r, glow) {
 
 // ---------- moldura de tela cheia usada por todos os menus ----------
 // fundo de tela cheia (vidro escuro, vinheta, neve, borda dourada e pisca-pisca), sem título
-function uiBackdrop(alpha) {
+// fundos ilustrados por tela (já vêm com as luzes de Natal desenhadas)
+const UI_BG = {};
+let UI_GLASS = false;   // tela com fundo ilustrado: linhas e painéis mais transparentes
+function uiBgImg(key) {
+  let im = UI_BG[key];
+  if (!im) { im = UI_BG[key] = new Image(); im.src = `img/ui/${key}.webp?v=20261125-bg1`; }
+  return im.complete && im.naturalWidth ? im : null;
+}
+function uiBackdrop(alpha, bg) {
+  const img = bg ? uiBgImg(bg) : null;
+  UI_GLASS = !!img;
+  if (img) {
+    // ilustração cobrindo a tela inteira + um véu leve para o texto continuar legível
+    const k = Math.max(W / img.naturalWidth, H / img.naturalHeight), dw = img.naturalWidth * k, dh = img.naturalHeight * k;
+    ctx.save(); ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    ctx.fillStyle = "rgba(6,10,6,0.22)"; ctx.fillRect(0, 0, W, H);
+    uiSnow(0, 0, W, H, 0.3);
+    ctx.shadowColor = "rgba(212,175,55,0.35)"; ctx.shadowBlur = 12;
+    ctx.strokeStyle = "rgba(212,175,55,0.5)"; ctx.lineWidth = 1.2; rr(16, 12, W - 32, H - 24, 12); ctx.stroke();
+    ctx.restore();
+    return;
+  }
   ctx.save();
   ctx.fillStyle = `rgba(6,9,7,${alpha == null ? 0.93 : alpha})`; ctx.fillRect(0, 0, W, H);
   // vinheta esverdeada com um calor dourado no topo
@@ -119,8 +141,8 @@ function uiBackdrop(alpha) {
   uiLights(40, W - 40, 14, 13, 62);
   uiHolly(30, 22, false); uiHolly(W - 30, 22, true);
 }
-function uiFrame(title, sub) {
-  uiBackdrop(0.93);
+function uiFrame(title, sub, bg) {
+  uiBackdrop(0.93, bg);
   // título com sombra e uma linha dourada que some nas pontas
   ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 6;
   txt(title, W / 2, 46, 28, "#f3ead0", "center", true); ctx.restore();
@@ -160,8 +182,9 @@ function uiButton(x, y, w, h, label, hov, primary, disabled, fontSize) {
 function uiRow(x, y, w, h, sel, accent) {
   ctx.save();
   const g = ctx.createLinearGradient(x, y, x + w, y);
-  if (sel) { g.addColorStop(0, "rgba(70,60,24,0.95)"); g.addColorStop(1, "rgba(32,34,24,0.95)"); }
-  else { g.addColorStop(0, "rgba(24,30,24,0.92)"); g.addColorStop(1, "rgba(18,21,17,0.92)"); }
+  const a = UI_GLASS ? (sel ? 0.78 : 0.55) : sel ? 0.95 : 0.92;
+  if (sel) { g.addColorStop(0, `rgba(70,60,24,${a})`); g.addColorStop(1, `rgba(32,34,24,${a})`); }
+  else { g.addColorStop(0, `rgba(24,30,24,${a})`); g.addColorStop(1, `rgba(18,21,17,${a})`); }
   if (sel) { ctx.shadowColor = "rgba(243,215,122,0.35)"; ctx.shadowBlur = 10; }
   ctx.fillStyle = g; rr(x, y, w, h, 6); ctx.fill();
   ctx.shadowBlur = 0;

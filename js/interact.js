@@ -85,10 +85,31 @@ function lootEntry(cat, t, table, zone) {
     const r = Math.random(), id = table === "chest" && r < 0.06 ? "nucleo" : r < 0.5 ? "sucata" : r < 0.78 ? "pecas" : "eletronicos";
     return { type: "mat", id, amt: id === "nucleo" ? 1 : 1 + Math.floor(Math.random() * 2) };
   }
-  if (cat === "implant") return { type: "implant", im: randomImplant() };
+  if (cat === "implant") { const im = randomImplant(); return im ? { type: "implant", im } : { type: "cash", amt: lootCash(lootAmt([1, CASH_MIN, CASH_MAX]), zone) }; }
   if (cat === "food") return { type: "food", amt: lootAmt(t.food), q: rollFoodQ(zone), spr: pick(FOOD_SPR) };
   if (cat === "anti") return { type: "anti", amt: lootAmt(t.anti), spr: "pills" };
   return { type: cat, amt: lootAmt(t[cat]), spr: cat === "med" ? pick(MED_SPR) : Math.random() < 0.5 ? "soda" : null };
+}
+// Implante no saque: raridade de item Lendário. Sorteia como se fosse cair uma arma neste lugar
+// (mesma chance, mesmos bônus) e só vira implante se a raridade sorteada for Lendária (4).
+// Sem implantes marcados com drop: true, nunca cai implante.
+function lootImplantDrop(t, zone, k, boost) {
+  if (!t.weapon || !dropImplantIds().length) return null;
+  const wc = k * t.weapon * (1 + player.fx.hunter / 100) * (1 + player.fx.implantLoot / 100) * (vipActive() ? 1.6 : 1) * (1 + diffOf(zone) * 0.3);
+  if (Math.random() >= wc || rollRarity(zone, boost) < 4) return null;
+  const im = randomImplant();
+  return im ? { type: "implant", im } : null;
+}
+// Componentes dos implantes X/Err X: só da região Vermelha (4) para cima.
+// Lugares com arma: 1,5% · airdrop: 25% · chefe: 40% de um componente e 30% de Coração do Demônio.
+const IMP_PARTS = ["placa_circuito", "interface_implante", "bateria_implante", "sucata_rara"];
+function implantPartsDrop(table, t, zone) {
+  if (regionOf(zone) < 4) return [];
+  const out = [], f = 1 + player.fx.miscFind / 100;
+  const pc = table === "boss" ? 0.4 : table === "airdrop" ? 0.25 : t.weapon ? 0.015 : 0;
+  if (pc && Math.random() < pc * f) out.push({ type: "mat", id: pick(IMP_PARTS), amt: 1 });
+  if (table === "boss" && Math.random() < 0.3 * f) out.push({ type: "mat", id: "coracao_demonio", amt: 1 });
+  return out;
 }
 // sorteia QUANTOS itens e depois QUAIS (tipos diferentes, pesados pelo que cada lugar costuma ter)
 function rollLoot(table, zone) {
@@ -103,9 +124,9 @@ function rollLoot(table, zone) {
   // arma e implante têm chance própria (antes, móveis com poucos tipos de item davam implante demais)
   const special = [];
   if (t.weapon && Math.random() < 2 * t.weapon * (1 + player.fx.hunter / 100) * vip * (1 + diffOf(zone) * 0.3)) special.push(lootEntry("weapon", t, table, zone));
-  // nos pontos especiais os implantes acompanham a região (azul dá pouco, roxa dá mais)
-  const ic = (IMPLANT_CHANCE[table] || 0) * (game.inside && game.inside.landmark ? 0.35 + regionOf(zone) * 0.12 : 1);
-  if (ic && Math.random() < 2 * ic * IMPLANT_RARITY * (1 + player.fx.implantLoot / 100) * vip) special.push(lootEntry("implant", t, table, zone));
+  // implante: só os marcados como "drop", com a mesma chance de uma arma Lendária neste lugar
+  const imd = lootImplantDrop(t, zone, 2, vipActive() ? 1 : 0);
+  if (imd) special.push(imd);
   if (t.weapon && special.length < 2 && Math.random() < vestChance(t)) special.push(lootVest(zone));
   const want = lootCount(table), k = Math.min(special.length ? want - special.length : want, pool.length), out = special;
   for (let i = 0; i < k; i++) {
@@ -113,6 +134,7 @@ function rollLoot(table, zone) {
     for (; idx < pool.length - 1; idx++) { r -= pool[idx][1]; if (r <= 0) break; }
     out.push(lootEntry(pool.splice(idx, 1)[0][0], t, table, zone));
   }
+  out.push(...implantPartsDrop(table, t, zone));   // componentes de implante: fora da conta de itens
   if (want === 4) out.push({ type: "credit", amt: 1 });
   return out;
 }
@@ -203,8 +225,9 @@ function rollLootFull(table, zone) {
     out.push({ type: "mat", id, amt: id === "nucleo" ? 1 : 1 + Math.floor(Math.random() * (table === "boss" ? 1 : 3)) });
     if (table === "boss") out.push({ type: "mat", id: pick(["pecas", "eletronicos"]), amt: 3 + Math.floor(Math.random() * 4) });
   }
-  if (Math.random() < (IMPLANT_CHANCE[table] || 0) * IMPLANT_RARITY * (1 + player.fx.implantLoot / 100) * (vipActive() ? 1.6 : 1))
-    out.push({ type: "implant", im: randomImplant() });
+  const imd = lootImplantDrop(t, zone, 1, (vipActive() ? 1 : 0) + (table === "boss" || table === "airdrop" ? 1 : 0));
+  if (imd) out.push(imd);
+  out.push(...implantPartsDrop(table, t, zone));
   if (Math.random() < vestChance(t)) out.push(lootVest(zone));
   return out;
 }
@@ -668,7 +691,7 @@ function opCell(id) { const o = OUTPOSTS[id]; return cellAt(o.cx, o.cy); }
 function travelCost(id) {
   const c = world.cell, o = OUTPOSTS[id];
   const oc = cellAt(o.cx, o.cy);
-  return (oc ? ECON[oc.tier].travel : 30) + (Math.abs(o.cx - c.cx) + Math.abs(o.cy - c.cy)) * 20;
+  return (oc ? ECON[oc.tier].travel : 300) + (Math.abs(o.cx - c.cx) + Math.abs(o.cy - c.cy)) * 200;
 }
 function travelTo(id) {
   const cell = opCell(id);

@@ -20,24 +20,24 @@ function basesFound() { return save.outposts.filter(Boolean).length; }
 
 // ---------- História ----------
 const STORY = [
-  { name: "Primeiro saque", text: "O rádio da base chia: 'Ninguém sobrevive de mãos vazias. Vasculhe o bairro.'", goal: "Vasculhe 5 lugares", val: () => S("searches"), n: 5, rw: { money: 100, food: 2 } },
-  { name: "Mãos à obra", text: "Os errantes estão chegando perto do Refúgio. Afaste-os.", goal: "Elimine 15 zumbis", val: () => S("kills"), n: 15, rw: { money: 150, xp: 40 } },
+  { name: "Primeiro saque", text: "O rádio da base chia: 'Ninguém sobrevive de mãos vazias. Vasculhe o bairro.'", goal: "Vasculhe 5 lugares", val: () => S("searches"), n: 5, rw: { money: 1000, food: 2 } },
+  { name: "Mãos à obra", text: "Os errantes estão chegando perto do Refúgio. Afaste-os.", goal: "Elimine 15 zumbis", val: () => S("kills"), n: 15, rw: { money: 1500, xp: 40 } },
   { name: "Arma de verdade", text: "Uma pistola não vai bastar lá fora. Ache algo melhor.", goal: "Consiga uma arma Incomum ou melhor", val: () => S("bestRarity"), n: 1, rw: { mats: { pecas: 2 } } },
-  { name: "Catador", text: "Cada lata conta. Cada bala conta.", goal: "Pegue 30 itens", val: () => S("itemsTaken"), n: 30, rw: { money: 200, med: 1 } },
-  { name: "A primeira noite", text: "Quando o sol some, eles ficam mais numerosos. Aguente até o amanhecer.", goal: "Sobreviva a uma noite", val: () => S("nights"), n: 1, rw: { money: 200, med: 1, xp: 80 } },
-  { name: "Rumo ao leste", text: "Há sinal de rádio vindo da velha ferrovia. Talvez existam outros.", goal: "Descubra a Base 2", val: () => basesFound(), n: 2, rw: { money: 400, mats: { sucata: 3 } } },
-  { name: "Matilha", text: "Os cães infectados caçam em grupo. Diminua a matilha.", goal: "Elimine 10 cães infectados", val: () => S("dogs"), n: 10, rw: { money: 400, xp: 150 } },
+  { name: "Catador", text: "Cada lata conta. Cada bala conta.", goal: "Pegue 30 itens", val: () => S("itemsTaken"), n: 30, rw: { money: 2000, med: 1 } },
+  { name: "A primeira noite", text: "Quando o sol some, eles ficam mais numerosos. Aguente até o amanhecer.", goal: "Sobreviva a uma noite", val: () => S("nights"), n: 1, rw: { money: 2000, med: 1, xp: 80 } },
+  { name: "Rumo ao leste", text: "Há sinal de rádio vindo da velha ferrovia. Talvez existam outros.", goal: "Descubra a Base 2", val: () => basesFound(), n: 2, rw: { money: 4000, mats: { sucata: 3 } } },
+  { name: "Matilha", text: "Os cães infectados caçam em grupo. Diminua a matilha.", goal: "Elimine 10 cães infectados", val: () => S("dogs"), n: 10, rw: { money: 4000, xp: 150 } },
   { name: "Ferreiro", text: "A oficina dos postos transforma sucata em sobrevivência.", goal: "Melhore uma arma na oficina", val: () => S("upgrades"), n: 1, rw: { mats: { pecas: 4 } } },
-  { name: "Maré morta", text: "O barulho atraiu uma horda inteira. Segure a linha.", goal: "Sobreviva a uma horda", val: () => S("hordes"), n: 1, rw: { money: 600, xp: 250 } },
+  { name: "Maré morta", text: "O barulho atraiu uma horda inteira. Segure a linha.", goal: "Sobreviva a uma horda", val: () => S("hordes"), n: 1, rw: { money: 6000, xp: 250 } },
   { name: "Presente do céu", text: "Um avião ainda voa. Ele joga caixas de suprimentos na cidade.", goal: "Abra uma caixa de suprimentos", val: () => S("airdrops"), n: 1, rw: { mats: { eletronicos: 2 } } },
-  { name: "O Forte", text: "Dizem que o Forte resistiu ao primeiro inverno. Descubra se é verdade.", goal: "Descubra a Base 3", val: () => basesFound(), n: 3, rw: { money: 1000, xp: 400 } },
+  { name: "O Forte", text: "Dizem que o Forte resistiu ao primeiro inverno. Descubra se é verdade.", goal: "Descubra a Base 3", val: () => basesFound(), n: 3, rw: { money: 10000, xp: 400 } },
   { name: "Mestre artesão", text: "Com as peças certas, dá para criar armas que ninguém mais tem.", goal: "Crie uma arma especial", val: () => S("crafts"), n: 1, rw: { mats: { nucleo: 1 } } },
-  { name: "Mata-gigantes", text: "Os chefes guardam núcleos raros. Cace-os.", goal: "Derrote 3 chefes", val: () => S("bosses"), n: 3, rw: { money: 1500, xp: 600 } },
-  { name: "Bastião", text: "Além do Forte, a cidade fica mais escura. O Bastião é o último ponto conhecido.", goal: "Descubra a Base 4", val: () => basesFound(), n: 4, rw: { money: 2500, xp: 800 } },
+  { name: "Mata-gigantes", text: "Os chefes guardam núcleos raros. Cace-os.", goal: "Derrote 3 chefes", val: () => S("bosses"), n: 3, rw: { money: 15000, xp: 600 } },
+  { name: "Bastião", text: "Além do Forte, a cidade fica mais escura. O Bastião é o último ponto conhecido.", goal: "Descubra a Base 4", val: () => basesFound(), n: 4, rw: { money: 25000, xp: 800 } },
   { name: "Carne que não morre", text: "Os mutantes investem sem aviso. Aprenda a desviar.", goal: "Elimine 15 mutantes ou abominações", val: () => S("monsters"), n: 15, rw: { mats: { nucleo: 2 } } },
-  { name: "A Muralha", text: "Bem a leste, uma muralha de contêineres. Há gente viva lá?", goal: "Descubra a Base 5", val: () => basesFound(), n: 5, rw: { money: 5000, xp: 1500 } },
-  { name: "Lenda", text: "Armas lendárias só aparecem onde quase ninguém volta.", goal: "Consiga uma arma Lendária", val: () => S("bestRarity"), n: 4, rw: { money: 5000 } },
-  { name: "Fim do mundo", text: "O que comanda a horda está nas áreas pretas e roxas do leste. Acabe com isso.", goal: "Derrote um chefe de área preta, roxa ou cinza", val: () => S("bossR5"), n: 1, rw: { money: 10000, xp: 4000, mats: { nucleo: 3 } } }
+  { name: "A Muralha", text: "Bem a leste, uma muralha de contêineres. Há gente viva lá?", goal: "Descubra a Base 5", val: () => basesFound(), n: 5, rw: { money: 50000, xp: 1500 } },
+  { name: "Lenda", text: "Armas lendárias só aparecem onde quase ninguém volta.", goal: "Consiga uma arma Lendária", val: () => S("bestRarity"), n: 4, rw: { money: 50000 } },
+  { name: "Fim do mundo", text: "O que comanda a horda está nas áreas pretas e roxas do leste. Acabe com isso.", goal: "Derrote um chefe de área preta, roxa ou cinza", val: () => S("bossR5"), n: 1, rw: { money: 100000, xp: 4000, mats: { nucleo: 3 } } }
 ];
 
 // ---------- Conquistas (bronze, prata, ouro) ----------
@@ -66,7 +66,7 @@ const ACH = [
   { id: "travels", name: "Passageiro", desc: "Use a viagem rápida", val: () => S("travels"), t: [1, 15, 60] },
   { id: "cars", name: "Pirotécnico", desc: "Exploda carros", val: () => S("carsExploded"), t: [3, 30, 150] }
 ];
-const MEDAL = [{ name: "Bronze", color: "#c08a5a", money: 300, xp: 100 }, { name: "Prata", color: "#c8ccd0", money: 2000, xp: 600 }, { name: "Ouro", color: "#ffd25a", money: 8000, xp: 2500 }];
+const MEDAL = [{ name: "Bronze", color: "#c08a5a", money: 3000, xp: 100 }, { name: "Prata", color: "#c8ccd0", money: 20000, xp: 600 }, { name: "Ouro", color: "#ffd25a", money: 80000, xp: 2500 }];
 
 // ---------- Desafios do dia ----------
 const DAILY_POOL = [
@@ -120,7 +120,7 @@ function objectivesTick() {
     }
   }
   for (const d of save.daily.list) {
-    if (!d.done && dailyVal(d) >= d.n) { d.done = true; giveReward({ money: 800, xp: 300, mats: { pecas: 2, eletronicos: 1 } }, "Desafio do dia concluído!", d.txt); return; }
+    if (!d.done && dailyVal(d) >= d.n) { d.done = true; giveReward({ money: 8000, xp: 300, mats: { pecas: 2, eletronicos: 1 } }, "Desafio do dia concluído!", d.txt); return; }
   }
   if (game.objDirty) { game.objDirty = false; persist(); }
 }
@@ -193,7 +193,7 @@ function eventsTick(dt) {
     const alive = zombies.filter((z) => z.horde && z.hp > 0).length;
     hd.left = alive + (hd.total - hd.spawned);
     if (hd.spawned >= hd.total && alive === 0) {
-      if (hd.killed >= hd.total * 0.6) { stat("hordes"); giveReward({ money: Math.round(300 * econ().reward + game.area * 40), xp: 200 + game.area * 40, mats: { sucata: 3, pecas: 2 } }, "Horda derrotada!"); }
+      if (hd.killed >= hd.total * 0.6) { stat("hordes"); giveReward({ money: Math.round(3000 * econ().reward + game.area * 400), xp: 200 + game.area * 40, mats: { sucata: 3, pecas: 2 } }, "Horda derrotada!"); }
       else game.banner = { text: "A horda se dispersou", sub: "Você se afastou demais", t: 2600 };
       game.horde = null;
     }

@@ -9,7 +9,19 @@ function newImplant(id) {
   if (id === FM_MIMIC_ID) im.tokenBound = true;      // o Mimic do kit é intransferível
   return im;
 }
-function randomImplant() { return newImplant(pick(IMP_IDS.filter((id) => !IMP[id].kitOnly && !IMP[id].craftOnly))); }
+// Só implantes marcados com drop: true caem no saque (os 29 atuais não caem: só loja/eventos).
+// A chance de cair é a mesma de uma arma Lendária naquele lugar (ver lootImplantDrop em interact.js).
+function dropImplantIds() { return IMP_IDS.filter((id) => IMP[id].drop && !IMP[id].kitOnly && !IMP[id].craftOnly); }
+// peso no sorteio: tier 1 é o mais comum, X e Err X os mais raros
+const IMPLANT_TIER_WEIGHT = { 1: 6, 2: 3, 3: 1 };
+function randomImplant() {
+  const ids = dropImplantIds();
+  if (!ids.length) return null;
+  const w = (id) => IMP[id].err ? 0.5 : IMPLANT_TIER_WEIGHT[IMP[id].tier] || 1;
+  let r = Math.random() * ids.reduce((a, id) => a + w(id), 0);
+  for (const id of ids) { r -= w(id); if (r <= 0) return newImplant(id); }
+  return newImplant(ids[ids.length - 1]);
+}
 function impColor(im) { return IMP_COLOR[IMP[im.id].kind || 0]; }
 function implantName(im) { return IMP[im.id].name; }
 function allocUsed(im) { let n = 0; for (const k in im.alloc || {}) n += im.alloc[k]; return n; }
@@ -104,7 +116,7 @@ function lastStandTick() {
   if (!player.fxAll) return;
   player.fx = player.flags.lastStand && player.hp / player.maxHp < 0.25 ? player.fxSafe : player.fxAll;
 }
-function makeStock() { return IMP_IDS.filter((id) => !IMP[id].kitOnly && !IMP[id].craftOnly).map((id) => ({ id, price: IMP[id].price })); }
+function makeStock() { return IMP_IDS.filter((id) => !IMP[id].kitOnly && !IMP[id].craftOnly && IMP[id].price > 0).sort((a, b) => IMP[a].price - IMP[b].price).map((id) => ({ id, price: IMP[id].price })); }
 
 
 // ---------- Esquemas de implantes (presets) ----------
@@ -194,7 +206,9 @@ function implantPresetTotals(preset) {
 }
 
 // ---------- Atributos ----------
-function xpNeed(l) { return Math.round(30 + 6 * l + 0.12 * l * l); }
+// curva de XP: nível 200 leva ~300 h jogando COM o bônus de evento (+100% XP) e ~630 h sem bônus
+// (simulação com ~300 abates/h subindo de região). VIP dobra o XP por cima.
+function xpNeed(l) { return Math.round(200 + 100 * l + 0.6 * Math.pow(l, 2.5)); }
 function A(id) { return player.attrs[id]; }
 // Vest and implant protection stack additively; attribute armor remains a separate layer.
 function equipmentProtection() {

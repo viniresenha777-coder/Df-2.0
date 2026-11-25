@@ -31,9 +31,10 @@ const CAT_LABEL = { pistols: "Pistola", machinegun: "Metralhadora", shotguns: "E
 
 // ---------- Arsenal ----------
 // look = formato do desenho · req = [força, proficiência] · slow = % de velocidade perdida com a arma na mão
+// shop = preço em dinheiro na Loja (armas iniciais: matam o errante da 1ª zona em 4–5 tiros, sem bônus)
 const WLIST = [
   // pistolas
-  { id: "pistola",  name: "Pistola 9mm",   cat: "pistols", look: "pistol",   dmg: 6, delay: 500, mag: 12, reload: 1000, ammo: "9mm",  price: 0,    req: [0, 5],  len: 14, color: "#3b3a30", sound: [0.1, 0.15] },
+  { id: "pistola",  name: "Pistola 9mm",   cat: "pistols", look: "pistol",   dmg: 30, delay: 500, mag: 12, reload: 1000, ammo: "9mm",  price: 1500, shop: 1500, req: [0, 5],  len: 14, color: "#3b3a30", sound: [0.1, 0.15] },
   { id: "colt",     name: "Colt .45",      cat: "pistols", look: "pistol",   dmg: 21, delay: 666.67, mag: 8,  reload: 1100, ammo: ".45",  price: 300,  req: [10, 20], len: 15, color: "#6a6a66" },
   { id: "glock",    name: "Glock 18",      cat: "pistols", look: "pistol",   dmg: 3, delay: 116.69, mag: 20, reload: 1100, ammo: "9mm",  price: 350,  req: [10, 25], len: 15, color: "#2a2a2a", short: "Glock 18" },
   { id: "revolver", name: "Revólver Magnum", short: "Magnum", cat: "pistols", look: "revolver", dmg: 20, delay: 666.67, mag: 6, reload: 1900, ammo: ".50", price: 650, req: [15, 35], len: 17, color: "#8a8f96" },
@@ -53,7 +54,7 @@ const WLIST = [
   { id: "minigun",  name: "Minigun",       cat: "machinegun", look: "minigun", dmg: 15, pellets: 2, delay: 81.67, mag: 250, reload: 6000, ammo: "5.56", price: 9000, req: [80, 120], len: 34, color: "#4a4d50", slow: 14 },
   // escopetas
   { id: "canoduplo", name: "Cano Duplo",   cat: "shotguns", look: "shotgun", dmg: 4.5, delay: 666.67, mag: 2,  reload: 1500, ammo: "cartucho", price: 450,  req: [15, 30], len: 26, color: "#6b4a2b", wood: true, pellets: 8, spread: 0.32, life: 360 },
-  { id: "escopeta", name: "Escopeta",      cat: "shotguns", look: "shotgun", dmg: 3.5, delay: 666.67, mag: 6,  reload: 2200, ammo: "cartucho", price: 700,  req: [20, 40], len: 28, color: "#6b4a2b", wood: true, pellets: 8, spread: 0.28, life: 380 },
+  { id: "escopeta", name: "Escopeta",      cat: "shotguns", look: "shotgun", dmg: 3.85, delay: 666.67, mag: 6,  reload: 2200, ammo: "cartucho", price: 3000, shop: 3000, req: [10, 0], len: 28, color: "#6b4a2b", wood: true, pellets: 8, spread: 0.28, life: 380 },
   { id: "spas",     name: "SPAS-12",       cat: "shotguns", look: "shotgun", dmg: 10, delay: 666.67, mag: 8,  reload: 2600, ammo: "cartucho", price: 1900, req: [30, 70], len: 28, color: "#2a2a2a", pellets: 8, spread: 0.26, life: 400 },
   { id: "aa12",     name: "AA-12",         cat: "shotguns", look: "shotgun", dmg: 10.5, delay: 333.33, mag: 20, reload: 3000, ammo: "cartucho", price: 4500, req: [50, 110], len: 28, color: "#3a3d40", pellets: 8, spread: 0.3, life: 380, drum: true },
   // rifles
@@ -72,7 +73,7 @@ const WLIST = [
   { id: "ak_ouro",  name: "AK-47 Dourada", short: "AK Ouro", cat: "machinegun", look: "ar", dmg: 24, pellets: 2, delay: 116.67, mag: 40, reload: 1600, ammo: "7.62", price: 0, req: [60, 120], len: 32, color: "#d4af37", legendary: true },
   { id: "katana_dragao", name: "Katana do Dragão", short: "Katana Dr.", cat: "melee", look: "katana", dmg: 50, delay: 1000, range: 72, arc: 1.1, price: 0, req: [70, 120], len: 38, color: "#e05a3a", legendary: true },
   // especiais (só criando na oficina)
-  { id: "besta",    name: "Besta silenciosa", short: "Besta", cat: "rifles", look: "crossbow", dmg: 114, delay: 1000, mag: 1, reload: 900, ammo: "virote", price: 0, req: [20, 50], len: 30, color: "#5a4a32", pierce: true, speed: 15, life: 1300, sound: [0, 0], special: true },
+  { id: "besta",    name: "Besta silenciosa", short: "Besta", cat: "rifles", look: "crossbow", dmg: 114, delay: 1000, mag: 1, reload: 900, ammo: "virote", price: 0, req: [70, 120], len: 30, color: "#5a4a32", pierce: true, speed: 15, life: 1300, sound: [0, 0], special: true },
   { id: "serra",    name: "Serra elétrica", short: "Serra", cat: "melee", look: "chainsaw", dmg: 8, delay: 116.67, range: 52, arc: 0.55, price: 0, req: [30, 60], len: 34, color: "#d08a2a", sound: [0.6, 0.8], special: true },
   { id: "lancachamas", name: "Lança-chamas", short: "Lança-ch.", cat: "machinegun", look: "flamer", dmg: 2, delay: 33.33, mag: 120, reload: 2600, ammo: "combustível", price: 0, req: [35, 70], len: 30, color: "#a33b32", pellets: 3, spread: 0.22, life: 300, speed: 7, pierce: true, fire: true, sound: [0.5, 0.6], special: true },
   { id: "lamina",   name: "Lâmina Sombria", short: "Lâmina S.", cat: "melee", look: "katana", dmg: 90, delay: 1000, range: 74, arc: 1.05, price: 0, req: [60, 120], len: 40, color: "#8a5ae0", lifesteal: 0.08, special: true },
@@ -99,10 +100,10 @@ const WLIST = [
 const W_RAR = {
   pistola: 0, colt: 0, faca: 0, taco: 0, uzi: 0, canoduplo: 0,
   glock: 1, revolver: 1, mp5: 1, escopeta: 1, caca: 1, facao: 1, katana: 1, machado: 1, silenciada: 1,
-  deagle: 2, p90: 2, ak47: 2, m4: 2, fal: 2, spas: 2, sniper: 2, marreta: 2, besta: 2, serra: 2,
+  deagle: 2, p90: 2, ak47: 2, m4: 2, fal: 2, spas: 2, sniper: 2, marreta: 2, serra: 2,
   vector: 3, scar: 3, m249: 3, aa12: 3, barrett: 3, espada: 3, minigun: 3, lancachamas: 3, lamina: 3,
   revolver_orn: 3, incendiaria: 3, choque: 3, baioneta: 3, lancador: 3,
-  ak_ouro: 4, katana_dragao: 4, trovao: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, pistola_natal: 4, dose: 3, punhos: 0
+  ak_ouro: 4, katana_dragao: 4, trovao: 4, besta: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, pistola_natal: 4, dose: 3, punhos: 0
 };
 // arte das folhas em img/ usada por cada arma (tint = filtro de cor)
 const W_SPR = {
@@ -151,6 +152,12 @@ const MATS = {
   eletronicos: { name: "Componentes eletrônicos",  price: 140 },
   nucleo:      { name: "Núcleo raro",              price: 0 },
   placa:       { name: "Placa de blindagem",       price: 0 },
+  // componentes dos implantes X e Err X (Oficina): caem da região Vermelha para cima; Coração do Demônio só de chefes
+  placa_circuito:     { name: "Placa de circuito",      price: 0 },
+  interface_implante: { name: "Interface de implante",  price: 0 },
+  bateria_implante:   { name: "Bateria de implante",    price: 0 },
+  sucata_rara:        { name: "Sucata de metal raro",   price: 0 },
+  coracao_demonio:    { name: "Coração do Demônio",     price: 0 },
   cofre10k:    { name: "Cofre 10.000", price: 1000, cashProtection: 10000 },
   cofre100k:   { name: "Cofre 100.000", price: 10000, cashProtection: 100000 },
   cofre500k:   { name: "Cofre 500.000", price: 50000, cashProtection: 500000 }
@@ -162,14 +169,19 @@ function cashProtection(pack = player.pack) {
 }
 function safeDescription(id) { return `Protege até $${MATS[id].cashProtection.toLocaleString("pt-BR")} ao morrer.`; }
 const RECIPES = [
-  { id: "besta",       mats: { sucata: 4, pecas: 4 },                     money: 1200, level: 8 },
-  { id: "serra",       mats: { sucata: 6, pecas: 3, eletronicos: 3 },     money: 1500, level: 10 },
-  { id: "lancachamas", mats: { sucata: 8, pecas: 5, eletronicos: 3 },     money: 2500, level: 15 },
-  { id: "lamina",      mats: { sucata: 10, pecas: 4, nucleo: 1 },         money: 4000, level: 25 },
-  { id: "trovao",      mats: { pecas: 10, eletronicos: 6, nucleo: 2 },    money: 8000, level: 40 },
-  { id: "minigun_inf", mats: { pecas: 14, eletronicos: 10, nucleo: 4 },   money: 15000, level: 60 },
+  { id: "besta",       mats: { pecas: 12, eletronicos: 6, nucleo: 5 },    money: 120000, level: 40 },   // Lendária
+  { id: "serra",       mats: { sucata: 6, pecas: 3, eletronicos: 3 },     money: 20000, level: 10 },
+  { id: "lancachamas", mats: { sucata: 8, pecas: 5, eletronicos: 3 },     money: 35000, level: 15 },
+  { id: "lamina",      mats: { sucata: 10, pecas: 4, nucleo: 1 },         money: 60000, level: 25 },
+  { id: "trovao",      mats: { pecas: 15, eletronicos: 7, nucleo: 10 },   money: 120000, level: 40 },
+  { id: "minigun_inf", mats: { pecas: 14, eletronicos: 10, nucleo: 4 },   money: 250000, level: 60 },
   // colete nº 10: craft difícil (precisa ter o nº 9, que é consumido)
-  { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 50000, level: 100, needVest: 8 },
+  { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 500000, level: 100, needVest: 8 },
+  // implantes X: 3 do tier 2 correspondente · Err X: 2 do X correspondente (needImp = implantes consumidos da mochila de implantes)
+  ...["perception", "violence", "hyper", "ironskin", "salvage"].flatMap((n) => [
+    { implant: "x_" + n, needImp: { ["t2_" + n]: 3 }, mats: { placa_circuito: 1, interface_implante: 1, bateria_implante: 1, coracao_demonio: 1, sucata_rara: 1 }, money: 1000000, level: 50 },
+    { implant: "errx_" + n, needImp: { ["x_" + n]: 2 }, mats: { placa_circuito: 1, interface_implante: 1, bateria_implante: 1, sucata_rara: 1 }, money: 1000000, level: 50 }
+  ]),
   // evento de Natal: Gorros caem nas Caixas de Natal
   { implant: "implante_natal", mats: { gorro_natal: 10 }, money: 2000000, level: 1 }
 ];
@@ -195,7 +207,7 @@ function rollUpgrades(stats, max, random = Math.random) {
 function upgradeCost(inst) {
   const d = WDEF[inst.id];
   if (d.upCost) return { money: d.upCost, mats: { sucata: 2 } };
-  return { money: Math.round(240 + (d.special || d.legendary ? 3000 : d.price) * 0.24), mats: { sucata: 2 } };
+  return { money: Math.round(2400 + (d.special || d.legendary ? 3000 : d.price) * 2.4), mats: { sucata: 2 } };
 }
 const VEST_UP_MAX = 24;
 const VEST_UP_STATS = [{ id: "armor", name: "Armadura" }, { id: "speed", name: "Velocidade" }];
@@ -494,7 +506,7 @@ function drawWeaponSide(d, cx, cy, s) {
   if (d.id === "besta" && CB_ZHNETS.complete && CB_ZHNETS.naturalWidth) {
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.scale(-1, 1);
+    ctx.scale(-1, -1);   // vira também na vertical: a luneta fica em cima e o gatilho embaixo
     ctx.drawImage(CB_ZHNETS, -64 * s, -32 * s, 128 * s, 64 * s);
     ctx.restore();
     return;
@@ -647,6 +659,27 @@ function drawMatIcon(id, cx, cy, s) {
     ctx.fillStyle = "#7a8086"; rr(-22, -16, 44, 14, 4); ctx.fill();
     ctx.fillStyle = "#3a3e42"; for (const [x, y] of [[-18, -14], [18, -14], [-18, 14], [18, 14]]) circle(x, y, 2.5);
     ctx.strokeStyle = "#c9a23a"; ctx.lineWidth = 2; ctx.strokeRect(-26, -20, 52, 40);
+  } else if (id === "placa_circuito") {            // componentes dos implantes X / Err X
+    ctx.fillStyle = "#1f4a6a"; rr(-28, -20, 56, 40, 4); ctx.fill();
+    ctx.strokeStyle = "#7fd0ff"; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(-22, -10); ctx.lineTo(-6, -10); ctx.lineTo(0, -4); ctx.lineTo(20, -4); ctx.moveTo(-22, 8); ctx.lineTo(4, 8); ctx.lineTo(10, 14); ctx.stroke();
+    R_(-6, 2, 12, 10, "#111"); ctx.fillStyle = "#c9a23a"; for (const [x, y] of [[-22, -10], [20, -4], [-22, 8], [10, 14]]) circle(x, y, 2.5);
+  } else if (id === "interface_implante") {
+    ctx.fillStyle = "#c9a23a"; for (let i = -3; i <= 3; i++) { ctx.fillRect(i * 6 - 1, -26, 2, 7); ctx.fillRect(i * 6 - 1, 19, 2, 7); ctx.fillRect(-26, i * 6 - 1, 7, 2); ctx.fillRect(19, i * 6 - 1, 7, 2); }
+    ctx.fillStyle = "#2a2d32"; rr(-19, -19, 38, 38, 4); ctx.fill();
+    ctx.shadowColor = "#5ad0ff"; ctx.shadowBlur = 10; ctx.fillStyle = "#5ad0ff"; rr(-9, -9, 18, 18, 2); ctx.fill(); ctx.shadowBlur = 0;
+  } else if (id === "bateria_implante") {
+    ctx.fillStyle = "#3a3d42"; rr(-14, -24, 28, 46, 5); ctx.fill(); R_(-6, -29, 12, 6, "#8a8f96");
+    ctx.shadowColor = "#7dff6a"; ctx.shadowBlur = 12; ctx.fillStyle = "#6be05a"; rr(-9, -4, 18, 22, 3); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = "#2a2d32"; ctx.fillRect(-9, 4, 18, 2); ctx.fillRect(-9, 11, 18, 2);
+  } else if (id === "sucata_rara") {
+    ctx.shadowColor = "#9ad8ff"; ctx.shadowBlur = 12;
+    poly([[-28, 8], [-8, -16], [6, 0], [-6, 16]], "#8fb6c8"); poly([[2, -12], [26, -18], [28, 4], [8, 6]], "#c9d8e0"); poly([[-4, 6], [20, 4], [22, 20], [0, 22]], "#6f8fa0");
+    ctx.shadowBlur = 0;
+  } else if (id === "coracao_demonio") {
+    ctx.shadowColor = "#ff3a2a"; ctx.shadowBlur = 18; ctx.fillStyle = "#9a1a16";
+    ctx.beginPath(); ctx.moveTo(0, 22); ctx.bezierCurveTo(-30, 2, -24, -24, 0, -10); ctx.bezierCurveTo(24, -24, 30, 2, 0, 22); ctx.fill();
+    ctx.shadowBlur = 0; ctx.strokeStyle = "#ff6a3a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-8, -6); ctx.lineTo(-2, 4); ctx.lineTo(6, -4); ctx.lineTo(4, 10); ctx.stroke();
   } else {
     ctx.shadowColor = "#b07aff"; ctx.shadowBlur = 18;
     poly([[0, -26], [18, -12], [18, 12], [0, 26], [-18, 12], [-18, -12]], "#8a5ae0");

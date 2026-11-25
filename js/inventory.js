@@ -27,8 +27,15 @@ function inSafe() { return !!(game.inside && game.inside.safe); }
 function atBase() { return !!game.hub || inSafe(); }
 
 // ---------- Detalhes de uma arma (usado em várias telas) ----------
+// luz atrás da arma no lugar da caixa preta: armas escuras (espadas, coronhas) não somem no fundo
+function itemSpot(cx, cy, rx, ry) {
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(1, ry / rx);
+  const g = ctx.createRadialGradient(0, 0, 4, 0, 0, rx);
+  g.addColorStop(0, "rgba(255,236,190,0.34)"); g.addColorStop(0.55, "rgba(230,200,140,0.14)"); g.addColorStop(1, "rgba(230,200,140,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+}
 function weaponDetail(d, inst, x, y, w) {
-  ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(x, y, w, 96, 8); ctx.fill();
+  itemSpot(x + w / 2, y + 48, w * 0.55, 58);
   drawWeaponSide(d, x + w / 2, y + 48, Math.min(1.6, (w - 30) / 125));
   txt(inst ? instName(inst) : d.name, x, y + 122, 18, rarColor(d), "left", true, w);
   txt(`${RARITY[d.rar].name} · ${CAT_LABEL[d.cat]}${d.craftOnly ? " · feita na oficina" : ""}`, x, y + 141, 12, rarColor(d), "left", false, w);
@@ -459,7 +466,7 @@ function drawPause() {
   txt("Boneco: novo", W / 2 - 200, 113, 16, "#e5e0c8", "center", true);
   const ago = game.lastSave ? Math.round((performance.now() - game.lastSave) / 1000) : null;
   txt(ago == null ? "ainda não salvou nesta sessão" : ago < 3 ? "salvo agora!" : `último checkpoint: há ${ago < 60 ? `${ago}s` : `${Math.floor(ago / 60)} min`}`, W / 2 - 200, 164, 10, ago != null && ago < 3 ? "#8fe08a" : "rgba(229,224,200,0.55)", "center");
-  txt(`${clockText()} · Área ${world.cell.code} (${REGIONS[world.cell.tier].name}) · $${econ().bounty} por abate · ${game.kills} abates`, W / 2, 140, 14, "#a9a58f", "center");
+  txt(`${clockText()} · Área ${world.cell.code} (${REGIONS[world.cell.tier].name}) · ${game.kills} abates`, W / 2, 140, 14, "#a9a58f", "center");
   let buttonY = 149;
   function pauseButton(label, action, highlight = false) {
     btn(W / 2 - 108, buttonY, 216, 24, label, action, highlight);
@@ -1177,7 +1184,12 @@ function drawStash() {
 //  Loja dos postos
 // =====================================================================
 const SHOP_TABS = ["Munição"];
-const AMMO_PACK_SIZE = 999, AMMO_PACK_PRICE = 14000;
+const AMMO_PACK_SIZE = 999;
+// preço do pacote de 999 balas, por calibre (dinheiro da mochila)
+const AMMO_PACK_PRICES = { "9mm": 6000, ".45": 8000, "cartucho": 9000, "5.56": 12000, "7.62": 14000, ".50": 18000,
+  "combustível": 10000, "virote": 16000, "granada": 60000 };
+function ammoPackPrice(type) { return AMMO_PACK_PRICES[type] || 14000; }
+const AMMO_PACK_PRICE = 14000;   // legado (valor de referência)
 const CAT_ORDER = { pistols: 0, machinegun: 1, shotguns: 2, rifles: 3, melee: 4 };
 const SHOP_WEAPONS = WLIST.filter((d) => d.rar <= 3 && !d.craftOnly && !d.fists && d.price > 0).sort((a, b) => CAT_ORDER[a.cat] - CAT_ORDER[b.cat] || a.price - b.price);
 function shopList() { return Object.keys(AMMO); }
@@ -1189,14 +1201,15 @@ function shopBuy() {
   const type = shopList()[game.shopCur | 0];
   if (!type) return;
   const free = shopFree();
-  if (!free && game.money < AMMO_PACK_PRICE) { toast("Você precisa de $14.000 para comprar munições."); return; }
+  const cost = ammoPackPrice(type);
+  if (!free && game.money < cost) { toast("Você precisa de $" + cost.toLocaleString("pt-BR") + " para comprar essa munição."); return; }
   if (ammoRoom(type) < AMMO_PACK_SIZE) { toast("Espaço insuficiente para 999 munições na mochila."); return; }
   if (free) player.tokenAmmo[type] = (player.tokenAmmo[type] || 0) + AMMO_PACK_SIZE;
-  else game.money -= AMMO_PACK_PRICE;
+  else game.money -= cost;
   player.reserve[type] = (player.reserve[type] || 0) + AMMO_PACK_SIZE;
   sfx.buy();
   checkpoint("compra de pacote de munição");
-  toast("Comprou 999 munições " + type + (free ? " de graça (Token da Loja)" : " por $14.000"));
+  toast("Comprou 999 munições " + type + (free ? " de graça (Token da Loja)" : " por $" + cost.toLocaleString("pt-BR")));
 }
 function vestText(v) {
   const up = vestUpgrade(VESTS.indexOf(v));
@@ -1226,7 +1239,7 @@ function shopKey(k) {
 function drawShop() {
   const free = shopFree();
   menuFrame("Loja de Munições", free ? "TOKEN DA LOJA ATIVO · tudo de graça até " + new Date(save.shopFreeUntil).toLocaleString("pt-BR")
-    : "Dinheiro: $" + game.money.toLocaleString("pt-BR") + " · Cada pacote: 999 munições por $14.000");
+    : "Dinheiro: $" + game.money.toLocaleString("pt-BR") + " · Cada pacote: 999 munições");
   const list = shopList();
   const selected = Math.min(list.length - 1, Math.max(0, game.shopCur | 0));
   game.shopCur = selected;
@@ -1237,7 +1250,7 @@ function drawShop() {
     drawEntryIcon({ type: "ammo", ammo: type }, 76, y + 20, 0.5);
     txt(type + " · 999 unidades", 124, y + 18, 15, "#f2eedc", "left", true);
     txt("Você tem: " + (player.reserve[type] || 0), 124, y + 33, 11, "#a9a58f");
-    txt(free ? "GRÁTIS" : "$14.000", 544, y + 25, 14, free ? "#ffd96a" : game.money >= AMMO_PACK_PRICE ? "#6fae4f" : "#e05a4a", "right", true);
+    txt(free ? "GRÁTIS" : "$" + ammoPackPrice(type).toLocaleString("pt-BR"), 544, y + 25, 14, free ? "#ffd96a" : game.money >= ammoPackPrice(type) ? "#6fae4f" : "#e05a4a", "right", true);
     rowClick(40, y, 520, 38, selected === i, () => { game.shopCur = i; }, shopBuy);
   });
   const type = list[selected], px = 600;
@@ -1246,7 +1259,7 @@ function drawShop() {
     drawEntryIcon({ type: "ammo", ammo: type }, 760, 188, 1.6);
     txt("Munição " + type, px, 286, 20, "#f2eedc", "left", true);
     txt("Pacote com 999 unidades", px, 316, 15, "#ffd96a");
-    txt(free ? "Preço: GRÁTIS (Token da Loja)" : "Preço: $14.000", px, 344, 15, free ? "#ffd96a" : "#6fae4f", "left", true);
+    txt(free ? "Preço: GRÁTIS (Token da Loja)" : "Preço: $" + ammoPackPrice(type).toLocaleString("pt-BR"), px, 344, 15, free ? "#ffd96a" : "#6fae4f", "left", true);
     txt("Espaço necessário na mochila", px, 369, 12, "#a9a58f");
     btn(px + 60, 422, 200, 42, "Comprar (Enter)", shopBuy, true);
   }
@@ -1312,6 +1325,12 @@ function craftKey(k) {
 }
 // o implante Artesão dá desconto no dinheiro da oficina
 function craftMoney(m) { return Math.round(m * (1 - Math.min(0.5, player.fx.craftDisc / 100))); }
+// implantes pedidos pela receita (X e Err X): contam só os da mochila de implantes, fora do Token
+function impHave(id) { return player.bag.filter((im) => im.id === id && !im.tokenBound).length; }
+function hasImps(need) { return !need || Object.keys(need).every((id) => impHave(id) >= need[id]); }
+function takeImps(need) {
+  for (const id in need || {}) for (let n = need[id]; n > 0; n--) { const i = player.bag.findIndex((im) => im.id === id && !im.tokenBound); if (i >= 0) player.bag.splice(i, 1); }
+}
 function recipeName(r) { return r.implant ? IMP[r.implant].name : r.vest != null ? VESTS[r.vest].name : WDEF[r.id].name; }
 function craftRecipe() {
   const r = RECIPES[game.ccur], cost = craftMoney(r.money);
@@ -1320,8 +1339,11 @@ function craftRecipe() {
   if (r.vest != null && save.vestsOwned[r.vest]) { toast("Você já tem esse colete"); return; }
   if (game.money < cost) { toast(`Precisa de $${cost} na mochila`); return; }
   if (!hasMats(r.mats)) { toast("Faltam materiais"); return; }
+  if (!hasImps(r.needImp)) { const id = Object.keys(r.needImp)[0]; toast(`Precisa de ${r.needImp[id]}× ${IMP[id].name} na mochila de implantes (não instalados)`); return; }
+  if (r.implant && player.bag.length - Object.values(r.needImp || {}).reduce((a, b) => a + b, 0) >= BAG_MAX) { toast("Mochila de implantes cheia"); return; }
   if (!r.implant && r.vest == null && player.slots.indexOf(null) < 0 && packUsed() >= packCapacity()) { toast("Mochila cheia"); return; }
   for (const m in r.mats) takeMat(m, r.mats[m]);
+  takeImps(r.needImp);
   game.money -= cost; stat("crafts");
   if (r.vest != null) {
     save.vestsOwned[r.needVest] = false;
@@ -1392,7 +1414,7 @@ function matsLine(mats, x, y) {
 }
 function drawCraft() {
   game.ctab = game.ctab || 0; game.ccur = game.ccur || 0; game.cstat = game.cstat || 0;
-  menuFrame("Oficina", `Dinheiro: $${game.money}  ·  Nível ${player.level}  ·  materiais da mochila e do baú contam aqui`);
+  menuFrame("Oficina", `Dinheiro: $${game.money}  ·  Nível ${player.level}  ·  materiais da mochila e do baú contam aqui`, "oficina_bg");
   if (save.vest >= 0) {
     const vd = Math.round(vestDur()), c = repairCost();
     btn(W - 270, 20, 230, 30, vd >= 100 ? `Colete ${vd}% (inteiro)` : `V: consertar colete ${vd}% · $${Math.max(1, c)}`, repairVest, vd < 100, vd >= 100);
@@ -1404,13 +1426,17 @@ function drawCraft() {
     regClick(x, 88, 200, 26, () => { game.ctab = i; game.ccur = 0; game.cstat = 0; });
   });
   const px = 600, pw = 320;
-  ctx.fillStyle = "rgba(0,0,0,0.25)"; rr(px - 10, 122, pw + 20, 400, 8); ctx.fill();
+  ctx.fillStyle = "rgba(10,14,9,0.32)"; rr(px - 10, 122, pw + 20, 400, 8); ctx.fill();   // painel translúcido (sem fundo preto)
   if (game.ctab === 0) {
+    const RV = 7, roff = Math.max(0, Math.min(RECIPES.length - RV, game.ccur - 3));   // 7 receitas por vez, rola com W/S
+    if (RECIPES.length > RV) txt(`${game.ccur + 1} / ${RECIPES.length}`, 300, 520, 11, "#a9a58f", "center");
     RECIPES.forEach((r, i) => {
-      const y = 120 + i * 56, sel = game.ccur === i, cost = craftMoney(r.money);
-      const ok = player.level >= r.level && game.money >= cost && hasMats(r.mats) && (r.needVest == null || save.vestsOwned[r.needVest]);
+      if (i < roff || i >= roff + RV) return;
+      const y = 120 + (i - roff) * 56, sel = game.ccur === i, cost = craftMoney(r.money);
+      const ok = player.level >= r.level && game.money >= cost && hasMats(r.mats) && hasImps(r.needImp) && (r.needVest == null || save.vestsOwned[r.needVest]);
       rowBox(40, y, 520, 52, sel, ok ? "#6fae4f" : null);
       rowClick(40, y, 520, 52, sel, () => { game.ccur = i; }, craftRecipe);
+      itemSpot(96, y + 26, 56, 24);
       if (r.implant) drawEntryIcon({ type: "implant", im: { id: r.implant } }, 96, y + 26, 0.62);
       else if (r.vest != null) drawVestIcon(r.vest, 96, y + 26, 0.7); else drawWeaponSide(WDEF[r.id], 96, y + 26, 0.36);
       txt(recipeName(r), 160, y + 19, 14, r.implant ? "#ff8a6a" : r.vest != null ? RARITY[VESTS[r.vest].rar].color : rarColor(WDEF[r.id]), "left", true, 280);
@@ -1421,13 +1447,22 @@ function drawCraft() {
     const r = RECIPES[game.ccur];
     if (r.implant) {
       const d = IMP[r.implant];
+      itemSpot(px + pw / 2, 210, 150, 90);
       drawEntryIcon({ type: "implant", im: { id: r.implant } }, px + pw / 2, 210, 1.9);
       txt(d.name, px, 300, 17, "#ff8a6a", "left", true, pw);
       Object.keys(d.fx).forEach((k, i) => txt(sgn(d.fx[k]) + "% " + (FX_LABEL[k] || k), px, 324 + i * 18, 13, d.fx[k] < 0 ? "#ff8383" : "#8bed92", "left", true, pw));
-      txt(`Gorros de Natal: ${matCount("gorro_natal")}/${r.mats.gorro_natal}`, px, 390, 12, hasMats(r.mats) ? "#6fae4f" : "#e05a4a", "left", true, pw);
-      txt("Os Gorros caem nas Caixas de Natal espalhadas pela cidade", px, 410, 11, "#ffd96a", "left", false, pw);
+      if (r.needImp) {
+        const id = Object.keys(r.needImp)[0], have = impHave(id);
+        txt(`Implante: ${have}/${r.needImp[id]}× ${IMP[id].name}`, px, 414, 12, have >= r.needImp[id] ? "#6fae4f" : "#e05a4a", "left", true, pw);
+        txt("Na mochila de implantes (não instalados) · são consumidos", px, 430, 11, "#a9a58f", "left", false, pw);
+        txt("Componentes: região Vermelha+ · Coração do Demônio: chefes", px, 446, 11, "#ffd96a", "left", false, pw);
+      } else {
+        txt(`Gorros de Natal: ${matCount("gorro_natal")}/${r.mats.gorro_natal}`, px, 390, 12, hasMats(r.mats) ? "#6fae4f" : "#e05a4a", "left", true, pw);
+        txt("Os Gorros caem nas Caixas de Natal espalhadas pela cidade", px, 410, 11, "#ffd96a", "left", false, pw);
+      }
     } else if (r.vest != null) {
       const v = VESTS[r.vest];
+      itemSpot(px + pw / 2, 200, 150, 90);
       drawVestIcon(r.vest, px + pw / 2, 200, 2.2);
       txt(v.name, px, 290, 17, RARITY[v.rar].color, "left", true, pw);
       txt(vestText(v), px, 312, 12, "#c9c4ad", "left", false, pw);
