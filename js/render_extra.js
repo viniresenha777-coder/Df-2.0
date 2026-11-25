@@ -419,22 +419,13 @@ function drawBonusPanel() {
   // lista de bônus à esquerda, só texto, logo abaixo das informações do topo
   const x = 12, h = 13, y0 = game.hudBonusY || 170, room = H - 196 - y0, max = Math.max(3, Math.floor(room / h));
   const rows = list.slice(0, max);
-  let hover = null;
   ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.95)"; ctx.shadowBlur = 3; ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
   rows.forEach((b, i) => {
     const y = y0 + i * h;
     txt(b.text.toUpperCase(), x, y, 9.5, b.color, "left", true, 230);
-    if (mouse.x >= x && mouse.x <= x + 230 && mouse.y >= y - 10 && mouse.y <= y + 2) hover = { b, y: y - 12 };
   });
   if (list.length > max) txt(`+${list.length - max} BÔNUS`, x, y0 + rows.length * h, 9, "#a9a58f", "left", true);
   ctx.restore();
-  if (hover) {
-    const t = `${hover.b.text} — ${hover.b.from}`;
-    ctx.font = `12px ${FONT}`; const tw = Math.min(420, ctx.measureText(t).width + 16);
-    ctx.fillStyle = "rgba(8,8,6,0.92)"; rr(x + 236, hover.y, tw, 20, 5); ctx.fill();
-    ctx.strokeStyle = hover.b.color; ctx.lineWidth = 1; ctx.stroke();
-    txt(t, x + 244, hover.y + 14, 12, "#f2eedc", "left", false, tw - 12);
-  }
 }
 
 // ---------- Bússola de chefe ----------
