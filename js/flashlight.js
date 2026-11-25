@@ -217,3 +217,7 @@ function flashTearPath(c, px, py, a) {
   c.beginPath(); c.moveTo(px, py); c.arc(cx, cy, R, a - Math.PI / 2 - h, a + Math.PI / 2 + h); c.closePath();
   return [cx, cy, D, R];
 }
+
+// Cone reto da lanterna: comprimento e meia abertura (rad)
+const FLASH_HALF = 0.42;
+function flashBeamLen() { return game.inside ? 270 : 340; }

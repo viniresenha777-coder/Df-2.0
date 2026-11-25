@@ -1693,19 +1693,15 @@ function drawFlashBeamAdd() {
   const gc = FLASH_GLOW.c, gx = FLASH_GLOW.x;
   if (gc.width !== W || gc.height !== H) { gc.width = W; gc.height = H; }
   gx.setTransform(1, 0, 0, 1, 0, 0); gx.globalCompositeOperation = "source-over"; gx.clearRect(0, 0, W, H);
-  // mesmo visual do modo WebGL: facho estreito saindo do peito que se abre numa mancha oval e clara à frente
-  const [D, R] = flashTearSize();
-  gx.save(); gx.translate(px, py); gx.rotate(player.angle); gx.filter = "blur(10px)";
-  const gb = gx.createLinearGradient(0, 0, D, 0);
-  gb.addColorStop(0, "rgba(255,228,175,0.85)"); gb.addColorStop(1, "rgba(255,218,155,0.55)");
-  gx.fillStyle = gb; gx.beginPath(); gx.moveTo(4, -3); gx.lineTo(D * 0.8, -R * 0.38); gx.lineTo(D * 0.8, R * 0.38); gx.lineTo(4, 3); gx.closePath(); gx.fill();
-  gx.translate(D * 1.0, 0); gx.scale(1.45, 0.72);
-  const g = gx.createRadialGradient(0, 0, 4, 0, 0, R * 1.05);
-  g.addColorStop(0, "rgba(255,238,190,0.95)"); g.addColorStop(0.5, "rgba(255,222,160,0.65)"); g.addColorStop(1, "rgba(255,205,140,0)");
-  gx.fillStyle = g; gx.beginPath(); gx.arc(0, 0, R * 1.05, 0, Math.PI * 2); gx.fill();
-  const gc2 = gx.createRadialGradient(0, 0, 2, 0, 0, R * 0.5);                 // miolo forte
-  gc2.addColorStop(0, "rgba(255,245,210,0.9)"); gc2.addColorStop(1, "rgba(255,235,190,0)");
-  gx.fillStyle = gc2; gx.beginPath(); gx.arc(0, 0, R * 0.5, 0, Math.PI * 2); gx.fill();
+  // mesmo visual do modo WebGL: cone reto saindo do peito, miolo forte, dissipando ao longo do comprimento
+  const Lb = flashBeamLen(), hw = Math.tan(FLASH_HALF);
+  gx.save(); gx.translate(px, py); gx.rotate(player.angle); gx.filter = "blur(8px)";
+  const cone = (w, a0) => {
+    const g = gx.createLinearGradient(0, 0, Lb, 0);
+    g.addColorStop(0, `rgba(255,230,180,${a0 * 0.6})`); g.addColorStop(0.25, `rgba(255,228,175,${a0})`); g.addColorStop(1, "rgba(255,220,160,0)");
+    gx.fillStyle = g; gx.beginPath(); gx.moveTo(0, -2); gx.lineTo(Lb, -Lb * w); gx.lineTo(Lb, Lb * w); gx.lineTo(0, 2); gx.closePath(); gx.fill();
+  };
+  cone(hw * 0.85, 0.5); cone(hw * 0.45, 0.55);                                     // borda + miolo
   gx.restore(); gx.filter = "none";
   gx.globalCompositeOperation = "destination-out"; gx.drawImage(flashlightBlocks(), 0, 0, W, H);
   ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.drawImage(gc, 0, 0, W, H); ctx.restore();
