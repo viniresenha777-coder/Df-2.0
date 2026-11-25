@@ -73,7 +73,7 @@ const WLIST = [
   { id: "ak_ouro",  name: "AK-47 Dourada", short: "AK Ouro", cat: "machinegun", look: "ar", dmg: 24, pellets: 2, delay: 116.67, mag: 40, reload: 1600, ammo: "7.62", price: 0, req: [60, 120], len: 32, color: "#d4af37", legendary: true },
   { id: "katana_dragao", name: "Katana do Dragão", short: "Katana Dr.", cat: "melee", look: "katana", dmg: 50, delay: 1000, range: 72, arc: 1.1, price: 0, req: [70, 120], len: 38, color: "#e05a3a", legendary: true },
   // especiais (só criando na oficina)
-  { id: "besta",    name: "Besta silenciosa", short: "Besta", cat: "rifles", look: "crossbow", dmg: 114, delay: 1000, mag: 1, reload: 900, ammo: "virote", price: 0, req: [20, 50], len: 30, color: "#5a4a32", pierce: true, speed: 15, life: 1300, sound: [0, 0], special: true },
+  { id: "besta",    name: "Besta silenciosa", short: "Besta", cat: "rifles", look: "crossbow", dmg: 114, delay: 1000, mag: 1, reload: 900, ammo: "virote", price: 0, req: [70, 120], len: 30, color: "#5a4a32", pierce: true, speed: 15, life: 1300, sound: [0, 0], special: true },
   { id: "serra",    name: "Serra elétrica", short: "Serra", cat: "melee", look: "chainsaw", dmg: 8, delay: 116.67, range: 52, arc: 0.55, price: 0, req: [30, 60], len: 34, color: "#d08a2a", sound: [0.6, 0.8], special: true },
   { id: "lancachamas", name: "Lança-chamas", short: "Lança-ch.", cat: "machinegun", look: "flamer", dmg: 2, delay: 33.33, mag: 120, reload: 2600, ammo: "combustível", price: 0, req: [35, 70], len: 30, color: "#a33b32", pellets: 3, spread: 0.22, life: 300, speed: 7, pierce: true, fire: true, sound: [0.5, 0.6], special: true },
   { id: "lamina",   name: "Lâmina Sombria", short: "Lâmina S.", cat: "melee", look: "katana", dmg: 90, delay: 1000, range: 74, arc: 1.05, price: 0, req: [60, 120], len: 40, color: "#8a5ae0", lifesteal: 0.08, special: true },
@@ -100,10 +100,10 @@ const WLIST = [
 const W_RAR = {
   pistola: 0, colt: 0, faca: 0, taco: 0, uzi: 0, canoduplo: 0,
   glock: 1, revolver: 1, mp5: 1, escopeta: 1, caca: 1, facao: 1, katana: 1, machado: 1, silenciada: 1,
-  deagle: 2, p90: 2, ak47: 2, m4: 2, fal: 2, spas: 2, sniper: 2, marreta: 2, besta: 2, serra: 2,
+  deagle: 2, p90: 2, ak47: 2, m4: 2, fal: 2, spas: 2, sniper: 2, marreta: 2, serra: 2,
   vector: 3, scar: 3, m249: 3, aa12: 3, barrett: 3, espada: 3, minigun: 3, lancachamas: 3, lamina: 3,
   revolver_orn: 3, incendiaria: 3, choque: 3, baioneta: 3, lancador: 3,
-  ak_ouro: 4, katana_dragao: 4, trovao: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, pistola_natal: 4, dose: 3, punhos: 0
+  ak_ouro: 4, katana_dragao: 4, trovao: 4, besta: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, pistola_natal: 4, dose: 3, punhos: 0
 };
 // arte das folhas em img/ usada por cada arma (tint = filtro de cor)
 const W_SPR = {
@@ -169,7 +169,7 @@ function cashProtection(pack = player.pack) {
 }
 function safeDescription(id) { return `Protege até $${MATS[id].cashProtection.toLocaleString("pt-BR")} ao morrer.`; }
 const RECIPES = [
-  { id: "besta",       mats: { sucata: 4, pecas: 4 },                     money: 15000, level: 8 },
+  { id: "besta",       mats: { pecas: 10, eletronicos: 6, nucleo: 2 },    money: 120000, level: 40 },   // Lendária: mesmos requisitos do Rifle Trovão
   { id: "serra",       mats: { sucata: 6, pecas: 3, eletronicos: 3 },     money: 20000, level: 10 },
   { id: "lancachamas", mats: { sucata: 8, pecas: 5, eletronicos: 3 },     money: 35000, level: 15 },
   { id: "lamina",      mats: { sucata: 10, pecas: 4, nucleo: 1 },         money: 60000, level: 25 },
