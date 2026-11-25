@@ -1,0 +1,29 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;background:#000">
+<canvas id="c" width="1280" height="720"></canvas>
+<script>
+const cv=document.getElementById('c'), ctx=cv.getContext('2d'); const W=1280,H=720,FONT="Verdana, sans-serif";
+function rr(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function txt(s,x,y,size,color,align,bold,maxW){ctx.font=`${bold?"bold ":""}${size}px ${FONT}`;ctx.fillStyle=color;ctx.textAlign=align||"left";maxW?ctx.fillText(s,x,y,maxW):ctx.fillText(s,x,y);}
+</script>
+<script src="../js/estetica.js"></script>
+<script>
+const atlas=new Image(); atlas.src="../img/implantes_29_atlas.webp";
+const bg=new Image(); bg.src="../img/hub.png";
+function draw(){
+  ctx.drawImage(bg,0,0,W,H);
+  uiFrame("Implantes","Créditos: 1.250  ·  VIP: ativo");
+  const names=["Ganância","Pele de Aço","Olho de Águia","Fôlego","Sangue Frio","Faro"];
+  for(let i=0;i<6;i++){const y=110+i*84; uiRow(120,y,640,72,i===1);
+    if(atlas.complete){const tile=160,col=i%6,row=0; ctx.drawImage(atlas,col*tile,row*tile,tile,tile,130,y+4,64,64); drawImplantFx(atlas,col*tile,row*tile,tile,162,y+36,64,i);}
+    txt(names[i],210,y+32,16,"#f2eedc","left",true); txt("+15% de dinheiro achado",210,y+54,12,"#a9a58f");
+    txt((i+1)*150+" créditos",740,y+42,14,"#ffd96a","right",true);}
+  for(let i=0;i<8;i++){const x=800+(i%4)*90,y=430+Math.floor(i/4)*90; uiCell(x,y,80,80,i===2,i===5,i===7);}
+  uiPanel(800,110,360,300,10,true);
+  txt("Detalhes",820,140,18,"#f3ead0","left",true);
+  uiButton(820,330,150,40,"Comprar",true,true,false);
+  uiButton(990,330,150,40,"Voltar",false,false,false);
+  
+  txt("Enter comprar · Esc voltar",W/2,H-24,13,"#a9a58f","center");
+}
+setInterval(draw,33);
+</script></body></html>

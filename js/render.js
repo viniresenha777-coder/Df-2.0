@@ -786,15 +786,20 @@ function interiorWallBoxes(h) {
   for (const f of h.interior) if (f.kind === "wall") boxes.push({ x: f.x, y: f.y, w: f.w, h: f.h, c: IWALL_COL, hgt: IWALL_H, inner: true });
   return boxes;
 }
-function drawInteriorWalls() {
+// pass: "back" = paredes cuja base fica atrás (acima) do personagem — desenhadas antes dele;
+//       "front" = as da frente, por cima dele. Assim ele não "entra" na parede quando encosta por baixo.
+function drawInteriorWalls(pass) {
   const h = game.inside;
   if (!INTERIOR_TALL_WALLS || !h) return;
+  const isBack = (b) => b.y + b.h <= player.y + 2;
   const e = eye(), lvl = h.level | 0;
   const P = (x, y, z) => { const k = IWALL_CAM / (IWALL_CAM - z); return { x: e.x + (x - e.x) * k, y: e.y + (y - e.y) * k - z * LEAN }; };
   const who = [player];                                // sólida como no DF; só some um pouco se VOCÊ estiver atrás
   const quad = (pts) => { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath(); ctx.fill(); };
   const boxes = interiorWallBoxes(h).sort((a, b) => (a.y + a.h) - (b.y + b.h));
-  for (const b of boxes) {
+  const caps = [];
+  boxes.forEach((b, bi) => {
+    if (pass && (pass === "back") !== isBack(b)) return;
     const x0 = b.x, x1 = b.x + b.w, y0 = b.y, y1 = b.y + b.h, z = b.hgt;
     const t00 = P(x0, y0, z), t10 = P(x1, y0, z), t11 = P(x1, y1, z), t01 = P(x0, y1, z);
     // alguém atrás desta parede (dentro da área que a face cobre na tela)?
@@ -820,13 +825,109 @@ function drawInteriorWalls() {
         quad([P(wx, y1, z * 0.35), P(wx + 120, y1, z * 0.35), P(wx + 120, y1, z * 0.82), P(wx, y1, z * 0.82)]);
       }
     }
-    // topo da parede (sólido)
-    ctx.globalAlpha = behind ? 0.5 : 1;
-    ctx.fillStyle = shade(b.c, 0.12); quad([t00, t10, t11, t01]);
-    ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(t00.x, t00.y); ctx.lineTo(t10.x, t10.y); ctx.lineTo(t11.x, t11.y); ctx.lineTo(t01.x, t01.y); ctx.closePath(); ctx.stroke();
-  }
+    // pichação na face da frente (paredes compridas; cada parede sorteia a sua)
+    if (b.hgt > 20) drawWallWear(h, bi, b, t01, t11, { x: x0, y: y1 }, z);
+    if (b.hgt > 20 && b.w > 70) drawGraffiti(h, bi, b, t01, t11, { x: x0, y: y1 }, z);
+    caps.push({ q: [t00, t10, t11, t01], c: b.c, a: behind ? 0.5 : 1 });
+  });
+  // topos de todas as paredes juntos: primeiro o contorno grosso, depois o preenchimento por cima
+  // (onde duas paredes se encontram as linhas de dentro somem: fica uma peça só, só com a linha de fora)
+  ctx.lineJoin = "miter"; ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = 2.4;
+  for (const c of caps) { ctx.globalAlpha = c.a; ctx.beginPath(); ctx.moveTo(c.q[0].x, c.q[0].y); for (let i = 1; i < 4; i++) ctx.lineTo(c.q[i].x, c.q[i].y); ctx.closePath(); ctx.stroke(); }
+  for (const c of caps) { ctx.globalAlpha = c.a; ctx.fillStyle = shade(c.c, 0.12); quad(c.q); }
   ctx.globalAlpha = 1;
+}
+
+// ---------- Desgaste das paredes ----------
+// Textura de reboco (ruído), manchas de umidade, rachaduras e pedaços caídos mostrando o tijolo.
+let _plasterPat = null;
+function plasterPattern() {
+  if (_plasterPat) return _plasterPat;
+  const c = document.createElement("canvas"); c.width = c.height = 96; const g = c.getContext("2d");
+  let s = 1234567; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 1400; i++) { const v = rnd(); g.fillStyle = v < 0.5 ? `rgba(0,0,0,${0.05 + rnd() * 0.08})` : `rgba(255,255,255,${0.04 + rnd() * 0.06})`; g.fillRect(rnd() * 96, rnd() * 96, 1 + rnd() * 2, 1 + rnd() * 2); }
+  for (let i = 0; i < 10; i++) { g.strokeStyle = `rgba(0,0,0,${0.04 + rnd() * 0.05})`; g.lineWidth = 0.7; g.beginPath(); const x = rnd() * 96, y = rnd() * 96; g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 18, y + (rnd() - 0.5) * 8); g.stroke(); }
+  _plasterPat = ctx.createPattern(c, "repeat"); return _plasterPat;
+}
+function drawWallWear(h, bi, b, tl, tr, bl, z) {
+  const r = (k) => bHash(h, 900 + bi * 13 + k + (h.level | 0) * 41);
+  const w = b.w;
+  ctx.save();
+  ctx.transform((tr.x - tl.x) / w, (tr.y - tl.y) / w, (bl.x - tl.x) / z, (bl.y - tl.y) / z, tl.x, tl.y);
+  ctx.beginPath(); ctx.rect(0, 0, w, z); ctx.clip();
+  const pat = plasterPattern(); if (pat) { ctx.fillStyle = pat; ctx.fillRect(0, 0, w, z); }
+  // manchas de umidade / sujeira escorrendo do topo e subindo do chão
+  const nS = Math.floor(w / 90) + 1;
+  for (let i = 0; i < nS; i++) {
+    const cx = r(i) * w, rw = 14 + r(20 + i) * 30, fromTop = r(40 + i) < 0.5;
+    const gy = fromTop ? 0 : z, g = ctx.createRadialGradient(cx, gy, 1, cx, gy, rw);
+    g.addColorStop(0, "rgba(60,48,30,0.28)"); g.addColorStop(1, "rgba(60,48,30,0)");
+    ctx.fillStyle = g; ctx.fillRect(cx - rw, gy - rw, rw * 2, rw * 2);
+  }
+  // reboco caído mostrando tijolo
+  const nB = r(60) < 0.55 ? 1 + Math.floor(r(61) * Math.min(3, w / 120)) : 0;
+  for (let i = 0; i < nB; i++) {
+    const bw = 18 + r(70 + i) * 26, bh = 10 + r(75 + i) * Math.min(18, z * 0.4), bx = 6 + r(80 + i) * Math.max(1, w - bw - 12), by = 4 + r(85 + i) * Math.max(1, z - bh - 8);
+    ctx.save(); ctx.beginPath();
+    for (let k = 0; k < 9; k++) { const a = (k / 9) * Math.PI * 2, rr = 0.72 + r(90 + i * 9 + k) * 0.35; const px = bx + bw / 2 + Math.cos(a) * bw / 2 * rr, py = by + bh / 2 + Math.sin(a) * bh / 2 * rr; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+    ctx.closePath(); ctx.fillStyle = "#8a5a44"; ctx.fill(); ctx.strokeStyle = "rgba(40,30,25,0.55)"; ctx.lineWidth = 1.2; ctx.stroke(); ctx.clip();
+    ctx.strokeStyle = "rgba(205,190,170,0.75)"; ctx.lineWidth = 0.8;              // argamassa
+    for (let yy = by; yy < by + bh + 6; yy += 5) { ctx.beginPath(); ctx.moveTo(bx - 4, yy); ctx.lineTo(bx + bw + 4, yy); ctx.stroke();
+      const off = ((yy - by) / 5) % 2 ? 0 : 5; for (let xx = bx - 10 + off; xx < bx + bw + 6; xx += 10) { ctx.beginPath(); ctx.moveTo(xx, yy); ctx.lineTo(xx, yy + 5); ctx.stroke(); } }
+    ctx.restore();
+  }
+  // rachaduras
+  const nC = r(100) < 0.7 ? 1 + Math.floor(r(101) * 2) : 0;
+  ctx.strokeStyle = "rgba(35,30,25,0.6)"; ctx.lineCap = "round";
+  for (let i = 0; i < nC; i++) {
+    let x = r(110 + i) * w, y = r(115 + i) < 0.5 ? 0 : z * (0.2 + r(116 + i) * 0.5); const dir = y === 0 ? 1 : (r(117 + i) < 0.5 ? 1 : -1);
+    ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(x, y);
+    for (let k = 0; k < 6; k++) { x += (r(120 + i * 10 + k) - 0.5) * 12; y += dir * (3 + r(140 + i * 10 + k) * 6); ctx.lineTo(x, y);
+      if (k === 2) { ctx.moveTo(x, y); ctx.lineTo(x + (r(160 + i) - 0.5) * 16, y + dir * 6); ctx.moveTo(x, y); } }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ---------- Pichações ----------
+// Frases e marcas de spray nas faces das paredes, sorteadas por casa e parede (sempre as mesmas no mesmo lugar).
+const GRAFFITI_TXT = ["ELES OUVEM", "NÃO SAIA À NOITE", "ACORDE", "TUDO É MENTIRA", "VÁ PARA O NORTE", "ELES VOLTAM",
+  "O GOVERNO SABIA", "NÃO ESTAMOS SOZINHOS", "FRONTEIRA MORTA", "NINGUÉM VEM", "CONTE AS BALAS", "OLHE PARA CIMA",
+  "A CURA É A DOENÇA", "NÃO ABRA", "ESTAMOS VIVOS", "DIA 0", "SORRIA", "QUEM É VOCÊ?", "OS MORTOS SONHAM",
+  "NÃO CONFIE NO RÁDIO", "SAÍDA NÃO EXISTE", "ELE TE VÊ", "S.O.S", "FUJA", "ÚLTIMA CHANCE", "VOLTE PARA CASA"];
+const GRAFFITI_COL = ["#b3261e", "#1d1d1d", "#2f7d3a", "#d8d3c0", "#d9a52b", "#2a4f9e", "#8a1f6a"];
+function drawGraffiti(h, bi, b, tl, tr, bl, z) {
+  const r = (k) => bHash(h, 300 + bi * 7 + k + (h.level | 0) * 31);
+  if (r(0) > 0.62) return;                                        // ~6 em cada 10 paredes compridas
+  const w = b.w;
+  ctx.save();
+  ctx.transform((tr.x - tl.x) / w, (tr.y - tl.y) / w, (bl.x - tl.x) / z, (bl.y - tl.y) / z, tl.x, tl.y);   // (u ao longo da parede, v de cima para baixo)
+  ctx.beginPath(); ctx.rect(0, 0, w, z); ctx.clip();
+  const col = GRAFFITI_COL[Math.floor(r(1) * GRAFFITI_COL.length)], kind = r(2);
+  ctx.globalAlpha *= 0.82;
+  ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = "round";
+  if (kind < 0.72) {                                              // frase
+    const t = GRAFFITI_TXT[Math.floor(r(3) * GRAFFITI_TXT.length)];
+    let fs = Math.min(z * 0.42, 22); ctx.font = `bold ${fs}px Impact, "Arial Black", sans-serif`;
+    const tw = ctx.measureText(t).width, maxw = w - 34; if (tw > maxw) { fs *= maxw / tw; ctx.font = `bold ${fs}px Impact, "Arial Black", sans-serif`; }
+    const cw = ctx.measureText(t).width, x = 10 + r(4) * Math.max(0, maxw - cw), y = z * (0.42 + r(5) * 0.2);
+    ctx.save(); ctx.translate(x, y); ctx.rotate((r(6) - 0.5) * 0.12); ctx.textBaseline = "alphabetic"; ctx.textAlign = "left"; ctx.fillText(t, 0, 0);
+    ctx.lineWidth = 1;                                            // escorrido de tinta
+    for (let i = 0; i < 4; i++) { const dx = r(10 + i) * cw, len = 3 + r(20 + i) * 12; ctx.beginPath(); ctx.moveTo(dx, 1); ctx.lineTo(dx, 1 + len); ctx.stroke(); }
+    ctx.restore();
+  } else if (kind < 0.82) {                                       // X grande
+    const cx = 20 + r(4) * (w - 40), s = z * 0.28; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.moveTo(cx - s, z * 0.5 - s); ctx.lineTo(cx + s, z * 0.5 + s); ctx.moveTo(cx + s, z * 0.5 - s); ctx.lineTo(cx - s, z * 0.5 + s); ctx.stroke();
+  } else if (kind < 0.91) {                                       // seta
+    const x = 14 + r(4) * (w - 70), y = z * 0.5, dir = r(5) < 0.5 ? 1 : -1; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 44, y); ctx.stroke();
+    const hx = dir > 0 ? x + 44 : x; ctx.beginPath(); ctx.moveTo(hx, y); ctx.lineTo(hx - 10 * dir, y - 8); ctx.moveTo(hx, y); ctx.lineTo(hx - 10 * dir, y + 8); ctx.stroke();
+  } else {                                                        // risquinhos de contagem de dias
+    const x = 12 + r(4) * Math.max(1, w - 90), n = 3 + Math.floor(r(5) * 3); ctx.lineWidth = 1.6;
+    for (let g = 0; g < n; g++) { const gx = x + g * 18; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(gx + i * 3.5, z * 0.32); ctx.lineTo(gx + i * 3.5, z * 0.7); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(gx - 2, z * 0.66); ctx.lineTo(gx + 13, z * 0.36); ctx.stroke(); }
+  }
+  ctx.restore();
 }
 function drawStairs(f) {
   const { x, y, w, h } = f, up = f.dir > 0;

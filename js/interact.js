@@ -345,12 +345,12 @@ function houseRooms(h, list, lvl, R, iw, ih, n, keepClear) {
   const VX = Math.round(iw * 0.40), HY = Math.round(ih * 0.42);
   const wc = shade("#b9ae99", (bHash(h, 9) - 0.5) * 0.25);   // reboco claro, um tom por casa
   const wall = (x, y, w, hh) => { if (w > 1 && hh > 1) list.push({ x, y, w, h: hh, kind: "wall", name: "Parede", color: wc, opened: true, items: [] }); };
+  // a vertical é cortada onde cruza a horizontal (uma parede não atravessa a outra; o cruzamento é da horizontal)
   const gV = HY + 40;                                    // passagem quarto <-> sala (parede vertical)
-  wall(VX - T / 2, y0, T, gV - y0); wall(VX - T / 2, gV + DG, T, y1 - gV - DG);
+  wall(VX - T / 2, y0, T, HY - T / 2 - y0); wall(VX - T / 2, HY + T / 2, T, gV - HY - T / 2); wall(VX - T / 2, gV + DG, T, y1 - gV - DG);
   const gL = VX - 40 - DG;                               // passagem banheiro <-> quarto (horizontal, esquerda)
-  wall(x0, HY - T / 2, gL - x0, T); wall(gL + DG, HY - T / 2, VX - T / 2 - gL - DG, T);
   const GR = 120, gR = Math.round((VX + x1) / 2 - GR / 2);   // passagem larga cozinha <-> sala (horizontal, direita)
-  wall(VX + T / 2, HY - T / 2, gR - VX - T / 2, T); wall(gR + GR, HY - T / 2, x1 - gR - GR, T);
+  wall(x0, HY - T / 2, gL - x0, T); wall(gL + DG, HY - T / 2, gR - gL - DG, T); wall(gR + GR, HY - T / 2, x1 - gR - GR, T);
   const top = lvl === 0 ? ["banheiro", "cozinha"] : ["banheiro", "quarto"];
   const rooms = [
     { k: top[0], x: x0, y: y0, w: VX - T / 2 - x0, h: HY - T / 2 - y0 },

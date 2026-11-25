@@ -499,12 +499,13 @@ function drawWorldView(shx, shy) {
     ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1, p.r * f), 0, Math.PI * 2); ctx.stroke();
   }
   if (game.inside) {
+    if (game.inside) drawInteriorWalls("back");   // paredes atrás do personagem
     for (const z of Zs()) { drawZombie(z); drawZombieExtra(z); }
     for (const online of fmSocial.inSector()) drawOnlinePlayer(online);
     drawProjectiles();
     if (game.escort && !game.over) drawSurvivor(game.escort.x, game.escort.y, game.escort.ang, game.escort.walk, game.escort.moving);
     if (!game.over && !drawPlayerSprite()) drawPlayer();
-    drawInteriorWalls();    // paredes altas por cima (face translúcida: dá para ver o cômodo de trás)
+    drawInteriorWalls("front");   // paredes da frente por cima do personagem
   } else {
     drawSortedScene(); // câmera inclinada: prédios, postes, zumbis e você ordenados pela profundidade (pés)
     drawProjectiles(); drawCanopiesP(); drawSmoke();
