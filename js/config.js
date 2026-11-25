@@ -256,6 +256,10 @@ const FURN = {
   "Criado-mudo": { w: 36, h: 30, color: "#6b4a2b" },    "Guarda-roupa": { w: 84, h: 38, color: "#5e4028" },
   "Estoque": { w: 100, h: 40, color: "#8b8f94" },       "Prateleira de ferramentas": { w: 110, h: 28, color: "#6a6f74" },
   "Armário de suprimentos": { w: 80, h: 36, color: "#cfd6d6" },
+  // cômodos das casas: banheiro e cozinha
+  "Armário do banheiro": { w: 56, h: 26, color: "#d8dcd8" },
+  "Vaso sanitário": { w: 26, h: 34, color: "#eef2f2" },   "Pia": { w: 42, h: 26, color: "#e2e8ea" },
+  "Banheira": { w: 112, h: 50, color: "#eef2f2" }, "Chuveiro": { w: 54, h: 54, color: "#dfe6e8" },        "Fogão": { w: 50, h: 44, color: "#c9ccce" },
   // decoração: só enfeita e bloqueia passagem, não dá saque
   "Planta": { w: 26, h: 26, color: "#4f7a3a" },          "Poltrona": { w: 44, h: 40, color: "#6a4a4a" },
   "TV": { w: 60, h: 18, color: "#24272b" },             "Cadeira": { w: 26, h: 26, color: "#5a4a3a" },
@@ -281,6 +285,7 @@ const TABLES = {
   car:         { cash: [0.4, 10, 35], food: [0.12, 1, 1], water: [0.15, 1, 1], med: [0.1, 1, 1], ammo: [0.35, 1, 1], weapon: 0.03 },
   "Armário":   { cash: [0.2, 5, 20], food: [0.25, 1, 1], water: [0.15, 1, 1], med: [0.08, 1, 1], ammo: [0.15, 1, 1] },
   "Geladeira": { food: [0.5, 1, 1], water: [0.45, 1, 2] },
+  "Armário do banheiro": { cash: [0.08, 2, 8], med: [0.35, 1, 1], anti: [0.03, 1, 1] },
   "Cama":      { cash: [0.25, 5, 20], med: [0.12, 1, 1], ammo: [0.1, 1, 1], weapon: 0.02 },
   "Estante":   { cash: [0.3, 10, 30], ammo: [0.2, 1, 1], weapon: 0.03 },
   "Cômoda":    { cash: [0.3, 5, 20], med: [0.1, 1, 1], food: [0.1, 1, 1], ammo: [0.15, 1, 1] },

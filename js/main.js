@@ -22,12 +22,18 @@ function withView(fn) {
 // mouse em coordenadas do mundo visível (a tela mostra VIEW_W x VIEW_H)
 function viewMouseX() { return mouse.x / VIEW_ZOOM; }
 function viewMouseY() { return mouse.y / VIEW_ZOOM; }
+// Nitidez: o jogo desenha no tamanho em que aparece na tela (lógica 960x600 x escala da janela x densidade
+// do monitor). Antes desenhava em 960x600 e o navegador esticava ~2x num monitor Full HD, deixando tudo borrado.
+// Teto de densidade para não pesar: gráficos simples 1,5x; normal 3x.
 function fitCanvas() {
-  DPR = Math.min(2, window.devicePixelRatio || 1);
-  canvas.width = W * DPR; canvas.height = H * DPR;
   const s = Math.max(0.3, Math.min((window.innerWidth - 36) / W, (window.innerHeight - 70) / H));
-  canvas.style.width = Math.floor(W * s) + "px";
-  canvas.style.height = Math.floor(H * s) + "px";
+  const cssW = Math.floor(W * s), cssH = Math.floor(H * s);
+  const cap = save && save.gfx === 0 ? 1.5 : 3;
+  DPR = Math.max(1, Math.min(cap, (window.devicePixelRatio || 1) * cssW / W));
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  canvas.style.width = cssW + "px";
+  canvas.style.height = cssH + "px";
+  canvas.getContext("2d").imageSmoothingQuality = "high";   // trocar o tamanho do canvas zera essa opção
   if (typeof gfxResize === "function") gfxResize();
 }
 
@@ -493,11 +499,13 @@ function drawWorldView(shx, shy) {
     ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1, p.r * f), 0, Math.PI * 2); ctx.stroke();
   }
   if (game.inside) {
+    if (game.inside) drawInteriorWalls("back");   // paredes atrás do personagem
     for (const z of Zs()) { drawZombie(z); drawZombieExtra(z); }
     for (const online of fmSocial.inSector()) drawOnlinePlayer(online);
     drawProjectiles();
     if (game.escort && !game.over) drawSurvivor(game.escort.x, game.escort.y, game.escort.ang, game.escort.walk, game.escort.moving);
     if (!game.over && !drawPlayerSprite()) drawPlayer();
+    drawInteriorWalls("front");   // paredes da frente por cima do personagem
   } else {
     drawSortedScene(); // câmera inclinada: prédios, postes, zumbis e você ordenados pela profundidade (pés)
     drawProjectiles(); drawCanopiesP(); drawSmoke();

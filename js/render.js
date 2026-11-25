@@ -727,6 +727,11 @@ function drawCanopies() {
 function drawInterior() {
   const h = game.inside, IWd = h.iw || W, IHd = h.ih || H, lvl = h.level | 0;
   ctx.fillStyle = PAT[h.safe ? "concrete" : h.def.floor]; ctx.fillRect(0, 0, IWd, IHd);
+  // cômodos das casas: piso de azulejo no banheiro e na cozinha, nome do cômodo bem apagado no chão
+  if (h.rooms) for (const r of h.rooms) {
+    if (r.floor) { ctx.fillStyle = PAT[r.floor]; ctx.fillRect(r.x, r.y, r.w, r.h); }
+    txt(r.name.toUpperCase(), r.x + r.w / 2, r.y + r.h / 2 + 9, 26, "rgba(255,255,255,0.05)", "center", true);
+  }
   if (h.rug) {
     ctx.fillStyle = h.rug.c; ctx.globalAlpha = 0.75; ctx.fillRect(h.rug.x, h.rug.y, h.rug.w, h.rug.h);
     ctx.strokeStyle = "rgba(230,200,140,0.35)"; ctx.lineWidth = 3; ctx.strokeRect(h.rug.x + 8, h.rug.y + 8, h.rug.w - 16, h.rug.h - 16); ctx.globalAlpha = 1;
@@ -734,7 +739,7 @@ function drawInterior() {
   if (h.safe) {
     ctx.fillStyle = "rgba(60,120,80,0.12)"; ctx.fillRect(40, 40, IWd - 80, IHd - 80);
     txt(h.name.toUpperCase(), IWd / 2, IHd / 2 + 10, 40, "rgba(200,230,200,0.08)", "center", true);
-  } else if (h.levels && (h.levels.length > 1 || buildingFloors(h) > 1)) {
+  } else if (!h.rooms && h.levels && (h.levels.length > 1 || buildingFloors(h) > 1)) {
     txt(floorName(h, lvl).toUpperCase(), IWd / 2, IHd / 2 + 14, 46, "rgba(255,255,255,0.05)", "center", true);
   }
   drawBloodList(h.decals);
@@ -743,8 +748,8 @@ function drawInterior() {
   ctx.fillRect(0, 0, IWd, 40); ctx.fillRect(0, IHd - 40, IWd, 40); ctx.fillRect(0, 0, 40, IHd); ctx.fillRect(IWd - 40, 0, 40, IHd);
   ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(40, 40, IWd - 80, 10); ctx.fillRect(40, 40, 10, IHd - 80);
   ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 2; ctx.strokeRect(40, 40, IWd - 80, IHd - 80);
-  // janelas (o bunker é subterrâneo: sem janelas nos subsolos)
-  if (!(h.def.under && lvl > 0)) {
+  // janelas (o bunker é subterrâneo: sem janelas nos subsolos) — com paredes altas ficam na face da parede
+  if (!INTERIOR_TALL_WALLS && !(h.def.under && lvl > 0)) {
     const sky = isNight() ? "#1c2a3a" : "#8fb3c9";
     for (let x = 150; x < IWd - 200; x += 270) {
       if (x + 120 > IWd - 220 && lvl < buildingFloors(h) - 1) break;
@@ -758,8 +763,338 @@ function drawInterior() {
     ctx.fillStyle = "#3a2410"; ctx.fillRect(IWd / 2 - 1, IHd - 40, 2, 40);
     txt("SAIR", IWd / 2, IHd - 14, 13, "rgba(255,230,180,0.6)", "center", true);
   }
-  for (const f of h.interior) drawFurniture(f);
+  for (const f of h.interior) if (!(INTERIOR_TALL_WALLS && (f.kind === "wall" || tallFurn(f)))) drawFurniture(f);
+  else if (f.kind !== "wall") continue;               // móvel alto: desenhado junto com as paredes (ordem de profundidade)
+  else { ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(f.x, f.y, f.w, f.h); }      // pé da parede alta
   for (const c of h.corpses) drawCorpse(c);
+}
+
+// ---------- Paredes altas no interior ----------
+// Paredes com a altura de um andar, na mesma perspectiva dos prédios (proj): o topo é sólido e a face da
+// frente é sólida e clara, como no Dead Frontier (cobre só a faixa logo atrás dela). Se VOCÊ está atrás
+// da parede, ela fica meio transparente. A parede de baixo (a da porta) é baixa para não tampar a sala.
+// Desenhado depois do personagem e dos zumbis (main.js).
+const INTERIOR_TALL_WALLS = true, IWALL_H = 52, IWALL_CAM = 620;   // câmera mais baixa = laterais mais visíveis (como no DF)
+const IWALL_COL = "#c4c0b5";                                         // reboco claro, como as paredes do Dead Frontier
+function interiorWallBoxes(h) {
+  const IWd = h.iw || W, IHd = h.ih || H, outer = h.safe ? "#8e958c" : IWALL_COL;
+  const boxes = [
+    { x: 0, y: 0, w: IWd, h: 40, c: outer, hgt: IWALL_H, top: true },
+    { x: 0, y: 0, w: 40, h: IHd, c: outer, hgt: IWALL_H },
+    { x: IWd - 40, y: 0, w: 40, h: IHd, c: outer, hgt: IWALL_H },
+    { x: 0, y: IHd - 40, w: IWd, h: 40, c: outer, hgt: 10 },
+  ];
+  for (const f of h.interior) if (f.kind === "wall") boxes.push({ x: f.x, y: f.y, w: f.w, h: f.h, c: IWALL_COL, hgt: IWALL_H, inner: true });
+  return boxes;
+}
+// pass: "back" = paredes cuja base fica atrás (acima) do personagem — desenhadas antes dele;
+//       "front" = as da frente, por cima dele. Assim ele não "entra" na parede quando encosta por baixo.
+function drawInteriorWalls(pass) {
+  const h = game.inside;
+  if (!INTERIOR_TALL_WALLS || !h) return;
+  const isBack = (b) => b.y + b.h <= player.y + 2;
+  const e = eye(), lvl = h.level | 0;
+  const P = (x, y, z) => { const k = IWALL_CAM / (IWALL_CAM - z); return { x: e.x + (x - e.x) * k, y: e.y + (y - e.y) * k - z * LEAN }; };
+  const who = [player];                                // sólida como no DF; só some um pouco se VOCÊ estiver atrás
+  const quad = (pts) => { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath(); ctx.fill(); };
+  const boxes = interiorWallBoxes(h);
+  for (const f of h.interior) if (tallFurn(f)) boxes.push({ x: f.x, y: f.y, w: f.w, h: f.h, furn: f });
+  boxes.sort((a, b) => (a.y + a.h) - (b.y + b.h));
+  const caps = [];
+  const flushCaps = () => {
+    if (!caps.length) return;
+    ctx.lineJoin = "miter"; ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = 2.4;
+    for (const c of caps) { ctx.globalAlpha = c.a; ctx.beginPath(); ctx.moveTo(c.q[0].x, c.q[0].y); for (let i = 1; i < 4; i++) ctx.lineTo(c.q[i].x, c.q[i].y); ctx.closePath(); ctx.stroke(); }
+    for (const c of caps) { ctx.globalAlpha = c.a; ctx.fillStyle = shade(c.c, 0.12); quad(c.q); }
+    ctx.globalAlpha = 1; caps.length = 0;
+  };
+  boxes.forEach((b, bi) => {
+    if (pass && (pass === "back") !== isBack(b)) return;
+    if (b.furn) { flushCaps(); ctx.globalAlpha = 1; drawFurniture(b.furn); return; }
+    const x0 = b.x, x1 = b.x + b.w, y0 = b.y, y1 = b.y + b.h, z = b.hgt;
+    const t00 = P(x0, y0, z), t10 = P(x1, y0, z), t11 = P(x1, y1, z), t01 = P(x0, y1, z);
+    // alguém atrás desta parede (dentro da área que a face cobre na tela)?
+    const faceTop = Math.min(t01.y, t11.y), behind = who.some(o => o.x > x0 - 20 && o.x < x1 + 20 && o.y < y0 + 4 && o.y > faceTop - 30);
+    const a = behind ? 0.45 : 1;                        // sólida; meio transparente só com você atrás
+    // faces laterais (a que está de frente para a câmera) e a da frente (sul), com a base mais escura
+    ctx.globalAlpha = a;
+    const face = (pts, col) => {
+      ctx.fillStyle = col; quad(pts);
+      const g = ctx.createLinearGradient(0, pts[0].y, 0, pts[0].y - b.hgt * LEAN);
+      g.addColorStop(0, "rgba(0,0,0,0.38)"); g.addColorStop(0.35, "rgba(0,0,0,0.08)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g; quad(pts);
+    };
+    if (e.x < x0) face([{ x: x0, y: y1 }, { x: x0, y: y0 }, t00, t01], shade(b.c, -0.22));
+    if (e.x > x1) face([{ x: x1, y: y1 }, { x: x1, y: y0 }, t10, t11], shade(b.c, -0.12));
+    face([{ x: x0, y: y1 }, { x: x1, y: y1 }, t11, t01], shade(b.c, -0.05));
+    // janelas na face da parede de cima (o bunker não tem janelas nos subsolos)
+    if (b.top && !(h.def.under && lvl > 0)) {
+      ctx.fillStyle = isNight() ? "rgba(28,42,58,0.95)" : "rgba(143,179,201,0.95)";
+      const IWd = h.iw || W;
+      for (let wx = 150; wx < IWd - 200; wx += 270) {
+        if (wx + 120 > IWd - 220 && lvl < buildingFloors(h) - 1) break;
+        quad([P(wx, y1, z * 0.35), P(wx + 120, y1, z * 0.35), P(wx + 120, y1, z * 0.82), P(wx, y1, z * 0.82)]);
+      }
+    }
+    // pichação na face da frente (paredes compridas; cada parede sorteia a sua)
+    if (b.hgt > 20) drawWallWear(h, bi, b, t01, t11, { x: x0, y: y1 }, z);
+    if (b.hgt > 20 && b.w > 70) drawGraffiti(h, bi, b, t01, t11, { x: x0, y: y1 }, z);
+    caps.push({ q: [t00, t10, t11, t01], c: b.c, a: behind ? 0.5 : 1 });
+  });
+  // topos de todas as paredes juntos: primeiro o contorno grosso, depois o preenchimento por cima
+  // (onde duas paredes se encontram as linhas de dentro somem: fica uma peça só, só com a linha de fora)
+  flushCaps();
+}
+
+// ---------- Móveis em 3D (caixa com laterais, frente e tampo) ----------
+// Todo móvel ganha altura. O desenho de cima de sempre vai para o tampo; armários, geladeira, fogão etc.
+// têm a frente desenhada (portas, gavetas, forno). f.rot = quartos de volta do desenho (encosto na parede),
+// e a frente dos armários fica do lado oposto à parede onde estão encostados.
+const FURN_H = { "Geladeira": 44, "Freezer": 26, "Armário médico": 40, "Armário": 42, "Guarda-roupa": 50, "Estante": 46,
+  "Cômoda": 24, "Criado-mudo": 17, "Armário de cozinha": 22, "Armário do banheiro": 22, "Fogão": 22, "Pia": 22,
+  "Cama": 12, "Sofá": 13, "Poltrona": 13, "Cadeira": 10, "TV": 16, "Planta": 9, "Vaso sanitário": 11, "Banheira": 16,
+  "Chuveiro": 4, "Prateleira de parede": 34, "Prateleira": 40, "Prateleira de remédios": 40, "Prateleira de ferramentas": 38,
+  "Estoque": 40, "Estoque de suprimentos": 40, "Vitrine": 26, "Balcão": 22, "Caixa registradora": 20, "Freezer horizontal": 26,
+  "Maca": 16, "Caixas": 20, "Bebedouro": 30, "Baú": 14 };
+const TALL_FURN = FURN_H;                                  // nome antigo (interact.js)
+const FURN_FRONT = { "Geladeira": 1, "Freezer": 1, "Armário médico": 1, "Armário": 1, "Guarda-roupa": 1, "Estante": 1, "Cômoda": 1,
+  "Criado-mudo": 1, "Armário de cozinha": 1, "Armário do banheiro": 1, "Fogão": 1, "Pia": 1, "Prateleira de parede": 1,
+  "Prateleira": 1, "Prateleira de remédios": 1, "Prateleira de ferramentas": 1, "Estoque": 1, "Estoque de suprimentos": 1 };
+// partes mais altas (encosto, caixa d'água, cabeceira): retângulo no desenho (frações) + altura
+const FURN_PARTS = { "Cadeira": [[0.1, 0, 0.8, 0.22, 24]], "Sofá": [[0, 0, 1, 0.28, 26]], "Poltrona": [[0, 0, 1, 0.3, 26]],
+  "Vaso sanitário": [[0.1, 0, 0.8, 0.3, 24]], "Cama": [[0, 0, 0.07, 1, 22]], "Banheira": [], "TV": [[0.1, 0.1, 0.8, 0.25, 34]] };
+function furnH(f) { return f ? FURN_H[f.name] || 0 : 0; }
+function tallFurn(f) {
+  if (!INTERIOR_TALL_WALLS || !f || f.kind === "wall" || f.kind === "stairs" || f.kind === "survivor" || f._flat || !FURN_H[f.name]) return false;
+  return !(typeof FURN_MODEL !== "undefined" && FURN_MODEL[f.name] && modelOk(FURN_MODEL[f.name]));
+}
+// retângulo do desenho (u0,v0,uw,vh em px do desenho) -> retângulo no chão, conforme a rotação
+function rotRect(f, k, u0, v0, uw, vh) {
+  const odd = k % 2, dw = odd ? f.h : f.w, dh = odd ? f.w : f.h;
+  if (k === 1) return { x: f.x + dh - (v0 + vh), y: f.y + u0, w: vh, h: uw };
+  if (k === 2) return { x: f.x + dw - (u0 + uw), y: f.y + dh - (v0 + vh), w: uw, h: vh };
+  if (k === 3) return { x: f.x + v0, y: f.y + dw - (u0 + uw), w: vh, h: uw };
+  return { x: f.x + u0, y: f.y + v0, w: uw, h: vh };
+}
+function drawTallFurn(f) {
+  const { x, y, w, h } = f, n = f.name, z = FURN_H[n], e = eye(), k = (f.rot | 0) & 3;
+  const P = (px, py, pz) => { const q = IWALL_CAM / (IWALL_CAM - pz); return { x: e.x + (px - e.x) * q, y: e.y + (py - e.y) * q - pz * LEAN }; };
+  const quad = (pts, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath(); ctx.fill(); };
+  const outline = (pts) => { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath(); ctx.stroke(); };
+  const line = (ax, ay, bx, by) => { ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); };
+  const c = f.color || "#8a6a45";
+  const wood = !["Geladeira", "Freezer", "Armário médico", "Fogão", "Armário do banheiro", "Pia", "Vaso sanitário", "Banheira", "Chuveiro", "Bebedouro"].includes(n);
+  // caixa simples: laterais + frente (sul) + tampo; devolve os 4 cantos de cima
+  const box = (bx, by, bw, bh, bz, col, plainTop) => {
+    const X1 = bx + bw, Y1 = by + bh, a00 = P(bx, by, bz), a10 = P(X1, by, bz), a11 = P(X1, Y1, bz), a01 = P(bx, Y1, bz);
+    if (e.x < bx) quad([{ x: bx, y: Y1 }, { x: bx, y: by }, a00, a01], shade(col, -0.3));
+    if (e.x > X1) quad([{ x: X1, y: Y1 }, { x: X1, y: by }, a10, a11], shade(col, -0.2));
+    const sp = [{ x: bx, y: Y1 }, { x: X1, y: Y1 }, a11, a01];
+    ctx.save(); ctx.beginPath(); ctx.moveTo(sp[0].x, sp[0].y); for (const q of sp.slice(1)) ctx.lineTo(q.x, q.y); ctx.closePath();
+    const g = ctx.createLinearGradient(0, Y1, 0, a01.y); g.addColorStop(0, shade(col, -0.28)); g.addColorStop(1, shade(col, -0.02));
+    ctx.fillStyle = g; ctx.fill(); ctx.restore();
+    if (plainTop) { quad([a00, a10, a11, a01], shade(col, 0.1)); ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1; outline([a00, a10, a11, a01]); }
+    return [a00, a10, a11, a01];
+  };
+  ctx.fillStyle = "rgba(0,0,0,0.26)"; ctx.fillRect(x + 3, y - 2, w, h + 2);                     // sombra (não passa da base)
+  if (n === "Chuveiro") { drawShower(f, P, quad, line); return; }
+  const [t00, t10, t11, t01] = box(x, y, w, h, z, c, false);
+  // frente dos armários: na face oposta à parede (k=0 sul, k=1 oeste, k=3 leste; k=2 fica de costas para a câmera)
+  if (FURN_FRONT[n] && k !== 2) {
+    let O, U, V, L;
+    if (k === 0) { O = t01; U = t11; V = { x, y: y + h }; L = w; }
+    else if (k === 1) { O = t00; U = t01; V = { x, y }; L = e.x < x ? h : 0; }            // encostado à direita: frente para oeste
+    else { O = t11; U = t10; V = { x: x + w, y: y + h }; L = e.x > x + w ? h : 0; }       // encostado à esquerda: frente para leste
+    if (L) {
+      ctx.save();
+      ctx.transform((U.x - O.x) / L, (U.y - O.y) / L, (V.x - O.x) / z, (V.y - O.y) / z, O.x, O.y);
+      const g = ctx.createLinearGradient(0, 0, 0, z); g.addColorStop(0, shade(c, 0.02)); g.addColorStop(1, shade(c, -0.25));
+      ctx.fillStyle = g; ctx.fillRect(0, 0, L, z);
+      ctx.strokeStyle = "rgba(0,0,0,0.38)"; ctx.lineWidth = 1;
+      const knob = (kx, ky) => { ctx.fillStyle = wood ? "#c9a86a" : "#7a8085"; ctx.fillRect(kx - 1.2, ky - 1.2, 2.4, 2.4); };
+      if (n === "Geladeira") {
+        line(1, z * 0.34, L - 1, z * 0.34);                                                            // freezer em cima, porta embaixo
+        ctx.fillStyle = "#7a8085"; ctx.fillRect(L - 7, z * 0.1, 2.5, z * 0.18); ctx.fillRect(L - 7, z * 0.42, 2.5, z * 0.4);
+        ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.fillRect(3, 2, 2, z - 4);
+        const r = (k) => bHash(f, 70 + k);
+        if (r(0) < 0.7) { ctx.fillStyle = ["#d9a52b", "#b3261e", "#2a4f9e"][Math.floor(r(1) * 3)]; ctx.fillRect(6 + r(2) * (L - 22), z * 0.5, 7, 6); }
+        if (r(3) < 0.5) { ctx.fillStyle = "#efe9d6"; ctx.fillRect(8 + r(4) * (L - 26), z * 0.12, 9, 8); }
+      } else if (n === "Freezer") {
+        ctx.strokeStyle = "rgba(120,170,200,0.6)"; ctx.strokeRect(3, 3, L - 6, z - 6);
+        ctx.fillStyle = "#7a8085"; ctx.fillRect(L / 2 - 8, 3, 16, 2.5);
+      } else if (n === "Armário médico") {
+        line(L / 2, 2, L / 2, z - 2);
+        ctx.fillStyle = "#d04040"; ctx.fillRect(L / 2 - 3, z * 0.3, 6, 14); ctx.fillRect(L / 2 - 9, z * 0.3 + 4, 18, 6);
+      } else if (n === "Fogão") {
+        ctx.fillStyle = "#3a3d40"; ctx.fillRect(2, 1, L - 4, 4);                                       // painel dos botões
+        for (let i = 0; i < 4; i++) { ctx.fillStyle = "#d8d8d8"; ctx.beginPath(); ctx.arc(8 + i * (L - 16) / 3, 3, 1.4, 0, 7); ctx.fill(); }
+        ctx.fillStyle = "#1c1e20"; ctx.fillRect(5, 7, L - 10, z - 10);                                  // porta do forno com vidro
+        ctx.fillStyle = "rgba(120,140,150,0.35)"; ctx.fillRect(8, 9, L - 16, z - 15);
+        ctx.fillStyle = "#9aa0a4"; ctx.fillRect(7, 7.5, L - 14, 1.5);
+      } else if (n === "Estante" || n.startsWith("Prateleira") || n.startsWith("Estoque")) {
+        ctx.fillStyle = shade(c, -0.45); ctx.fillRect(3, 2, L - 6, z - 4);                              // fundo escuro aberto
+        const r = (k) => bHash(f, 90 + k), sh = 3;
+        for (let i = 0; i < sh; i++) {
+          const top = 2 + i * (z - 4) / sh, hh = (z - 4) / sh;
+          let bx = 4; let k = 0;
+          while (bx < L - 6) { const bw = 2.5 + r(k) * 3.5, bh = hh * (0.55 + r(k + 50) * 0.35);
+            if (r(k + 100) > 0.18) { ctx.fillStyle = ["#7a2a24", "#2a4f6e", "#5a6e3b", "#c9b07a", "#3b3b3b", "#8a5a2b"][Math.floor(r(k + 150) * 6)]; ctx.fillRect(bx, top + hh - bh - 1, bw, bh); }
+            bx += bw + 0.6; k++; }
+          ctx.fillStyle = shade(c, 0.05); ctx.fillRect(2, top + hh - 1.5, L - 4, 2);
+        }
+        ctx.fillStyle = c; ctx.fillRect(0, 0, 3, z); ctx.fillRect(L - 3, 0, 3, z);
+      } else if (n === "Cômoda" || n === "Criado-mudo") {
+        const nd = n === "Cômoda" ? 3 : 2, dh = (z - 2) / nd;
+        for (let i = 0; i < nd; i++) { ctx.strokeRect(3, 1 + i * dh + 0.5, L - 6, dh - 1); knob(L / 2, 1 + i * dh + dh / 2); }
+      } else {                                                                                         // armários: portas
+        const nDoor = Math.max(2, Math.round(L / (n === "Guarda-roupa" ? 28 : 30)));
+        const top = n === "Armário de cozinha" ? 5 : 2, dw = (L - 4) / nDoor;
+        if (n === "Armário de cozinha") { ctx.fillStyle = "#cfc7b8"; ctx.fillRect(0, 0, L, 3); }        // tampo de pedra
+        for (let i = 0; i < nDoor; i++) {
+          ctx.strokeRect(2 + i * dw + 0.5, top, dw - 1, z - top - 2);
+          knob(2 + i * dw + (i % 2 ? 4 : dw - 4), top + (z - top) * (n === "Guarda-roupa" ? 0.45 : 0.3));
+        }
+        if (n === "Guarda-roupa") { ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(2, z - 6, L - 4, 1); }
+      }
+      ctx.restore();
+    }
+  }
+  ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1.2;
+  outline([{ x, y: y + h }, { x: x + w, y: y + h }, t11, t01]);
+  // tampo: o desenho de cima de sempre, no plano de cima e girado conforme f.rot
+  quad([t00, t10, t11, t01], shade(c, 0.1));
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(t00.x, t00.y); ctx.lineTo(t10.x, t10.y); ctx.lineTo(t11.x, t11.y); ctx.lineTo(t01.x, t01.y); ctx.closePath(); ctx.clip();
+  ctx.transform((t10.x - t00.x) / w, (t10.y - t00.y) / w, (t01.x - t00.x) / h, (t01.y - t00.y) / h, t00.x, t00.y);
+  const odd = k % 2, dw = odd ? h : w, dh = odd ? w : h;
+  if (k === 1) { ctx.translate(dh, 0); ctx.rotate(Math.PI / 2); } else if (k === 2) { ctx.translate(dw, dh); ctx.rotate(Math.PI); } else if (k === 3) { ctx.translate(0, dw); ctx.rotate(-Math.PI / 2); }
+  const flat = Object.assign({}, f, { x: 0, y: 0, w: dw, h: dh, _flat: true });
+  const ga = ctx.globalAlpha;
+  if (f.kind === "decor") drawDecor(flat); else drawFurnitureBase(flat);
+  ctx.globalAlpha = ga;
+  ctx.restore();
+  ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1.2; outline([t00, t10, t11, t01]);
+  // partes mais altas (encosto, caixa d'água, cabeceira, tela da TV)
+  for (const [u0, v0, uw, vh, pz] of FURN_PARTS[n] || []) {
+    const r = rotRect(f, k, u0 * dw, v0 * dh, uw * dw, vh * dh);
+    const col = n === "TV" ? "#1c1e22" : n === "Cama" ? "#4a3220" : n === "Vaso sanitário" ? shade(c, -0.05) : shade(c, -0.18);
+    box(r.x, r.y, r.w, r.h, pz, col, true);
+  }
+}
+// box de chuveiro: piso com ralo, vidro nos lados abertos, registro e ducha na parede
+function drawShower(f, P, quad, line) {
+  const { x, y, w, h } = f, H = 58, k = (f.rot | 0) & 3, x1 = x + w, y1 = y + h;
+  ctx.fillStyle = "#cfd8da"; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "rgba(0,0,0,0.15)"; ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) { line(x + w * i / 4, y, x + w * i / 4, y1); line(x, y + h * i / 4, x1, y + h * i / 4); }
+  ctx.fillStyle = "#6a7276"; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, 3, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  // ducha: no meio da parede (lado da parede = de onde veio a rotação)
+  const wallMid = [[x + w / 2, y + 4], [x1 - 4, y + h / 2], [x + w / 2, y1 - 4], [x + 4, y + h / 2]][k];
+  const hd = P(wallMid[0], wallMid[1], H - 6), hb = P(wallMid[0], wallMid[1], 26);
+  ctx.strokeStyle = "#9aa3a8"; ctx.lineWidth = 2; line(hd.x, hd.y, hd.x, hd.y + 6);
+  ctx.fillStyle = "#b8c0c4"; ctx.beginPath(); ctx.arc(hd.x, hd.y + 7, 4, 0, 7); ctx.fill();
+  ctx.fillStyle = "#7a8085"; ctx.beginPath(); ctx.arc(hb.x, hb.y, 2.5, 0, 7); ctx.fill();
+  // vidros: nos lados que não encostam em parede (f.open = lista de lados "s","e","w","n")
+  const sides = { s: [[x, y1], [x1, y1]], n: [[x, y], [x1, y]], e: [[x1, y], [x1, y1]], w: [[x, y], [x, y1]] };
+  for (const sd of f.open || ["s"]) {
+    const [[ax, ay], [bx, by]] = sides[sd], a0 = { x: ax, y: ay }, b0 = { x: bx, y: by }, aT = P(ax, ay, H), bT = P(bx, by, H);
+    quad([a0, b0, bT, aT], "rgba(190,225,235,0.22)");
+    ctx.strokeStyle = "rgba(220,235,240,0.5)"; ctx.lineWidth = 1; line(a0.x + (b0.x - a0.x) * 0.2, a0.y + (b0.y - a0.y) * 0.2 - 30, a0.x + (b0.x - a0.x) * 0.35, a0.y + (b0.y - a0.y) * 0.35 - 48);
+    ctx.strokeStyle = "#a9b2b6"; ctx.lineWidth = 1.6; line(a0.x, a0.y, aT.x, aT.y); line(b0.x, b0.y, bT.x, bT.y); line(aT.x, aT.y, bT.x, bT.y);
+  }
+}
+
+// ---------- Desgaste das paredes ----------
+// Textura de reboco (ruído), manchas de umidade, rachaduras e pedaços caídos mostrando o tijolo.
+let _plasterPat = null;
+function plasterPattern() {
+  if (_plasterPat) return _plasterPat;
+  const c = document.createElement("canvas"); c.width = c.height = 96; const g = c.getContext("2d");
+  let s = 1234567; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 1400; i++) { const v = rnd(); g.fillStyle = v < 0.5 ? `rgba(0,0,0,${0.05 + rnd() * 0.08})` : `rgba(255,255,255,${0.04 + rnd() * 0.06})`; g.fillRect(rnd() * 96, rnd() * 96, 1 + rnd() * 2, 1 + rnd() * 2); }
+  for (let i = 0; i < 10; i++) { g.strokeStyle = `rgba(0,0,0,${0.04 + rnd() * 0.05})`; g.lineWidth = 0.7; g.beginPath(); const x = rnd() * 96, y = rnd() * 96; g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 18, y + (rnd() - 0.5) * 8); g.stroke(); }
+  _plasterPat = ctx.createPattern(c, "repeat"); return _plasterPat;
+}
+function drawWallWear(h, bi, b, tl, tr, bl, z) {
+  const r = (k) => bHash(h, 900 + bi * 13 + k + (h.level | 0) * 41);
+  const w = b.w;
+  ctx.save();
+  ctx.transform((tr.x - tl.x) / w, (tr.y - tl.y) / w, (bl.x - tl.x) / z, (bl.y - tl.y) / z, tl.x, tl.y);
+  ctx.beginPath(); ctx.rect(0, 0, w, z); ctx.clip();
+  const pat = plasterPattern(); if (pat) { ctx.fillStyle = pat; ctx.fillRect(0, 0, w, z); }
+  // manchas de umidade / sujeira escorrendo do topo e subindo do chão
+  const nS = Math.floor(w / 90) + 1;
+  for (let i = 0; i < nS; i++) {
+    const cx = r(i) * w, rw = 14 + r(20 + i) * 30, fromTop = r(40 + i) < 0.5;
+    const gy = fromTop ? 0 : z, g = ctx.createRadialGradient(cx, gy, 1, cx, gy, rw);
+    g.addColorStop(0, "rgba(60,48,30,0.28)"); g.addColorStop(1, "rgba(60,48,30,0)");
+    ctx.fillStyle = g; ctx.fillRect(cx - rw, gy - rw, rw * 2, rw * 2);
+  }
+  // reboco caído mostrando tijolo
+  const nB = r(60) < 0.55 ? 1 + Math.floor(r(61) * Math.min(3, w / 120)) : 0;
+  for (let i = 0; i < nB; i++) {
+    const bw = 18 + r(70 + i) * 26, bh = 10 + r(75 + i) * Math.min(18, z * 0.4), bx = 6 + r(80 + i) * Math.max(1, w - bw - 12), by = 4 + r(85 + i) * Math.max(1, z - bh - 8);
+    ctx.save(); ctx.beginPath();
+    for (let k = 0; k < 9; k++) { const a = (k / 9) * Math.PI * 2, rr = 0.72 + r(90 + i * 9 + k) * 0.35; const px = bx + bw / 2 + Math.cos(a) * bw / 2 * rr, py = by + bh / 2 + Math.sin(a) * bh / 2 * rr; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+    ctx.closePath(); ctx.fillStyle = "#8a5a44"; ctx.fill(); ctx.strokeStyle = "rgba(40,30,25,0.55)"; ctx.lineWidth = 1.2; ctx.stroke(); ctx.clip();
+    ctx.strokeStyle = "rgba(205,190,170,0.75)"; ctx.lineWidth = 0.8;              // argamassa
+    for (let yy = by; yy < by + bh + 6; yy += 5) { ctx.beginPath(); ctx.moveTo(bx - 4, yy); ctx.lineTo(bx + bw + 4, yy); ctx.stroke();
+      const off = ((yy - by) / 5) % 2 ? 0 : 5; for (let xx = bx - 10 + off; xx < bx + bw + 6; xx += 10) { ctx.beginPath(); ctx.moveTo(xx, yy); ctx.lineTo(xx, yy + 5); ctx.stroke(); } }
+    ctx.restore();
+  }
+  // rachaduras
+  const nC = r(100) < 0.7 ? 1 + Math.floor(r(101) * 2) : 0;
+  ctx.strokeStyle = "rgba(35,30,25,0.6)"; ctx.lineCap = "round";
+  for (let i = 0; i < nC; i++) {
+    let x = r(110 + i) * w, y = r(115 + i) < 0.5 ? 0 : z * (0.2 + r(116 + i) * 0.5); const dir = y === 0 ? 1 : (r(117 + i) < 0.5 ? 1 : -1);
+    ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(x, y);
+    for (let k = 0; k < 6; k++) { x += (r(120 + i * 10 + k) - 0.5) * 12; y += dir * (3 + r(140 + i * 10 + k) * 6); ctx.lineTo(x, y);
+      if (k === 2) { ctx.moveTo(x, y); ctx.lineTo(x + (r(160 + i) - 0.5) * 16, y + dir * 6); ctx.moveTo(x, y); } }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ---------- Pichações ----------
+// Frases e marcas de spray nas faces das paredes, sorteadas por casa e parede (sempre as mesmas no mesmo lugar).
+const GRAFFITI_TXT = ["ELES OUVEM", "NÃO SAIA À NOITE", "ACORDE", "TUDO É MENTIRA", "VÁ PARA O NORTE", "ELES VOLTAM",
+  "O GOVERNO SABIA", "NÃO ESTAMOS SOZINHOS", "FRONTEIRA MORTA", "NINGUÉM VEM", "CONTE AS BALAS", "OLHE PARA CIMA",
+  "A CURA É A DOENÇA", "NÃO ABRA", "ESTAMOS VIVOS", "DIA 0", "SORRIA", "QUEM É VOCÊ?", "OS MORTOS SONHAM",
+  "NÃO CONFIE NO RÁDIO", "SAÍDA NÃO EXISTE", "ELE TE VÊ", "S.O.S", "FUJA", "ÚLTIMA CHANCE", "VOLTE PARA CASA"];
+const GRAFFITI_COL = ["#b3261e", "#1d1d1d", "#2f7d3a", "#d8d3c0", "#d9a52b", "#2a4f9e", "#8a1f6a"];
+function drawGraffiti(h, bi, b, tl, tr, bl, z) {
+  const r = (k) => bHash(h, 300 + bi * 7 + k + (h.level | 0) * 31);
+  if (r(0) > 0.62) return;                                        // ~6 em cada 10 paredes compridas
+  const w = b.w;
+  ctx.save();
+  ctx.transform((tr.x - tl.x) / w, (tr.y - tl.y) / w, (bl.x - tl.x) / z, (bl.y - tl.y) / z, tl.x, tl.y);   // (u ao longo da parede, v de cima para baixo)
+  ctx.beginPath(); ctx.rect(0, 0, w, z); ctx.clip();
+  const col = GRAFFITI_COL[Math.floor(r(1) * GRAFFITI_COL.length)], kind = r(2);
+  ctx.globalAlpha *= 0.82;
+  ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = "round";
+  if (kind < 0.72) {                                              // frase
+    const t = GRAFFITI_TXT[Math.floor(r(3) * GRAFFITI_TXT.length)];
+    let fs = Math.min(z * 0.42, 22); ctx.font = `bold ${fs}px Impact, "Arial Black", sans-serif`;
+    const tw = ctx.measureText(t).width, maxw = w - 34; if (tw > maxw) { fs *= maxw / tw; ctx.font = `bold ${fs}px Impact, "Arial Black", sans-serif`; }
+    const cw = ctx.measureText(t).width, x = 10 + r(4) * Math.max(0, maxw - cw), y = z * (0.42 + r(5) * 0.2);
+    ctx.save(); ctx.translate(x, y); ctx.rotate((r(6) - 0.5) * 0.12); ctx.textBaseline = "alphabetic"; ctx.textAlign = "left"; ctx.fillText(t, 0, 0);
+    ctx.lineWidth = 1;                                            // escorrido de tinta
+    for (let i = 0; i < 4; i++) { const dx = r(10 + i) * cw, len = 3 + r(20 + i) * 12; ctx.beginPath(); ctx.moveTo(dx, 1); ctx.lineTo(dx, 1 + len); ctx.stroke(); }
+    ctx.restore();
+  } else if (kind < 0.82) {                                       // X grande
+    const cx = 20 + r(4) * (w - 40), s = z * 0.28; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.moveTo(cx - s, z * 0.5 - s); ctx.lineTo(cx + s, z * 0.5 + s); ctx.moveTo(cx + s, z * 0.5 - s); ctx.lineTo(cx - s, z * 0.5 + s); ctx.stroke();
+  } else if (kind < 0.91) {                                       // seta
+    const x = 14 + r(4) * (w - 70), y = z * 0.5, dir = r(5) < 0.5 ? 1 : -1; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 44, y); ctx.stroke();
+    const hx = dir > 0 ? x + 44 : x; ctx.beginPath(); ctx.moveTo(hx, y); ctx.lineTo(hx - 10 * dir, y - 8); ctx.moveTo(hx, y); ctx.lineTo(hx - 10 * dir, y + 8); ctx.stroke();
+  } else {                                                        // risquinhos de contagem de dias
+    const x = 12 + r(4) * Math.max(1, w - 90), n = 3 + Math.floor(r(5) * 3); ctx.lineWidth = 1.6;
+    for (let g = 0; g < n; g++) { const gx = x + g * 18; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(gx + i * 3.5, z * 0.32); ctx.lineTo(gx + i * 3.5, z * 0.7); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(gx - 2, z * 0.66); ctx.lineTo(gx + 13, z * 0.36); ctx.stroke(); }
+  }
+  ctx.restore();
 }
 function drawStairs(f) {
   const { x, y, w, h } = f, up = f.dir > 0;
@@ -781,11 +1116,18 @@ function drawFurniture(f) {
   drawFurnitureBase(f);
   if (active) {
     ctx.restore();
-    drawLootQuestion(f, f.x + f.w / 2, f.y - 13);
+    drawLootQuestion(f, f.x + f.w / 2, f.y - 13 - (tallFurn(f) ? furnH(f) * LEAN : 0));
   }
 }
 function drawFurnitureBase(f) {
   const { x, y, w, h } = f;
+  if (f.kind === "wall") {                          // parede interna das casas
+    ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(x + 5, y + 5, w, h);
+    ctx.fillStyle = f.color; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.fillRect(x, y, w, 3);
+    ctx.strokeStyle = "rgba(0,0,0,0.45)"; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.75, y + 0.75, w - 1.5, h - 1.5);
+    return;
+  }
   ctx.globalAlpha = f.opened ? 0.6 : 1;
   const n = f.name;
   // móveis com modelo 3D (models.js): ocupam o mesmo lugar no chão
@@ -795,7 +1137,8 @@ function drawFurnitureBase(f) {
     const d = PROP_SPR[mid], k = Math.min(w / d.fw, h / d.fd) * 1.05;
     if (drawModel(mid, x + w / 2, y + h / 2, k, active ? LOOT_YELLOW_FILTER : f.opened ? "brightness(0.7)" : null)) { ctx.globalAlpha = 1; return; }
   }
-  ctx.fillStyle = "rgba(0,0,0,0.32)"; ctx.fillRect(x + 5, y + 5, w, h);
+  if (tallFurn(f)) { drawTallFurn(f); ctx.globalAlpha = 1; return; }
+  if (!f._flat) { ctx.fillStyle = "rgba(0,0,0,0.32)"; ctx.fillRect(x + 5, y + 5, w, h); }
   if (f.kind === "decor") { drawDecor(f); ctx.globalAlpha = 1; return; }
   if (f.kind === "survivor") { ctx.globalAlpha = 1; drawSurvivor(x + w / 2, y + h / 2, Math.atan2(player.y - y - h / 2, player.x - x - w / 2), 0, false); hudT("SOS", x + w / 2, y - 18, 12, "#6fff9a", "center", true); return; }
   if (f.kind === "stairs") {
@@ -916,6 +1259,24 @@ function drawDecor(f) {
     ctx.fillStyle = "#e8ecec"; rr(x, y, w, h, 4); ctx.fill();
     ctx.fillStyle = f.color; circle(x + w / 2, y + h / 2, 8);
     ctx.fillStyle = "rgba(80,150,210,0.6)"; circle(x + w / 2, y + h / 2, 5);
+  } else if (n === "Vaso sanitário") {
+    ctx.fillStyle = shade(f.color, -0.12); rr(x + 3, y, w - 6, 10, 3); ctx.fill();          // caixa d'água
+    ctx.fillStyle = f.color; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h * 0.62, w / 2 - 1, h * 0.36, 0, 0, 6.283); ctx.fill();
+    ctx.fillStyle = "rgba(120,170,200,0.45)"; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h * 0.64, w / 2 - 6, h * 0.22, 0, 0, 6.283); ctx.fill();
+  } else if (n === "Pia") {
+    ctx.fillStyle = f.color; rr(x, y, w, h, 4); ctx.fill();
+    ctx.fillStyle = "rgba(110,150,170,0.45)"; ctx.beginPath(); ctx.ellipse(x + w / 2, y + h / 2 + 2, w / 2 - 7, h / 2 - 6, 0, 0, 6.283); ctx.fill();
+    ctx.fillStyle = "#9aa3a8"; ctx.fillRect(x + w / 2 - 2, y + 2, 4, 7);
+  } else if (n === "Banheira") {
+    ctx.fillStyle = shade(f.color, -0.1); rr(x, y, w, h, 12); ctx.fill();
+    ctx.fillStyle = "rgba(120,170,200,0.5)"; rr(x + 7, y + 7, w - 14, h - 14, 9); ctx.fill();
+    ctx.fillStyle = "#9aa3a8"; ctx.fillRect(x + w - 12, y + h / 2 - 3, 8, 6);
+  } else if (n === "Fogão") {
+    ctx.fillStyle = f.color; rr(x, y, w, h, 3); ctx.fill();
+    ctx.fillStyle = "#2a2c2e"; ctx.fillRect(x + 3, y + 3, w - 6, h - 12);
+    ctx.strokeStyle = "#6a6e72"; ctx.lineWidth = 2;
+    for (const [a, b] of [[0.3, 0.3], [0.7, 0.3], [0.3, 0.62], [0.7, 0.62]]) { ctx.beginPath(); ctx.arc(x + w * a, y + (h - 9) * b + 3, 6, 0, 6.283); ctx.stroke(); }
+    ctx.fillStyle = "#3a3c3e"; for (let i = 0; i < 4; i++) ctx.fillRect(x + 7 + i * 10, y + h - 7, 5, 4);
   } else { ctx.fillStyle = f.color; rr(x, y, w, h, 3); ctx.fill(); }
 }
 function drawStation(f) {
@@ -1420,9 +1781,10 @@ function drawInteriorMinimap(x, y, w, h) {
   for (const f of b.interior) {
     let c;
     if (f.kind === "stairs") c = "#ffd96a";
+    else if (f.kind === "wall") c = "#1d1f1b";
     else if (f.kind === "decor") c = "#4e524a";
     else if (SAFE_KINDS.includes(f.kind)) c = "#6fae4f";
-    else c = f.opened || f.searchable === false ? "#5a5a52" : "#c9a040";
+    else c = lootSpotActive(f) ? "#c9a040" : "#5a5a52";     // amarelo só onde dá para revistar de verdade (igual ao destaque no chão)
     ctx.fillStyle = c; ctx.fillRect(ox + f.x * k, oy + f.y * k, Math.max(2, f.w * k), Math.max(2, f.h * k));
     if (f.kind === "stairs") txt(f.dir > 0 ? (b.def.under ? "▼" : "▲") : b.def.under ? "▲" : "▼", ox + (f.x + f.w / 2) * k, oy + (f.y + f.h / 2) * k + 4, 10, "#141410", "center", true);
   }
@@ -1472,7 +1834,7 @@ function drawMinimap(x, y, w, h) {
   if (player.fx.lootSense > 0 && !game.inside) {
     const R = player.fx.lootSense;
     for (const o of world.loot.query(player.x - R, player.y - R, player.x + R, player.y + R)) {
-      if (o.opened || o.kind === "door" || Math.hypot(o.x - player.x, o.y - player.y) > R) continue;
+      if (!lootSpotActive(o) || Math.hypot(o.x - player.x, o.y - player.y) > R) continue;
       ctx.fillStyle = "#ffd96a"; ctx.fillRect(x + ((o.x + o.w / 2) * MS - sx) * k - 1.5, y + ((o.y + o.h / 2) * MS - sy) * k - 1.5, 3, 3);
     }
   }

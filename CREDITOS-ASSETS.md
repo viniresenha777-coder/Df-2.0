@@ -98,3 +98,9 @@ Calça adaptada de [Pants Baked Ver](https://sketchfab.com/3d-models/pants-baked
 - Adaptação: ícone 2D renderizado da geometria e texturas fornecidas para a besta no jogo.
 
 - **Shotgun Sweet** (escopeta do evento de Natal): "Candy Shotgun" por Yogensia — https://sketchfab.com/3d-models/candy-shotgun-c9059c3f912342b6a1245ec36cc4fdfb — CC-BY-NC-SA-4.0 (uso não comercial; versões modificadas com a mesma licença).
+
+## Carros 3D (fatiados em camadas de altura, tools/fatias/)
+- "2024 Porsche 992 GT3 R" — Dave Love SketchFab (https://sketchfab.com/Tyler_Dave) — CC-BY-4.0 — https://sketchfab.com/3d-models/2024-porsche-992-gt3-r-b76c9b2ae2d548c3869426eac4ab8a19
+- "Police car" — Mateusz Woliński (https://sketchfab.com/jeandiz) — CC-BY-4.0 — https://sketchfab.com/3d-models/police-car-9166b13b6ae341f4bfc093edb71d74f4
+- "Destroyed Car 07 (Raw Scan)" — Renafox (https://sketchfab.com/kryik1023) — CC-BY-4.0 — https://sketchfab.com/3d-models/destroyed-car-07-raw-scan-916b51c7e5644eb2a6c9b3797ebb08cf (cores alteradas: vermelho, verde e prata)
+- "Old Rusty Car" — Renafox (https://sketchfab.com/kryik1023) — CC-BY-NC-4.0 (uso NÃO comercial) — https://sketchfab.com/3d-models/old-rusty-car-95baa20ebc5d4d2e869f0b549be838fe (cores alteradas: vermelho e bege)

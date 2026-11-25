@@ -52,8 +52,10 @@ function modelRect(id, gx, gy, k) {
 // (fronteiraMorta_src/blender/cars.py), cada um em 4 direções: car_<n>_<giro>.png em img/props.
 // Assim o carro fica reto na rua, com o teto e as laterais na perspectiva da câmera, sem girar
 // a imagem (girar uma foto 3/4 é o que deixava os carros tortos e "colados" no asfalto).
-// 0-3: Zhiguli inteiros (vermelho, verde, azul, branco) · 4, 5, 7: destroçados.
-const CAR_WHOLE = [0, 1, 2, 3], CAR_WRECK = [4, 5, 7];
+// Inteiros (repetidos = mais comuns): 0-3 Zhiguli (vermelho, verde, azul, branco) · 8, 9, 13 carro velho
+// enferrujado (verde-água, vermelho, bege) · 10 viatura de polícia · 11 Porsche 911 GT3 R (raro).
+// Destroçados: 12, 14, 15, 16 = carro destruído 07 (azul, vermelho, verde, prata). Todos em 3D fatiado (CAR_STACK).
+const CAR_WHOLE = [0, 1, 2, 3, 0, 1, 2, 3, 8, 9, 13, 8, 9, 13, 10, 10, 11], CAR_WRECK = [12, 14, 15, 16];
 function carHash(c) {
   return (Math.imul(Math.floor(c.x * 7.13), 73856093) ^ Math.imul(Math.floor(c.y * 3.71), 19349663)) >>> 0;
 }
@@ -64,7 +66,71 @@ function carVariant(c) {
 // direção do carro: horizontal = frente para a direita (0) ou esquerda (180); vertical = para cima (90) ou baixo (270)
 function carYaw(c) { return c.vert ? (c.dir ? 270 : 90) : (c.dir ? 180 : 0); }
 function carModel(c) { return `car_${carVariant(c)}_${carYaw(c)}`; }
+// Carros inteiros em 3D ("sprite stacking"): o modelo 3D do Zhiguli fatiado de 5 em 5 cm de altura
+// (img/props/car_N_fatias.webp, uma fatia embaixo da outra; gerado por fatias/fatiar2.py com o modelo de
+// fronteiraMorta_src/cars/zhiguli_soviet_cars). Cada fatia é desenhada na sua altura, na perspectiva da câmera
+// (proj, como os prédios): a lateral, a frente e a traseira aparecem do lado certo conforme a posição na tela.
+// O miolo de cada fatia foi apagado (a de cima cobre), então a folha fica leve (~140 KB por carro).
+const CAR_STACK = {
+  "car_0": {"w": 336, "h": 150, "n": 29, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 74.7, "fw": 4.1},
+  "car_1": {"w": 336, "h": 150, "n": 29, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 74.7, "fw": 4.1},
+  "car_2": {"w": 336, "h": 148, "n": 28, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 73.7, "fw": 4.1},
+  "car_3": {"w": 336, "h": 152, "n": 29, "ppm": 80, "dz": 0.05, "cx": 168.0, "cy": 75.7, "fw": 4.1},
+  "car_8": {"w": 376, "h": 141, "n": 24, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 70.1, "fw": 4.6},
+  "car_9": {"w": 376, "h": 141, "n": 24, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 70.1, "fw": 4.6},
+  "car_10": {"w": 408, "h": 156, "n": 30, "ppm": 80, "dz": 0.05, "cx": 204.0, "cy": 77.9, "fw": 5.0},
+  "car_11": {"w": 376, "h": 171, "n": 25, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 85.0, "fw": 4.6},
+  "car_12": {"w": 376, "h": 184, "n": 42, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 91.6, "fw": 4.6},
+  "car_13": {"w": 376, "h": 141, "n": 24, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 70.1, "fw": 4.6},
+  "car_14": {"w": 376, "h": 184, "n": 42, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 91.6, "fw": 4.6},
+  "car_15": {"w": 376, "h": 184, "n": 42, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 91.6, "fw": 4.6},
+  "car_16": {"w": 376, "h": 184, "n": 42, "ppm": 80, "dz": 0.05, "cx": 188.0, "cy": 91.6, "fw": 4.6}
+};
+const CAR_STACK_IMG = {};
+function carStackImg(key) {
+  let im = CAR_STACK_IMG[key];
+  if (!im) { im = CAR_STACK_IMG[key] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/props/${key}_fatias.webp?v=2`; }
+  return im.complete && !im.bad && im.naturalWidth ? im : null;
+}
+function drawCarStack(c, key) {
+  const m = CAR_STACK[key], im = carStackImg(key);
+  if (!im) return false;
+  const cx = c.x + c.w / 2, cy = c.y + c.h / 2, e = eye(), active = lootSpotActive(c);
+  const L = Math.max(c.w, c.h), WU = L / m.fw, wpp = L / (m.fw * m.ppm);   // mundo por metro / mundo por pixel da fatia
+  const ang = -carYaw(c) * Math.PI / 180 + (c.rot || 0);
+  ctx.fillStyle = "rgba(0,0,0,0.32)";                                      // sombra no chão
+  ellipse(cx + 4, cy + 5, c.w * 0.58, c.h * 0.58);
+  if (active) {
+    const glow = ctx.createRadialGradient(cx, cy, 5, cx, cy, L * 0.75);
+    glow.addColorStop(0, "rgba(255,215,101,0.20)"); glow.addColorStop(1, "rgba(255,205,94,0)");
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, L * 0.75, 0, 6.283); ctx.fill();
+  }
+  ctx.save();
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  if (active) ctx.filter = "brightness(1.12) contrast(1.06)";
+  else if (c.burnt) ctx.filter = "brightness(.55) saturate(.4) contrast(1.1)";   // queimado
+  const base = ctx.getTransform();
+  // câmera inclinada de verdade (30°): o carro encurta na vertical da tela (cos) enquanto a lateral sobe (sen).
+  // Sem isso (lateral somada ao carro inteiro visto de cima) o carro parecia esticado.
+  const sn = LEAN / Math.sqrt(1 + LEAN * LEAN), cs = Math.sqrt(1 - sn * sn);   // inclinação equivalente à câmera (tan = LEAN)
+  let top = null;
+  // com câmera mais inclinada cada fatia sobe mais de 1 px na tela: desenha cada uma em meia altura também
+  // (senão aparecem listras na lateral)
+  const sub = sn > 0.55 ? 2 : 1;
+  for (let i = 0; i < m.n; i++) for (let j = sub - 1; j >= 0; j--) {
+    const hgt = (i + 1 - j / sub) * m.dz * WU, p = proj(cx, cy, hgt, e), s = wpp * projK(hgt);
+    p.y += hgt * (LEAN - sn);                           // a fatia sobe pela inclinação (sen), não pelo LEAN cheio
+    ctx.setTransform(base); ctx.translate(p.x, p.y); ctx.scale(1, cs); ctx.rotate(ang); ctx.scale(s, s);
+    ctx.drawImage(im, 0, i * m.h, m.w, m.h, -m.cx, -m.cy, m.w, m.h);
+    top = p;
+  }
+  ctx.restore();
+  if (active) drawLootQuestion(c, top.x, top.y - Math.min(c.w, c.h) * 0.5 - 12);
+  return true;
+}
 function drawCarModel(c) {
+  const sk = `car_${carVariant(c)}`;
+  if (CAR_STACK[sk] && drawCarStack(c, sk)) return true;               // carro inteiro: 3D fatiado
   const id = carModel(c);
   if (!modelOk(id) || !modelImg(id)) { drawCar(c); return true; }      // até a imagem carregar
   const d = PROP_SPR[id], active = lootSpotActive(c);
