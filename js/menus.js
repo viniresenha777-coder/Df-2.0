@@ -1154,7 +1154,7 @@ function adminKey(k) {
 //  Desenho dos menus
 // =====================================================================
 // moldura e linhas dos menus: desenho em js/estetica.js (clima de Natal da tela inicial)
-function menuFrame(title, sub) { uiFrame(title, sub); }
+function menuFrame(title, sub, bg) { uiFrame(title, sub, bg); }
 function rowBox(x, y, w, h, sel, accent) { uiRow(x, y, w, h, sel, accent); }
 function hint(t) { txt(t, W / 2, H - 24, 13, "#a9a58f", "center"); }
 function menuToast() {

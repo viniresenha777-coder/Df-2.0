@@ -27,8 +27,15 @@ function inSafe() { return !!(game.inside && game.inside.safe); }
 function atBase() { return !!game.hub || inSafe(); }
 
 // ---------- Detalhes de uma arma (usado em várias telas) ----------
+// luz atrás da arma no lugar da caixa preta: armas escuras (espadas, coronhas) não somem no fundo
+function itemSpot(cx, cy, rx, ry) {
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(1, ry / rx);
+  const g = ctx.createRadialGradient(0, 0, 4, 0, 0, rx);
+  g.addColorStop(0, "rgba(255,236,190,0.34)"); g.addColorStop(0.55, "rgba(230,200,140,0.14)"); g.addColorStop(1, "rgba(230,200,140,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+}
 function weaponDetail(d, inst, x, y, w) {
-  ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(x, y, w, 96, 8); ctx.fill();
+  itemSpot(x + w / 2, y + 48, w * 0.55, 58);
   drawWeaponSide(d, x + w / 2, y + 48, Math.min(1.6, (w - 30) / 125));
   txt(inst ? instName(inst) : d.name, x, y + 122, 18, rarColor(d), "left", true, w);
   txt(`${RARITY[d.rar].name} · ${CAT_LABEL[d.cat]}${d.craftOnly ? " · feita na oficina" : ""}`, x, y + 141, 12, rarColor(d), "left", false, w);
@@ -1407,7 +1414,7 @@ function matsLine(mats, x, y) {
 }
 function drawCraft() {
   game.ctab = game.ctab || 0; game.ccur = game.ccur || 0; game.cstat = game.cstat || 0;
-  menuFrame("Oficina", `Dinheiro: $${game.money}  ·  Nível ${player.level}  ·  materiais da mochila e do baú contam aqui`);
+  menuFrame("Oficina", `Dinheiro: $${game.money}  ·  Nível ${player.level}  ·  materiais da mochila e do baú contam aqui`, "oficina_bg");
   if (save.vest >= 0) {
     const vd = Math.round(vestDur()), c = repairCost();
     btn(W - 270, 20, 230, 30, vd >= 100 ? `Colete ${vd}% (inteiro)` : `V: consertar colete ${vd}% · $${Math.max(1, c)}`, repairVest, vd < 100, vd >= 100);
@@ -1419,7 +1426,7 @@ function drawCraft() {
     regClick(x, 88, 200, 26, () => { game.ctab = i; game.ccur = 0; game.cstat = 0; });
   });
   const px = 600, pw = 320;
-  ctx.fillStyle = "rgba(0,0,0,0.25)"; rr(px - 10, 122, pw + 20, 400, 8); ctx.fill();
+  ctx.fillStyle = "rgba(10,14,9,0.32)"; rr(px - 10, 122, pw + 20, 400, 8); ctx.fill();   // painel translúcido (sem fundo preto)
   if (game.ctab === 0) {
     const RV = 7, roff = Math.max(0, Math.min(RECIPES.length - RV, game.ccur - 3));   // 7 receitas por vez, rola com W/S
     if (RECIPES.length > RV) txt(`${game.ccur + 1} / ${RECIPES.length}`, 300, 520, 11, "#a9a58f", "center");
@@ -1429,6 +1436,7 @@ function drawCraft() {
       const ok = player.level >= r.level && game.money >= cost && hasMats(r.mats) && hasImps(r.needImp) && (r.needVest == null || save.vestsOwned[r.needVest]);
       rowBox(40, y, 520, 52, sel, ok ? "#6fae4f" : null);
       rowClick(40, y, 520, 52, sel, () => { game.ccur = i; }, craftRecipe);
+      itemSpot(96, y + 26, 56, 24);
       if (r.implant) drawEntryIcon({ type: "implant", im: { id: r.implant } }, 96, y + 26, 0.62);
       else if (r.vest != null) drawVestIcon(r.vest, 96, y + 26, 0.7); else drawWeaponSide(WDEF[r.id], 96, y + 26, 0.36);
       txt(recipeName(r), 160, y + 19, 14, r.implant ? "#ff8a6a" : r.vest != null ? RARITY[VESTS[r.vest].rar].color : rarColor(WDEF[r.id]), "left", true, 280);
@@ -1439,6 +1447,7 @@ function drawCraft() {
     const r = RECIPES[game.ccur];
     if (r.implant) {
       const d = IMP[r.implant];
+      itemSpot(px + pw / 2, 210, 150, 90);
       drawEntryIcon({ type: "implant", im: { id: r.implant } }, px + pw / 2, 210, 1.9);
       txt(d.name, px, 300, 17, "#ff8a6a", "left", true, pw);
       Object.keys(d.fx).forEach((k, i) => txt(sgn(d.fx[k]) + "% " + (FX_LABEL[k] || k), px, 324 + i * 18, 13, d.fx[k] < 0 ? "#ff8383" : "#8bed92", "left", true, pw));
@@ -1453,6 +1462,7 @@ function drawCraft() {
       }
     } else if (r.vest != null) {
       const v = VESTS[r.vest];
+      itemSpot(px + pw / 2, 200, 150, 90);
       drawVestIcon(r.vest, px + pw / 2, 200, 2.2);
       txt(v.name, px, 290, 17, RARITY[v.rar].color, "left", true, pw);
       txt(vestText(v), px, 312, 12, "#c9c4ad", "left", false, pw);
