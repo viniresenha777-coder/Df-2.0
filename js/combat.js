@@ -239,6 +239,8 @@ function hurt(z, dmg, ang, quiet, fx) {
   if (z.hp <= 0) { if (!z.dead) killZombie(z); } else alertZombie(z);
   return d;
 }
+// só arma de cartucho com ferrolho/slide ejeta cápsula: besta (virote) e revólver (cápsulas ficam no tambor) não
+function ejectsCasing(w) { return !w.fire && !w.melee && w.look !== "crossbow" && w.look !== "revolver"; }
 function attack() {
   const w = curW(), it = curInst(), st = wStat(it);
   player.cooldown = st.delay * (w.infinite ? 1 + 2 * (1 - player.spin) : 1) / Math.max(0.3, 1 + player.fx.atkSpeed / 100);
@@ -278,7 +280,7 @@ function attack() {
   if (typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(mx, my, aim, w.id, n);   // os outros veem o tiro
   if (!w.fire) {
     player.flashT = 60;
-    casing(player.x + Math.cos(player.angle) * 10, player.y + Math.sin(player.angle) * 10, player.angle);
+    if (ejectsCasing(w)) casing(player.x + Math.cos(player.angle) * 10, player.y + Math.sin(player.angle) * 10, player.angle);
   }
   game.shake = Math.min(10, game.shake + (w.cat === "shotguns" ? 5 : w.cat === "rifles" ? 4 : w.fire ? 0.4 : 1.2));
   if (!w.fire || Math.random() < 0.3) sfx.shot(w);

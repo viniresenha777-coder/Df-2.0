@@ -491,7 +491,7 @@ function netShot(x, y, a, w, n) {
       dmg: 0, pierce: !!w.pierce, hit: [], big: w.cat === "rifles" || w.rar >= 3, fire: !!w.fire, explode: w.explode || 0, bolt: w.look === "crossbow",
       grenade: !!w.grenade, fx: w, knock: false, color: w.rar >= 3 ? RARITY[w.rar].color : null });
   }
-  if (!w.fire) casing(x - Math.cos(a) * 18, y - Math.sin(a) * 18, a);
+  if (ejectsCasing(w)) casing(x - Math.cos(a) * 18, y - Math.sin(a) * 18, a);
   if (player && Math.hypot(x - player.x, y - player.y) < 650 && (!w.fire || Math.random() < 0.3)) sfx.shot(w);
 }
 function drawNetShots() {
