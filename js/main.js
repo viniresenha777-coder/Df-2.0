@@ -504,6 +504,7 @@ function drawWorldView(shx, shy) {
     drawProjectiles();
     if (game.escort && !game.over) drawSurvivor(game.escort.x, game.escort.y, game.escort.ang, game.escort.walk, game.escort.moving);
     if (!game.over && !drawPlayerSprite()) drawPlayer();
+    drawInteriorWalls();    // paredes altas por cima (face translúcida: dá para ver o cômodo de trás)
   } else {
     drawSortedScene(); // câmera inclinada: prédios, postes, zumbis e você ordenados pela profundidade (pés)
     drawProjectiles(); drawCanopiesP(); drawSmoke();
