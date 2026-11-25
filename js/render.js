@@ -763,7 +763,8 @@ function drawInterior() {
     ctx.fillStyle = "#3a2410"; ctx.fillRect(IWd / 2 - 1, IHd - 40, 2, 40);
     txt("SAIR", IWd / 2, IHd - 14, 13, "rgba(255,230,180,0.6)", "center", true);
   }
-  for (const f of h.interior) if (!(INTERIOR_TALL_WALLS && f.kind === "wall")) drawFurniture(f);
+  for (const f of h.interior) if (!(INTERIOR_TALL_WALLS && (f.kind === "wall" || tallFurn(f)))) drawFurniture(f);
+  else if (f.kind !== "wall") continue;               // móvel alto: desenhado junto com as paredes (ordem de profundidade)
   else { ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(f.x, f.y, f.w, f.h); }      // pé da parede alta
   for (const c of h.corpses) drawCorpse(c);
 }
@@ -796,10 +797,20 @@ function drawInteriorWalls(pass) {
   const P = (x, y, z) => { const k = IWALL_CAM / (IWALL_CAM - z); return { x: e.x + (x - e.x) * k, y: e.y + (y - e.y) * k - z * LEAN }; };
   const who = [player];                                // sólida como no DF; só some um pouco se VOCÊ estiver atrás
   const quad = (pts) => { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath(); ctx.fill(); };
-  const boxes = interiorWallBoxes(h).sort((a, b) => (a.y + a.h) - (b.y + b.h));
+  const boxes = interiorWallBoxes(h);
+  for (const f of h.interior) if (tallFurn(f)) boxes.push({ x: f.x, y: f.y, w: f.w, h: f.h, furn: f });
+  boxes.sort((a, b) => (a.y + a.h) - (b.y + b.h));
   const caps = [];
+  const flushCaps = () => {
+    if (!caps.length) return;
+    ctx.lineJoin = "miter"; ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = 2.4;
+    for (const c of caps) { ctx.globalAlpha = c.a; ctx.beginPath(); ctx.moveTo(c.q[0].x, c.q[0].y); for (let i = 1; i < 4; i++) ctx.lineTo(c.q[i].x, c.q[i].y); ctx.closePath(); ctx.stroke(); }
+    for (const c of caps) { ctx.globalAlpha = c.a; ctx.fillStyle = shade(c.c, 0.12); quad(c.q); }
+    ctx.globalAlpha = 1; caps.length = 0;
+  };
   boxes.forEach((b, bi) => {
     if (pass && (pass === "back") !== isBack(b)) return;
+    if (b.furn) { flushCaps(); ctx.globalAlpha = 1; drawFurniture(b.furn); return; }
     const x0 = b.x, x1 = b.x + b.w, y0 = b.y, y1 = b.y + b.h, z = b.hgt;
     const t00 = P(x0, y0, z), t10 = P(x1, y0, z), t11 = P(x1, y1, z), t01 = P(x0, y1, z);
     // alguém atrás desta parede (dentro da área que a face cobre na tela)?
@@ -832,10 +843,47 @@ function drawInteriorWalls(pass) {
   });
   // topos de todas as paredes juntos: primeiro o contorno grosso, depois o preenchimento por cima
   // (onde duas paredes se encontram as linhas de dentro somem: fica uma peça só, só com a linha de fora)
-  ctx.lineJoin = "miter"; ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = 2.4;
-  for (const c of caps) { ctx.globalAlpha = c.a; ctx.beginPath(); ctx.moveTo(c.q[0].x, c.q[0].y); for (let i = 1; i < 4; i++) ctx.lineTo(c.q[i].x, c.q[i].y); ctx.closePath(); ctx.stroke(); }
-  for (const c of caps) { ctx.globalAlpha = c.a; ctx.fillStyle = shade(c.c, 0.12); quad(c.q); }
-  ctx.globalAlpha = 1;
+  flushCaps();
+}
+
+// ---------- Móveis altos em 3D (caixa com laterais, frente e tampo) ----------
+const TALL_FURN = { "Geladeira": 44, "Freezer": 26, "Armário médico": 40 };
+function tallFurn(f) { return INTERIOR_TALL_WALLS && f.kind !== "wall" && TALL_FURN[f.name] && !(typeof FURN_MODEL !== "undefined" && FURN_MODEL[f.name] && modelOk(FURN_MODEL[f.name])); }
+function drawTallFurn(f) {
+  const { x, y, w, h } = f, n = f.name, z = TALL_FURN[n], e = eye();
+  const P = (px, py, pz) => { const k = IWALL_CAM / (IWALL_CAM - pz); return { x: e.x + (px - e.x) * k, y: e.y + (py - e.y) * k - pz * LEAN }; };
+  const quad = (pts, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath(); ctx.fill(); };
+  const x1 = x + w, y1 = y + h, t00 = P(x, y, z), t10 = P(x1, y, z), t11 = P(x1, y1, z), t01 = P(x, y1, z), c = f.color;
+  ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(x + 4, y + 4, w + 2, h + 2);                     // sombra no chão
+  if (e.x < x) quad([{ x, y: y1 }, { x, y }, t00, t01], shade(c, -0.3));                       // lateral esquerda
+  if (e.x > x1) quad([{ x: x1, y: y1 }, { x: x1, y }, t10, t11], shade(c, -0.2));              // lateral direita
+  // frente (porta): no espaço da face — u ao longo, v de cima para baixo
+  ctx.save();
+  ctx.transform((t11.x - t01.x) / w, (t11.y - t01.y) / w, (x - t01.x) / z, (y1 - t01.y) / z, t01.x, t01.y);
+  const g = ctx.createLinearGradient(0, 0, 0, z); g.addColorStop(0, shade(c, 0.02)); g.addColorStop(1, shade(c, -0.25));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, z);
+  ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1;
+  if (n === "Geladeira") {
+    ctx.beginPath(); ctx.moveTo(1, z * 0.34); ctx.lineTo(w - 1, z * 0.34); ctx.stroke();          // freezer em cima, porta embaixo
+    ctx.fillStyle = "#7a8085"; ctx.fillRect(w - 7, z * 0.1, 2.5, z * 0.18); ctx.fillRect(w - 7, z * 0.42, 2.5, z * 0.4);
+    ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.fillRect(3, 2, 2, z - 4);                         // brilho na quina
+    const r = (k) => bHash(f, 70 + k);                                                              // ímãs / bilhete
+    if (r(0) < 0.7) { ctx.fillStyle = ["#d9a52b", "#b3261e", "#2a4f9e"][Math.floor(r(1) * 3)]; ctx.fillRect(6 + r(2) * (w - 22), z * 0.5, 7, 6); }
+    if (r(3) < 0.5) { ctx.fillStyle = "#efe9d6"; ctx.fillRect(8 + r(4) * (w - 26), z * 0.12, 9, 8); }
+  } else if (n === "Freezer") {
+    ctx.strokeStyle = "rgba(120,170,200,0.6)"; ctx.strokeRect(3, 3, w - 6, z - 6);
+    ctx.fillStyle = "#7a8085"; ctx.fillRect(w / 2 - 8, 3, 16, 2.5);
+  } else {
+    ctx.beginPath(); ctx.moveTo(w / 2, 2); ctx.lineTo(w / 2, z - 2); ctx.stroke();
+    ctx.fillStyle = "#d04040"; ctx.fillRect(w / 2 - 3, z * 0.3, 6, 14); ctx.fillRect(w / 2 - 9, z * 0.3 + 4, 18, 6);
+  }
+  ctx.restore();
+  ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(x, y1); ctx.lineTo(x1, y1); ctx.lineTo(t11.x, t11.y); ctx.lineTo(t01.x, t01.y); ctx.closePath(); ctx.stroke();
+  // tampo
+  quad([t00, t10, t11, t01], shade(c, 0.12));
+  ctx.beginPath(); ctx.moveTo(t00.x, t00.y); ctx.lineTo(t10.x, t10.y); ctx.lineTo(t11.x, t11.y); ctx.lineTo(t01.x, t01.y); ctx.closePath(); ctx.stroke();
+  if (n === "Freezer") { ctx.strokeStyle = "rgba(120,170,200,0.5)"; ctx.beginPath(); ctx.moveTo((t00.x + t10.x) / 2, (t00.y + t10.y) / 2); ctx.lineTo((t01.x + t11.x) / 2, (t01.y + t11.y) / 2); ctx.stroke(); }
 }
 
 // ---------- Desgaste das paredes ----------
@@ -949,7 +997,7 @@ function drawFurniture(f) {
   drawFurnitureBase(f);
   if (active) {
     ctx.restore();
-    drawLootQuestion(f, f.x + f.w / 2, f.y - 13);
+    drawLootQuestion(f, f.x + f.w / 2, f.y - 13 - (tallFurn(f) ? TALL_FURN[f.name] * LEAN : 0));
   }
 }
 function drawFurnitureBase(f) {
@@ -970,6 +1018,7 @@ function drawFurnitureBase(f) {
     const d = PROP_SPR[mid], k = Math.min(w / d.fw, h / d.fd) * 1.05;
     if (drawModel(mid, x + w / 2, y + h / 2, k, active ? LOOT_YELLOW_FILTER : f.opened ? "brightness(0.7)" : null)) { ctx.globalAlpha = 1; return; }
   }
+  if (tallFurn(f)) { drawTallFurn(f); ctx.globalAlpha = 1; return; }
   ctx.fillStyle = "rgba(0,0,0,0.32)"; ctx.fillRect(x + 5, y + 5, w, h);
   if (f.kind === "decor") { drawDecor(f); ctx.globalAlpha = 1; return; }
   if (f.kind === "survivor") { ctx.globalAlpha = 1; drawSurvivor(x + w / 2, y + h / 2, Math.atan2(player.y - y - h / 2, player.x - x - w / 2), 0, false); hudT("SOS", x + w / 2, y - 18, 12, "#6fff9a", "center", true); return; }
