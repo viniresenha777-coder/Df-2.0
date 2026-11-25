@@ -207,7 +207,7 @@ function flashTearSize() {
     const c = typeof chestPoint === "function" ? chestPoint() : player;
     const hit = flashRayDist(c.x, c.y, player.angle, D0 + R0); FLASH_TEAR.hit = hit; FLASH_TEAR.max = D0 + R0;
     // o círculo encosta na parede: D + R*0.55 = distância até a parede (mínimo 28% do tamanho)
-    const want = Math.max(0.28, Math.min(1, hit / (D0 + R0 * 0.55)));
+    const want = Math.max(game.inside ? 0.28 : 0.5, Math.min(1, hit / D0));   // só encolhe quando a parede está antes do ponto de mira
     FLASH_TEAR.k += (want - FLASH_TEAR.k) * (want < FLASH_TEAR.k ? 0.5 : 0.2);
   }
   return [D0 * FLASH_TEAR.k, R0 * FLASH_TEAR.k];
