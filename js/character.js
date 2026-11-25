@@ -9,7 +9,10 @@ function newImplant(id) {
   if (id === FM_MIMIC_ID) im.tokenBound = true;      // o Mimic do kit é intransferível
   return im;
 }
-function randomImplant() { return newImplant(pick(IMP_IDS.filter((id) => !IMP[id].kitOnly && !IMP[id].craftOnly))); }
+// Só implantes marcados com drop: true caem no saque (os 29 atuais não caem: só loja/eventos).
+// A chance de cair é a mesma de uma arma Lendária naquele lugar (ver lootImplantDrop em interact.js).
+function dropImplantIds() { return IMP_IDS.filter((id) => IMP[id].drop && !IMP[id].kitOnly && !IMP[id].craftOnly); }
+function randomImplant() { const ids = dropImplantIds(); return ids.length ? newImplant(pick(ids)) : null; }
 function impColor(im) { return IMP_COLOR[IMP[im.id].kind || 0]; }
 function implantName(im) { return IMP[im.id].name; }
 function allocUsed(im) { let n = 0; for (const k in im.alloc || {}) n += im.alloc[k]; return n; }

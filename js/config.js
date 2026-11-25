@@ -340,7 +340,7 @@ function implantUnlockedSlots(level) {
   const lv = Math.min(MAX_LEVEL, Math.max(1, Math.floor(Number(level) || 1)));
   return IMPLANT_SLOT_LEVELS.slice(0, IMPL_SLOTS).filter(required => lv >= required).length;
 }
-const IMPLANT_RARITY = 0.1;      // multiplica a chance de achar implante no saque (valem muito)
+const IMPLANT_RARITY = 0.1;      // (antigo) não é mais usado: implante no saque segue a raridade Lendária (lootImplantDrop)
 const BOSS_IMPLANT = 0.15;       // chefes que davam implante garantido: agora só às vezes
 const STAT_KEYS = ["exp", "hunter", "scavenger", "crit", "reload", "endurance", "metabolism", "vigor", "regen", "silence", "firepower", "thick", "greed", "agility", "saver", "implantLoot",
   "rage", "killHeal", "lootSense", "luck", "accImp", "stealthImp", "craftDisc", "critDmg", "leech", "adren",
