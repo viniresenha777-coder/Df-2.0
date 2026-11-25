@@ -653,7 +653,10 @@ function drawPlayerSprite() {
     ctx.restore();
   }
   const kick = p.flashT > 0 ? 2 : 0, o = spriteOrigin(), info = SPRITE_POSES[pose][row][col];
-  const w3 = weapon3dImg(w, pose);
+  // tronco torcido: a arma 3D só existe na pose normal — usa a dela, levada até a mão do tronco girado
+  const basePose = TW.suf ? pose.slice(0, -TW.suf.length) : pose;
+  let w3 = weapon3dImg(w, pose), w3Base = false;
+  if (!w3 && TW.suf) { w3 = weapon3dImg(w, basePose); w3Base = !!w3; }
   if (info.bh && !w3) drawHeldWeapon(w, pose);       // arma atrás do corpo (de costas)
   drawEyeTrails();                                    // rastro dos olhos fica atrás do corpo
   const ox = o.x - Math.cos(p.angle) * kick, oy = o.y - Math.sin(p.angle) * kick;
@@ -665,15 +668,18 @@ function drawPlayerSprite() {
     if (!w.melee) {
       // Camada da arma 3D: vira em torno da empunhadura sem rodar o
       // personagem inteiro. A mira e o disparo usam este mesmo ângulo.
-      const A = posePt("a", pose), B = posePt("b", pose);
-      const baseAngle = Math.atan2(B.y - A.y, B.x - A.x);
+      const A = posePt("a", pose), A0 = w3Base ? posePt("a", basePose) : A, B0 = posePt("b", w3Base ? basePose : pose);
+      const baseAngle = Math.atan2(B0.y - A0.y, B0.x - A0.x);
       const aim = Number.isFinite(p.gunAngle) ? p.gunAngle : p.angle;
       ctx.translate(A.x, A.y);
       ctx.rotate(angDelta(baseAngle, aim));
-      ctx.translate(-A.x, -A.y);
+      ctx.translate(-A0.x, -A0.y);
     } else if (w.look !== "chainsaw" && game.slashT > 0) {
-      const A = posePt("a", pose), sw = (-1 + (1 - game.slashT / 200) * 2) * (game.slashA || 0.9) * 0.9;
-      ctx.translate(A.x, A.y); ctx.rotate(sw); ctx.translate(-A.x, -A.y);
+      const A = posePt("a", pose), A0 = w3Base ? posePt("a", basePose) : A, sw = (-1 + (1 - game.slashT / 200) * 2) * (game.slashA || 0.9) * 0.9;
+      ctx.translate(A.x, A.y); ctx.rotate(sw); ctx.translate(-A0.x, -A0.y);
+    } else if (w3Base) {                                    // corpo a corpo parado: só leva a arma até a mão
+      const A = posePt("a", pose), A0 = posePt("a", basePose);
+      ctx.translate(A.x - A0.x, A.y - A0.y);
     }
     if (d.f) ctx.filter = d.f;
     ctx.drawImage(w3, col * c, row * c, c, c, ox, oy, S, S);
