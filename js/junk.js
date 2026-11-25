@@ -8,9 +8,13 @@ const JUNK_RAR = [1000, 3000, 8000, 20000, 50000];  // piso de venda por raridad
 const RESET_STATS_PRICE = MATS.reset_stats.price;
 const JUNK_CONS = { comum: 100, fresca: 200, podre: 20, water: 80, med: 400, anti: 600 };
 
+// Regra geral do Ferro Velho: devolve 30% do que o item custa na loja (pagou $50 → recebe $15).
+// Assim comprar e revender sempre dá prejuízo e 70% do dinheiro sai da economia.
+const SCRAP_RATE = 0.3;
 function weaponSellPrice(inst) {
   const d = WDEF[inst.id];
   if (d.scrap) return inst.gc ? d.scrapMC || d.scrap : d.scrap;   // valor fixo de sucata (MC = craft perfeito)
+  if (d.shop) return Math.round(d.shop * SCRAP_RATE * (1 + upSum(inst) * 0.12));   // armas da Loja: 30% do preço
   return Math.round(Math.max(JUNK_RAR[d.rar] || 1000, (d.price || 0) * 3) * (1 + upSum(inst) * 0.12));
 }
 function weaponParts(inst) {
@@ -24,8 +28,16 @@ function weaponParts(inst) {
 function partsText(p) { return Object.keys(p).map((k) => `${p[k]}x ${MATS[k].name}`).join(" + "); }
 // implante vendido: no mínimo $100.000 (≈8% do preço em créditos); Mimic (scrap 0) não tem valor de venda
 function implantSellPrice(im) { const v = IMP[im.id].scrap; return v ? Math.max(v, 100000) : 0; }
-function matSellPrice(id) { return { sucata: 300, pecas: 700, eletronicos: 1100, nucleo: 8000, placa: 6000 }[id] || 100; }
-function ammoSellPrice(t) { return Math.max(0.5, ammoPackPrice(t) / AMMO_PACK_SIZE * 0.3); }
+function matSellPrice(id) { return { sucata: 300, pecas: 700, eletronicos: 1100, nucleo: 8000, placa: 6000 }[id] || Math.round(((MATS[id] && MATS[id].price) || 0) * SCRAP_RATE) || 100; }
+// colete: 30% do preço (créditos contam a $CREDIT_PRICE cada), proporcional à durabilidade;
+// coletes com valor fixo (Natalino) pagam o valor cheio; MC = melhorias de Armadura e Velocidade no máximo
+function vestSellPrice(i) {
+  const v = VESTS[i];
+  if (v.scrap) { const u = vestUpgrade(i); return u.armor >= VEST_UP_MAX && u.speed >= VEST_UP_MAX ? v.scrapMC || v.scrap : v.scrap; }
+  const base = v.price || (v.credits || 0) * CREDIT_PRICE;
+  return Math.round(base * SCRAP_RATE * (vestDur(i) / 100)) || 20;
+}
+function ammoSellPrice(t) { return Math.max(0.5, ammoPackPrice(t) / AMMO_PACK_SIZE * SCRAP_RATE); }
 
 // tudo o que você pode vender, numa lista só
 function junkItems() {
@@ -45,12 +57,7 @@ function junkItems() {
     if (im.tokenBound) return; // itens do Token Mestre não são revendáveis
     L.push({ kind: "implant", im, name: implantName(im), unit: implantSellPrice(im), qty: 1, rare: true, sub: "implante (não instalado)" });
   });
-  // coletes com valor de sucata fixo (ex.: Natalino) pagam o valor cheio; MC = melhorias de Armadura e Velocidade no máximo
-  const vestScrap = (i) => {
-    const v = VESTS[i];
-    if (v.scrap) { const u = vestUpgrade(i); return u.armor >= VEST_UP_MAX && u.speed >= VEST_UP_MAX ? v.scrapMC || v.scrap : v.scrap; }
-    return Math.round(v.price * 0.3 * (vestDur(i) / 100)) || 20;
-  };
+  const vestScrap = vestSellPrice;
   VESTS.forEach((v, i) => { if (save.vestsOwned[i] && i !== save.vest) L.push({ kind: "vest", idx: i, name: v.name, unit: vestScrap(i), qty: 1, rare: v.rar >= 2, sub: `colete guardado · ${Math.round(vestDur(i))}%` }); });
   return L;
 }

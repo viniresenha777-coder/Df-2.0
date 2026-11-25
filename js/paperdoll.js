@@ -727,6 +727,23 @@ function drawInventory() {
   }
   drawAllocPanel();
 }
+// linha "Ferro Velho: $X" do balão de detalhes (o mesmo valor que o Ferro Velho paga)
+function fmScrapLine(kind, obj) {
+  const $ = (v) => "$" + Math.max(0, Math.round(v)).toLocaleString("pt-BR");
+  const each = (unit, n) => n > 1 ? `Ferro Velho: ${$(unit)} cada · ${$(unit * n)} tudo` : `Ferro Velho: ${$(unit)}`;
+  if (kind === "weapon") return obj.tokenBound ? "Ferro Velho: não vende" : "Ferro Velho: " + $(weaponSellPrice(obj));
+  if (kind === "implant") { const v = obj.tokenBound ? 0 : implantSellPrice(obj); return v ? "Ferro Velho: " + $(v) : "Ferro Velho: não vende"; }
+  if (kind === "vest") return "Ferro Velho: " + $(vestSellPrice(obj.i)) + (obj.i === save.vest ? " (tire o colete para vender)" : "");
+  if (kind === "ammo") { const n = Math.min(obj.n || 0, sellableAmmo(obj.t)); return n > 0 ? `Ferro Velho: ${$(ammoSellPrice(obj.t) * n)} (${n.toLocaleString("pt-BR")} balas)` : "Ferro Velho: não vende"; }
+  if (kind === "mat") return obj.id === "reset_stats" ? "Ferro Velho: não vende" : each(matSellPrice(obj.id), obj.qty || obj.n || 1);
+  if (kind === "supply") {
+    if (obj.id === "food") return `Ferro Velho: ${$(JUNK_CONS.fresca)} fresca · ${$(JUNK_CONS.comum)} comum · ${$(JUNK_CONS.podre)} podre`;
+    const unit = JUNK_CONS[obj.id];
+    return unit ? each(unit, SUPPLY[obj.id] ? SUPPLY[obj.id].n() : 1) : "";
+  }
+  if (kind === "clothing") return "Ferro Velho: não vende";
+  return "";
+}
 function fmBalãoDetalhes(it) {
   if (!it || !it.item || INV.confirm || (INV.drag && INV.drag.moved)) return;
   const obj = it.item,
@@ -798,11 +815,14 @@ function fmBalãoDetalhes(it) {
       }
     } else if (kind === "mat") {
       add("Tipo: material", "#8bc9f5");
-      add("Quantidade: " + (obj.n || 1), "#f4c44d");
+      add("Quantidade: " + (obj.qty || obj.n || 1), "#f4c44d");
     } else if (kind === "supply") {
       add("Tipo: suprimento", "#8bc9f5");
       add("Quantidade: " + (obj.n || 1), "#f4c44d");
     } else add("Item do inventário", "#ddd8c8");
+    // quanto o Ferro Velho paga pelo item
+    const scrap = fmScrapLine(kind, obj);
+    if (scrap) add(scrap, "#f4c44d");
   } catch (err) {
     rows.length = 0;
     add("Detalhes indisponíveis", "#e4dfd1");
