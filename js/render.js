@@ -1684,7 +1684,23 @@ function holeTo(c, x, y, r, a) {
   c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 6.283); c.fill();
 }
 function hole(x, y, r, a) { holeTo(lctx, x, y, r, a); }
-function drawLighting() {
+function drawLighting() { drawLightingDark(); drawFlashBeamAdd(); }
+// Modo Baixo (sem WebGL): o facho da lanterna também clareia a cena, de dia ou dentro de casa
+function drawFlashBeamAdd() {
+  if (game.over || !flashlightActive()) return;
+  const chest = typeof chestPoint === "function" ? chestPoint() : player, px = chest.x - cam.x, py = chest.y - cam.y;
+  if (!FLASH_GLOW.c) { FLASH_GLOW.c = document.createElement("canvas"); FLASH_GLOW.x = FLASH_GLOW.c.getContext("2d"); }
+  const gc = FLASH_GLOW.c, gx = FLASH_GLOW.x;
+  if (gc.width !== W || gc.height !== H) { gc.width = W; gc.height = H; }
+  gx.setTransform(1, 0, 0, 1, 0, 0); gx.globalCompositeOperation = "source-over"; gx.clearRect(0, 0, W, H);
+  const [cx, cy, D, R] = flashTearPath(gx, px, py, player.angle);
+  const g = gx.createRadialGradient(px, py, 4, px, py, D + R);
+  g.addColorStop(0, "rgba(255,225,165,0.30)"); g.addColorStop(0.55, "rgba(255,215,150,0.42)"); g.addColorStop(1, "rgba(255,205,140,0.05)");
+  gx.fillStyle = g; gx.filter = "blur(7px)"; gx.fill(); gx.filter = "none";   // borda suave
+  gx.globalCompositeOperation = "destination-out"; gx.drawImage(flashlightBlocks(), 0, 0, W, H);
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.drawImage(gc, 0, 0, W, H); ctx.restore();
+}
+function drawLightingDark() {
   // Noite ainda é perigosa, porém 25% mais legível do que a versão anterior.
   const baseDark = game.inside ? (game.inside.safe ? 0.12 : 0.26 + darkness() * 0.3) : darkness();
   const dark = Math.min(0.78, baseDark * 0.75);
