@@ -9,10 +9,10 @@
 //  atmosfera (cone da lanterna, neblina azulada e vinheta).
 // =====================================================================
 const CAM_H = 1100;        // altura da câmera (px do mundo): perspectiva radial
-let LEAN = 0.5;            // inclinação: quanto o alto "sobe" na tela por px de altura (~tan 27°, leve)
+let LEAN = 1.0;            // inclinação: quanto o alto "sobe" na tela por px de altura (1,0 = 45°, como no Dead Frontier; antes 0,5)
 // Como no Dead Frontier: atrás de um prédio (o telhado ia cobrir você), a câmera sobe e fica quase
 // vertical (LEAN perto de 0), em transição suave; ao sair de trás do prédio, volta à inclinação normal.
-const LEAN_BASE = 0.5, LEAN_TOP = 0.05;
+const LEAN_BASE = 1.0, LEAN_TOP = 0.05;
 function playerBehindBuilding() {
   if (game.inside || !world || !world.buildings) return false;
   for (const b of world.buildings) {

@@ -112,10 +112,13 @@ function drawCarStack(c, key) {
   const base = ctx.getTransform();
   // câmera inclinada de verdade (30°): o carro encurta na vertical da tela (cos) enquanto a lateral sobe (sen).
   // Sem isso (lateral somada ao carro inteiro visto de cima) o carro parecia esticado.
-  const sn = 0.5 * Math.min(1, LEAN / LEAN_BASE), cs = Math.sqrt(1 - sn * sn);
+  const sn = LEAN / Math.sqrt(1 + LEAN * LEAN), cs = Math.sqrt(1 - sn * sn);   // inclinação equivalente à câmera (tan = LEAN)
   let top = null;
-  for (let i = 0; i < m.n; i++) {
-    const hgt = (i + 1) * m.dz * WU, p = proj(cx, cy, hgt, e), s = wpp * projK(hgt);
+  // com câmera mais inclinada cada fatia sobe mais de 1 px na tela: desenha cada uma em meia altura também
+  // (senão aparecem listras na lateral)
+  const sub = sn > 0.55 ? 2 : 1;
+  for (let i = 0; i < m.n; i++) for (let j = sub - 1; j >= 0; j--) {
+    const hgt = (i + 1 - j / sub) * m.dz * WU, p = proj(cx, cy, hgt, e), s = wpp * projK(hgt);
     p.y += hgt * (LEAN - sn);                           // a fatia sobe pela inclinação (sen), não pelo LEAN cheio
     ctx.setTransform(base); ctx.translate(p.x, p.y); ctx.scale(1, cs); ctx.rotate(ang); ctx.scale(s, s);
     ctx.drawImage(im, 0, i * m.h, m.w, m.h, -m.cx, -m.cy, m.w, m.h);
