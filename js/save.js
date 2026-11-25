@@ -6,7 +6,7 @@
 const SAVE_KEY = "fronteira-morta";
 const save = {
   bank: 0, vault: [], vaultRows: 5, installed: [], implantPresets: [], credits: 0, gm: false, vipUntil: 0, trindadeUntil: 0, shopFreeUntil: 0, missions: [], receivedGifts: [], inbox: [],
-  vest: -1, fmInventoryOrder: [], clothing: { jacket: null, pants: null, boots: null }, outposts: OUTPOSTS.map((o, i) => i === 0), muted: false, hud: 0, skin: 0, cape: 0, prof: null, name: "", classicChar: false, vestDur: {}, vestUpgrades: {}, vestShow: true, music: true, gfx: 2, ambientVolume: 0.55, brightness: 1.0,
+  vest: -1, fmInventoryOrder: [], clothing: { jacket: "cl_moletom", pants: "cl_pants_cargo_futurista", boots: "cl_boots_sapatos_couro" }, roupaInicial: true, outposts: OUTPOSTS.map((o, i) => i === 0), muted: false, hud: 0, skin: 0, cape: 0, prof: null, name: "", classicChar: false, vestDur: {}, vestUpgrades: {}, vestShow: true, music: true, gfx: 2, ambientVolume: 0.55, brightness: 1.0,
   stats: {}, story: 0, ach: {}, daily: null, coll: [], vestsOwned: VESTS.map(() => false), clothesOwned: {}, vestVer: 2,
   char: { level: 1, xp: 0, points: 0, wpoints: 0, attrs: defaultAttrs() }
 };
@@ -90,6 +90,13 @@ function loadSave() {
       save.vestUpgrades[i] = cleanVestUpgrade(s.vestUpgrades && s.vestUpgrades[i]);
     save.outposts = OUTPOSTS.map((o, i) => i === 0 || !!(s.outposts && s.outposts[i]));
     save.muted = !!s.muted; save.hud = s.hud === 1 ? 1 : 0; save.skin = clamp(s.skin | 0, 0, SKINS.length - 1); save.clothing = clothingClean(s.clothing);
+    // roupa inicial (moletom com capuz, calça cargo futurista, sapatos de couro): personagem novo já vem vestido;
+    // save antigo recebe uma vez só nas partes que estiverem vazias (depois o jogador tira se quiser)
+    if (!s.roupaInicial) {
+      const ini = { jacket: "cl_moletom", pants: "cl_pants_cargo_futurista", boots: "cl_boots_sapatos_couro" };
+      for (const k in ini) if (!save.clothing[k]) save.clothing[k] = ini[k];
+    }
+    save.roupaInicial = true;
     // capa e máscaras compradas; save antigo: quem já estava usando uma fica com ela
     save.clothesOwned = {};
     for (const id in CREDIT_CLOTHING) {
