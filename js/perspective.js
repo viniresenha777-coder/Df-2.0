@@ -416,8 +416,9 @@ function spriteTick(dt) {
   p.dispAng = p.angle;
   p.sRow = sheetRow(Math.cos(p.angle), Math.sin(p.angle));
   if (p.moving) p.stepDist = (p.stepDist || 0) + (p.lastSp || 0) * dt / 16.67;
-  if (curW().dual) dualTwistTick();
-  else { p.legRow = null; TW.suf = pickTwistSuffix(weaponPose(curW())); }
+  const pose = weaponPose(curW());
+  if (poseHasTwist(pose)) dualTwistTick(pose);        // tronco gira até 90° com as pernas paradas (todas as poses renderizadas)
+  else { p.legRow = null; TW.suf = pickTwistSuffix(pose); }
 }
 // ---------- Armas duplas: tronco gira até 90° com as pernas paradas ----------
 // Variantes da pose punhos com o tronco torcido de 15 em 15° (geradas no Blender com --twist, quadril e pernas
@@ -439,8 +440,14 @@ function torsoLayerMissing(key) {
   }
   return false;
 }
-function dualTwistTick() {
-  const p = player, pose = "punhos", aim = p.angle;
+// pose com alguma variante de tronco torcido já gerada (os pontos vêm no SPRITE_POSES)
+const TW_HAS = {};
+function poseHasTwist(pose) {
+  if (TW_HAS[pose] == null) TW_HAS[pose] = DUAL_TW.some((d) => d && SPRITE_POSES[pose + dualSuf(d)]);
+  return TW_HAS[pose];
+}
+function dualTwistTick(pose = "punhos") {
+  const p = player, aim = p.angle;
   if (p.legRow == null) p.legRow = p.sRow;
   let legAng = -Math.PI / 2 + p.legRow * Math.PI / 4, d = angDelta(legAng, aim);
   if (Math.abs(d) > Math.PI / 2 + 0.13) {           // passou de 90°: as pernas viram e o tronco recomeça
@@ -454,6 +461,7 @@ function dualTwistTick() {
   for (const deg of DUAL_TW) {
     const suf = dualSuf(deg);
     if (suf) {
+      if (!SPRITE_POSES[pose + suf]) continue;         // ângulo ainda não renderizado
       ensureTwistSheet(pose + suf); if (!dualReady(pose + suf)) continue;
       if (torsoLayerMissing(pose + suf)) continue;    // roupa do tronco sem esse ângulo: não torce
     }
@@ -677,7 +685,7 @@ function drawPlayerSprite() {
   const gearList = gearOrder(playerGear(), row !== 3 && row !== 4 && row !== 5);
   for (const id of gearList) {
     // tronco torcido sem a camada dessa peça: usa a da pose normal (calça e botas batem, as pernas não giram)
-    const g = gearImg(id, pose) || (TW.suf && w.dual ? gearImg(id, pose.slice(0, -TW.suf.length)) : null);
+    const g = gearImg(id, pose) || (TW.suf ? gearImg(id, pose.slice(0, -TW.suf.length)) : null);
     if (g) ctx.drawImage(g, col * c, row * c, c, c, ox, oy, S, S);
   }
   if (w3 && !info.bh) drawW3();
