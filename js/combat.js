@@ -493,6 +493,7 @@ function updateBullets(dt, k) {
   const list = Zs();
   for (const b of bullets) {
     b.px = b.x; b.py = b.y;
+    if (b.ghost) { ghostBullet(b, list, dt, k); continue; }     // tiro de outro jogador: só o visual
     for (let s = 0; s < 2 && b.life > 0; s++) {
       b.x += (b.vx * k) / 2; b.y += (b.vy * k) / 2;
       const ob = hitObstacle(b.x, b.y);
@@ -518,6 +519,25 @@ function updateBullets(dt, k) {
     b.life -= dt;
   }
   bullets = bullets.filter((b) => b.life > 0);
+}
+// Bala de outro jogador (multiplayer): mesmo desenho e efeitos das suas, mas sem dano e sem empurrar nada
+// (o dano nos zumbis já chega pelo canal dos zumbis).
+function ghostBullet(b, list, dt, k) {
+  for (let s = 0; s < 2 && b.life > 0; s++) {
+    b.x += (b.vx * k) / 2; b.y += (b.vy * k) / 2;
+    let stop = !!hitObstacle(b.x, b.y);
+    if (!stop && !b.fire) for (const z of list) if (z.hp > 0 && zDist(z, b.x, b.y) < z.r + 3) { stop = !b.pierce; break; }
+    if (stop) {
+      b.life = 0;
+      if (b.explode) {
+        for (let i = 0; i < 18; i++) { const a = Math.random() * 6.283, sp = rand(1, 6); game.parts.push({ x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: rand(250, 550), max: 550, color: pick(["#ffd96a", "#ff8a3a", "#e05a2a"]), size: rand(2, 4.5), fr: 0.85 }); }
+        game.flashes.push({ x: b.x, y: b.y, r: b.explode * 2.2, t: 220 });
+        if (Math.hypot(b.x - player.x, b.y - player.y) < 700) sfx.shot({ cat: "shotguns" });
+      } else if (!b.fire) sparks(b.x, b.y);
+      break;
+    }
+  }
+  b.life -= dt;
 }
 function spit(z) {
   const a = Math.atan2(player.y - z.y, player.x - z.x);

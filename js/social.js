@@ -43,9 +43,11 @@ const fmSocial = (() => {
       // Amigos não precisam bloquear a entrada no canal multiplayer.
       refreshFriends().catch((error) => console.warn("Amigos não carregados:", error));
       if (myself() !== uid) return;
-      channel = client.channel("fm-world-online-v1", { config: { presence: { key: uid } } });
-      channel.on("presence", { event: "sync" }, syncPresence);
+      channel = client.channel("fm-world-online-v1", { config: { presence: { key: uid } } }); presenceSince = Date.now();
+      const mine = channel;
+      channel.on("presence", { event: "sync" }, () => { if (channel === mine) syncPresence(); });
       channel.subscribe((status) => {
+        if (channel !== mine) return;                    // canal antigo (já reaberto): ignora
         connected = status === "SUBSCRIBED";
         if (connected) {
           publish(true);
@@ -56,8 +58,12 @@ const fmSocial = (() => {
         }
       });
       timer = setInterval(tickNetwork, MOVE_INTERVAL);
+      if (!healthTimer) healthTimer = setInterval(health, 2000);
       // ao minimizar ou voltar para a aba, avisa na hora (os outros assumem os zumbis sem esperar)
+      if (listenersOn) return;
+      listenersOn = true;
       document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) health(true);              // voltou para a aba: confere a conexão na hora
         const state = ownState();
         if (!state || !connected) return;
         publish(true, state);
@@ -122,13 +128,43 @@ const fmSocial = (() => {
     lastPresenceAt = now;
     tracking = true;
     try {
-      const status = await channel.track(state);
+      const status = await withTimeout(channel.track(state), 5000);
       if (status && status !== "ok") throw new Error(String(status));
     } catch (error) {
       // Nova tentativa em breve, sem fazer várias chamadas em paralelo.
       lastPresenceAt = Date.now() - 8000;
       console.warn("Presença online temporariamente indisponível:", error);
     } finally { tracking = false; }
+  }
+
+  // ----- conexão que se recupera sozinha -----
+  // Aba em segundo plano, Wi-Fi caindo ou servidor reiniciando podiam deixar o canal morto para sempre
+  // (o outro jogador sumia ou ficava parado até relogar). Agora: tempo limite nos envios e um vigia que
+  // reabre o canal de presença ou de movimento quando ele não volta sozinho.
+  let listenersOn = false, moveSince = 0, presenceSince = 0, moveFails = 0, lastMoveOkAt = 0, healthTimer = null, reopening = false;
+  function withTimeout(p, ms) { return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("tempo esgotado")), ms))]); }
+  function forceMoveChannel() {
+    const state = ownState();
+    moveTopic = "";                      // obriga ensureMovementChannel a criar um canal novo
+    if (state) ensureMovementChannel(state);
+  }
+  async function reopenPresence() {
+    if (reopening) return;
+    reopening = true;
+    try {
+      const client = db(), old = channel;
+      channel = null; connected = false; tracking = false; lastPresenceKey = "";
+      if (timer) { clearInterval(timer); timer = null; }
+      if (old && client) await client.removeChannel(old).catch(() => {});
+      await start();
+    } finally { reopening = false; }
+  }
+  function health(now) {
+    if (!userId || myself() !== userId || document.hidden && !now) return;
+    const t = Date.now();
+    if (channel && !connected && t - presenceSince > 10000) { console.warn("Reabrindo a presença online..."); reopenPresence(); return; }
+    if (moveChannel && !moveReady && t - moveSince > 8000) { console.warn("Reabrindo o canal do setor..."); forceMoveChannel(); }
+    if (now && connected) { publish(true); sendMovement(true); }
   }
 
   // Um canal de movimento por setor impede enviar movimentos a toda a cidade.
@@ -145,13 +181,14 @@ const fmSocial = (() => {
     if (previous && client) client.removeChannel(previous).catch(() => {});
     if (!client) return;
     const next = client.channel(topic, { config: { broadcast: { ack: false, self: false } } });
-    moveChannel = next;
+    moveChannel = next; moveSince = Date.now();
     next.on("broadcast", { event: "move" }, event => { if (moveChannel === next) receiveMovement(event); });
     next.on("broadcast", { event: "shot" }, event => { if (moveChannel === next) receiveShot(event); });
     if (typeof fmWorld !== "undefined") fmWorld.onChannel(next);
     next.subscribe((status) => {
       if (moveChannel !== next) return;
       moveReady = status === "SUBSCRIBED";
+      if (!moveReady && (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED")) moveSince = Math.min(moveSince, Date.now() - 6000);
       if (moveReady) { sendMovement(true); if (typeof fmWorld !== "undefined") fmWorld.onChannelReady(next); }
     });
   }
@@ -170,10 +207,12 @@ const fmSocial = (() => {
     lastMoveAt = now;
     sendingMove = true;
     try {
-      const status = await active.send({ type: "broadcast", event: "move", payload: state });
+      const status = await withTimeout(active.send({ type: "broadcast", event: "move", payload: state }), 4000);
       if (status && status !== "ok") throw new Error(String(status));
+      moveFails = 0; lastMoveOkAt = Date.now();
     } catch (error) {
       lastMoveAt = Date.now() - 2600;
+      if (++moveFails >= 3) { moveFails = 0; forceMoveChannel(); }     // canal travado: abre outro
       // Reconexão é gerenciada automaticamente pelo cliente Supabase.
       console.warn("Movimento online temporariamente indisponível:", error);
     } finally { sendingMove = false; }
@@ -327,6 +366,7 @@ const fmSocial = (() => {
   }
   async function stop() {
     if (timer) clearInterval(timer);
+    if (healthTimer) { clearInterval(healthTimer); healthTimer = null; }
     timer = null; connected = false; tracking = false; sendingMove = false;
     userId = null; peers.clear(); friends = []; profiles.clear(); sectorKey = "";
     lastPresenceKey = ""; lastPresenceAt = 0; lastMoveKey = ""; lastMoveAt = 0;
@@ -443,13 +483,16 @@ function drawOnlinePlayer(p) {
 // rastros das balas dos outros jogadores (só visual)
 const NET_SHOTS = [];
 function netShot(x, y, a, w, n) {
-  const now = performance.now();
+  // usa as mesmas balas do jogo (chamas, virotes, granadas, rastros), marcadas como "ghost": sem dano
   for (let i = 0; i < n; i++) {
-    const sp = (w.spread || 0.05) * (n > 1 ? 1 : 0.4), aa = a + (Math.random() - 0.5) * 2 * sp;
-    NET_SHOTS.push({ x, y, a: aa, t0: now, life: Math.min(600, (w.life || 700)), v: (w.speed || 12) * 60 / 1000, fire: !!w.fire, big: w.cat === "rifles" || w.cat === "shotguns" });
+    const aa = a + (Math.random() - 0.5) * 2 * (w.spread || 0.05) * (n > 1 ? 1 : 0.5);
+    const sp = (w.speed || 12) * (w.fire ? rand(0.8, 1.2) : 1);
+    bullets.push({ x, y, px: x, py: y, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, life: w.life || 900, max: w.life || 900, ghost: true,
+      dmg: 0, pierce: !!w.pierce, hit: [], big: w.cat === "rifles" || w.rar >= 3, fire: !!w.fire, explode: w.explode || 0, bolt: w.look === "crossbow",
+      grenade: !!w.grenade, fx: w, knock: false, color: w.rar >= 3 ? RARITY[w.rar].color : null });
   }
-  if (NET_SHOTS.length > 120) NET_SHOTS.splice(0, NET_SHOTS.length - 120);
-  if (player && Math.hypot(x - player.x, y - player.y) < 650) sfx.shot(w);
+  if (!w.fire) casing(x - Math.cos(a) * 18, y - Math.sin(a) * 18, a);
+  if (player && Math.hypot(x - player.x, y - player.y) < 650 && (!w.fire || Math.random() < 0.3)) sfx.shot(w);
 }
 function drawNetShots() {
   const now = performance.now();
