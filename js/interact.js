@@ -362,8 +362,16 @@ function houseRooms(h, list, lvl, R, iw, ih, n, keepClear) {
   const addIn = (r, name, kind, table) => {
     const f = FURN[name] || { w: 26, h: 20, color: "#8a5a2b" }, m = 6;
     if (r.w < f.w + 2 * m || r.h < f.h + 2 * m) return;
-    for (let t = 0; t < 60; t++) {
-      let x, y; const s = R();
+    // geladeira: num canto ou no meio de uma parede; móveis altos (armários, fogão…) sempre encostados numa parede
+    const hug = typeof TALL_FURN !== "undefined" && TALL_FURN[name], spots = [];
+    if (name === "Geladeira") {
+      const L = r.x + m, Rr = r.x + r.w - m - f.w, Tp = r.y + m, B = r.y + r.h - m - f.h, Cx = r.x + (r.w - f.w) / 2, Cy = r.y + (r.h - f.h) / 2;
+      spots.push([L, Tp], [Rr, Tp], [Cx, Tp], [L, Cy], [Rr, Cy], [L, B], [Rr, B]);
+      for (let i = spots.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [spots[i], spots[j]] = [spots[j], spots[i]]; }
+    }
+    for (let t = 0; t < 60 + spots.length; t++) {
+      let x, y; const s = hug ? R() * 0.7 : R();
+      if (t < spots.length) { [x, y] = spots[t]; x = Math.round(x); y = Math.round(y); } else
       if (s < 0.3) { x = r.x + m + R() * (r.w - 2 * m - f.w); y = r.y + m; }                       // parede de cima
       else if (s < 0.5) { x = r.x + m; y = r.y + m + R() * (r.h - 2 * m - f.h); }                  // esquerda
       else if (s < 0.7) { x = r.x + r.w - m - f.w; y = r.y + m + R() * (r.h - 2 * m - f.h); }      // direita

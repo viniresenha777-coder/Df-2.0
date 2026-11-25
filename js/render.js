@@ -847,43 +847,91 @@ function drawInteriorWalls(pass) {
 }
 
 // ---------- Móveis altos em 3D (caixa com laterais, frente e tampo) ----------
-const TALL_FURN = { "Geladeira": 44, "Freezer": 26, "Armário médico": 40 };
+const TALL_FURN = { "Geladeira": 44, "Freezer": 26, "Armário médico": 40, "Armário": 42, "Guarda-roupa": 50, "Estante": 46,
+  "Cômoda": 24, "Criado-mudo": 17, "Armário de cozinha": 22, "Armário do banheiro": 22, "Fogão": 22 };
 function tallFurn(f) { return INTERIOR_TALL_WALLS && f.kind !== "wall" && TALL_FURN[f.name] && !(typeof FURN_MODEL !== "undefined" && FURN_MODEL[f.name] && modelOk(FURN_MODEL[f.name])); }
 function drawTallFurn(f) {
   const { x, y, w, h } = f, n = f.name, z = TALL_FURN[n], e = eye();
   const P = (px, py, pz) => { const k = IWALL_CAM / (IWALL_CAM - pz); return { x: e.x + (px - e.x) * k, y: e.y + (py - e.y) * k - pz * LEAN }; };
   const quad = (pts, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath(); ctx.fill(); };
+  const line = (ax, ay, bx, by) => { ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); };
   const x1 = x + w, y1 = y + h, t00 = P(x, y, z), t10 = P(x1, y, z), t11 = P(x1, y1, z), t01 = P(x, y1, z), c = f.color;
-  ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(x + 4, y + 4, w + 2, h + 2);                     // sombra no chão
+  const wood = !["Geladeira", "Freezer", "Armário médico", "Fogão", "Armário do banheiro"].includes(n);
+  ctx.fillStyle = "rgba(0,0,0,0.28)"; ctx.fillRect(x + 3, y - 2, w, h + 2);                       // sombra (não passa da base)
   if (e.x < x) quad([{ x, y: y1 }, { x, y }, t00, t01], shade(c, -0.3));                       // lateral esquerda
   if (e.x > x1) quad([{ x: x1, y: y1 }, { x: x1, y }, t10, t11], shade(c, -0.2));              // lateral direita
-  // frente (porta): no espaço da face — u ao longo, v de cima para baixo
+  // frente: no espaço da face — u ao longo, v de cima para baixo
   ctx.save();
   ctx.transform((t11.x - t01.x) / w, (t11.y - t01.y) / w, (x - t01.x) / z, (y1 - t01.y) / z, t01.x, t01.y);
   const g = ctx.createLinearGradient(0, 0, 0, z); g.addColorStop(0, shade(c, 0.02)); g.addColorStop(1, shade(c, -0.25));
   ctx.fillStyle = g; ctx.fillRect(0, 0, w, z);
-  ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(0,0,0,0.38)"; ctx.lineWidth = 1;
+  const knob = (kx, ky) => { ctx.fillStyle = wood ? "#c9a86a" : "#7a8085"; ctx.fillRect(kx - 1.2, ky - 1.2, 2.4, 2.4); };
   if (n === "Geladeira") {
-    ctx.beginPath(); ctx.moveTo(1, z * 0.34); ctx.lineTo(w - 1, z * 0.34); ctx.stroke();          // freezer em cima, porta embaixo
+    line(1, z * 0.34, w - 1, z * 0.34);                                                            // freezer em cima, porta embaixo
     ctx.fillStyle = "#7a8085"; ctx.fillRect(w - 7, z * 0.1, 2.5, z * 0.18); ctx.fillRect(w - 7, z * 0.42, 2.5, z * 0.4);
-    ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.fillRect(3, 2, 2, z - 4);                         // brilho na quina
-    const r = (k) => bHash(f, 70 + k);                                                              // ímãs / bilhete
+    ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.fillRect(3, 2, 2, z - 4);
+    const r = (k) => bHash(f, 70 + k);
     if (r(0) < 0.7) { ctx.fillStyle = ["#d9a52b", "#b3261e", "#2a4f9e"][Math.floor(r(1) * 3)]; ctx.fillRect(6 + r(2) * (w - 22), z * 0.5, 7, 6); }
     if (r(3) < 0.5) { ctx.fillStyle = "#efe9d6"; ctx.fillRect(8 + r(4) * (w - 26), z * 0.12, 9, 8); }
   } else if (n === "Freezer") {
     ctx.strokeStyle = "rgba(120,170,200,0.6)"; ctx.strokeRect(3, 3, w - 6, z - 6);
     ctx.fillStyle = "#7a8085"; ctx.fillRect(w / 2 - 8, 3, 16, 2.5);
-  } else {
-    ctx.beginPath(); ctx.moveTo(w / 2, 2); ctx.lineTo(w / 2, z - 2); ctx.stroke();
+  } else if (n === "Armário médico") {
+    line(w / 2, 2, w / 2, z - 2);
     ctx.fillStyle = "#d04040"; ctx.fillRect(w / 2 - 3, z * 0.3, 6, 14); ctx.fillRect(w / 2 - 9, z * 0.3 + 4, 18, 6);
+  } else if (n === "Fogão") {
+    ctx.fillStyle = "#3a3d40"; ctx.fillRect(2, 1, w - 4, 4);                                       // painel dos botões
+    for (let i = 0; i < 4; i++) { ctx.fillStyle = "#d8d8d8"; ctx.beginPath(); ctx.arc(8 + i * (w - 16) / 3, 3, 1.4, 0, 7); ctx.fill(); }
+    ctx.fillStyle = "#1c1e20"; ctx.fillRect(5, 7, w - 10, z - 10);                                  // porta do forno com vidro
+    ctx.fillStyle = "rgba(120,140,150,0.35)"; ctx.fillRect(8, 9, w - 16, z - 15);
+    ctx.fillStyle = "#9aa0a4"; ctx.fillRect(7, 7.5, w - 14, 1.5);
+  } else if (n === "Estante") {
+    ctx.fillStyle = shade(c, -0.45); ctx.fillRect(3, 2, w - 6, z - 4);                              // fundo escuro aberto
+    const r = (k) => bHash(f, 90 + k), sh = 3;
+    for (let i = 0; i < sh; i++) {
+      const top = 2 + i * (z - 4) / sh, hh = (z - 4) / sh;
+      let bx = 4; let k = 0;
+      while (bx < w - 6) { const bw = 2.5 + r(k) * 3.5, bh = hh * (0.55 + r(k + 50) * 0.35);
+        if (r(k + 100) > 0.18) { ctx.fillStyle = ["#7a2a24", "#2a4f6e", "#5a6e3b", "#c9b07a", "#3b3b3b", "#8a5a2b"][Math.floor(r(k + 150) * 6)]; ctx.fillRect(bx, top + hh - bh - 1, bw, bh); }
+        bx += bw + 0.6; k++; }
+      ctx.fillStyle = shade(c, 0.05); ctx.fillRect(2, top + hh - 1.5, w - 4, 2);
+    }
+    ctx.fillStyle = c; ctx.fillRect(0, 0, 3, z); ctx.fillRect(w - 3, 0, 3, z);
+  } else if (n === "Cômoda" || n === "Criado-mudo") {
+    const nd = n === "Cômoda" ? 3 : 2, dh = (z - 2) / nd;
+    for (let i = 0; i < nd; i++) { ctx.strokeRect(3, 1 + i * dh + 0.5, w - 6, dh - 1); knob(w / 2, 1 + i * dh + dh / 2); }
+  } else {                                                                                         // armários: portas
+    const nDoor = Math.max(2, Math.round(w / (n === "Guarda-roupa" ? 28 : 30)));
+    const top = n === "Armário de cozinha" ? 5 : 2, dw = (w - 4) / nDoor;
+    if (n === "Armário de cozinha") { ctx.fillStyle = "#cfc7b8"; ctx.fillRect(0, 0, w, 3); }        // tampo de pedra
+    for (let i = 0; i < nDoor; i++) {
+      ctx.strokeRect(2 + i * dw + 0.5, top, dw - 1, z - top - 2);
+      knob(2 + i * dw + (i % 2 ? 4 : dw - 4), top + (z - top) * (n === "Guarda-roupa" ? 0.45 : 0.3));
+    }
+    if (n === "Guarda-roupa") { ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(2, z - 6, w - 4, 1); }
   }
   ctx.restore();
   ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(x, y1); ctx.lineTo(x1, y1); ctx.lineTo(t11.x, t11.y); ctx.lineTo(t01.x, t01.y); ctx.closePath(); ctx.stroke();
-  // tampo
-  quad([t00, t10, t11, t01], shade(c, 0.12));
+  // tampo (desenhado no plano de cima)
+  const topCol = n === "Armário de cozinha" ? "#cfc7b8" : shade(c, 0.12);
+  quad([t00, t10, t11, t01], topCol);
+  ctx.save();
+  ctx.transform((t10.x - t00.x) / w, (t10.y - t00.y) / w, (t01.x - t00.x) / h, (t01.y - t00.y) / h, t00.x, t00.y);
+  ctx.strokeStyle = "rgba(0,0,0,0.25)"; ctx.lineWidth = 1;
+  if (n === "Fogão") {
+    ctx.fillStyle = "#2a2c2e"; ctx.fillRect(3, 3, w - 6, h - 6);
+    for (const [u, v] of [[0.28, 0.3], [0.72, 0.3], [0.28, 0.72], [0.72, 0.72]]) {
+      ctx.strokeStyle = "#8a8e92"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(w * u, h * v, Math.min(w, h) * 0.15, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.arc(w * u, h * v, Math.min(w, h) * 0.06, 0, 7); ctx.stroke();
+    }
+  } else if (n === "Freezer") { ctx.strokeStyle = "rgba(120,170,200,0.5)"; line(w / 2, 3, w / 2, h - 3); }
+  else if (n === "Armário de cozinha") { ctx.fillStyle = "rgba(0,0,0,0.08)"; ctx.fillRect(w * 0.55, h * 0.2, w * 0.3, h * 0.55); }
+  else if (wood) { for (let i = 1; i < 4; i++) line(2, h * i / 4, w - 2, h * i / 4 + 1); }
+  ctx.restore();
+  ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1.2;
   ctx.beginPath(); ctx.moveTo(t00.x, t00.y); ctx.lineTo(t10.x, t10.y); ctx.lineTo(t11.x, t11.y); ctx.lineTo(t01.x, t01.y); ctx.closePath(); ctx.stroke();
-  if (n === "Freezer") { ctx.strokeStyle = "rgba(120,170,200,0.5)"; ctx.beginPath(); ctx.moveTo((t00.x + t10.x) / 2, (t00.y + t10.y) / 2); ctx.lineTo((t01.x + t11.x) / 2, (t01.y + t11.y) / 2); ctx.stroke(); }
 }
 
 // ---------- Desgaste das paredes ----------
