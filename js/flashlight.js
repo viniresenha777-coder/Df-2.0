@@ -45,7 +45,7 @@ function flashExtrude(c, source, a, b) {
 // A base bloqueia a lanterna e projeta uma sombra. Para edifícios,
 // a cobertura em perspectiva também bloqueia a luz, mas a parede
 // que recebe diretamente o feixe continua iluminada.
-function flashBlockRect(c, source, x, y, w, h, roofHeight) {
+function flashBlockRect(c, source, x, y, w, h, roofHeight, camH) {
   if (w <= 0 || h <= 0) return;
   if (source.x > x && source.x < x + w && source.y > y && source.y < y + h) return;
   const corners = [[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
@@ -54,7 +54,7 @@ function flashBlockRect(c, source, x, y, w, h, roofHeight) {
   if (!roofHeight) return;
 
   // Projeção idêntica à utilizada por drawBuildingTall / proj().
-  const k = CAM_H / (CAM_H - roofHeight);
+  const k = (camH || CAM_H) / ((camH || CAM_H) - roofHeight);
   const roof = corners.map(([px,py]) => [
     W / 2 + (px - W / 2) * k,
     H / 2 + (py - H / 2) * k - roofHeight * LEAN
@@ -90,16 +90,15 @@ function flashInBeam(source, x, y, r) {
   const dx = x - source.x, dy = y - source.y;
   const distance = Math.hypot(dx, dy);
   if (distance > FLASH_RANGE + r || distance < 0.01) return false;
-  // Não constrói sombras de objetos muito atrás do foco.
-  const forward = (dx * source.ax + dy * source.ay) / distance;
-  return forward > -Math.min(0.8, r / distance + 0.12);
+  // Luz circular (em volta do jogador): tudo dentro do alcance faz sombra, em qualquer direção.
+  return true;
 }
 function flashlightBlocks() {
   const mask = flashCanvas(), c = FLASH_BLOCK.ctx;
   c.setTransform(1,0,0,1,0,0);
   c.clearRect(0, 0, mask.width, mask.height);
   // Durante o dia não há feixe a bloquear: economiza CPU e garante a luz desligada.
-  if (game.inside || game.over || !world || !player || !flashlightActive()) return mask;
+  if (game.over || !world || !player || !flashlightActive()) return mask;
   c.setTransform(0.5,0,0,0.5,0,0);
   c.globalCompositeOperation = "source-over";
   c.fillStyle = "#000";
@@ -110,6 +109,24 @@ function flashlightBlocks() {
     ax: Math.cos(angle), ay: Math.sin(angle)
   };
   const near = (x,y,r) => flashInBeam(source,x,y,r);
+
+  // Dentro das casas: a luz para nas paredes (e nos móveis altos), não atravessa para o outro cômodo.
+  if (game.inside) {
+    const h = game.inside;
+    if (typeof interiorWallBoxes === "function" && typeof INTERIOR_TALL_WALLS !== "undefined" && INTERIOR_TALL_WALLS) {
+      for (const b of interiorWallBoxes(h)) {
+        const x = b.x - cam.x, y = b.y - cam.y;
+        if (near(x + b.w / 2, y + b.h / 2, Math.hypot(b.w, b.h) / 2)) flashBlockRect(c, source, x, y, b.w, b.h, b.hgt, IWALL_CAM);
+      }
+      for (const f of h.interior || []) {
+        if (typeof furnH !== "function" || furnH(f) < 34 || !tallFurn(f)) continue;
+        const x = f.x - cam.x, y = f.y - cam.y;
+        if (near(x + f.w / 2, y + f.h / 2, Math.hypot(f.w, f.h) / 2)) flashBlockRect(c, source, x, y, f.w, f.h, furnH(f), IWALL_CAM);
+      }
+    }
+    c.setTransform(1,0,0,1,0,0);
+    return mask;
+  }
 
   // Casas e prédios: corpo inteiro mais telhado em perspectiva.
   for (const b of world.buildings || []) {

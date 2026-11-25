@@ -1703,13 +1703,11 @@ function drawLighting() {
     beam.clearRect(0, 0, W, H);
     beam.globalCompositeOperation = "source-over";
     holeTo(beam, px, py, 153, 0.91);
-    if (dark > 0.3) {
-      const len = 435, half = 0.50, g = beam.createRadialGradient(px, py, 10, px, py, len);
-      g.addColorStop(0, "rgba(0,0,0,0.95)"); g.addColorStop(0.6, "rgba(0,0,0,0.65)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    if (dark > 0.3) {                                   // luz circular em volta do jogador
+      const len = game.inside ? 330 : 360, g = beam.createRadialGradient(px, py, 10, px, py, len);
+      g.addColorStop(0, "rgba(0,0,0,0.95)"); g.addColorStop(0.6, "rgba(0,0,0,0.6)"); g.addColorStop(1, "rgba(0,0,0,0)");
       beam.fillStyle = g;
-      beam.beginPath(); beam.moveTo(px, py);
-      beam.arc(px, py, len, player.angle - half, player.angle + half);
-      beam.closePath(); beam.fill();
+      beam.beginPath(); beam.arc(px, py, len, 0, Math.PI * 2); beam.fill();
     }
     beam.globalCompositeOperation = "destination-out";
     beam.drawImage(flashlightBlocks(), 0, 0, W, H);

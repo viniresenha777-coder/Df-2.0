@@ -300,8 +300,10 @@ function gfxLights(dark) {
     // Apaga completamente a lanterna no amanhecer. O clarão da arma
     // continua funcionando, pois não faz parte da lanterna.
     if (flashlightActive()) {
-      add(px, py, game.inside ? 240 : 150, dark * 1.05, [1, 0.96, 0.9], true);
-      add(px, py, 460, Math.max(0, dark - 0.08) * 1.7, [1, 0.86, 0.55], true, [Math.cos(a), Math.sin(a), Math.cos(0.5), 0.14]);
+      // Luz circular em volta do jogador (como no DF), cortada pelas paredes pela máscara da lanterna.
+      const ALL = [1, 0, -1.2, 0.0001];
+      add(px, py, game.inside ? 230 : 170, dark * 0.55, [1, 0.96, 0.9], true, ALL);
+      add(px, py, game.inside ? 340 : 370, Math.max(0, dark - 0.08) * 1.25, [1, 0.86, 0.55], true, ALL);
     }
     if (player.flashT > 0) add(px + Math.cos(a) * 30, py + Math.sin(a) * 30, 280, 1.1 * glow * (Math.min(1, player.flashT / 60) + 0.4), [1, 0.75, 0.38], true);
   }

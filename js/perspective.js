@@ -13,6 +13,8 @@ let LEAN = 1.0;            // inclinação: quanto o alto "sobe" na tela por px 
 // Como no Dead Frontier: atrás de um prédio (o telhado ia cobrir você), a câmera sobe e fica quase
 // vertical (LEAN perto de 0), em transição suave; ao sair de trás do prédio, volta à inclinação normal.
 const LEAN_BASE = 1.0, LEAN_TOP = 0.05;
+const FLASH_GLOW = {};   // brilho da lanterna (canvas reaproveitado)
+
 function playerBehindBuilding() {
   if (game.inside || !world || !world.buildings) return false;
   for (const b of world.buildings) {
@@ -844,15 +846,19 @@ function drawAtmosphere() {
   }
   // A lanterna só existe à noite; desliga automaticamente ao amanhecer.
   if (flashlightActive()) {
-    const reach = 360, half = 0.42, I = 0.05 + dark * 0.22;
-    ctx.save(); ctx.globalCompositeOperation = "lighter";
-    const g = ctx.createRadialGradient(px, py, 12, px, py, reach);
+    // brilho quente circular, recortado onde a luz bate numa parede (não atravessa)
+    const reach = game.inside ? 320 : 360, I = 0.05 + dark * 0.22;
+    if (!FLASH_GLOW.c) { FLASH_GLOW.c = document.createElement("canvas"); FLASH_GLOW.x = FLASH_GLOW.c.getContext("2d"); }
+    const gc = FLASH_GLOW.c, gx = FLASH_GLOW.x;
+    if (gc.width !== W || gc.height !== H) { gc.width = W; gc.height = H; }
+    gx.globalCompositeOperation = "source-over"; gx.clearRect(0, 0, W, H);
+    const g = gx.createRadialGradient(px, py, 12, px, py, reach);
     g.addColorStop(0, `rgba(255,214,140,${I})`);
     g.addColorStop(0.55, `rgba(255,200,120,${I * 0.55})`);
     g.addColorStop(1, "rgba(255,190,110,0)");
-    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(px, py);
-    ctx.arc(px, py, reach, a - half, a + half); ctx.closePath(); ctx.fill();
-    ctx.restore();
+    gx.fillStyle = g; gx.beginPath(); gx.arc(px, py, reach, 0, Math.PI * 2); gx.fill();
+    gx.globalCompositeOperation = "destination-out"; gx.drawImage(flashlightBlocks(), 0, 0, W, H);
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.drawImage(gc, 0, 0); ctx.restore();
   }
   // Neblina azul no escuro e poeira quente bem mais sutil de dia.
   const fog = ctx.createRadialGradient(px, py, 140, px, py, Math.max(W, H) * 0.8);
