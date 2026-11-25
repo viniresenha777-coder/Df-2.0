@@ -487,7 +487,18 @@ function sunIntensity() {
   return (19 - h) / 3;
 }
 // A lanterna NÃO fica acesa sob a luz do dia (inclusive no sprite).
-function flashlightActive() { return isNight(); }
+// Lanterna: automática (acende à noite, apaga de dia). K liga/desliga quando quiser; a escolha vale
+// até a próxima virada de dia/noite, quando ela volta para o automático.
+let FLASH_MANUAL = null, FLASH_MANUAL_NIGHT = null;
+function flashlightActive() {
+  const n = isNight();
+  if (FLASH_MANUAL !== null && FLASH_MANUAL_NIGHT !== n) FLASH_MANUAL = null;
+  return FLASH_MANUAL !== null ? FLASH_MANUAL : n;
+}
+function toggleFlashlight() {
+  FLASH_MANUAL_NIGHT = isNight(); FLASH_MANUAL = !flashlightActive();
+  toast(FLASH_MANUAL ? "Lanterna LIGADA (K)" : "Lanterna DESLIGADA (K)");
+}
 
 
 // ---------- Zumbis da área ----------

@@ -13,6 +13,8 @@ let LEAN = 1.0;            // inclinação: quanto o alto "sobe" na tela por px 
 // Como no Dead Frontier: atrás de um prédio (o telhado ia cobrir você), a câmera sobe e fica quase
 // vertical (LEAN perto de 0), em transição suave; ao sair de trás do prédio, volta à inclinação normal.
 const LEAN_BASE = 1.0, LEAN_TOP = 0.05;
+const FLASH_GLOW = {};   // brilho da lanterna (canvas reaproveitado)
+
 function playerBehindBuilding() {
   if (game.inside || !world || !world.buildings) return false;
   for (const b of world.buildings) {
@@ -840,18 +842,6 @@ function drawAtmosphere() {
     sunlight.addColorStop(0.45, `rgba(255,213,146,${0.038 * sun})`);
     sunlight.addColorStop(1, "rgba(255,199,130,0)");
     ctx.fillStyle = sunlight; ctx.fillRect(0, 0, W, H);
-    ctx.restore();
-  }
-  // A lanterna só existe à noite; desliga automaticamente ao amanhecer.
-  if (flashlightActive()) {
-    const reach = 360, half = 0.42, I = 0.05 + dark * 0.22;
-    ctx.save(); ctx.globalCompositeOperation = "lighter";
-    const g = ctx.createRadialGradient(px, py, 12, px, py, reach);
-    g.addColorStop(0, `rgba(255,214,140,${I})`);
-    g.addColorStop(0.55, `rgba(255,200,120,${I * 0.55})`);
-    g.addColorStop(1, "rgba(255,190,110,0)");
-    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(px, py);
-    ctx.arc(px, py, reach, a - half, a + half); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
   // Neblina azul no escuro e poeira quente bem mais sutil de dia.

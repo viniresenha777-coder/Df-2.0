@@ -45,7 +45,7 @@ function flashExtrude(c, source, a, b) {
 // A base bloqueia a lanterna e projeta uma sombra. Para edifícios,
 // a cobertura em perspectiva também bloqueia a luz, mas a parede
 // que recebe diretamente o feixe continua iluminada.
-function flashBlockRect(c, source, x, y, w, h, roofHeight) {
+function flashBlockRect(c, source, x, y, w, h, roofHeight, camH) {
   if (w <= 0 || h <= 0) return;
   if (source.x > x && source.x < x + w && source.y > y && source.y < y + h) return;
   const corners = [[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
@@ -54,7 +54,7 @@ function flashBlockRect(c, source, x, y, w, h, roofHeight) {
   if (!roofHeight) return;
 
   // Projeção idêntica à utilizada por drawBuildingTall / proj().
-  const k = CAM_H / (CAM_H - roofHeight);
+  const k = (camH || CAM_H) / ((camH || CAM_H) - roofHeight);
   const roof = corners.map(([px,py]) => [
     W / 2 + (px - W / 2) * k,
     H / 2 + (py - H / 2) * k - roofHeight * LEAN
@@ -90,16 +90,15 @@ function flashInBeam(source, x, y, r) {
   const dx = x - source.x, dy = y - source.y;
   const distance = Math.hypot(dx, dy);
   if (distance > FLASH_RANGE + r || distance < 0.01) return false;
-  // Não constrói sombras de objetos muito atrás do foco.
-  const forward = (dx * source.ax + dy * source.ay) / distance;
-  return forward > -Math.min(0.8, r / distance + 0.12);
+  // Luz circular (em volta do jogador): tudo dentro do alcance faz sombra, em qualquer direção.
+  return true;
 }
 function flashlightBlocks() {
   const mask = flashCanvas(), c = FLASH_BLOCK.ctx;
   c.setTransform(1,0,0,1,0,0);
   c.clearRect(0, 0, mask.width, mask.height);
   // Durante o dia não há feixe a bloquear: economiza CPU e garante a luz desligada.
-  if (game.inside || game.over || !world || !player || !flashlightActive()) return mask;
+  if (game.over || !world || !player || !flashlightActive()) return mask;
   c.setTransform(0.5,0,0,0.5,0,0);
   c.globalCompositeOperation = "source-over";
   c.fillStyle = "#000";
@@ -110,6 +109,24 @@ function flashlightBlocks() {
     ax: Math.cos(angle), ay: Math.sin(angle)
   };
   const near = (x,y,r) => flashInBeam(source,x,y,r);
+
+  // Dentro das casas: a luz para nas paredes (e nos móveis altos), não atravessa para o outro cômodo.
+  if (game.inside) {
+    const h = game.inside;
+    if (typeof interiorWallBoxes === "function" && typeof INTERIOR_TALL_WALLS !== "undefined" && INTERIOR_TALL_WALLS) {
+      for (const b of interiorWallBoxes(h)) {
+        const x = b.x - cam.x, y = b.y - cam.y;
+        if (near(x + b.w / 2, y + b.h / 2, Math.hypot(b.w, b.h) / 2)) flashBlockRect(c, source, x, y, b.w, b.h, b.hgt, IWALL_CAM);
+      }
+      for (const f of h.interior || []) {
+        if (typeof furnH !== "function" || furnH(f) < 34 || !tallFurn(f)) continue;
+        const x = f.x - cam.x, y = f.y - cam.y;
+        if (near(x + f.w / 2, y + f.h / 2, Math.hypot(f.w, f.h) / 2)) flashBlockRect(c, source, x, y, f.w, f.h, furnH(f), IWALL_CAM);
+      }
+    }
+    c.setTransform(1,0,0,1,0,0);
+    return mask;
+  }
 
   // Casas e prédios: corpo inteiro mais telhado em perspectiva.
   for (const b of world.buildings || []) {
@@ -154,4 +171,49 @@ function flashlightBlocks() {
   }
   c.setTransform(1,0,0,1,0,0);
   return mask;
+}
+
+// Forma do feixe (gota): cone saindo do peito, tangente a um círculo de raio R a uma distância D.
+// Perto de uma parede o feixe encurta: a gota inteira encolhe para o círculo ficar na parede.
+const FLASH_TEAR = { k: 1, t: 0 };
+function rayBox(ox, oy, dx, dy, x, y, w, h) {
+  let t0 = 0, t1 = 1e9;
+  for (const [o, d, lo, hi] of [[ox, dx, x, x + w], [oy, dy, y, y + h]]) {
+    if (Math.abs(d) < 1e-6) { if (o < lo || o > hi) return Infinity; continue; }
+    let a = (lo - o) / d, b = (hi - o) / d; if (a > b) [a, b] = [b, a];
+    t0 = Math.max(t0, a); t1 = Math.min(t1, b); if (t0 > t1) return Infinity;
+  }
+  return Math.max(0, t0);                    // começando dentro (peito encostado na parede) = já bateu
+}
+function flashRayDist(ox, oy, a, max) {
+  const dx = Math.cos(a), dy = Math.sin(a); let best = max;
+  const test = (x, y, w, h) => { if (x > ox + max || x + w < ox - max || y > oy + max || y + h < oy - max) return; const t = rayBox(ox, oy, dx, dy, x, y, w, h); if (t < best) best = t; };
+  if (game.inside) {
+    if (typeof interiorWallBoxes === "function") for (const b of interiorWallBoxes(game.inside)) test(b.x, b.y, b.w, b.h);
+    for (const f of game.inside.interior || []) if (typeof furnH === "function" && furnH(f) >= 34 && tallFurn(f)) test(f.x, f.y, f.w, f.h);
+  } else if (world) {
+    for (const b of world.buildings || []) test(b.x, b.y, b.w, b.h);
+    for (const m of world.models || []) {
+      if (typeof MODEL_TALL === "undefined" || !MODEL_TALL.has(m.id.replace(/_\d+$/, "")) || m.id === "worklight" || typeof modelRect !== "function") continue;
+      const r = modelRect(m.id, m.x, m.y, m.k); test(r.x, r.y, r.w, r.h);
+    }
+  }
+  return best;
+}
+function flashTearSize() {
+  const D0 = game.inside ? 112 : 132, R0 = game.inside ? 62 : 74;
+  if (game.time !== FLASH_TEAR.t && player) {
+    FLASH_TEAR.t = game.time;
+    const c = typeof chestPoint === "function" ? chestPoint() : player;
+    const hit = flashRayDist(c.x, c.y, player.angle, D0 + R0); FLASH_TEAR.hit = hit; FLASH_TEAR.max = D0 + R0;
+    // o círculo encosta na parede: D + R*0.55 = distância até a parede (mínimo 28% do tamanho)
+    const want = Math.max(0.28, Math.min(1, hit / (D0 + R0 * 0.55)));
+    FLASH_TEAR.k += (want - FLASH_TEAR.k) * (want < FLASH_TEAR.k ? 0.5 : 0.2);
+  }
+  return [D0 * FLASH_TEAR.k, R0 * FLASH_TEAR.k];
+}
+function flashTearPath(c, px, py, a) {
+  const [D, R] = flashTearSize(), h = Math.asin(Math.min(0.95, R / D)), cx = px + Math.cos(a) * D, cy = py + Math.sin(a) * D;
+  c.beginPath(); c.moveTo(px, py); c.arc(cx, cy, R, a - Math.PI / 2 - h, a + Math.PI / 2 + h); c.closePath();
+  return [cx, cy, D, R];
 }

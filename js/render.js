@@ -1702,14 +1702,12 @@ function drawLighting() {
     beam.setTransform(1, 0, 0, 1, 0, 0);
     beam.clearRect(0, 0, W, H);
     beam.globalCompositeOperation = "source-over";
-    holeTo(beam, px, py, 153, 0.91);
-    if (dark > 0.3) {
-      const len = 435, half = 0.50, g = beam.createRadialGradient(px, py, 10, px, py, len);
-      g.addColorStop(0, "rgba(0,0,0,0.95)"); g.addColorStop(0.6, "rgba(0,0,0,0.65)"); g.addColorStop(1, "rgba(0,0,0,0)");
-      beam.fillStyle = g;
-      beam.beginPath(); beam.moveTo(px, py);
-      beam.arc(px, py, len, player.angle - half, player.angle + half);
-      beam.closePath(); beam.fill();
+    holeTo(beam, px, py, 90, 0.6);
+    if (dark > 0.3) {                                   // feixe em gota: do peito até um círculo à frente
+      const [cx, cy, D] = flashTearPath(beam, px, py, player.angle);
+      const gb = beam.createRadialGradient(px, py, 8, px, py, D + 80);
+      gb.addColorStop(0, "rgba(0,0,0,0.75)"); gb.addColorStop(0.5, "rgba(0,0,0,0.92)"); gb.addColorStop(1, "rgba(0,0,0,0.95)");
+      beam.fillStyle = gb; beam.fill();
     }
     beam.globalCompositeOperation = "destination-out";
     beam.drawImage(flashlightBlocks(), 0, 0, W, H);
