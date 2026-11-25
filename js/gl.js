@@ -74,7 +74,7 @@ void main(){
       // (mira em K.w px à frente). Perfil do feixe = miolo forte + borda (spill) suave; no chão a luz cai
       // com o inverso do quadrado da distância e com o cosseno do ângulo de incidência. O corte do cone
       // pelo chão é que forma a mancha: estreita perto, abrindo e arredondando conforme se espalha.
-      float H = 34.0, Dd = max(K.w, 8.0);
+      float H = 24.0, Dd = max(K.w, 8.0);
       vec3 v = vec3(d, -H); float r = length(v);
       float rr = sqrt(Dd * Dd + H * H);
       vec3 A = vec3(K.xy * (Dd / rr), -H / rr);
@@ -325,6 +325,7 @@ function gfxLights(dark) {
       const ALL = [1, 0, -1.2, 0.0001], fd = Math.max(dark, 0.6), ca = Math.cos(a), sa = Math.sin(a);
       const [D] = flashTearSize();                                     // encurta perto da parede
       add(px, py, 60, fd * 0.25, [1, 0.96, 0.9], true, ALL);                                             // reflexo fraco no corpo
+      add(px, py, D + 40, fd * 0.9, [1, 0.9, 0.7], true, [ca, sa, Math.cos(0.34), 0.12]);           // facho saindo do peito
       L.push([px, py, game.inside ? 380 : 460, Math.max(0, fd - 0.04) * 2.6, [1, 0.9, 0.68], 1, [ca, sa, -3, D]]);   // feixe
       // perto da parede o feixe bate nela: mancha de luz na face da parede, mais forte e menor quanto mais perto
       if (FLASH_TEAR.hit < FLASH_TEAR.max) { const hd = FLASH_TEAR.hit, q = 1 - hd / FLASH_TEAR.max;
