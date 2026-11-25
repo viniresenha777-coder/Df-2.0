@@ -304,6 +304,7 @@ function tintedImg(im, key, hex) {
 }
 // armas com modelo 3D na mão (camada img/gear/<m>_<pose>.png, já com o corpo escondendo o que fica atrás);
 // f = filtro de cor para as versões especiais. As outras armas continuam com o desenho 2D.
+const PISTOL_FWD = 4;            // quanto as pistolas avançam na mão (px na tela)
 const WEAPON_3D = {
   ak47: { m: "w_ak" }, ak_ouro: { m: "w_fm_ak_ouro", grip: 0.36, heldView: true },
   m4: { m: "w_m4" }, baioneta: { m: "w_m4" }, fal: { m: "w_fal" }, scar: { m: "w_scar" },
@@ -557,7 +558,8 @@ function muzzlePoint() {
   }
   const grip = gunGripAndLength(w);
   const a = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle;
-  return { x: grip.x + Math.cos(a) * grip.length, y: grip.y + Math.sin(a) * grip.length };
+  const L = grip.length + (weaponPose(w) === "pistola" ? PISTOL_FWD : 0);   // o cano acompanha a pistola mais à frente
+  return { x: grip.x + Math.cos(a) * L, y: grip.y + Math.sin(a) * L };
 }
 function chestPoint() { return useSpriteChar() ? posePt("c") : { x: player.x, y: player.y }; }
 
@@ -591,6 +593,7 @@ function drawHeldWeapon(w, pose) {
   } else {
     // Rotação contínua da arma 2D enquanto o corpo usa oito poses.
     ctx.rotate(Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle);
+    if (w.look === "pistol" || w.look === "revolver") ctx.translate(PISTOL_FWD, 0);   // pistola um pouco à frente na mão
     const model = (w.len || 20) + 20, start = w.look === "pistol" || w.look === "revolver" ? 10 : 0;
     ctx.scale(Math.max(0.2, lenPx / (model - start)), thick); ctx.translate(-start, 0);
     if (w.tint) ctx.filter = w.tint;
@@ -673,6 +676,7 @@ function drawPlayerSprite() {
       const aim = Number.isFinite(p.gunAngle) ? p.gunAngle : p.angle;
       ctx.translate(A.x, A.y);
       ctx.rotate(angDelta(baseAngle, aim));
+      if (basePose === "pistola") ctx.translate(Math.cos(baseAngle) * PISTOL_FWD, Math.sin(baseAngle) * PISTOL_FWD);   // pistola um pouco à frente na mão
       ctx.translate(-A0.x, -A0.y);
     } else if (w.look !== "chainsaw" && game.slashT > 0) {
       const A = posePt("a", pose), A0 = w3Base ? posePt("a", basePose) : A, sw = (-1 + (1 - game.slashT / 200) * 2) * (game.slashA || 0.9) * 0.9;
