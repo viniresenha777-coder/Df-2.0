@@ -770,26 +770,28 @@ function drawInterior() {
 
 // ---------- Paredes altas no interior ----------
 // Paredes com a altura de um andar, na mesma perspectiva dos prédios (proj): o topo é sólido e a face da
-// frente é translúcida, então dá para ver o cômodo de trás (e quem está nele). Se você ou um zumbi está atrás
-// da parede, a face fica mais transparente. A parede de baixo (a da porta) é baixa para não tampar a sala.
+// frente é sólida e clara, como no Dead Frontier (cobre só a faixa logo atrás dela). Se VOCÊ está atrás
+// da parede, ela fica meio transparente. A parede de baixo (a da porta) é baixa para não tampar a sala.
 // Desenhado depois do personagem e dos zumbis (main.js).
-const INTERIOR_TALL_WALLS = true, IWALL_H = 52;
+const INTERIOR_TALL_WALLS = true, IWALL_H = 52, IWALL_CAM = 620;   // câmera mais baixa = laterais mais visíveis (como no DF)
+const IWALL_COL = "#c4c0b5";                                         // reboco claro, como as paredes do Dead Frontier
 function interiorWallBoxes(h) {
-  const IWd = h.iw || W, IHd = h.ih || H, outer = h.safe ? "#2c332e" : shade(h.color, -0.55);
+  const IWd = h.iw || W, IHd = h.ih || H, outer = h.safe ? "#8e958c" : IWALL_COL;
   const boxes = [
     { x: 0, y: 0, w: IWd, h: 40, c: outer, hgt: IWALL_H, top: true },
     { x: 0, y: 0, w: 40, h: IHd, c: outer, hgt: IWALL_H },
     { x: IWd - 40, y: 0, w: 40, h: IHd, c: outer, hgt: IWALL_H },
     { x: 0, y: IHd - 40, w: IWd, h: 40, c: outer, hgt: 10 },
   ];
-  for (const f of h.interior) if (f.kind === "wall") boxes.push({ x: f.x, y: f.y, w: f.w, h: f.h, c: f.color, hgt: IWALL_H, inner: true });
+  for (const f of h.interior) if (f.kind === "wall") boxes.push({ x: f.x, y: f.y, w: f.w, h: f.h, c: IWALL_COL, hgt: IWALL_H, inner: true });
   return boxes;
 }
 function drawInteriorWalls() {
   const h = game.inside;
   if (!INTERIOR_TALL_WALLS || !h) return;
-  const e = eye(), P = (x, y, z) => proj(x, y, z, e), lvl = h.level | 0;
-  const who = [player, ...Zs().filter(z => z.hp > 0)];
+  const e = eye(), lvl = h.level | 0;
+  const P = (x, y, z) => { const k = IWALL_CAM / (IWALL_CAM - z); return { x: e.x + (x - e.x) * k, y: e.y + (y - e.y) * k - z * LEAN }; };
+  const who = [player];                                // sólida como no DF; só some um pouco se VOCÊ estiver atrás
   const quad = (pts) => { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath(); ctx.fill(); };
   const boxes = interiorWallBoxes(h).sort((a, b) => (a.y + a.h) - (b.y + b.h));
   for (const b of boxes) {
@@ -797,14 +799,18 @@ function drawInteriorWalls() {
     const t00 = P(x0, y0, z), t10 = P(x1, y0, z), t11 = P(x1, y1, z), t01 = P(x0, y1, z);
     // alguém atrás desta parede (dentro da área que a face cobre na tela)?
     const faceTop = Math.min(t01.y, t11.y), behind = who.some(o => o.x > x0 - 20 && o.x < x1 + 20 && o.y < y0 + 4 && o.y > faceTop - 30);
-    const a = b.hgt < 20 ? 0.9 : behind ? 0.22 : 0.5;
-    // faces laterais (a que está de frente para a câmera) e a da frente (sul)
+    const a = behind ? 0.45 : 1;                        // sólida; meio transparente só com você atrás
+    // faces laterais (a que está de frente para a câmera) e a da frente (sul), com a base mais escura
     ctx.globalAlpha = a;
-    ctx.fillStyle = shade(b.c, -0.32);
-    if (e.x < x0) quad([{ x: x0, y: y0 }, { x: x0, y: y1 }, t01, t00]);
-    if (e.x > x1) quad([{ x: x1, y: y0 }, { x: x1, y: y1 }, t11, t10]);
-    ctx.fillStyle = shade(b.c, -0.18);
-    quad([{ x: x0, y: y1 }, { x: x1, y: y1 }, t11, t01]);
+    const face = (pts, col) => {
+      ctx.fillStyle = col; quad(pts);
+      const g = ctx.createLinearGradient(0, pts[0].y, 0, pts[0].y - b.hgt * LEAN);
+      g.addColorStop(0, "rgba(0,0,0,0.38)"); g.addColorStop(0.35, "rgba(0,0,0,0.08)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g; quad(pts);
+    };
+    if (e.x < x0) face([{ x: x0, y: y1 }, { x: x0, y: y0 }, t00, t01], shade(b.c, -0.22));
+    if (e.x > x1) face([{ x: x1, y: y1 }, { x: x1, y: y0 }, t10, t11], shade(b.c, -0.12));
+    face([{ x: x0, y: y1 }, { x: x1, y: y1 }, t11, t01], shade(b.c, -0.05));
     // janelas na face da parede de cima (o bunker não tem janelas nos subsolos)
     if (b.top && !(h.def.under && lvl > 0)) {
       ctx.fillStyle = isNight() ? "rgba(28,42,58,0.95)" : "rgba(143,179,201,0.95)";
@@ -815,9 +821,9 @@ function drawInteriorWalls() {
       }
     }
     // topo da parede (sólido)
-    ctx.globalAlpha = b.hgt < 20 ? 1 : behind ? 0.55 : 0.95;
-    ctx.fillStyle = b.c; quad([t00, t10, t11, t01]);
-    ctx.strokeStyle = "rgba(0,0,0,0.45)"; ctx.lineWidth = 1;
+    ctx.globalAlpha = behind ? 0.5 : 1;
+    ctx.fillStyle = shade(b.c, 0.12); quad([t00, t10, t11, t01]);
+    ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(t00.x, t00.y); ctx.lineTo(t10.x, t10.y); ctx.lineTo(t11.x, t11.y); ctx.lineTo(t01.x, t01.y); ctx.closePath(); ctx.stroke();
   }
   ctx.globalAlpha = 1;
