@@ -201,7 +201,7 @@ function flashRayDist(ox, oy, a, max) {
   return best;
 }
 function flashTearSize() {
-  const D0 = game.inside ? 112 : 132, R0 = game.inside ? 62 : 74;
+  const D0 = game.inside ? 140 : 170, R0 = game.inside ? 78 : 95;
   if (game.time !== FLASH_TEAR.t && player) {
     FLASH_TEAR.t = game.time;
     const c = typeof chestPoint === "function" ? chestPoint() : player;

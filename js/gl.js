@@ -82,7 +82,7 @@ void main(){
       float hot = smoothstep(0.955, 0.992, ct);
       float spill = smoothstep(0.80, 0.93, ct);
       float halo = smoothstep(0.55, 0.80, ct) * 0.10;
-      float prof = hot * 0.55 + spill * 0.45 + halo;
+      float prof = hot * 0.9 + spill * 0.45 + halo;          // miolo bem mais forte
       float E = (rr * rr) / (r * r) * (H / r) / (H / rr);              // 1/r² · cos(incidência), normalizado no centro
       att = prof * min(E, 1.7) * smoothstep(L.z, L.z * 0.55, dist);
       if (att <= 0.003) continue;
@@ -325,7 +325,7 @@ function gfxLights(dark) {
       const ALL = [1, 0, -1.2, 0.0001], fd = Math.max(dark, 0.6), ca = Math.cos(a), sa = Math.sin(a);
       const [D] = flashTearSize();                                     // encurta perto da parede
       add(px, py, 60, fd * 0.25, [1, 0.96, 0.9], true, ALL);                                             // reflexo fraco no corpo
-      add(px, py, D + 40, fd * 0.9, [1, 0.9, 0.7], true, [ca, sa, Math.cos(0.34), 0.12]);           // facho saindo do peito
+      add(px, py, D + 50, fd * 1.3, [1, 0.9, 0.7], true, [ca, sa, Math.cos(0.32), 0.12]);           // facho saindo do peito
       L.push([px, py, game.inside ? 380 : 460, Math.max(0, fd - 0.04) * 2.6, [1, 0.9, 0.68], 1, [ca, sa, -3, D]]);   // feixe
       // perto da parede o feixe bate nela: mancha de luz na face da parede, mais forte e menor quanto mais perto
       if (FLASH_TEAR.hit < FLASH_TEAR.max) { const hd = FLASH_TEAR.hit, q = 1 - hd / FLASH_TEAR.max;

@@ -1697,12 +1697,15 @@ function drawFlashBeamAdd() {
   const [D, R] = flashTearSize();
   gx.save(); gx.translate(px, py); gx.rotate(player.angle); gx.filter = "blur(10px)";
   const gb = gx.createLinearGradient(0, 0, D, 0);
-  gb.addColorStop(0, "rgba(255,225,170,0.55)"); gb.addColorStop(1, "rgba(255,215,150,0.25)");
+  gb.addColorStop(0, "rgba(255,228,175,0.85)"); gb.addColorStop(1, "rgba(255,218,155,0.55)");
   gx.fillStyle = gb; gx.beginPath(); gx.moveTo(4, -3); gx.lineTo(D * 0.8, -R * 0.38); gx.lineTo(D * 0.8, R * 0.38); gx.lineTo(4, 3); gx.closePath(); gx.fill();
   gx.translate(D * 1.0, 0); gx.scale(1.45, 0.72);
   const g = gx.createRadialGradient(0, 0, 4, 0, 0, R * 1.05);
   g.addColorStop(0, "rgba(255,238,190,0.95)"); g.addColorStop(0.5, "rgba(255,222,160,0.65)"); g.addColorStop(1, "rgba(255,205,140,0)");
   gx.fillStyle = g; gx.beginPath(); gx.arc(0, 0, R * 1.05, 0, Math.PI * 2); gx.fill();
+  const gc2 = gx.createRadialGradient(0, 0, 2, 0, 0, R * 0.5);                 // miolo forte
+  gc2.addColorStop(0, "rgba(255,245,210,0.9)"); gc2.addColorStop(1, "rgba(255,235,190,0)");
+  gx.fillStyle = gc2; gx.beginPath(); gx.arc(0, 0, R * 0.5, 0, Math.PI * 2); gx.fill();
   gx.restore(); gx.filter = "none";
   gx.globalCompositeOperation = "destination-out"; gx.drawImage(flashlightBlocks(), 0, 0, W, H);
   ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.drawImage(gc, 0, 0, W, H); ctx.restore();
