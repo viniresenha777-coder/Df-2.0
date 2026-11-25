@@ -316,9 +316,9 @@ function gfxLights(dark) {
       // Lanterna no peito: o feixe sai do peito e termina num círculo de luz à frente, para onde você mira.
       // A máscara (calculada a partir do peito) corta a luz nas paredes.
       const ALL = [1, 0, -1.2, 0.0001], fd = Math.max(dark, 0.42), ca = Math.cos(a), sa = Math.sin(a);
-      const D = game.inside ? 112 : 132, R = game.inside ? 62 : 74;
+      const [D, R] = flashTearSize();                                  // encurta perto da parede
       add(px, py, 70, fd * 0.3, [1, 0.96, 0.9], true, ALL);                                             // brilho fraco no corpo
-      L.push([px, py, D, Math.max(0, fd - 0.04) * 1.55, [1, 0.88, 0.62], 1, [ca, sa, -3, R]]);          // feixe em gota
+      L.push([px, py, D, Math.max(0, fd - 0.04) * 1.55 * (0.5 + 0.5 * FLASH_TEAR.k), [1, 0.88, 0.62], 1, [ca, sa, -3, R]]);          // feixe em gota
     }
     if (player.flashT > 0) add(px + Math.cos(a) * 30, py + Math.sin(a) * 30, 280, 1.1 * glow * (Math.min(1, player.flashT / 60) + 0.4), [1, 0.75, 0.38], true);
   }

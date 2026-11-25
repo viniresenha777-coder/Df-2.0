@@ -174,7 +174,44 @@ function flashlightBlocks() {
 }
 
 // Forma do feixe (gota): cone saindo do peito, tangente a um círculo de raio R a uma distância D.
-function flashTearSize() { return game.inside ? [112, 62] : [132, 74]; }
+// Perto de uma parede o feixe encurta: a gota inteira encolhe para o círculo ficar na parede.
+const FLASH_TEAR = { k: 1, t: 0 };
+function rayBox(ox, oy, dx, dy, x, y, w, h) {
+  let t0 = 0, t1 = 1e9;
+  for (const [o, d, lo, hi] of [[ox, dx, x, x + w], [oy, dy, y, y + h]]) {
+    if (Math.abs(d) < 1e-6) { if (o < lo || o > hi) return Infinity; continue; }
+    let a = (lo - o) / d, b = (hi - o) / d; if (a > b) [a, b] = [b, a];
+    t0 = Math.max(t0, a); t1 = Math.min(t1, b); if (t0 > t1) return Infinity;
+  }
+  return Math.max(0, t0);                    // começando dentro (peito encostado na parede) = já bateu
+}
+function flashRayDist(ox, oy, a, max) {
+  const dx = Math.cos(a), dy = Math.sin(a); let best = max;
+  const test = (x, y, w, h) => { if (x > ox + max || x + w < ox - max || y > oy + max || y + h < oy - max) return; const t = rayBox(ox, oy, dx, dy, x, y, w, h); if (t < best) best = t; };
+  if (game.inside) {
+    if (typeof interiorWallBoxes === "function") for (const b of interiorWallBoxes(game.inside)) test(b.x, b.y, b.w, b.h);
+    for (const f of game.inside.interior || []) if (typeof furnH === "function" && furnH(f) >= 34 && tallFurn(f)) test(f.x, f.y, f.w, f.h);
+  } else if (world) {
+    for (const b of world.buildings || []) test(b.x, b.y, b.w, b.h);
+    for (const m of world.models || []) {
+      if (typeof MODEL_TALL === "undefined" || !MODEL_TALL.has(m.id.replace(/_\d+$/, "")) || m.id === "worklight" || typeof modelRect !== "function") continue;
+      const r = modelRect(m.id, m.x, m.y, m.k); test(r.x, r.y, r.w, r.h);
+    }
+  }
+  return best;
+}
+function flashTearSize() {
+  const D0 = game.inside ? 112 : 132, R0 = game.inside ? 62 : 74;
+  if (game.time !== FLASH_TEAR.t && player) {
+    FLASH_TEAR.t = game.time;
+    const c = typeof chestPoint === "function" ? chestPoint() : player;
+    const hit = flashRayDist(c.x, c.y, player.angle, D0 + R0);
+    // o círculo encosta na parede: D + R*0.55 = distância até a parede (mínimo 28% do tamanho)
+    const want = Math.max(0.28, Math.min(1, hit / (D0 + R0 * 0.55)));
+    FLASH_TEAR.k += (want - FLASH_TEAR.k) * (want < FLASH_TEAR.k ? 0.5 : 0.2);
+  }
+  return [D0 * FLASH_TEAR.k, R0 * FLASH_TEAR.k];
+}
 function flashTearPath(c, px, py, a) {
   const [D, R] = flashTearSize(), h = Math.asin(Math.min(0.95, R / D)), cx = px + Math.cos(a) * D, cy = py + Math.sin(a) * D;
   c.beginPath(); c.moveTo(px, py); c.arc(cx, cy, R, a - Math.PI / 2 - h, a + Math.PI / 2 + h); c.closePath();
