@@ -12,7 +12,16 @@ function newImplant(id) {
 // Só implantes marcados com drop: true caem no saque (os 29 atuais não caem: só loja/eventos).
 // A chance de cair é a mesma de uma arma Lendária naquele lugar (ver lootImplantDrop em interact.js).
 function dropImplantIds() { return IMP_IDS.filter((id) => IMP[id].drop && !IMP[id].kitOnly && !IMP[id].craftOnly); }
-function randomImplant() { const ids = dropImplantIds(); return ids.length ? newImplant(pick(ids)) : null; }
+// peso no sorteio: tier 1 é o mais comum, X e Err X os mais raros
+const IMPLANT_TIER_WEIGHT = { 1: 6, 2: 3, 3: 1 };
+function randomImplant() {
+  const ids = dropImplantIds();
+  if (!ids.length) return null;
+  const w = (id) => IMP[id].err ? 0.5 : IMPLANT_TIER_WEIGHT[IMP[id].tier] || 1;
+  let r = Math.random() * ids.reduce((a, id) => a + w(id), 0);
+  for (const id of ids) { r -= w(id); if (r <= 0) return newImplant(id); }
+  return newImplant(ids[ids.length - 1]);
+}
 function impColor(im) { return IMP_COLOR[IMP[im.id].kind || 0]; }
 function implantName(im) { return IMP[im.id].name; }
 function allocUsed(im) { let n = 0; for (const k in im.alloc || {}) n += im.alloc[k]; return n; }
@@ -107,7 +116,7 @@ function lastStandTick() {
   if (!player.fxAll) return;
   player.fx = player.flags.lastStand && player.hp / player.maxHp < 0.25 ? player.fxSafe : player.fxAll;
 }
-function makeStock() { return IMP_IDS.filter((id) => !IMP[id].kitOnly && !IMP[id].craftOnly).map((id) => ({ id, price: IMP[id].price })); }
+function makeStock() { return IMP_IDS.filter((id) => !IMP[id].kitOnly && !IMP[id].craftOnly && IMP[id].price > 0).sort((a, b) => IMP[a].price - IMP[b].price).map((id) => ({ id, price: IMP[id].price })); }
 
 
 // ---------- Esquemas de implantes (presets) ----------

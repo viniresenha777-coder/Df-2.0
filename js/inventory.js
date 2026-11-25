@@ -1318,6 +1318,12 @@ function craftKey(k) {
 }
 // o implante Artesão dá desconto no dinheiro da oficina
 function craftMoney(m) { return Math.round(m * (1 - Math.min(0.5, player.fx.craftDisc / 100))); }
+// implantes pedidos pela receita (X e Err X): contam só os da mochila de implantes, fora do Token
+function impHave(id) { return player.bag.filter((im) => im.id === id && !im.tokenBound).length; }
+function hasImps(need) { return !need || Object.keys(need).every((id) => impHave(id) >= need[id]); }
+function takeImps(need) {
+  for (const id in need || {}) for (let n = need[id]; n > 0; n--) { const i = player.bag.findIndex((im) => im.id === id && !im.tokenBound); if (i >= 0) player.bag.splice(i, 1); }
+}
 function recipeName(r) { return r.implant ? IMP[r.implant].name : r.vest != null ? VESTS[r.vest].name : WDEF[r.id].name; }
 function craftRecipe() {
   const r = RECIPES[game.ccur], cost = craftMoney(r.money);
@@ -1326,8 +1332,11 @@ function craftRecipe() {
   if (r.vest != null && save.vestsOwned[r.vest]) { toast("Você já tem esse colete"); return; }
   if (game.money < cost) { toast(`Precisa de $${cost} na mochila`); return; }
   if (!hasMats(r.mats)) { toast("Faltam materiais"); return; }
+  if (!hasImps(r.needImp)) { const id = Object.keys(r.needImp)[0]; toast(`Precisa de ${r.needImp[id]}× ${IMP[id].name} na mochila de implantes (não instalados)`); return; }
+  if (r.implant && player.bag.length - Object.values(r.needImp || {}).reduce((a, b) => a + b, 0) >= BAG_MAX) { toast("Mochila de implantes cheia"); return; }
   if (!r.implant && r.vest == null && player.slots.indexOf(null) < 0 && packUsed() >= packCapacity()) { toast("Mochila cheia"); return; }
   for (const m in r.mats) takeMat(m, r.mats[m]);
+  takeImps(r.needImp);
   game.money -= cost; stat("crafts");
   if (r.vest != null) {
     save.vestsOwned[r.needVest] = false;
@@ -1412,9 +1421,12 @@ function drawCraft() {
   const px = 600, pw = 320;
   ctx.fillStyle = "rgba(0,0,0,0.25)"; rr(px - 10, 122, pw + 20, 400, 8); ctx.fill();
   if (game.ctab === 0) {
+    const RV = 7, roff = Math.max(0, Math.min(RECIPES.length - RV, game.ccur - 3));   // 7 receitas por vez, rola com W/S
+    if (RECIPES.length > RV) txt(`${game.ccur + 1} / ${RECIPES.length}`, 300, 520, 11, "#a9a58f", "center");
     RECIPES.forEach((r, i) => {
-      const y = 120 + i * 56, sel = game.ccur === i, cost = craftMoney(r.money);
-      const ok = player.level >= r.level && game.money >= cost && hasMats(r.mats) && (r.needVest == null || save.vestsOwned[r.needVest]);
+      if (i < roff || i >= roff + RV) return;
+      const y = 120 + (i - roff) * 56, sel = game.ccur === i, cost = craftMoney(r.money);
+      const ok = player.level >= r.level && game.money >= cost && hasMats(r.mats) && hasImps(r.needImp) && (r.needVest == null || save.vestsOwned[r.needVest]);
       rowBox(40, y, 520, 52, sel, ok ? "#6fae4f" : null);
       rowClick(40, y, 520, 52, sel, () => { game.ccur = i; }, craftRecipe);
       if (r.implant) drawEntryIcon({ type: "implant", im: { id: r.implant } }, 96, y + 26, 0.62);
@@ -1430,8 +1442,15 @@ function drawCraft() {
       drawEntryIcon({ type: "implant", im: { id: r.implant } }, px + pw / 2, 210, 1.9);
       txt(d.name, px, 300, 17, "#ff8a6a", "left", true, pw);
       Object.keys(d.fx).forEach((k, i) => txt(sgn(d.fx[k]) + "% " + (FX_LABEL[k] || k), px, 324 + i * 18, 13, d.fx[k] < 0 ? "#ff8383" : "#8bed92", "left", true, pw));
-      txt(`Gorros de Natal: ${matCount("gorro_natal")}/${r.mats.gorro_natal}`, px, 390, 12, hasMats(r.mats) ? "#6fae4f" : "#e05a4a", "left", true, pw);
-      txt("Os Gorros caem nas Caixas de Natal espalhadas pela cidade", px, 410, 11, "#ffd96a", "left", false, pw);
+      if (r.needImp) {
+        const id = Object.keys(r.needImp)[0], have = impHave(id);
+        txt(`Implante: ${have}/${r.needImp[id]}× ${IMP[id].name}`, px, 414, 12, have >= r.needImp[id] ? "#6fae4f" : "#e05a4a", "left", true, pw);
+        txt("Na mochila de implantes (não instalados) · são consumidos", px, 430, 11, "#a9a58f", "left", false, pw);
+        txt("Componentes: região Vermelha+ · Coração do Demônio: chefes", px, 446, 11, "#ffd96a", "left", false, pw);
+      } else {
+        txt(`Gorros de Natal: ${matCount("gorro_natal")}/${r.mats.gorro_natal}`, px, 390, 12, hasMats(r.mats) ? "#6fae4f" : "#e05a4a", "left", true, pw);
+        txt("Os Gorros caem nas Caixas de Natal espalhadas pela cidade", px, 410, 11, "#ffd96a", "left", false, pw);
+      }
     } else if (r.vest != null) {
       const v = VESTS[r.vest];
       drawVestIcon(r.vest, px + pw / 2, 200, 2.2);

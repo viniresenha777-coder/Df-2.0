@@ -100,6 +100,17 @@ function lootImplantDrop(t, zone, k, boost) {
   const im = randomImplant();
   return im ? { type: "implant", im } : null;
 }
+// Componentes dos implantes X/Err X: só da região Vermelha (4) para cima.
+// Lugares com arma: 1,5% · airdrop: 25% · chefe: 40% de um componente e 30% de Coração do Demônio.
+const IMP_PARTS = ["placa_circuito", "interface_implante", "bateria_implante", "sucata_rara"];
+function implantPartsDrop(table, t, zone) {
+  if (regionOf(zone) < 4) return [];
+  const out = [], f = 1 + player.fx.miscFind / 100;
+  const pc = table === "boss" ? 0.4 : table === "airdrop" ? 0.25 : t.weapon ? 0.015 : 0;
+  if (pc && Math.random() < pc * f) out.push({ type: "mat", id: pick(IMP_PARTS), amt: 1 });
+  if (table === "boss" && Math.random() < 0.3 * f) out.push({ type: "mat", id: "coracao_demonio", amt: 1 });
+  return out;
+}
 // sorteia QUANTOS itens e depois QUAIS (tipos diferentes, pesados pelo que cada lugar costuma ter)
 function rollLoot(table, zone) {
   if (table === "airdrop") return rollLootFull(table, zone);
@@ -123,6 +134,7 @@ function rollLoot(table, zone) {
     for (; idx < pool.length - 1; idx++) { r -= pool[idx][1]; if (r <= 0) break; }
     out.push(lootEntry(pool.splice(idx, 1)[0][0], t, table, zone));
   }
+  out.push(...implantPartsDrop(table, t, zone));   // componentes de implante: fora da conta de itens
   if (want === 4) out.push({ type: "credit", amt: 1 });
   return out;
 }
@@ -215,6 +227,7 @@ function rollLootFull(table, zone) {
   }
   const imd = lootImplantDrop(t, zone, 1, (vipActive() ? 1 : 0) + (table === "boss" || table === "airdrop" ? 1 : 0));
   if (imd) out.push(imd);
+  out.push(...implantPartsDrop(table, t, zone));
   if (Math.random() < vestChance(t)) out.push(lootVest(zone));
   return out;
 }

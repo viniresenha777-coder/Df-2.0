@@ -26,9 +26,10 @@ function weaponParts(inst) {
   return out;
 }
 function partsText(p) { return Object.keys(p).map((k) => `${p[k]}x ${MATS[k].name}`).join(" + "); }
-// implante vendido: no mínimo $100.000 (≈8% do preço em créditos); Mimic (scrap 0) não tem valor de venda
-function implantSellPrice(im) { const v = IMP[im.id].scrap; return v ? Math.max(v, 100000) : 0; }
-function matSellPrice(id) { return { sucata: 300, pecas: 700, eletronicos: 1100, nucleo: 8000, placa: 6000 }[id] || Math.round(((MATS[id] && MATS[id].price) || 0) * SCRAP_RATE) || 100; }
+// implante vendido: scrap do implante = 30% do valor dele (créditos × $CREDIT_PRICE); Mimic (scrap 0) não vende
+function implantSellPrice(im) { return IMP[im.id].scrap || 0; }
+function matSellPrice(id) { return { sucata: 300, pecas: 700, eletronicos: 1100, nucleo: 8000, placa: 6000,
+  placa_circuito: 20000, interface_implante: 20000, bateria_implante: 20000, sucata_rara: 12000, coracao_demonio: 60000 }[id] || Math.round(((MATS[id] && MATS[id].price) || 0) * SCRAP_RATE) || 100; }
 // colete: 30% do preço (créditos contam a $CREDIT_PRICE cada), proporcional à durabilidade;
 // coletes com valor fixo (Natalino) pagam o valor cheio; MC = melhorias de Armadura e Velocidade no máximo
 function vestSellPrice(i) {

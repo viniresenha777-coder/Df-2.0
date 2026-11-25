@@ -152,6 +152,12 @@ const MATS = {
   eletronicos: { name: "Componentes eletrônicos",  price: 140 },
   nucleo:      { name: "Núcleo raro",              price: 0 },
   placa:       { name: "Placa de blindagem",       price: 0 },
+  // componentes dos implantes X e Err X (Oficina): caem da região Vermelha para cima; Coração do Demônio só de chefes
+  placa_circuito:     { name: "Placa de circuito",      price: 0 },
+  interface_implante: { name: "Interface de implante",  price: 0 },
+  bateria_implante:   { name: "Bateria de implante",    price: 0 },
+  sucata_rara:        { name: "Sucata de metal raro",   price: 0 },
+  coracao_demonio:    { name: "Coração do Demônio",     price: 0 },
   cofre10k:    { name: "Cofre 10.000", price: 1000, cashProtection: 10000 },
   cofre100k:   { name: "Cofre 100.000", price: 10000, cashProtection: 100000 },
   cofre500k:   { name: "Cofre 500.000", price: 50000, cashProtection: 500000 }
@@ -171,6 +177,11 @@ const RECIPES = [
   { id: "minigun_inf", mats: { pecas: 14, eletronicos: 10, nucleo: 4 },   money: 250000, level: 60 },
   // colete nº 10: craft difícil (precisa ter o nº 9, que é consumido)
   { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 500000, level: 100, needVest: 8 },
+  // implantes X: 3 do tier 2 correspondente · Err X: 2 do X correspondente (needImp = implantes consumidos da mochila de implantes)
+  ...["perception", "violence", "hyper", "ironskin", "salvage"].flatMap((n) => [
+    { implant: "x_" + n, needImp: { ["t2_" + n]: 3 }, mats: { placa_circuito: 1, interface_implante: 1, bateria_implante: 1, coracao_demonio: 1, sucata_rara: 1 }, money: 1000000, level: 50 },
+    { implant: "errx_" + n, needImp: { ["x_" + n]: 2 }, mats: { placa_circuito: 1, interface_implante: 1, bateria_implante: 1, sucata_rara: 1 }, money: 1000000, level: 50 }
+  ]),
   // evento de Natal: Gorros caem nas Caixas de Natal
   { implant: "implante_natal", mats: { gorro_natal: 10 }, money: 2000000, level: 1 }
 ];
@@ -648,6 +659,27 @@ function drawMatIcon(id, cx, cy, s) {
     ctx.fillStyle = "#7a8086"; rr(-22, -16, 44, 14, 4); ctx.fill();
     ctx.fillStyle = "#3a3e42"; for (const [x, y] of [[-18, -14], [18, -14], [-18, 14], [18, 14]]) circle(x, y, 2.5);
     ctx.strokeStyle = "#c9a23a"; ctx.lineWidth = 2; ctx.strokeRect(-26, -20, 52, 40);
+  } else if (id === "placa_circuito") {            // componentes dos implantes X / Err X
+    ctx.fillStyle = "#1f4a6a"; rr(-28, -20, 56, 40, 4); ctx.fill();
+    ctx.strokeStyle = "#7fd0ff"; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(-22, -10); ctx.lineTo(-6, -10); ctx.lineTo(0, -4); ctx.lineTo(20, -4); ctx.moveTo(-22, 8); ctx.lineTo(4, 8); ctx.lineTo(10, 14); ctx.stroke();
+    R_(-6, 2, 12, 10, "#111"); ctx.fillStyle = "#c9a23a"; for (const [x, y] of [[-22, -10], [20, -4], [-22, 8], [10, 14]]) circle(x, y, 2.5);
+  } else if (id === "interface_implante") {
+    ctx.fillStyle = "#c9a23a"; for (let i = -3; i <= 3; i++) { ctx.fillRect(i * 6 - 1, -26, 2, 7); ctx.fillRect(i * 6 - 1, 19, 2, 7); ctx.fillRect(-26, i * 6 - 1, 7, 2); ctx.fillRect(19, i * 6 - 1, 7, 2); }
+    ctx.fillStyle = "#2a2d32"; rr(-19, -19, 38, 38, 4); ctx.fill();
+    ctx.shadowColor = "#5ad0ff"; ctx.shadowBlur = 10; ctx.fillStyle = "#5ad0ff"; rr(-9, -9, 18, 18, 2); ctx.fill(); ctx.shadowBlur = 0;
+  } else if (id === "bateria_implante") {
+    ctx.fillStyle = "#3a3d42"; rr(-14, -24, 28, 46, 5); ctx.fill(); R_(-6, -29, 12, 6, "#8a8f96");
+    ctx.shadowColor = "#7dff6a"; ctx.shadowBlur = 12; ctx.fillStyle = "#6be05a"; rr(-9, -4, 18, 22, 3); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = "#2a2d32"; ctx.fillRect(-9, 4, 18, 2); ctx.fillRect(-9, 11, 18, 2);
+  } else if (id === "sucata_rara") {
+    ctx.shadowColor = "#9ad8ff"; ctx.shadowBlur = 12;
+    poly([[-28, 8], [-8, -16], [6, 0], [-6, 16]], "#8fb6c8"); poly([[2, -12], [26, -18], [28, 4], [8, 6]], "#c9d8e0"); poly([[-4, 6], [20, 4], [22, 20], [0, 22]], "#6f8fa0");
+    ctx.shadowBlur = 0;
+  } else if (id === "coracao_demonio") {
+    ctx.shadowColor = "#ff3a2a"; ctx.shadowBlur = 18; ctx.fillStyle = "#9a1a16";
+    ctx.beginPath(); ctx.moveTo(0, 22); ctx.bezierCurveTo(-30, 2, -24, -24, 0, -10); ctx.bezierCurveTo(24, -24, 30, 2, 0, 22); ctx.fill();
+    ctx.shadowBlur = 0; ctx.strokeStyle = "#ff6a3a"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-8, -6); ctx.lineTo(-2, 4); ctx.lineTo(6, -4); ctx.lineTo(4, 10); ctx.stroke();
   } else {
     ctx.shadowColor = "#b07aff"; ctx.shadowBlur = 18;
     poly([[0, -26], [18, -12], [18, 12], [0, 26], [-18, 12], [-18, -12]], "#8a5ae0");

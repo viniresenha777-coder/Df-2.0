@@ -359,7 +359,7 @@ function fmOpenAdvancedImplantCase(item) {
     toast("Libere espaço para receber o implante.");
     return;
   }
-  const pool = IMP_IDS.filter((id) => IMP[id].kind === 2 && !IMP[id].mimic && !IMP[id].event);
+  const pool = IMP_IDS.filter((id) => IMP[id].kind === 2 && !IMP[id].mimic && !IMP[id].event && !IMP[id].tier);
   const im = newImplant(pick(pool));
   if (--item.qty === 0) player.pack.splice(index, 1);
   player.bag.push(im);
@@ -376,7 +376,7 @@ function buyCreditImplant(id) {
     toast("Libere espaço para receber o implante.");
     return;
   }
-  if (fmOwnsCreditImplant(id)) {
+  if (!def.tier && fmOwnsCreditImplant(id)) {
     toast("Você já possui este implante.");
     return;
   }
@@ -432,11 +432,13 @@ function creditShopSelectSection(section) {
 }
 function creditShopRows(section) {
   if (section === "implant")
-    return IMP_IDS.filter((id) => !IMP[id].craftOnly).map((id) => ({
+    // do mais fraco (mais barato) para o mais forte; o Kit Mimic fica no fim
+    return IMP_IDS.filter((id) => !IMP[id].craftOnly && (IMP[id].price > 0 || IMP[id].kitOnly))
+      .sort((a, b) => !!IMP[a].kitOnly - !!IMP[b].kitOnly || IMP[a].price - IMP[b].price).map((id) => ({
       kind: "implant",
       id,
       title: id === FM_MIMIC_ID ? "Kit Mimic" : IMP[id].name,
-      owned: fmOwnsCreditImplant(id),
+      owned: !IMP[id].tier && fmOwnsCreditImplant(id),   // tier 2 pode comprar vários (3 fazem um X na Oficina)
       price: fmCreditImplantPrice(id),
       currency: "credits",
     }));
