@@ -2,16 +2,16 @@
 // =====================================================================
 //  Ferro Velho (na base): vende qualquer item e desmonta armas em
 //  peças de arma e sucata. Itens raros pedem confirmação antes.
-//  Os preços são provisórios: o jogo ainda não tem economia oficial.
+//  Valores da economia oficial (renda de referência: ~$15.000/h na região azul).
 // =====================================================================
-const JUNK_RAR = [40, 130, 380, 950, 2400];          // piso de venda por raridade da arma
+const JUNK_RAR = [1000, 3000, 8000, 20000, 50000];  // piso de venda por raridade da arma
 const RESET_STATS_PRICE = MATS.reset_stats.price;
-const JUNK_CONS = { comum: 8, fresca: 16, podre: 2, water: 6, med: 25, anti: 40 };
+const JUNK_CONS = { comum: 100, fresca: 200, podre: 20, water: 80, med: 400, anti: 600 };
 
 function weaponSellPrice(inst) {
   const d = WDEF[inst.id];
   if (d.scrap) return inst.gc ? d.scrapMC || d.scrap : d.scrap;   // valor fixo de sucata (MC = craft perfeito)
-  return Math.round(Math.max(JUNK_RAR[d.rar] || 40, (d.price || 0) * 0.3) * (1 + upSum(inst) * 0.12));
+  return Math.round(Math.max(JUNK_RAR[d.rar] || 1000, (d.price || 0) * 3) * (1 + upSum(inst) * 0.12));
 }
 function weaponParts(inst) {
   const d = WDEF[inst.id], r = d.rar, up = upSum(inst);
@@ -22,9 +22,10 @@ function weaponParts(inst) {
   return out;
 }
 function partsText(p) { return Object.keys(p).map((k) => `${p[k]}x ${MATS[k].name}`).join(" + "); }
-function implantSellPrice(im) { return IMP[im.id].scrap; }
-function matSellPrice(id) { return { sucata: 15, pecas: 35, eletronicos: 55, nucleo: 400, placa: 300 }[id] || 10; }
-function ammoSellPrice(t) { return Math.max(0.2, AMMO[t].price / AMMO[t].box * 0.3); }
+// implante vendido: no mínimo $100.000 (≈8% do preço em créditos); Mimic (scrap 0) não tem valor de venda
+function implantSellPrice(im) { const v = IMP[im.id].scrap; return v ? Math.max(v, 100000) : 0; }
+function matSellPrice(id) { return { sucata: 300, pecas: 700, eletronicos: 1100, nucleo: 8000, placa: 6000 }[id] || 100; }
+function ammoSellPrice(t) { return Math.max(0.5, ammoPackPrice(t) / AMMO_PACK_SIZE * 0.3); }
 
 // tudo o que você pode vender, numa lista só
 function junkItems() {

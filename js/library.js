@@ -28,7 +28,7 @@ function libSource(d) {
   if (d.eventOnly) return "Caixas de Natal (1%) · evento de Natal";
   if (d.legendary) return "Saques de VIP (lendária)";
   if (d.minLevel) return `Saques raros · a partir do nível ${d.minLevel}`;
-  return d.price ? `Saques no mapa · vende por até $${Math.round(d.price * 0.3).toLocaleString("pt-BR")}` : "Saques raros no mapa";
+  return d.shop ? `Loja da base · $${d.shop.toLocaleString("pt-BR")}` : d.price ? `Saques no mapa · vende por até $${Math.max(JUNK_RAR[d.rar] || 1000, d.price * 3).toLocaleString("pt-BR")}` : "Saques raros no mapa";
 }
 // efeitos especiais escritos por extenso
 function libEffects(d) {

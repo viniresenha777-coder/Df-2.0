@@ -3,26 +3,26 @@
 //  Economia: quanto mais perigosa a região, mais dinheiro ela paga.
 //  Uma tabela por cor de região (índice de REGIONS) controla:
 //   cash   = multiplicador do dinheiro achado no saque
-//   bounty = dinheiro por zumbi abatido (chefe vale 40x)
+//   bounty = (desligado: zumbis não dão dinheiro; a renda vem do saque)
 //   reward = multiplicador de missões e hordas
 //   travel = custo base da viagem rápida até um posto daquela região
 //  E também guarda o nome do jogador (tela de criação).
 // =====================================================================
 const ECON = [
-  { cash: 1,    bounty: 1,  reward: 1,    travel: 30 },   // Azul
-  { cash: 1.35, bounty: 2,  reward: 1.3,  travel: 45 },   // Verde
-  { cash: 1.8,  bounty: 3,  reward: 1.7,  travel: 65 },   // Amarela
-  { cash: 2.4,  bounty: 5,  reward: 2.2,  travel: 90 },   // Laranja
-  { cash: 3.2,  bounty: 8,  reward: 2.9,  travel: 130 },  // Vermelha
-  { cash: 4.2,  bounty: 12, reward: 3.7,  travel: 180 },  // Vermelho-escura
-  { cash: 5.4,  bounty: 17, reward: 4.7,  travel: 240 },  // Preta
-  { cash: 7,    bounty: 24, reward: 6,    travel: 320 },  // Roxa
-  { cash: 9,    bounty: 32, reward: 7.5,  travel: 420 }   // Cinza (Zona Morta)
+  { cash: 1,    bounty: 0, reward: 1,    travel: 300 },   // Azul
+  { cash: 1.35, bounty: 0, reward: 1.3,  travel: 450 },   // Verde
+  { cash: 1.8,  bounty: 0, reward: 1.7,  travel: 650 },   // Amarela
+  { cash: 2.4,  bounty: 0, reward: 2.2,  travel: 900 },   // Laranja
+  { cash: 3.2,  bounty: 0, reward: 2.9,  travel: 1300 },  // Vermelha
+  { cash: 4.2,  bounty: 0, reward: 3.7,  travel: 1800 },  // Vermelho-escura
+  { cash: 5.4,  bounty: 0, reward: 4.7,  travel: 2400 },  // Preta
+  { cash: 7,    bounty: 0, reward: 6,    travel: 3200 },  // Roxa
+  { cash: 9,    bounty: 0, reward: 7.5,  travel: 4200 }   // Cinza (Zona Morta)
 ];
 function econ(zone) { return ECON[regionOf(zone == null ? game.area : zone)] || ECON[0]; }
 // dinheiro achado no saque, já com a região, o implante Ganância e o VIP
 function lootCash(base, zone) { return Math.max(1, Math.round(base * econ(zone).cash * moneyMult())); }
-// recompensa por abate
+// recompensa por abate: desligada (zumbis e chefes não dão dinheiro; só o saque dá)
 function killBounty(z) {
   const b = Math.round(econ(z.zone).bounty * (z.boss ? 40 : 1) * moneyMult());
   if (b <= 0) return;

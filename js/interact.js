@@ -668,7 +668,7 @@ function opCell(id) { const o = OUTPOSTS[id]; return cellAt(o.cx, o.cy); }
 function travelCost(id) {
   const c = world.cell, o = OUTPOSTS[id];
   const oc = cellAt(o.cx, o.cy);
-  return (oc ? ECON[oc.tier].travel : 30) + (Math.abs(o.cx - c.cx) + Math.abs(o.cy - c.cy)) * 20;
+  return (oc ? ECON[oc.tier].travel : 300) + (Math.abs(o.cx - c.cx) + Math.abs(o.cy - c.cy)) * 200;
 }
 function travelTo(id) {
   const cell = opCell(id);

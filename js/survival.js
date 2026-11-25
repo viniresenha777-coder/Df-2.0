@@ -132,7 +132,7 @@ function wearVest(dmg) {
 }
 // base do conserto: preço em dinheiro; coletes de créditos usam o preço de melhoria (ou 500 por crédito)
 function repairBase(v) { return v.price || v.upCost || (v.credits || 0) * 50; }
-function repairCost() { if (save.vest < 0) return 0; return Math.round((100 - vestDur()) / 100 * repairBase(VESTS[save.vest]) * 0.5 * (1 - profVal("repair")) + 0.4); }
+function repairCost() { if (save.vest < 0) return 0; return Math.round((100 - vestDur()) / 100 * repairBase(VESTS[save.vest]) * 0.3 * (1 - profVal("repair")) + 0.4); }
 function repairVest() {
   if (save.vest < 0) { toast("Você não está usando colete"); return; }
   if (vestDur() >= 100) { toast("O colete já está inteiro"); return; }

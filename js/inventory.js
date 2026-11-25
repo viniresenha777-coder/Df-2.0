@@ -459,7 +459,7 @@ function drawPause() {
   txt("Boneco: novo", W / 2 - 200, 113, 16, "#e5e0c8", "center", true);
   const ago = game.lastSave ? Math.round((performance.now() - game.lastSave) / 1000) : null;
   txt(ago == null ? "ainda não salvou nesta sessão" : ago < 3 ? "salvo agora!" : `último checkpoint: há ${ago < 60 ? `${ago}s` : `${Math.floor(ago / 60)} min`}`, W / 2 - 200, 164, 10, ago != null && ago < 3 ? "#8fe08a" : "rgba(229,224,200,0.55)", "center");
-  txt(`${clockText()} · Área ${world.cell.code} (${REGIONS[world.cell.tier].name}) · $${econ().bounty} por abate · ${game.kills} abates`, W / 2, 140, 14, "#a9a58f", "center");
+  txt(`${clockText()} · Área ${world.cell.code} (${REGIONS[world.cell.tier].name}) · ${game.kills} abates`, W / 2, 140, 14, "#a9a58f", "center");
   let buttonY = 149;
   function pauseButton(label, action, highlight = false) {
     btn(W / 2 - 108, buttonY, 216, 24, label, action, highlight);
@@ -1177,7 +1177,12 @@ function drawStash() {
 //  Loja dos postos
 // =====================================================================
 const SHOP_TABS = ["Munição"];
-const AMMO_PACK_SIZE = 999, AMMO_PACK_PRICE = 14000;
+const AMMO_PACK_SIZE = 999;
+// preço do pacote de 999 balas, por calibre (dinheiro da mochila)
+const AMMO_PACK_PRICES = { "9mm": 6000, ".45": 8000, "cartucho": 9000, "5.56": 12000, "7.62": 14000, ".50": 18000,
+  "combustível": 10000, "virote": 16000, "granada": 60000 };
+function ammoPackPrice(type) { return AMMO_PACK_PRICES[type] || 14000; }
+const AMMO_PACK_PRICE = 14000;   // legado (valor de referência)
 const CAT_ORDER = { pistols: 0, machinegun: 1, shotguns: 2, rifles: 3, melee: 4 };
 const SHOP_WEAPONS = WLIST.filter((d) => d.rar <= 3 && !d.craftOnly && !d.fists && d.price > 0).sort((a, b) => CAT_ORDER[a.cat] - CAT_ORDER[b.cat] || a.price - b.price);
 function shopList() { return Object.keys(AMMO); }
@@ -1189,14 +1194,15 @@ function shopBuy() {
   const type = shopList()[game.shopCur | 0];
   if (!type) return;
   const free = shopFree();
-  if (!free && game.money < AMMO_PACK_PRICE) { toast("Você precisa de $14.000 para comprar munições."); return; }
+  const cost = ammoPackPrice(type);
+  if (!free && game.money < cost) { toast("Você precisa de $" + cost.toLocaleString("pt-BR") + " para comprar essa munição."); return; }
   if (ammoRoom(type) < AMMO_PACK_SIZE) { toast("Espaço insuficiente para 999 munições na mochila."); return; }
   if (free) player.tokenAmmo[type] = (player.tokenAmmo[type] || 0) + AMMO_PACK_SIZE;
-  else game.money -= AMMO_PACK_PRICE;
+  else game.money -= cost;
   player.reserve[type] = (player.reserve[type] || 0) + AMMO_PACK_SIZE;
   sfx.buy();
   checkpoint("compra de pacote de munição");
-  toast("Comprou 999 munições " + type + (free ? " de graça (Token da Loja)" : " por $14.000"));
+  toast("Comprou 999 munições " + type + (free ? " de graça (Token da Loja)" : " por $" + cost.toLocaleString("pt-BR")));
 }
 function vestText(v) {
   const up = vestUpgrade(VESTS.indexOf(v));
@@ -1226,7 +1232,7 @@ function shopKey(k) {
 function drawShop() {
   const free = shopFree();
   menuFrame("Loja de Munições", free ? "TOKEN DA LOJA ATIVO · tudo de graça até " + new Date(save.shopFreeUntil).toLocaleString("pt-BR")
-    : "Dinheiro: $" + game.money.toLocaleString("pt-BR") + " · Cada pacote: 999 munições por $14.000");
+    : "Dinheiro: $" + game.money.toLocaleString("pt-BR") + " · Cada pacote: 999 munições");
   const list = shopList();
   const selected = Math.min(list.length - 1, Math.max(0, game.shopCur | 0));
   game.shopCur = selected;
@@ -1237,7 +1243,7 @@ function drawShop() {
     drawEntryIcon({ type: "ammo", ammo: type }, 76, y + 20, 0.5);
     txt(type + " · 999 unidades", 124, y + 18, 15, "#f2eedc", "left", true);
     txt("Você tem: " + (player.reserve[type] || 0), 124, y + 33, 11, "#a9a58f");
-    txt(free ? "GRÁTIS" : "$14.000", 544, y + 25, 14, free ? "#ffd96a" : game.money >= AMMO_PACK_PRICE ? "#6fae4f" : "#e05a4a", "right", true);
+    txt(free ? "GRÁTIS" : "$" + ammoPackPrice(type).toLocaleString("pt-BR"), 544, y + 25, 14, free ? "#ffd96a" : game.money >= ammoPackPrice(type) ? "#6fae4f" : "#e05a4a", "right", true);
     rowClick(40, y, 520, 38, selected === i, () => { game.shopCur = i; }, shopBuy);
   });
   const type = list[selected], px = 600;
@@ -1246,7 +1252,7 @@ function drawShop() {
     drawEntryIcon({ type: "ammo", ammo: type }, 760, 188, 1.6);
     txt("Munição " + type, px, 286, 20, "#f2eedc", "left", true);
     txt("Pacote com 999 unidades", px, 316, 15, "#ffd96a");
-    txt(free ? "Preço: GRÁTIS (Token da Loja)" : "Preço: $14.000", px, 344, 15, free ? "#ffd96a" : "#6fae4f", "left", true);
+    txt(free ? "Preço: GRÁTIS (Token da Loja)" : "Preço: $" + ammoPackPrice(type).toLocaleString("pt-BR"), px, 344, 15, free ? "#ffd96a" : "#6fae4f", "left", true);
     txt("Espaço necessário na mochila", px, 369, 12, "#a9a58f");
     btn(px + 60, 422, 200, 42, "Comprar (Enter)", shopBuy, true);
   }

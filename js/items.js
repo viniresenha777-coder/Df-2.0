@@ -31,9 +31,10 @@ const CAT_LABEL = { pistols: "Pistola", machinegun: "Metralhadora", shotguns: "E
 
 // ---------- Arsenal ----------
 // look = formato do desenho · req = [força, proficiência] · slow = % de velocidade perdida com a arma na mão
+// shop = preço em dinheiro na Loja (armas iniciais: matam o errante da 1ª zona em 4–5 tiros, sem bônus)
 const WLIST = [
   // pistolas
-  { id: "pistola",  name: "Pistola 9mm",   cat: "pistols", look: "pistol",   dmg: 6, delay: 500, mag: 12, reload: 1000, ammo: "9mm",  price: 0,    req: [0, 5],  len: 14, color: "#3b3a30", sound: [0.1, 0.15] },
+  { id: "pistola",  name: "Pistola 9mm",   cat: "pistols", look: "pistol",   dmg: 30, delay: 500, mag: 12, reload: 1000, ammo: "9mm",  price: 1500, shop: 1500, req: [0, 5],  len: 14, color: "#3b3a30", sound: [0.1, 0.15] },
   { id: "colt",     name: "Colt .45",      cat: "pistols", look: "pistol",   dmg: 21, delay: 666.67, mag: 8,  reload: 1100, ammo: ".45",  price: 300,  req: [10, 20], len: 15, color: "#6a6a66" },
   { id: "glock",    name: "Glock 18",      cat: "pistols", look: "pistol",   dmg: 3, delay: 116.69, mag: 20, reload: 1100, ammo: "9mm",  price: 350,  req: [10, 25], len: 15, color: "#2a2a2a", short: "Glock 18" },
   { id: "revolver", name: "Revólver Magnum", short: "Magnum", cat: "pistols", look: "revolver", dmg: 20, delay: 666.67, mag: 6, reload: 1900, ammo: ".50", price: 650, req: [15, 35], len: 17, color: "#8a8f96" },
@@ -53,7 +54,7 @@ const WLIST = [
   { id: "minigun",  name: "Minigun",       cat: "machinegun", look: "minigun", dmg: 15, pellets: 2, delay: 81.67, mag: 250, reload: 6000, ammo: "5.56", price: 9000, req: [80, 120], len: 34, color: "#4a4d50", slow: 14 },
   // escopetas
   { id: "canoduplo", name: "Cano Duplo",   cat: "shotguns", look: "shotgun", dmg: 4.5, delay: 666.67, mag: 2,  reload: 1500, ammo: "cartucho", price: 450,  req: [15, 30], len: 26, color: "#6b4a2b", wood: true, pellets: 8, spread: 0.32, life: 360 },
-  { id: "escopeta", name: "Escopeta",      cat: "shotguns", look: "shotgun", dmg: 3.5, delay: 666.67, mag: 6,  reload: 2200, ammo: "cartucho", price: 700,  req: [20, 40], len: 28, color: "#6b4a2b", wood: true, pellets: 8, spread: 0.28, life: 380 },
+  { id: "escopeta", name: "Escopeta",      cat: "shotguns", look: "shotgun", dmg: 3.85, delay: 666.67, mag: 6,  reload: 2200, ammo: "cartucho", price: 3000, shop: 3000, req: [10, 0], len: 28, color: "#6b4a2b", wood: true, pellets: 8, spread: 0.28, life: 380 },
   { id: "spas",     name: "SPAS-12",       cat: "shotguns", look: "shotgun", dmg: 10, delay: 666.67, mag: 8,  reload: 2600, ammo: "cartucho", price: 1900, req: [30, 70], len: 28, color: "#2a2a2a", pellets: 8, spread: 0.26, life: 400 },
   { id: "aa12",     name: "AA-12",         cat: "shotguns", look: "shotgun", dmg: 10.5, delay: 333.33, mag: 20, reload: 3000, ammo: "cartucho", price: 4500, req: [50, 110], len: 28, color: "#3a3d40", pellets: 8, spread: 0.3, life: 380, drum: true },
   // rifles
@@ -162,14 +163,14 @@ function cashProtection(pack = player.pack) {
 }
 function safeDescription(id) { return `Protege até $${MATS[id].cashProtection.toLocaleString("pt-BR")} ao morrer.`; }
 const RECIPES = [
-  { id: "besta",       mats: { sucata: 4, pecas: 4 },                     money: 1200, level: 8 },
-  { id: "serra",       mats: { sucata: 6, pecas: 3, eletronicos: 3 },     money: 1500, level: 10 },
-  { id: "lancachamas", mats: { sucata: 8, pecas: 5, eletronicos: 3 },     money: 2500, level: 15 },
-  { id: "lamina",      mats: { sucata: 10, pecas: 4, nucleo: 1 },         money: 4000, level: 25 },
-  { id: "trovao",      mats: { pecas: 10, eletronicos: 6, nucleo: 2 },    money: 8000, level: 40 },
-  { id: "minigun_inf", mats: { pecas: 14, eletronicos: 10, nucleo: 4 },   money: 15000, level: 60 },
+  { id: "besta",       mats: { sucata: 4, pecas: 4 },                     money: 15000, level: 8 },
+  { id: "serra",       mats: { sucata: 6, pecas: 3, eletronicos: 3 },     money: 20000, level: 10 },
+  { id: "lancachamas", mats: { sucata: 8, pecas: 5, eletronicos: 3 },     money: 35000, level: 15 },
+  { id: "lamina",      mats: { sucata: 10, pecas: 4, nucleo: 1 },         money: 60000, level: 25 },
+  { id: "trovao",      mats: { pecas: 10, eletronicos: 6, nucleo: 2 },    money: 120000, level: 40 },
+  { id: "minigun_inf", mats: { pecas: 14, eletronicos: 10, nucleo: 4 },   money: 250000, level: 60 },
   // colete nº 10: craft difícil (precisa ter o nº 9, que é consumido)
-  { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 50000, level: 100, needVest: 8 },
+  { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 500000, level: 100, needVest: 8 },
   // evento de Natal: Gorros caem nas Caixas de Natal
   { implant: "implante_natal", mats: { gorro_natal: 10 }, money: 2000000, level: 1 }
 ];
@@ -195,7 +196,7 @@ function rollUpgrades(stats, max, random = Math.random) {
 function upgradeCost(inst) {
   const d = WDEF[inst.id];
   if (d.upCost) return { money: d.upCost, mats: { sucata: 2 } };
-  return { money: Math.round(240 + (d.special || d.legendary ? 3000 : d.price) * 0.24), mats: { sucata: 2 } };
+  return { money: Math.round(2400 + (d.special || d.legendary ? 3000 : d.price) * 2.4), mats: { sucata: 2 } };
 }
 const VEST_UP_MAX = 24;
 const VEST_UP_STATS = [{ id: "armor", name: "Armadura" }, { id: "speed", name: "Velocidade" }];
