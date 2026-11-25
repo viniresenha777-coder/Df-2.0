@@ -443,13 +443,16 @@ function drawOnlinePlayer(p) {
 // rastros das balas dos outros jogadores (só visual)
 const NET_SHOTS = [];
 function netShot(x, y, a, w, n) {
-  const now = performance.now();
+  // usa as mesmas balas do jogo (chamas, virotes, granadas, rastros), marcadas como "ghost": sem dano
   for (let i = 0; i < n; i++) {
-    const sp = (w.spread || 0.05) * (n > 1 ? 1 : 0.4), aa = a + (Math.random() - 0.5) * 2 * sp;
-    NET_SHOTS.push({ x, y, a: aa, t0: now, life: Math.min(600, (w.life || 700)), v: (w.speed || 12) * 60 / 1000, fire: !!w.fire, big: w.cat === "rifles" || w.cat === "shotguns" });
+    const aa = a + (Math.random() - 0.5) * 2 * (w.spread || 0.05) * (n > 1 ? 1 : 0.5);
+    const sp = (w.speed || 12) * (w.fire ? rand(0.8, 1.2) : 1);
+    bullets.push({ x, y, px: x, py: y, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, life: w.life || 900, max: w.life || 900, ghost: true,
+      dmg: 0, pierce: !!w.pierce, hit: [], big: w.cat === "rifles" || w.rar >= 3, fire: !!w.fire, explode: w.explode || 0, bolt: w.look === "crossbow",
+      grenade: !!w.grenade, fx: w, knock: false, color: w.rar >= 3 ? RARITY[w.rar].color : null });
   }
-  if (NET_SHOTS.length > 120) NET_SHOTS.splice(0, NET_SHOTS.length - 120);
-  if (player && Math.hypot(x - player.x, y - player.y) < 650) sfx.shot(w);
+  if (!w.fire) casing(x - Math.cos(a) * 18, y - Math.sin(a) * 18, a);
+  if (player && Math.hypot(x - player.x, y - player.y) < 650 && (!w.fire || Math.random() < 0.3)) sfx.shot(w);
 }
 function drawNetShots() {
   const now = performance.now();
