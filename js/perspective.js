@@ -304,6 +304,7 @@ function tintedImg(im, key, hex) {
 }
 // armas com modelo 3D na mão (camada img/gear/<m>_<pose>.png, já com o corpo escondendo o que fica atrás);
 // f = filtro de cor para as versões especiais. As outras armas continuam com o desenho 2D.
+const PISTOL_FWD = 4;            // quanto as pistolas avançam na mão (px na tela)
 const WEAPON_3D = {
   ak47: { m: "w_ak" }, ak_ouro: { m: "w_fm_ak_ouro", grip: 0.36, heldView: true },
   m4: { m: "w_m4" }, baioneta: { m: "w_m4" }, fal: { m: "w_fal" }, scar: { m: "w_scar" },
@@ -416,8 +417,9 @@ function spriteTick(dt) {
   p.dispAng = p.angle;
   p.sRow = sheetRow(Math.cos(p.angle), Math.sin(p.angle));
   if (p.moving) p.stepDist = (p.stepDist || 0) + (p.lastSp || 0) * dt / 16.67;
-  if (curW().dual) dualTwistTick();
-  else { p.legRow = null; TW.suf = pickTwistSuffix(weaponPose(curW())); }
+  const pose = weaponPose(curW());
+  if (poseHasTwist(pose)) dualTwistTick(pose);        // tronco gira até 90° com as pernas paradas (todas as poses renderizadas)
+  else { p.legRow = null; TW.suf = pickTwistSuffix(pose); }
 }
 // ---------- Armas duplas: tronco gira até 90° com as pernas paradas ----------
 // Variantes da pose punhos com o tronco torcido de 15 em 15° (geradas no Blender com --twist, quadril e pernas
@@ -439,8 +441,14 @@ function torsoLayerMissing(key) {
   }
   return false;
 }
-function dualTwistTick() {
-  const p = player, pose = "punhos", aim = p.angle;
+// pose com alguma variante de tronco torcido já gerada (os pontos vêm no SPRITE_POSES)
+const TW_HAS = {};
+function poseHasTwist(pose) {
+  if (TW_HAS[pose] == null) TW_HAS[pose] = DUAL_TW.some((d) => d && SPRITE_POSES[pose + dualSuf(d)]);
+  return TW_HAS[pose];
+}
+function dualTwistTick(pose = "punhos") {
+  const p = player, aim = p.angle;
   if (p.legRow == null) p.legRow = p.sRow;
   let legAng = -Math.PI / 2 + p.legRow * Math.PI / 4, d = angDelta(legAng, aim);
   if (Math.abs(d) > Math.PI / 2 + 0.13) {           // passou de 90°: as pernas viram e o tronco recomeça
@@ -454,6 +462,7 @@ function dualTwistTick() {
   for (const deg of DUAL_TW) {
     const suf = dualSuf(deg);
     if (suf) {
+      if (!SPRITE_POSES[pose + suf]) continue;         // ângulo ainda não renderizado
       ensureTwistSheet(pose + suf); if (!dualReady(pose + suf)) continue;
       if (torsoLayerMissing(pose + suf)) continue;    // roupa do tronco sem esse ângulo: não torce
     }
@@ -549,7 +558,8 @@ function muzzlePoint() {
   }
   const grip = gunGripAndLength(w);
   const a = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle;
-  return { x: grip.x + Math.cos(a) * grip.length, y: grip.y + Math.sin(a) * grip.length };
+  const L = grip.length + (weaponPose(w) === "pistola" ? PISTOL_FWD : 0);   // o cano acompanha a pistola mais à frente
+  return { x: grip.x + Math.cos(a) * L, y: grip.y + Math.sin(a) * L };
 }
 function chestPoint() { return useSpriteChar() ? posePt("c") : { x: player.x, y: player.y }; }
 
@@ -583,6 +593,7 @@ function drawHeldWeapon(w, pose) {
   } else {
     // Rotação contínua da arma 2D enquanto o corpo usa oito poses.
     ctx.rotate(Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle);
+    if (w.look === "pistol" || w.look === "revolver") ctx.translate(PISTOL_FWD, 0);   // pistola um pouco à frente na mão
     const model = (w.len || 20) + 20, start = w.look === "pistol" || w.look === "revolver" ? 10 : 0;
     ctx.scale(Math.max(0.2, lenPx / (model - start)), thick); ctx.translate(-start, 0);
     if (w.tint) ctx.filter = w.tint;
@@ -645,7 +656,10 @@ function drawPlayerSprite() {
     ctx.restore();
   }
   const kick = p.flashT > 0 ? 2 : 0, o = spriteOrigin(), info = SPRITE_POSES[pose][row][col];
-  const w3 = weapon3dImg(w, pose);
+  // tronco torcido: a arma 3D só existe na pose normal — usa a dela, levada até a mão do tronco girado
+  const basePose = TW.suf ? pose.slice(0, -TW.suf.length) : pose;
+  let w3 = weapon3dImg(w, pose), w3Base = false;
+  if (!w3 && TW.suf) { w3 = weapon3dImg(w, basePose); w3Base = !!w3; }
   if (info.bh && !w3) drawHeldWeapon(w, pose);       // arma atrás do corpo (de costas)
   drawEyeTrails();                                    // rastro dos olhos fica atrás do corpo
   const ox = o.x - Math.cos(p.angle) * kick, oy = o.y - Math.sin(p.angle) * kick;
@@ -657,15 +671,19 @@ function drawPlayerSprite() {
     if (!w.melee) {
       // Camada da arma 3D: vira em torno da empunhadura sem rodar o
       // personagem inteiro. A mira e o disparo usam este mesmo ângulo.
-      const A = posePt("a", pose), B = posePt("b", pose);
-      const baseAngle = Math.atan2(B.y - A.y, B.x - A.x);
+      const A = posePt("a", pose), A0 = w3Base ? posePt("a", basePose) : A, B0 = posePt("b", w3Base ? basePose : pose);
+      const baseAngle = Math.atan2(B0.y - A0.y, B0.x - A0.x);
       const aim = Number.isFinite(p.gunAngle) ? p.gunAngle : p.angle;
       ctx.translate(A.x, A.y);
       ctx.rotate(angDelta(baseAngle, aim));
-      ctx.translate(-A.x, -A.y);
+      if (basePose === "pistola") ctx.translate(Math.cos(baseAngle) * PISTOL_FWD, Math.sin(baseAngle) * PISTOL_FWD);   // pistola um pouco à frente na mão
+      ctx.translate(-A0.x, -A0.y);
     } else if (w.look !== "chainsaw" && game.slashT > 0) {
-      const A = posePt("a", pose), sw = (-1 + (1 - game.slashT / 200) * 2) * (game.slashA || 0.9) * 0.9;
-      ctx.translate(A.x, A.y); ctx.rotate(sw); ctx.translate(-A.x, -A.y);
+      const A = posePt("a", pose), A0 = w3Base ? posePt("a", basePose) : A, sw = (-1 + (1 - game.slashT / 200) * 2) * (game.slashA || 0.9) * 0.9;
+      ctx.translate(A.x, A.y); ctx.rotate(sw); ctx.translate(-A0.x, -A0.y);
+    } else if (w3Base) {                                    // corpo a corpo parado: só leva a arma até a mão
+      const A = posePt("a", pose), A0 = posePt("a", basePose);
+      ctx.translate(A.x - A0.x, A.y - A0.y);
     }
     if (d.f) ctx.filter = d.f;
     ctx.drawImage(w3, col * c, row * c, c, c, ox, oy, S, S);
@@ -677,7 +695,7 @@ function drawPlayerSprite() {
   const gearList = gearOrder(playerGear(), row !== 3 && row !== 4 && row !== 5);
   for (const id of gearList) {
     // tronco torcido sem a camada dessa peça: usa a da pose normal (calça e botas batem, as pernas não giram)
-    const g = gearImg(id, pose) || (TW.suf && w.dual ? gearImg(id, pose.slice(0, -TW.suf.length)) : null);
+    const g = gearImg(id, pose) || (TW.suf ? gearImg(id, pose.slice(0, -TW.suf.length)) : null);
     if (g) ctx.drawImage(g, col * c, row * c, c, c, ox, oy, S, S);
   }
   if (w3 && !info.bh) drawW3();

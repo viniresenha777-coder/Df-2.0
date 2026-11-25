@@ -62,7 +62,8 @@ function inputKey(k) {
     const raw = game.rawKey || "";
     if (raw.length === 1 && /[\p{L}\p{N} _.-]/u.test(raw) && inp.text.length < 40)
       inp.text += raw;
-  } else if (/^[0-9]$/.test(k) && inp.text.length < 9) inp.text += k;
+  } else if (inp.mode === "adm" && k === "-" && !inp.text) inp.text = "-";
+  else if (/^[0-9]$/.test(k) && inp.text.length < 9) inp.text += k;
 }
 
 // ---------- Banco e VIP (loja, baú e mochila ficam em inventory.js) ----------
@@ -939,7 +940,7 @@ function travelKey(k) {
 
 // ---------- Painel de administrador (F2) ----------
 const adm = { god: false, infAmmo: false, noReq: false, infStamina: false, freeze: false, dmg: 1, direct: false, shopAnywhere: false };
-const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Armas", "Implantes", "Presentes", "Banidos"];
+const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Armas", "Implantes", "Presentes", "Banidos", "Bugs"];
 function canUseAdmin() {
   return typeof fmCloud !== "undefined" && fmCloud.isActive() && fmCloud.isAdmin();
 }
@@ -973,6 +974,11 @@ async function admSendGift() {
   } catch (err) {
     toast(err.message || "Não foi possível enviar.");
   } finally { g.busy = false; }
+}
+async function admLoadBugs() {
+  game.admBugs = { list: [], busy: true };
+  try { game.admBugs = { list: await fmBugs.adminList(), busy: false }; }
+  catch (e) { game.admBugs = { list: [], busy: false, err: e.message || String(e) }; }
 }
 function admSetLevel(n) {
   n = Math.max(1, Math.min(MAX_LEVEL, n));
@@ -1091,6 +1097,24 @@ function admRows() {
         act: (d, how) => { if (how === "enter") admUnban(b); } });
     });
     rows.push({ label: "Para banir: mapa (N) → clique no jogador na lista de online.", val: () => "", act: () => {} });
+  } else if (tab === 7) {
+    // relatórios de bug dos jogadores: Enter avalia (créditos > 0 aceita e paga · 0 recusa · -1 duplicado); A/D mostra o texto
+    if (!game.admBugs) admLoadBugs();
+    const st = game.admBugs || { list: [], busy: true };
+    B(st.busy ? "Carregando relatórios..." : `Atualizar (${st.list.length} em aberto)`, () => { game.admBugs = null; admLoadBugs(); });
+    if (st.err) rows.push({ label: "Erro: " + st.err, val: () => "", act: () => {} });
+    else if (!st.busy && !st.list.length) rows.push({ label: "Nenhum relatório em aberto.", val: () => "", act: () => {} });
+    st.list.forEach((b) => {
+      const c = b.contexto || {}, onde = [c.setor, c.dentro ? "dentro de casa" : null, c.arma].filter(Boolean).join(" · ");
+      rows.push({ label: `${b.nome || "?"}: ${b.texto.replace(/\s+/g, " ").slice(0, 60)}${b.texto.length > 60 ? "…" : ""}`, val: () => "Enter avalia · A/D lê",
+        act: (d, how) => {
+          if (how !== "enter") { toast(`${b.nome}: ${b.texto.slice(0, 260)}${onde ? " [" + onde + "]" : ""}${(c.erros || []).length ? " · erros: " + c.erros.length : ""}`); return; }
+          admAsk("Créditos (ex.: 50/200/500 aceita · 0 recusa · -1 duplicado)", async (v) => {
+            try { const r = await fmBugs.adminRate(b.id, Math.max(-1, Math.min(100000, Math.round(v)))); toast("Relatório " + r); game.admBugs = null; admLoadBugs(); }
+            catch (e) { toast(e.message || "Falha ao avaliar"); }
+          });
+        } });
+    });
   }
   return rows;
 }

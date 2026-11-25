@@ -201,13 +201,13 @@ function flashRayDist(ox, oy, a, max) {
   return best;
 }
 function flashTearSize() {
-  const D0 = game.inside ? 112 : 132, R0 = game.inside ? 62 : 74;
+  const D0 = game.inside ? 140 : 170, R0 = game.inside ? 78 : 95;
   if (game.time !== FLASH_TEAR.t && player) {
     FLASH_TEAR.t = game.time;
     const c = typeof chestPoint === "function" ? chestPoint() : player;
     const hit = flashRayDist(c.x, c.y, player.angle, D0 + R0); FLASH_TEAR.hit = hit; FLASH_TEAR.max = D0 + R0;
     // o círculo encosta na parede: D + R*0.55 = distância até a parede (mínimo 28% do tamanho)
-    const want = Math.max(0.28, Math.min(1, hit / (D0 + R0 * 0.55)));
+    const want = Math.max(game.inside ? 0.28 : 0.5, Math.min(1, hit / D0));   // só encolhe quando a parede está antes do ponto de mira
     FLASH_TEAR.k += (want - FLASH_TEAR.k) * (want < FLASH_TEAR.k ? 0.5 : 0.2);
   }
   return [D0 * FLASH_TEAR.k, R0 * FLASH_TEAR.k];
@@ -217,3 +217,7 @@ function flashTearPath(c, px, py, a) {
   c.beginPath(); c.moveTo(px, py); c.arc(cx, cy, R, a - Math.PI / 2 - h, a + Math.PI / 2 + h); c.closePath();
   return [cx, cy, D, R];
 }
+
+// Cone reto da lanterna: comprimento e meia abertura (rad)
+const FLASH_HALF = 0.42;
+function flashBeamLen() { return game.inside ? 270 : 340; }

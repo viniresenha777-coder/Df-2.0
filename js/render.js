@@ -1684,7 +1684,29 @@ function holeTo(c, x, y, r, a) {
   c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, 6.283); c.fill();
 }
 function hole(x, y, r, a) { holeTo(lctx, x, y, r, a); }
-function drawLighting() {
+function drawLighting() { drawLightingDark(); drawFlashBeamAdd(); }
+// Modo Baixo (sem WebGL): o facho da lanterna também clareia a cena, de dia ou dentro de casa
+function drawFlashBeamAdd() {
+  if (game.over || !flashlightActive()) return;
+  const chest = typeof chestPoint === "function" ? chestPoint() : player, px = chest.x - cam.x, py = chest.y - cam.y;
+  if (!FLASH_GLOW.c) { FLASH_GLOW.c = document.createElement("canvas"); FLASH_GLOW.x = FLASH_GLOW.c.getContext("2d"); }
+  const gc = FLASH_GLOW.c, gx = FLASH_GLOW.x;
+  if (gc.width !== W || gc.height !== H) { gc.width = W; gc.height = H; }
+  gx.setTransform(1, 0, 0, 1, 0, 0); gx.globalCompositeOperation = "source-over"; gx.clearRect(0, 0, W, H);
+  // mesmo visual do modo WebGL: cone reto saindo do peito, miolo forte, dissipando ao longo do comprimento
+  const Lb = flashBeamLen(), hw = Math.tan(FLASH_HALF);
+  gx.save(); gx.translate(px, py); gx.rotate(player.angle); gx.filter = "blur(8px)";
+  const cone = (w, a0) => {
+    const g = gx.createLinearGradient(0, 0, Lb, 0);
+    g.addColorStop(0, `rgba(255,230,180,${a0 * 0.6})`); g.addColorStop(0.25, `rgba(255,228,175,${a0})`); g.addColorStop(1, "rgba(255,220,160,0)");
+    gx.fillStyle = g; gx.beginPath(); gx.moveTo(0, -2); gx.lineTo(Lb, -Lb * w); gx.lineTo(Lb, Lb * w); gx.lineTo(0, 2); gx.closePath(); gx.fill();
+  };
+  cone(hw * 0.85, 0.5); cone(hw * 0.45, 0.55);                                     // borda + miolo
+  gx.restore(); gx.filter = "none";
+  gx.globalCompositeOperation = "destination-out"; gx.drawImage(flashlightBlocks(), 0, 0, W, H);
+  ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.drawImage(gc, 0, 0, W, H); ctx.restore();
+}
+function drawLightingDark() {
   // Noite ainda é perigosa, porém 25% mais legível do que a versão anterior.
   const baseDark = game.inside ? (game.inside.safe ? 0.12 : 0.26 + darkness() * 0.3) : darkness();
   const dark = Math.min(0.78, baseDark * 0.75);
@@ -1703,11 +1725,13 @@ function drawLighting() {
     beam.clearRect(0, 0, W, H);
     beam.globalCompositeOperation = "source-over";
     holeTo(beam, px, py, 90, 0.6);
-    if (dark > 0.3) {                                   // feixe em gota: do peito até um círculo à frente
-      const [cx, cy, D] = flashTearPath(beam, px, py, player.angle);
-      const gb = beam.createRadialGradient(px, py, 8, px, py, D + 80);
-      gb.addColorStop(0, "rgba(0,0,0,0.75)"); gb.addColorStop(0.5, "rgba(0,0,0,0.92)"); gb.addColorStop(1, "rgba(0,0,0,0.95)");
-      beam.fillStyle = gb; beam.fill();
+    if (dark > 0.3) {                                   // cone reto (sem a gota): abre a escuridão onde o facho passa
+      const Lb = flashBeamLen(), hw = Math.tan(FLASH_HALF);
+      beam.save(); beam.translate(px, py); beam.rotate(player.angle); beam.filter = "blur(8px)";
+      const gb = beam.createLinearGradient(0, 0, Lb, 0);
+      gb.addColorStop(0, "rgba(0,0,0,0.9)"); gb.addColorStop(0.35, "rgba(0,0,0,0.85)"); gb.addColorStop(1, "rgba(0,0,0,0)");
+      beam.fillStyle = gb; beam.beginPath(); beam.moveTo(0, -3); beam.lineTo(Lb, -Lb * hw); beam.lineTo(Lb, Lb * hw); beam.lineTo(0, 3); beam.closePath(); beam.fill();
+      beam.restore(); beam.filter = "none";
     }
     beam.globalCompositeOperation = "destination-out";
     beam.drawImage(flashlightBlocks(), 0, 0, W, H);

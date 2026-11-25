@@ -275,6 +275,7 @@ function attack() {
       dmg: st.dmg * dmgMult(w), pierce: !!w.pierce, hit: [], big: w.cat === "rifles" || w.rar >= 3, fire: !!w.fire, explode: w.explode || 0, bolt: w.look === "crossbow",
       grenade: !!w.grenade, fx: w, knock: !!w.knock, color: w.rar >= 3 ? RARITY[w.rar].color : null });
   }
+  if (typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(mx, my, aim, w.id, n);   // os outros veem o tiro
   if (!w.fire) {
     player.flashT = 60;
     casing(player.x + Math.cos(player.angle) * 10, player.y + Math.sin(player.angle) * 10, player.angle);

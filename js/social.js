@@ -92,6 +92,9 @@ const fmSocial = (() => {
       angle: Number.isFinite(player.angle) ? player.angle : 0,
       skin: save.skin | 0, clothing: clothingClean(save.clothing), location: location(), inside: !!(game.inside || game.hub),
       // aba minimizada ou em segundo plano: o navegador quase para o jogo, então não pode coordenar os zumbis
+      // aparência de combate: arma na mão, tronco girado, pernas, mira, camadas (capa/máscara/colete) e lanterna
+      w: curW().id, ts: TW.suf || "", sr: player.sRow | 0, ga: Math.round((Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle || 0) * 100) / 100,
+      g: typeof playerGear === "function" ? playerGear().slice(0, 8) : [], fl: !!(typeof flashlightActive === "function" && flashlightActive()),
       moving: !!player.moving, active: !(document.hidden || game.paused || game.menu || game.shop || game.over || game.found || game.hub), since: sectorSince, sent: (lastStateSent = Math.max(Date.now(), lastStateSent + 1))
     };
   }
@@ -144,6 +147,7 @@ const fmSocial = (() => {
     const next = client.channel(topic, { config: { broadcast: { ack: false, self: false } } });
     moveChannel = next;
     next.on("broadcast", { event: "move" }, event => { if (moveChannel === next) receiveMovement(event); });
+    next.on("broadcast", { event: "shot" }, event => { if (moveChannel === next) receiveShot(event); });
     if (typeof fmWorld !== "undefined") fmWorld.onChannel(next);
     next.subscribe((status) => {
       if (moveChannel !== next) return;
@@ -158,7 +162,7 @@ const fmSocial = (() => {
     const topic = topicFor(state);
     if (topic !== moveTopic) return;
     const now = Date.now();
-    const key = [state.x, state.y, state.angle.toFixed(2), state.moving, state.location, state.inside, state.skin, clothingKey(state.clothing)].join(":");
+    const key = [state.x, state.y, state.angle.toFixed(2), state.moving, state.location, state.inside, state.skin, clothingKey(state.clothing), state.w, state.ts, state.sr, state.g.join(","), state.fl].join(":");
     // Parado: nenhuma transmissão contínua; só um pulso periódico para novos vizinhos.
     if (!force && key === lastMoveKey && now - lastMoveAt < 3000) return;
     const active = moveChannel;
@@ -199,7 +203,7 @@ const fmSocial = (() => {
       at: now, angle: p.angle,
       location: p.location, moving: !!p.moving, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0,
       skin: clamp(p.skin | 0, 0, SKINS.length - 1), clothing: clothingClean(p.clothing),
-      sent: p.sent
+      ...netLook(p), sent: p.sent
     });
   }
 
@@ -225,13 +229,36 @@ const fmSocial = (() => {
       next.set(p.uid, {
         uid: p.uid, name: textName(p.name), cx: p.cx, cy: p.cy,
         x, y, fromX: snap ? x : pos.x, fromY: snap ? y : pos.y,
-        at: now, angle: p.angle, skin: clamp(p.skin | 0, 0, SKINS.length - 1), clothing: clothingClean(p.clothing),
+        at: now, angle: p.angle, skin: clamp(p.skin | 0, 0, SKINS.length - 1), clothing: clothingClean(p.clothing), ...netLook(p),
         location: p.location, moving: !!p.moving, inside: !!p.inside, active: p.active !== false, since: Number(p.since) || 0, sent: Number(p.sent) || 0
       });
     }
     peers = next;
   }
 
+  // só aceita valores conhecidos (nada que venha da rede vira código ou caminho arbitrário)
+  function netLook(p) {
+    const w = typeof p.w === "string" && WDEF[p.w] ? p.w : "punhos";
+    const ts = typeof p.ts === "string" && /^(_t[mp](15|30|45|60|75|90))?$/.test(p.ts) ? p.ts : "";
+    const g = Array.isArray(p.g) ? p.g.filter((x) => typeof x === "string" && /^[a-z0-9_]{2,40}$/.test(x)).slice(0, 8) : [];
+    return { w, ts, sr: Number.isInteger(p.sr) && p.sr >= 0 && p.sr < 8 ? p.sr : null, ga: Number.isFinite(p.ga) ? p.ga : null, g, fl: !!p.fl };
+  }
+  // ----- tiros dos outros jogadores: só o visual e o som (o dano no zumbi já vem pelo canal dos zumbis) -----
+  let lastShotSent = 0;
+  function sendShot(x, y, a, wid, n) {
+    if (!moveReady || !moveChannel || !userId || !connected) return;
+    const now = Date.now();
+    if (now - lastShotSent < 80) return;                        // no máximo ~12 por segundo
+    lastShotSent = now;
+    moveChannel.send({ type: "broadcast", event: "shot", payload: { uid: userId, x: Math.round(x), y: Math.round(y), a: Math.round(a * 1000) / 1000, w: wid, n: Math.min(8, n | 0) } }).catch(() => {});
+  }
+  function receiveShot(event) {
+    const p = event && event.payload, prev = p && peers.get(p.uid);
+    if (!prev || !sameLocation(prev) || !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.a) || !WDEF[p.w]) return;
+    if (Math.hypot(p.x - prev.x, p.y - prev.y) > 260) return;    // tiro longe de onde o jogador está: ignora
+    netShot(p.x, p.y, p.a, WDEF[p.w], Math.max(1, Math.min(8, p.n | 0)));
+    prev.flashAt = performance.now();
+  }
   function interpolate(p, now) {
     const t = Math.min(1, Math.max(0, (now - p.at) / BLEND_TIME));
     return { x: p.fromX + (p.x - p.fromX) * t, y: p.fromY + (p.y - p.fromY) * t };
@@ -313,7 +340,7 @@ const fmSocial = (() => {
       if (oldMovement && client) await client.removeChannel(oldMovement);
     } catch (_) { /* perder a conexão nunca impede o jogador de sair */ }
   }
-  return { start, stop, claimName, online, inSector, friendList, isFriend,
+  return { start, stop, claimName, online, inSector, friendList, isFriend, sendShot,
     refreshFriends, addFriend, acceptFriend, location, sameLocation, refreshLocation, mySectorSince: () => sectorSince };
 })();
 
@@ -327,33 +354,114 @@ function remotePlayerSheet(skin, pose, clothing) {
   const key = skin + ":" + pose + ":" + clothingKey(clothing);
   if (REMOTE_PLAYER_SHEETS.has(key)) return REMOTE_PLAYER_SHEETS.get(key);
   const base = PSHEET.sheets[pose], mask = PSHEET.masks[pose];
+  if (!base.complete || !base.naturalWidth || (mask && !mask.complete)) return null;   // ainda carregando: não guarda em cache
   const img = mask && mask.naturalWidth ? tintWithMask(base, mask, SKINS[skin] || SKINS[0], clothing, false) : base;
   REMOTE_PLAYER_SHEETS.set(key, img);
   return img;
 }
 function drawOnlinePlayer(p) {
-  const S = PSHEET.size, cell = PSHEET.cell, pose = "punhos";
+  const S = PSHEET.size, cell = PSHEET.cell, w = WDEF[p.w] || WDEF.punhos;
+  const base = weaponPose(w);
   const skin = clamp(p.skin | 0, 0, SKINS.length - 1);
-  const sprite = remotePlayerSheet(skin, pose, p.clothing);
-  if (sprite) {
-    const row = sheetRow(Math.cos(p.angle || 0), Math.sin(p.angle || 0));
-    const col = p.moving ? (Math.floor(performance.now() / 110 + p.x * 0.05) % 8) : 1;
-    const x = p.x - S / 2, y = p.y + 6 - S * PSHEET.footY;
-    ctx.drawImage(sprite, col * cell, row * cell, cell, cell, x, y, S, S);
-    // A calça e os calçados equipados vêm do estado do jogador remoto.
-    const pants = clothingLayer("pants", p.clothing);
-    const boots = clothingLayer("boots", p.clothing);
-    const jacket = clothingLayer("jacket", p.clothing);
-    const gear = [boots, pants, jacket, "pack", ...(SKIN_GEAR[skin] || [])].filter(Boolean);
-    for (const id of gearOrder(gear, row !== 3 && row !== 4 && row !== 5)) {
-      const layer = gearImg(id, pose);
-      if (layer) ctx.drawImage(layer, col * cell, row * cell, cell, cell, x, y, S, S);
+  // tronco girado: usa a variante se ela já carregou; senão, a pose normal virada para a mira
+  let pose = base, row = sheetRow(Math.cos(p.angle || 0), Math.sin(p.angle || 0));
+  if (p.ts && SPRITE_POSES[base + p.ts]) {
+    ensureTwistSheet(base + p.ts);
+    const im = PSHEET.sheets[base + p.ts], mk = PSHEET.masks[base + p.ts];
+    if (im && im.complete && im.naturalWidth && mk && mk.complete && mk.naturalWidth) { pose = base + p.ts; if (p.sr != null) row = p.sr; }
+  }
+  const sprite = remotePlayerSheet(skin, pose, p.clothing) || remotePlayerSheet(skin, base, p.clothing);
+  if (!sprite) { ctx.save(); ctx.fillStyle = "#73ceff"; circle(p.x, p.y, 7); ctx.restore(); return; }
+  const col = p.moving ? (Math.floor(performance.now() / 110 + p.x * 0.05) % 8) : 1;
+  const o = { x: p.x - S / 2, y: p.y + 6 - S * PSHEET.footY }, k = S / cell;
+  const info = (SPRITE_POSES[pose] && SPRITE_POSES[pose][row] && SPRITE_POSES[pose][row][col]) || {};
+  const pt = (key, ps = pose) => { const q = SPRITE_POSES[ps] && SPRITE_POSES[ps][row] && SPRITE_POSES[ps][row][col] && SPRITE_POSES[ps][row][col][key]; return q ? { x: o.x + q[0] * k, y: o.y + q[1] * k } : { x: p.x, y: p.y - 20 }; };
+  const aim = Number.isFinite(p.ga) ? p.ga : p.angle || 0;
+  const flash = p.flashAt && performance.now() - p.flashAt < 70;
+  // arma: camada 3D (da pose girada ou levada da pose normal até a mão) ou o desenho da arma
+  let w3 = weapon3dImg(w, pose), w3Base = false;
+  if (!w3 && pose !== base) { w3 = weapon3dImg(w, base); w3Base = !!w3; }
+  const drawGun = () => {
+    if (w.fists) return;
+    const d = WEAPON_3D[w.id];
+    if (w3) {
+      ctx.save();
+      const A = pt("a"), A0 = w3Base ? pt("a", base) : A, B0 = pt("b", w3Base ? base : pose);
+      if (!w.melee) {
+        const ba = Math.atan2(B0.y - A0.y, B0.x - A0.x);
+        ctx.translate(A.x, A.y); ctx.rotate(angDelta(ba, aim));
+        if (base === "pistola") ctx.translate(Math.cos(ba) * PISTOL_FWD, Math.sin(ba) * PISTOL_FWD);
+        ctx.translate(-A0.x, -A0.y);
+      } else if (w3Base) ctx.translate(A.x - A0.x, A.y - A0.y);
+      if (d && d.f) ctx.filter = d.f;
+      ctx.drawImage(w3, col * cell, row * cell, cell, cell, o.x, o.y, S, S);
+      ctx.restore();
+      return;
     }
-  } else {
-    // Enquanto a spritesheet carrega, nunca desenha o antigo personagem 2D.
-    ctx.save(); ctx.fillStyle = "#73ceff"; circle(p.x, p.y, 7); ctx.restore();
+    if (w.dual) {
+      for (const key of ["hl", "hr"]) { const H = pt(key); ctx.save(); ctx.translate(H.x, H.y); ctx.rotate(aim); ctx.scale(0.8, 0.72); drawWeaponShape(w, 0); ctx.restore(); }
+      return;
+    }
+    const A = pt("a"), B = pt("b"), m = weaponMeters(w), lenPx = Math.hypot(B.x - A.x, B.y - A.y) * m;
+    ctx.save(); ctx.translate(A.x, A.y);
+    if (w.melee) { ctx.rotate(Math.atan2(B.y - A.y, B.x - A.x)); const model = (w.len || 20) + 18; ctx.scale(Math.max(0.25, lenPx / model), 1); ctx.translate(-8, -6); drawWeaponShape(w, 0); }
+    else {
+      ctx.rotate(aim);
+      const pist = w.look === "pistol" || w.look === "revolver", model = (w.len || 20) + 20, start = pist ? 10 : 0;
+      if (pist) ctx.translate(PISTOL_FWD, 0);
+      ctx.scale(Math.max(0.2, lenPx / (model - start)), 1); ctx.translate(-start, 0);
+      if (w.tint) ctx.filter = w.tint;
+      drawWeaponShape(w, 0);
+    }
+    ctx.restore();
+  };
+  if (info.bh) drawGun();                                   // de costas: arma atrás do corpo
+  ctx.drawImage(sprite, col * cell, row * cell, cell, cell, o.x, o.y, S, S);
+  // camadas (botas, calça, moletom, colete, capa, máscara) que o outro jogador está usando
+  const layers = p.g && p.g.length ? p.g : [clothingLayer("boots", p.clothing), clothingLayer("pants", p.clothing), clothingLayer("jacket", p.clothing)].filter(Boolean);
+  for (const id of gearOrder(layers, row !== 3 && row !== 4 && row !== 5)) {
+    const layer = gearImg(id, pose) || (pose !== base ? gearImg(id, base) : null);
+    if (layer) ctx.drawImage(layer, col * cell, row * cell, cell, cell, o.x, o.y, S, S);
+  }
+  if (!info.bh) drawGun();
+  if (p.fl && (info.cb == null ? row >= 1 && row <= 7 : !info.cb)) {        // lanterna acesa no peito
+    const L = pt("c");
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    const g = ctx.createRadialGradient(L.x, L.y, 0, L.x, L.y, 7);
+    g.addColorStop(0, "rgba(255,240,190,0.95)"); g.addColorStop(1, "rgba(255,220,140,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(L.x, L.y, 7, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+  if (flash && !w.melee && !w.fire) {                        // clarão do tiro
+    const L = pt("a"), mx = L.x + Math.cos(aim) * 26, my = L.y + Math.sin(aim) * 26;
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    const g = ctx.createRadialGradient(mx, my, 0, mx, my, 16);
+    g.addColorStop(0, "rgba(255,240,180,0.95)"); g.addColorStop(1, "rgba(255,170,60,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(mx, my, 16, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
   hudT(p.name, p.x, p.y - 43, 11, fmSocial.isFriend(p.uid) ? "#8fe0a8" : "#73ceff", "center", true, 170);
+}
+// rastros das balas dos outros jogadores (só visual)
+const NET_SHOTS = [];
+function netShot(x, y, a, w, n) {
+  const now = performance.now();
+  for (let i = 0; i < n; i++) {
+    const sp = (w.spread || 0.05) * (n > 1 ? 1 : 0.4), aa = a + (Math.random() - 0.5) * 2 * sp;
+    NET_SHOTS.push({ x, y, a: aa, t0: now, life: Math.min(600, (w.life || 700)), v: (w.speed || 12) * 60 / 1000, fire: !!w.fire, big: w.cat === "rifles" || w.cat === "shotguns" });
+  }
+  if (NET_SHOTS.length > 120) NET_SHOTS.splice(0, NET_SHOTS.length - 120);
+  if (player && Math.hypot(x - player.x, y - player.y) < 650) sfx.shot(w);
+}
+function drawNetShots() {
+  const now = performance.now();
+  for (let i = NET_SHOTS.length - 1; i >= 0; i--) {
+    const s = NET_SHOTS[i], t = now - s.t0;
+    if (t > s.life) { NET_SHOTS.splice(i, 1); continue; }
+    const d = t * s.v, x = s.x + Math.cos(s.a) * d, y = s.y + Math.sin(s.a) * d, tail = Math.min(d, s.big ? 26 : 18);
+    ctx.save();
+    ctx.strokeStyle = s.fire ? "rgba(255,150,60,0.8)" : "rgba(255,236,170,0.9)"; ctx.lineWidth = s.fire ? 4 : s.big ? 2.2 : 1.6; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(x - Math.cos(s.a) * tail, y - Math.sin(s.a) * tail); ctx.lineTo(x, y); ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function friendsKey(k) {
