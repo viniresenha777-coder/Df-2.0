@@ -4,9 +4,37 @@
 const fmCloud = (() => {
   const SUPABASE_URL = "https://udoxuzyvyuxrqektdrxf.supabase.co";
   const KEY = "sb_publishable_8serkqz1z5k9fZLnDxMNlQ_hv_PF88z";
+  // Cada ABA tem o próprio login: assim dá para jogar com duas contas diferentes no mesmo navegador.
+  // O login fica no sessionStorage da aba (com uma chave própria, para as abas não trocarem sessão entre si);
+  // o último login também vai para o localStorage, para uma aba nova já abrir logada nele.
+  const SHARED = "fronteira-morta-df20-auth";
+  const TAB_KEY = (() => {
+    try {
+      let id = sessionStorage.getItem("fm-aba");
+      if (!id) { id = Math.random().toString(36).slice(2, 10); sessionStorage.setItem("fm-aba", id); }
+      return SHARED + "-aba-" + id;
+    } catch (e) { return SHARED; }
+  })();
+  const tabStorage = {
+    getItem(k) {
+      try {
+        let v = sessionStorage.getItem(k);
+        if (v == null && k === TAB_KEY) { v = localStorage.getItem(SHARED); if (v != null) sessionStorage.setItem(k, v); }
+        return v;
+      } catch (e) { return null; }
+    },
+    setItem(k, v) { try { sessionStorage.setItem(k, v); if (k === TAB_KEY) localStorage.setItem(SHARED, v); } catch (e) {} },
+    removeItem(k) {
+      try {
+        const mine = sessionStorage.getItem(k);
+        sessionStorage.removeItem(k);
+        if (k === TAB_KEY && mine != null && localStorage.getItem(SHARED) === mine) localStorage.removeItem(SHARED);
+      } catch (e) {}
+    }
+  };
   const client = window.supabase && window.supabase.createClient(SUPABASE_URL, KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true,
-      storageKey: "fronteira-morta-df20-auth" }
+      storageKey: TAB_KEY, storage: tabStorage }
   });
   let user = null;
   let userIsAdmin = false;
