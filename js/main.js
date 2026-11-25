@@ -190,6 +190,7 @@ window.addEventListener("keydown", (e) => {
     if (atBase() || canUseAdmin()) openWaitDone(kind); else game.openWait = { kind, t: OPEN_WAIT_MS };
     return;
   }
+  if (k === "k" && !game.hub) { toggleFlashlight(); return; }
   if (k === "q" && !game.hub && curW().id === "glock") {
     player.glockMode = player.glockMode === "single" ? "burst" : "single";
     player.glockBurstLeft = 0;
