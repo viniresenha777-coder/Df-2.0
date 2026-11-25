@@ -569,6 +569,20 @@ restoreRun(); // volta do último checkpoint, se houver
 fmBugs.start(); // botão "Reportar bug" (F8) e entrega das recompensas
 fmGifts.start(); // correio: entrega presentes do ADM quando o jogo está pronto
 fmWorld.start(); // consulta relógio oficial do servidor Supabase
+// Duas contas no MESMO navegador dividem a mesma sessão de login: se outra aba entrar com outra conta,
+// esta aba passaria a falar com o servidor como a outra conta (os jogadores não se veem e o save poderia
+// ir para a conta errada). Então esta aba para e recarrega.
+window.addEventListener("storage", (e) => {
+  if (e.key !== "fronteira-morta-df20-auth" || typeof fmCloud === "undefined" || !fmCloud.userId()) return;
+  let other = null; try { other = e.newValue ? JSON.parse(e.newValue).user.id : null; } catch (err) { other = null; }
+  if (other === fmCloud.userId()) return;
+  game.paused = true; game.quitting = true;   // não salva mais nada nesta aba
+  const d = document.createElement("div");
+  d.style.cssText = "position:fixed;inset:0;z-index:99;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.82);color:#ffd96a;font:600 18px system-ui;text-align:center;padding:30px";
+  d.textContent = "Outra conta entrou neste navegador. Cada conta precisa de um navegador diferente (ou uma janela anônima). Recarregando...";
+  document.body.appendChild(d);
+  setTimeout(() => location.reload(), 3500);
+});
 if (save.name) fmSocial.start(); // publica posição somente após autenticação e nome definitivo
 if (save.name) fmChat.start();   // chat global
 // rodando pelo servidor local instalado: avisa que o jogo está aberto (o servidor fecha sozinho quando você sai)

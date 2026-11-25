@@ -51,7 +51,7 @@ function runSnapshot() {
   };
 }
 function checkpoint(reason) {
-  if (!game || game.over || game.marketBusy || !save.name || !save.prof || !world) return Promise.resolve(false);
+  if (!game || game.over || game.quitting || game.marketBusy || !save.name || !save.prof || !world) return Promise.resolve(false);
   let payload;
   try {
     save.run = runSnapshot();
