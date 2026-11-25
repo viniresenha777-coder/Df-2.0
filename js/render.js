@@ -1702,12 +1702,13 @@ function drawLighting() {
     beam.setTransform(1, 0, 0, 1, 0, 0);
     beam.clearRect(0, 0, W, H);
     beam.globalCompositeOperation = "source-over";
-    holeTo(beam, px, py, 153, 0.91);
-    if (dark > 0.3) {                                   // luz circular em volta do jogador
-      const len = game.inside ? 330 : 360, g = beam.createRadialGradient(px, py, 10, px, py, len);
-      g.addColorStop(0, "rgba(0,0,0,0.95)"); g.addColorStop(0.6, "rgba(0,0,0,0.6)"); g.addColorStop(1, "rgba(0,0,0,0)");
-      beam.fillStyle = g;
-      beam.beginPath(); beam.arc(px, py, len, 0, Math.PI * 2); beam.fill();
+    holeTo(beam, px, py, 90, 0.6);
+    if (dark > 0.3) {                                   // feixe do peito terminando num círculo à frente
+      const a = player.angle, D = game.inside ? 105 : 125, R = game.inside ? 62 : 72, sx = px + Math.cos(a) * D, sy = py + Math.sin(a) * D;
+      const gb = beam.createRadialGradient(px, py, 10, px, py, D + R * 0.5);
+      gb.addColorStop(0, "rgba(0,0,0,0.8)"); gb.addColorStop(1, "rgba(0,0,0,0.2)");
+      beam.fillStyle = gb; beam.beginPath(); beam.moveTo(px, py); beam.arc(px, py, D + R * 0.5, a - 0.42, a + 0.42); beam.closePath(); beam.fill();
+      holeTo(beam, sx, sy, R, 0.95);
     }
     beam.globalCompositeOperation = "destination-out";
     beam.drawImage(flashlightBlocks(), 0, 0, W, H);

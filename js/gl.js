@@ -300,10 +300,13 @@ function gfxLights(dark) {
     // Apaga completamente a lanterna no amanhecer. O clarão da arma
     // continua funcionando, pois não faz parte da lanterna.
     if (flashlightActive()) {
-      // Luz circular em volta do jogador (como no DF), cortada pelas paredes pela máscara da lanterna.
-      const ALL = [1, 0, -1.2, 0.0001], fd = Math.max(dark, 0.42);   // ligada no K de dia/amanhecer também aparece
-      add(px, py, game.inside ? 230 : 170, fd * 0.55, [1, 0.96, 0.9], true, ALL);
-      add(px, py, game.inside ? 340 : 370, Math.max(0, fd - 0.08) * 1.25, [1, 0.86, 0.55], true, ALL);
+      // Lanterna no peito: o feixe sai do peito e termina num círculo de luz à frente, para onde você mira.
+      // A máscara (calculada a partir do peito) corta a luz nas paredes.
+      const ALL = [1, 0, -1.2, 0.0001], fd = Math.max(dark, 0.42), ca = Math.cos(a), sa = Math.sin(a);
+      const D = game.inside ? 105 : 125, R = game.inside ? 62 : 72;
+      add(px, py, 80, fd * 0.35, [1, 0.96, 0.9], true, ALL);                                         // brilho fraco no corpo
+      add(px, py, D + 20, fd * 0.5, [1, 0.88, 0.6], true, [ca, sa, Math.cos(0.36), 0.1]);   // raios saindo do peito
+      add(px + ca * D, py + sa * D, R, Math.max(0, fd - 0.05) * 2.6, [1, 0.86, 0.55], true, ALL);   // círculo de luz
     }
     if (player.flashT > 0) add(px + Math.cos(a) * 30, py + Math.sin(a) * 30, 280, 1.1 * glow * (Math.min(1, player.flashT / 60) + 0.4), [1, 0.75, 0.38], true);
   }
