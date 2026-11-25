@@ -70,15 +70,22 @@ void main(){
     vec4 L = uL[i]; vec2 d = p - L.xy; float dist = length(d);
     vec4 K = uK[i]; float att;
     if (K.z < -2.5) {
-      // lanterna: feixe em gota (cone saindo do peito que termina num círculo). L.z = distância até o centro
-      // do círculo, K.xy = direção, K.w = raio do círculo. Luz quase uniforme, borda macia.
-      float R = K.w, D = L.z, sh = R / D, ch = sqrt(max(0.0, 1.0 - sh * sh));
-      float dc = length(p - (L.xy + K.xy * D));
-      float al = dot(d, K.xy), cs = clamp(al / max(dist, 0.001), -1.0, 1.0), sn = sqrt(1.0 - cs * cs);
-      // distância (com sinal) até a borda da gota: lado do cone antes do ponto de tangência, círculo depois
-      float sd = al < D * ch * ch ? dist * (sn * ch - cs * sh) : dc - R;
-      att = smoothstep(7.0, -7.0, sd) * smoothstep(4.0, 30.0, dist) * (0.78 + 0.22 * smoothstep(0.0, D, al));
-      if (att <= 0.0) continue;
+      // Lanterna com física de verdade: fonte no peito a uma altura H, apontada um pouco para baixo
+      // (mira em K.w px à frente). Perfil do feixe = miolo forte + borda (spill) suave; no chão a luz cai
+      // com o inverso do quadrado da distância e com o cosseno do ângulo de incidência. O corte do cone
+      // pelo chão é que forma a mancha: estreita perto, abrindo e arredondando conforme se espalha.
+      float H = 34.0, Dd = max(K.w, 8.0);
+      vec3 v = vec3(d, -H); float r = length(v);
+      float rr = sqrt(Dd * Dd + H * H);
+      vec3 A = vec3(K.xy * (Dd / rr), -H / rr);
+      float ct = dot(v / r, A);
+      float hot = smoothstep(0.955, 0.992, ct);
+      float spill = smoothstep(0.80, 0.93, ct);
+      float halo = smoothstep(0.55, 0.80, ct) * 0.10;
+      float prof = hot * 0.55 + spill * 0.45 + halo;
+      float E = (rr * rr) / (r * r) * (H / r) / (H / rr);              // 1/r² · cos(incidência), normalizado no centro
+      att = prof * min(E, 1.7) * smoothstep(L.z, L.z * 0.55, dist);
+      if (att <= 0.003) continue;
       att *= 1.0 - texture2D(uFlashBlocked, vUv).a;
     } else {
     if (dist >= L.z) continue;
@@ -316,9 +323,12 @@ function gfxLights(dark) {
       // Lanterna no peito: o feixe sai do peito e termina num círculo de luz à frente, para onde você mira.
       // A máscara (calculada a partir do peito) corta a luz nas paredes.
       const ALL = [1, 0, -1.2, 0.0001], fd = Math.max(dark, 0.42), ca = Math.cos(a), sa = Math.sin(a);
-      const [D, R] = flashTearSize();                                  // encurta perto da parede
-      add(px, py, 70, fd * 0.3, [1, 0.96, 0.9], true, ALL);                                             // brilho fraco no corpo
-      L.push([px, py, D, Math.max(0, fd - 0.04) * 1.55 * (0.5 + 0.5 * FLASH_TEAR.k), [1, 0.88, 0.62], 1, [ca, sa, -3, R]]);          // feixe em gota
+      const [D] = flashTearSize();                                     // encurta perto da parede
+      add(px, py, 60, fd * 0.25, [1, 0.96, 0.9], true, ALL);                                             // reflexo fraco no corpo
+      L.push([px, py, game.inside ? 380 : 460, Math.max(0, fd - 0.04) * 2.1, [1, 0.9, 0.68], 1, [ca, sa, -3, D]]);   // feixe
+      // perto da parede o feixe bate nela: mancha de luz na face da parede, mais forte e menor quanto mais perto
+      if (FLASH_TEAR.hit < FLASH_TEAR.max) { const hd = FLASH_TEAR.hit, q = 1 - hd / FLASH_TEAR.max;
+        add(px + ca * hd, py + sa * hd - 10 - 12 * q, 26 + hd * 0.55, fd * (0.6 + 1.2 * q), [1, 0.9, 0.7], true, ALL); }
     }
     if (player.flashT > 0) add(px + Math.cos(a) * 30, py + Math.sin(a) * 30, 280, 1.1 * glow * (Math.min(1, player.flashT / 60) + 0.4), [1, 0.75, 0.38], true);
   }

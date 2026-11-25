@@ -844,21 +844,6 @@ function drawAtmosphere() {
     ctx.fillStyle = sunlight; ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
-  // A lanterna só existe à noite; desliga automaticamente ao amanhecer.
-  if (flashlightActive()) {
-    // brilho quente circular, recortado onde a luz bate numa parede (não atravessa)
-    const I = 0.03 + Math.max(dark, 0.4) * 0.11;
-    if (!FLASH_GLOW.c) { FLASH_GLOW.c = document.createElement("canvas"); FLASH_GLOW.x = FLASH_GLOW.c.getContext("2d"); }
-    const gc = FLASH_GLOW.c, gx = FLASH_GLOW.x;
-    if (gc.width !== W || gc.height !== H) { gc.width = W; gc.height = H; }
-    gx.globalCompositeOperation = "source-over"; gx.clearRect(0, 0, W, H);
-    const [sx, sy, D, R] = flashTearPath(gx, px, py, a);            // feixe em gota: do peito até o círculo
-    const g = gx.createRadialGradient(px, py, 6, px, py, D + R);
-    g.addColorStop(0, `rgba(255,214,140,${I * 0.7})`); g.addColorStop(0.55, `rgba(255,208,130,${I})`); g.addColorStop(1, `rgba(255,200,120,${I * 0.9})`);
-    gx.fillStyle = g; gx.fill();
-    gx.globalCompositeOperation = "destination-out"; gx.drawImage(flashlightBlocks(), 0, 0, W, H);
-    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.drawImage(gc, 0, 0); ctx.restore();
-  }
   // Neblina azul no escuro e poeira quente bem mais sutil de dia.
   const fog = ctx.createRadialGradient(px, py, 140, px, py, Math.max(W, H) * 0.8);
   fog.addColorStop(0, "rgba(70,100,140,0)");
