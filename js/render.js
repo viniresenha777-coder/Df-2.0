@@ -1693,10 +1693,17 @@ function drawFlashBeamAdd() {
   const gc = FLASH_GLOW.c, gx = FLASH_GLOW.x;
   if (gc.width !== W || gc.height !== H) { gc.width = W; gc.height = H; }
   gx.setTransform(1, 0, 0, 1, 0, 0); gx.globalCompositeOperation = "source-over"; gx.clearRect(0, 0, W, H);
-  const [cx, cy, D, R] = flashTearPath(gx, px, py, player.angle);
-  const g = gx.createRadialGradient(px, py, 4, px, py, D + R);
-  g.addColorStop(0, "rgba(255,225,165,0.30)"); g.addColorStop(0.55, "rgba(255,215,150,0.42)"); g.addColorStop(1, "rgba(255,205,140,0.05)");
-  gx.fillStyle = g; gx.filter = "blur(7px)"; gx.fill(); gx.filter = "none";   // borda suave
+  // mesmo visual do modo WebGL: facho estreito saindo do peito que se abre numa mancha oval e clara à frente
+  const [D, R] = flashTearSize();
+  gx.save(); gx.translate(px, py); gx.rotate(player.angle); gx.filter = "blur(10px)";
+  const gb = gx.createLinearGradient(0, 0, D, 0);
+  gb.addColorStop(0, "rgba(255,225,170,0.55)"); gb.addColorStop(1, "rgba(255,215,150,0.25)");
+  gx.fillStyle = gb; gx.beginPath(); gx.moveTo(4, -3); gx.lineTo(D * 0.8, -R * 0.38); gx.lineTo(D * 0.8, R * 0.38); gx.lineTo(4, 3); gx.closePath(); gx.fill();
+  gx.translate(D * 1.0, 0); gx.scale(1.45, 0.72);
+  const g = gx.createRadialGradient(0, 0, 4, 0, 0, R * 1.05);
+  g.addColorStop(0, "rgba(255,238,190,0.95)"); g.addColorStop(0.5, "rgba(255,222,160,0.65)"); g.addColorStop(1, "rgba(255,205,140,0)");
+  gx.fillStyle = g; gx.beginPath(); gx.arc(0, 0, R * 1.05, 0, Math.PI * 2); gx.fill();
+  gx.restore(); gx.filter = "none";
   gx.globalCompositeOperation = "destination-out"; gx.drawImage(flashlightBlocks(), 0, 0, W, H);
   ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.drawImage(gc, 0, 0, W, H); ctx.restore();
 }
