@@ -846,92 +846,163 @@ function drawInteriorWalls(pass) {
   flushCaps();
 }
 
-// ---------- Móveis altos em 3D (caixa com laterais, frente e tampo) ----------
-const TALL_FURN = { "Geladeira": 44, "Freezer": 26, "Armário médico": 40, "Armário": 42, "Guarda-roupa": 50, "Estante": 46,
-  "Cômoda": 24, "Criado-mudo": 17, "Armário de cozinha": 22, "Armário do banheiro": 22, "Fogão": 22 };
-function tallFurn(f) { return INTERIOR_TALL_WALLS && f.kind !== "wall" && TALL_FURN[f.name] && !(typeof FURN_MODEL !== "undefined" && FURN_MODEL[f.name] && modelOk(FURN_MODEL[f.name])); }
+// ---------- Móveis em 3D (caixa com laterais, frente e tampo) ----------
+// Todo móvel ganha altura. O desenho de cima de sempre vai para o tampo; armários, geladeira, fogão etc.
+// têm a frente desenhada (portas, gavetas, forno). f.rot = quartos de volta do desenho (encosto na parede),
+// e a frente dos armários fica do lado oposto à parede onde estão encostados.
+const FURN_H = { "Geladeira": 44, "Freezer": 26, "Armário médico": 40, "Armário": 42, "Guarda-roupa": 50, "Estante": 46,
+  "Cômoda": 24, "Criado-mudo": 17, "Armário de cozinha": 22, "Armário do banheiro": 22, "Fogão": 22, "Pia": 22,
+  "Cama": 12, "Sofá": 13, "Poltrona": 13, "Cadeira": 10, "TV": 16, "Planta": 9, "Vaso sanitário": 11, "Banheira": 16,
+  "Chuveiro": 4, "Prateleira de parede": 34, "Prateleira": 40, "Prateleira de remédios": 40, "Prateleira de ferramentas": 38,
+  "Estoque": 40, "Estoque de suprimentos": 40, "Vitrine": 26, "Balcão": 22, "Caixa registradora": 20, "Freezer horizontal": 26,
+  "Maca": 16, "Caixas": 20, "Bebedouro": 30, "Baú": 14 };
+const TALL_FURN = FURN_H;                                  // nome antigo (interact.js)
+const FURN_FRONT = { "Geladeira": 1, "Freezer": 1, "Armário médico": 1, "Armário": 1, "Guarda-roupa": 1, "Estante": 1, "Cômoda": 1,
+  "Criado-mudo": 1, "Armário de cozinha": 1, "Armário do banheiro": 1, "Fogão": 1, "Pia": 1, "Prateleira de parede": 1,
+  "Prateleira": 1, "Prateleira de remédios": 1, "Prateleira de ferramentas": 1, "Estoque": 1, "Estoque de suprimentos": 1 };
+// partes mais altas (encosto, caixa d'água, cabeceira): retângulo no desenho (frações) + altura
+const FURN_PARTS = { "Cadeira": [[0.1, 0, 0.8, 0.22, 24]], "Sofá": [[0, 0, 1, 0.28, 26]], "Poltrona": [[0, 0, 1, 0.3, 26]],
+  "Vaso sanitário": [[0.1, 0, 0.8, 0.3, 24]], "Cama": [[0, 0, 0.07, 1, 22]], "Banheira": [], "TV": [[0.1, 0.1, 0.8, 0.25, 34]] };
+function furnH(f) { return f ? FURN_H[f.name] || 0 : 0; }
+function tallFurn(f) {
+  if (!INTERIOR_TALL_WALLS || !f || f.kind === "wall" || f.kind === "stairs" || f.kind === "survivor" || f._flat || !FURN_H[f.name]) return false;
+  return !(typeof FURN_MODEL !== "undefined" && FURN_MODEL[f.name] && modelOk(FURN_MODEL[f.name]));
+}
+// retângulo do desenho (u0,v0,uw,vh em px do desenho) -> retângulo no chão, conforme a rotação
+function rotRect(f, k, u0, v0, uw, vh) {
+  const odd = k % 2, dw = odd ? f.h : f.w, dh = odd ? f.w : f.h;
+  if (k === 1) return { x: f.x + dh - (v0 + vh), y: f.y + u0, w: vh, h: uw };
+  if (k === 2) return { x: f.x + dw - (u0 + uw), y: f.y + dh - (v0 + vh), w: uw, h: vh };
+  if (k === 3) return { x: f.x + v0, y: f.y + dw - (u0 + uw), w: vh, h: uw };
+  return { x: f.x + u0, y: f.y + v0, w: uw, h: vh };
+}
 function drawTallFurn(f) {
-  const { x, y, w, h } = f, n = f.name, z = TALL_FURN[n], e = eye();
-  const P = (px, py, pz) => { const k = IWALL_CAM / (IWALL_CAM - pz); return { x: e.x + (px - e.x) * k, y: e.y + (py - e.y) * k - pz * LEAN }; };
+  const { x, y, w, h } = f, n = f.name, z = FURN_H[n], e = eye(), k = (f.rot | 0) & 3;
+  const P = (px, py, pz) => { const q = IWALL_CAM / (IWALL_CAM - pz); return { x: e.x + (px - e.x) * q, y: e.y + (py - e.y) * q - pz * LEAN }; };
   const quad = (pts, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath(); ctx.fill(); };
+  const outline = (pts) => { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.closePath(); ctx.stroke(); };
   const line = (ax, ay, bx, by) => { ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); };
-  const x1 = x + w, y1 = y + h, t00 = P(x, y, z), t10 = P(x1, y, z), t11 = P(x1, y1, z), t01 = P(x, y1, z), c = f.color;
-  const wood = !["Geladeira", "Freezer", "Armário médico", "Fogão", "Armário do banheiro"].includes(n);
-  ctx.fillStyle = "rgba(0,0,0,0.28)"; ctx.fillRect(x + 3, y - 2, w, h + 2);                       // sombra (não passa da base)
-  if (e.x < x) quad([{ x, y: y1 }, { x, y }, t00, t01], shade(c, -0.3));                       // lateral esquerda
-  if (e.x > x1) quad([{ x: x1, y: y1 }, { x: x1, y }, t10, t11], shade(c, -0.2));              // lateral direita
-  // frente: no espaço da face — u ao longo, v de cima para baixo
-  ctx.save();
-  ctx.transform((t11.x - t01.x) / w, (t11.y - t01.y) / w, (x - t01.x) / z, (y1 - t01.y) / z, t01.x, t01.y);
-  const g = ctx.createLinearGradient(0, 0, 0, z); g.addColorStop(0, shade(c, 0.02)); g.addColorStop(1, shade(c, -0.25));
-  ctx.fillStyle = g; ctx.fillRect(0, 0, w, z);
-  ctx.strokeStyle = "rgba(0,0,0,0.38)"; ctx.lineWidth = 1;
-  const knob = (kx, ky) => { ctx.fillStyle = wood ? "#c9a86a" : "#7a8085"; ctx.fillRect(kx - 1.2, ky - 1.2, 2.4, 2.4); };
-  if (n === "Geladeira") {
-    line(1, z * 0.34, w - 1, z * 0.34);                                                            // freezer em cima, porta embaixo
-    ctx.fillStyle = "#7a8085"; ctx.fillRect(w - 7, z * 0.1, 2.5, z * 0.18); ctx.fillRect(w - 7, z * 0.42, 2.5, z * 0.4);
-    ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.fillRect(3, 2, 2, z - 4);
-    const r = (k) => bHash(f, 70 + k);
-    if (r(0) < 0.7) { ctx.fillStyle = ["#d9a52b", "#b3261e", "#2a4f9e"][Math.floor(r(1) * 3)]; ctx.fillRect(6 + r(2) * (w - 22), z * 0.5, 7, 6); }
-    if (r(3) < 0.5) { ctx.fillStyle = "#efe9d6"; ctx.fillRect(8 + r(4) * (w - 26), z * 0.12, 9, 8); }
-  } else if (n === "Freezer") {
-    ctx.strokeStyle = "rgba(120,170,200,0.6)"; ctx.strokeRect(3, 3, w - 6, z - 6);
-    ctx.fillStyle = "#7a8085"; ctx.fillRect(w / 2 - 8, 3, 16, 2.5);
-  } else if (n === "Armário médico") {
-    line(w / 2, 2, w / 2, z - 2);
-    ctx.fillStyle = "#d04040"; ctx.fillRect(w / 2 - 3, z * 0.3, 6, 14); ctx.fillRect(w / 2 - 9, z * 0.3 + 4, 18, 6);
-  } else if (n === "Fogão") {
-    ctx.fillStyle = "#3a3d40"; ctx.fillRect(2, 1, w - 4, 4);                                       // painel dos botões
-    for (let i = 0; i < 4; i++) { ctx.fillStyle = "#d8d8d8"; ctx.beginPath(); ctx.arc(8 + i * (w - 16) / 3, 3, 1.4, 0, 7); ctx.fill(); }
-    ctx.fillStyle = "#1c1e20"; ctx.fillRect(5, 7, w - 10, z - 10);                                  // porta do forno com vidro
-    ctx.fillStyle = "rgba(120,140,150,0.35)"; ctx.fillRect(8, 9, w - 16, z - 15);
-    ctx.fillStyle = "#9aa0a4"; ctx.fillRect(7, 7.5, w - 14, 1.5);
-  } else if (n === "Estante") {
-    ctx.fillStyle = shade(c, -0.45); ctx.fillRect(3, 2, w - 6, z - 4);                              // fundo escuro aberto
-    const r = (k) => bHash(f, 90 + k), sh = 3;
-    for (let i = 0; i < sh; i++) {
-      const top = 2 + i * (z - 4) / sh, hh = (z - 4) / sh;
-      let bx = 4; let k = 0;
-      while (bx < w - 6) { const bw = 2.5 + r(k) * 3.5, bh = hh * (0.55 + r(k + 50) * 0.35);
-        if (r(k + 100) > 0.18) { ctx.fillStyle = ["#7a2a24", "#2a4f6e", "#5a6e3b", "#c9b07a", "#3b3b3b", "#8a5a2b"][Math.floor(r(k + 150) * 6)]; ctx.fillRect(bx, top + hh - bh - 1, bw, bh); }
-        bx += bw + 0.6; k++; }
-      ctx.fillStyle = shade(c, 0.05); ctx.fillRect(2, top + hh - 1.5, w - 4, 2);
+  const c = f.color || "#8a6a45";
+  const wood = !["Geladeira", "Freezer", "Armário médico", "Fogão", "Armário do banheiro", "Pia", "Vaso sanitário", "Banheira", "Chuveiro", "Bebedouro"].includes(n);
+  // caixa simples: laterais + frente (sul) + tampo; devolve os 4 cantos de cima
+  const box = (bx, by, bw, bh, bz, col, plainTop) => {
+    const X1 = bx + bw, Y1 = by + bh, a00 = P(bx, by, bz), a10 = P(X1, by, bz), a11 = P(X1, Y1, bz), a01 = P(bx, Y1, bz);
+    if (e.x < bx) quad([{ x: bx, y: Y1 }, { x: bx, y: by }, a00, a01], shade(col, -0.3));
+    if (e.x > X1) quad([{ x: X1, y: Y1 }, { x: X1, y: by }, a10, a11], shade(col, -0.2));
+    const sp = [{ x: bx, y: Y1 }, { x: X1, y: Y1 }, a11, a01];
+    ctx.save(); ctx.beginPath(); ctx.moveTo(sp[0].x, sp[0].y); for (const q of sp.slice(1)) ctx.lineTo(q.x, q.y); ctx.closePath();
+    const g = ctx.createLinearGradient(0, Y1, 0, a01.y); g.addColorStop(0, shade(col, -0.28)); g.addColorStop(1, shade(col, -0.02));
+    ctx.fillStyle = g; ctx.fill(); ctx.restore();
+    if (plainTop) { quad([a00, a10, a11, a01], shade(col, 0.1)); ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1; outline([a00, a10, a11, a01]); }
+    return [a00, a10, a11, a01];
+  };
+  ctx.fillStyle = "rgba(0,0,0,0.26)"; ctx.fillRect(x + 3, y - 2, w, h + 2);                     // sombra (não passa da base)
+  if (n === "Chuveiro") { drawShower(f, P, quad, line); return; }
+  const [t00, t10, t11, t01] = box(x, y, w, h, z, c, false);
+  // frente dos armários: na face oposta à parede (k=0 sul, k=1 oeste, k=3 leste; k=2 fica de costas para a câmera)
+  if (FURN_FRONT[n] && k !== 2) {
+    let O, U, V, L;
+    if (k === 0) { O = t01; U = t11; V = { x, y: y + h }; L = w; }
+    else if (k === 1) { O = t00; U = t01; V = { x, y }; L = e.x < x ? h : 0; }            // encostado à direita: frente para oeste
+    else { O = t11; U = t10; V = { x: x + w, y: y + h }; L = e.x > x + w ? h : 0; }       // encostado à esquerda: frente para leste
+    if (L) {
+      ctx.save();
+      ctx.transform((U.x - O.x) / L, (U.y - O.y) / L, (V.x - O.x) / z, (V.y - O.y) / z, O.x, O.y);
+      const g = ctx.createLinearGradient(0, 0, 0, z); g.addColorStop(0, shade(c, 0.02)); g.addColorStop(1, shade(c, -0.25));
+      ctx.fillStyle = g; ctx.fillRect(0, 0, L, z);
+      ctx.strokeStyle = "rgba(0,0,0,0.38)"; ctx.lineWidth = 1;
+      const knob = (kx, ky) => { ctx.fillStyle = wood ? "#c9a86a" : "#7a8085"; ctx.fillRect(kx - 1.2, ky - 1.2, 2.4, 2.4); };
+      if (n === "Geladeira") {
+        line(1, z * 0.34, L - 1, z * 0.34);                                                            // freezer em cima, porta embaixo
+        ctx.fillStyle = "#7a8085"; ctx.fillRect(L - 7, z * 0.1, 2.5, z * 0.18); ctx.fillRect(L - 7, z * 0.42, 2.5, z * 0.4);
+        ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.fillRect(3, 2, 2, z - 4);
+        const r = (k) => bHash(f, 70 + k);
+        if (r(0) < 0.7) { ctx.fillStyle = ["#d9a52b", "#b3261e", "#2a4f9e"][Math.floor(r(1) * 3)]; ctx.fillRect(6 + r(2) * (L - 22), z * 0.5, 7, 6); }
+        if (r(3) < 0.5) { ctx.fillStyle = "#efe9d6"; ctx.fillRect(8 + r(4) * (L - 26), z * 0.12, 9, 8); }
+      } else if (n === "Freezer") {
+        ctx.strokeStyle = "rgba(120,170,200,0.6)"; ctx.strokeRect(3, 3, L - 6, z - 6);
+        ctx.fillStyle = "#7a8085"; ctx.fillRect(L / 2 - 8, 3, 16, 2.5);
+      } else if (n === "Armário médico") {
+        line(L / 2, 2, L / 2, z - 2);
+        ctx.fillStyle = "#d04040"; ctx.fillRect(L / 2 - 3, z * 0.3, 6, 14); ctx.fillRect(L / 2 - 9, z * 0.3 + 4, 18, 6);
+      } else if (n === "Fogão") {
+        ctx.fillStyle = "#3a3d40"; ctx.fillRect(2, 1, L - 4, 4);                                       // painel dos botões
+        for (let i = 0; i < 4; i++) { ctx.fillStyle = "#d8d8d8"; ctx.beginPath(); ctx.arc(8 + i * (L - 16) / 3, 3, 1.4, 0, 7); ctx.fill(); }
+        ctx.fillStyle = "#1c1e20"; ctx.fillRect(5, 7, L - 10, z - 10);                                  // porta do forno com vidro
+        ctx.fillStyle = "rgba(120,140,150,0.35)"; ctx.fillRect(8, 9, L - 16, z - 15);
+        ctx.fillStyle = "#9aa0a4"; ctx.fillRect(7, 7.5, L - 14, 1.5);
+      } else if (n === "Estante" || n.startsWith("Prateleira") || n.startsWith("Estoque")) {
+        ctx.fillStyle = shade(c, -0.45); ctx.fillRect(3, 2, L - 6, z - 4);                              // fundo escuro aberto
+        const r = (k) => bHash(f, 90 + k), sh = 3;
+        for (let i = 0; i < sh; i++) {
+          const top = 2 + i * (z - 4) / sh, hh = (z - 4) / sh;
+          let bx = 4; let k = 0;
+          while (bx < L - 6) { const bw = 2.5 + r(k) * 3.5, bh = hh * (0.55 + r(k + 50) * 0.35);
+            if (r(k + 100) > 0.18) { ctx.fillStyle = ["#7a2a24", "#2a4f6e", "#5a6e3b", "#c9b07a", "#3b3b3b", "#8a5a2b"][Math.floor(r(k + 150) * 6)]; ctx.fillRect(bx, top + hh - bh - 1, bw, bh); }
+            bx += bw + 0.6; k++; }
+          ctx.fillStyle = shade(c, 0.05); ctx.fillRect(2, top + hh - 1.5, L - 4, 2);
+        }
+        ctx.fillStyle = c; ctx.fillRect(0, 0, 3, z); ctx.fillRect(L - 3, 0, 3, z);
+      } else if (n === "Cômoda" || n === "Criado-mudo") {
+        const nd = n === "Cômoda" ? 3 : 2, dh = (z - 2) / nd;
+        for (let i = 0; i < nd; i++) { ctx.strokeRect(3, 1 + i * dh + 0.5, L - 6, dh - 1); knob(L / 2, 1 + i * dh + dh / 2); }
+      } else {                                                                                         // armários: portas
+        const nDoor = Math.max(2, Math.round(L / (n === "Guarda-roupa" ? 28 : 30)));
+        const top = n === "Armário de cozinha" ? 5 : 2, dw = (L - 4) / nDoor;
+        if (n === "Armário de cozinha") { ctx.fillStyle = "#cfc7b8"; ctx.fillRect(0, 0, L, 3); }        // tampo de pedra
+        for (let i = 0; i < nDoor; i++) {
+          ctx.strokeRect(2 + i * dw + 0.5, top, dw - 1, z - top - 2);
+          knob(2 + i * dw + (i % 2 ? 4 : dw - 4), top + (z - top) * (n === "Guarda-roupa" ? 0.45 : 0.3));
+        }
+        if (n === "Guarda-roupa") { ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(2, z - 6, L - 4, 1); }
+      }
+      ctx.restore();
     }
-    ctx.fillStyle = c; ctx.fillRect(0, 0, 3, z); ctx.fillRect(w - 3, 0, 3, z);
-  } else if (n === "Cômoda" || n === "Criado-mudo") {
-    const nd = n === "Cômoda" ? 3 : 2, dh = (z - 2) / nd;
-    for (let i = 0; i < nd; i++) { ctx.strokeRect(3, 1 + i * dh + 0.5, w - 6, dh - 1); knob(w / 2, 1 + i * dh + dh / 2); }
-  } else {                                                                                         // armários: portas
-    const nDoor = Math.max(2, Math.round(w / (n === "Guarda-roupa" ? 28 : 30)));
-    const top = n === "Armário de cozinha" ? 5 : 2, dw = (w - 4) / nDoor;
-    if (n === "Armário de cozinha") { ctx.fillStyle = "#cfc7b8"; ctx.fillRect(0, 0, w, 3); }        // tampo de pedra
-    for (let i = 0; i < nDoor; i++) {
-      ctx.strokeRect(2 + i * dw + 0.5, top, dw - 1, z - top - 2);
-      knob(2 + i * dw + (i % 2 ? 4 : dw - 4), top + (z - top) * (n === "Guarda-roupa" ? 0.45 : 0.3));
-    }
-    if (n === "Guarda-roupa") { ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(2, z - 6, w - 4, 1); }
   }
-  ctx.restore();
   ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(x, y1); ctx.lineTo(x1, y1); ctx.lineTo(t11.x, t11.y); ctx.lineTo(t01.x, t01.y); ctx.closePath(); ctx.stroke();
-  // tampo (desenhado no plano de cima)
-  const topCol = n === "Armário de cozinha" ? "#cfc7b8" : shade(c, 0.12);
-  quad([t00, t10, t11, t01], topCol);
+  outline([{ x, y: y + h }, { x: x + w, y: y + h }, t11, t01]);
+  // tampo: o desenho de cima de sempre, no plano de cima e girado conforme f.rot
+  quad([t00, t10, t11, t01], shade(c, 0.1));
   ctx.save();
+  ctx.beginPath(); ctx.moveTo(t00.x, t00.y); ctx.lineTo(t10.x, t10.y); ctx.lineTo(t11.x, t11.y); ctx.lineTo(t01.x, t01.y); ctx.closePath(); ctx.clip();
   ctx.transform((t10.x - t00.x) / w, (t10.y - t00.y) / w, (t01.x - t00.x) / h, (t01.y - t00.y) / h, t00.x, t00.y);
-  ctx.strokeStyle = "rgba(0,0,0,0.25)"; ctx.lineWidth = 1;
-  if (n === "Fogão") {
-    ctx.fillStyle = "#2a2c2e"; ctx.fillRect(3, 3, w - 6, h - 6);
-    for (const [u, v] of [[0.28, 0.3], [0.72, 0.3], [0.28, 0.72], [0.72, 0.72]]) {
-      ctx.strokeStyle = "#8a8e92"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(w * u, h * v, Math.min(w, h) * 0.15, 0, 7); ctx.stroke();
-      ctx.beginPath(); ctx.arc(w * u, h * v, Math.min(w, h) * 0.06, 0, 7); ctx.stroke();
-    }
-  } else if (n === "Freezer") { ctx.strokeStyle = "rgba(120,170,200,0.5)"; line(w / 2, 3, w / 2, h - 3); }
-  else if (n === "Armário de cozinha") { ctx.fillStyle = "rgba(0,0,0,0.08)"; ctx.fillRect(w * 0.55, h * 0.2, w * 0.3, h * 0.55); }
-  else if (wood) { for (let i = 1; i < 4; i++) line(2, h * i / 4, w - 2, h * i / 4 + 1); }
+  const odd = k % 2, dw = odd ? h : w, dh = odd ? w : h;
+  if (k === 1) { ctx.translate(dh, 0); ctx.rotate(Math.PI / 2); } else if (k === 2) { ctx.translate(dw, dh); ctx.rotate(Math.PI); } else if (k === 3) { ctx.translate(0, dw); ctx.rotate(-Math.PI / 2); }
+  const flat = Object.assign({}, f, { x: 0, y: 0, w: dw, h: dh, _flat: true });
+  const ga = ctx.globalAlpha;
+  if (f.kind === "decor") drawDecor(flat); else drawFurnitureBase(flat);
+  ctx.globalAlpha = ga;
   ctx.restore();
-  ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(t00.x, t00.y); ctx.lineTo(t10.x, t10.y); ctx.lineTo(t11.x, t11.y); ctx.lineTo(t01.x, t01.y); ctx.closePath(); ctx.stroke();
+  ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1.2; outline([t00, t10, t11, t01]);
+  // partes mais altas (encosto, caixa d'água, cabeceira, tela da TV)
+  for (const [u0, v0, uw, vh, pz] of FURN_PARTS[n] || []) {
+    const r = rotRect(f, k, u0 * dw, v0 * dh, uw * dw, vh * dh);
+    const col = n === "TV" ? "#1c1e22" : n === "Cama" ? "#4a3220" : n === "Vaso sanitário" ? shade(c, -0.05) : shade(c, -0.18);
+    box(r.x, r.y, r.w, r.h, pz, col, true);
+  }
+}
+// box de chuveiro: piso com ralo, vidro nos lados abertos, registro e ducha na parede
+function drawShower(f, P, quad, line) {
+  const { x, y, w, h } = f, H = 58, k = (f.rot | 0) & 3, x1 = x + w, y1 = y + h;
+  ctx.fillStyle = "#cfd8da"; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "rgba(0,0,0,0.15)"; ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) { line(x + w * i / 4, y, x + w * i / 4, y1); line(x, y + h * i / 4, x1, y + h * i / 4); }
+  ctx.fillStyle = "#6a7276"; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, 3, 0, 7); ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  // ducha: no meio da parede (lado da parede = de onde veio a rotação)
+  const wallMid = [[x + w / 2, y + 4], [x1 - 4, y + h / 2], [x + w / 2, y1 - 4], [x + 4, y + h / 2]][k];
+  const hd = P(wallMid[0], wallMid[1], H - 6), hb = P(wallMid[0], wallMid[1], 26);
+  ctx.strokeStyle = "#9aa3a8"; ctx.lineWidth = 2; line(hd.x, hd.y, hd.x, hd.y + 6);
+  ctx.fillStyle = "#b8c0c4"; ctx.beginPath(); ctx.arc(hd.x, hd.y + 7, 4, 0, 7); ctx.fill();
+  ctx.fillStyle = "#7a8085"; ctx.beginPath(); ctx.arc(hb.x, hb.y, 2.5, 0, 7); ctx.fill();
+  // vidros: nos lados que não encostam em parede (f.open = lista de lados "s","e","w","n")
+  const sides = { s: [[x, y1], [x1, y1]], n: [[x, y], [x1, y]], e: [[x1, y], [x1, y1]], w: [[x, y], [x, y1]] };
+  for (const sd of f.open || ["s"]) {
+    const [[ax, ay], [bx, by]] = sides[sd], a0 = { x: ax, y: ay }, b0 = { x: bx, y: by }, aT = P(ax, ay, H), bT = P(bx, by, H);
+    quad([a0, b0, bT, aT], "rgba(190,225,235,0.22)");
+    ctx.strokeStyle = "rgba(220,235,240,0.5)"; ctx.lineWidth = 1; line(a0.x + (b0.x - a0.x) * 0.2, a0.y + (b0.y - a0.y) * 0.2 - 30, a0.x + (b0.x - a0.x) * 0.35, a0.y + (b0.y - a0.y) * 0.35 - 48);
+    ctx.strokeStyle = "#a9b2b6"; ctx.lineWidth = 1.6; line(a0.x, a0.y, aT.x, aT.y); line(b0.x, b0.y, bT.x, bT.y); line(aT.x, aT.y, bT.x, bT.y);
+  }
 }
 
 // ---------- Desgaste das paredes ----------
@@ -1045,7 +1116,7 @@ function drawFurniture(f) {
   drawFurnitureBase(f);
   if (active) {
     ctx.restore();
-    drawLootQuestion(f, f.x + f.w / 2, f.y - 13 - (tallFurn(f) ? TALL_FURN[f.name] * LEAN : 0));
+    drawLootQuestion(f, f.x + f.w / 2, f.y - 13 - (tallFurn(f) ? furnH(f) * LEAN : 0));
   }
 }
 function drawFurnitureBase(f) {
@@ -1067,7 +1138,7 @@ function drawFurnitureBase(f) {
     if (drawModel(mid, x + w / 2, y + h / 2, k, active ? LOOT_YELLOW_FILTER : f.opened ? "brightness(0.7)" : null)) { ctx.globalAlpha = 1; return; }
   }
   if (tallFurn(f)) { drawTallFurn(f); ctx.globalAlpha = 1; return; }
-  ctx.fillStyle = "rgba(0,0,0,0.32)"; ctx.fillRect(x + 5, y + 5, w, h);
+  if (!f._flat) { ctx.fillStyle = "rgba(0,0,0,0.32)"; ctx.fillRect(x + 5, y + 5, w, h); }
   if (f.kind === "decor") { drawDecor(f); ctx.globalAlpha = 1; return; }
   if (f.kind === "survivor") { ctx.globalAlpha = 1; drawSurvivor(x + w / 2, y + h / 2, Math.atan2(player.y - y - h / 2, player.x - x - w / 2), 0, false); hudT("SOS", x + w / 2, y - 18, 12, "#6fff9a", "center", true); return; }
   if (f.kind === "stairs") {

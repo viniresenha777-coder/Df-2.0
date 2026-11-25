@@ -259,7 +259,7 @@ const FURN = {
   // cômodos das casas: banheiro e cozinha
   "Armário do banheiro": { w: 56, h: 26, color: "#d8dcd8" },
   "Vaso sanitário": { w: 26, h: 34, color: "#eef2f2" },   "Pia": { w: 42, h: 26, color: "#e2e8ea" },
-  "Banheira": { w: 112, h: 50, color: "#eef2f2" },        "Fogão": { w: 50, h: 44, color: "#c9ccce" },
+  "Banheira": { w: 112, h: 50, color: "#eef2f2" }, "Chuveiro": { w: 54, h: 54, color: "#dfe6e8" },        "Fogão": { w: 50, h: 44, color: "#c9ccce" },
   // decoração: só enfeita e bloqueia passagem, não dá saque
   "Planta": { w: 26, h: 26, color: "#4f7a3a" },          "Poltrona": { w: 44, h: 40, color: "#6a4a4a" },
   "TV": { w: 60, h: 18, color: "#24272b" },             "Cadeira": { w: 26, h: 26, color: "#5a4a3a" },

@@ -359,30 +359,81 @@ function houseRooms(h, list, lvl, R, iw, ih, n, keepClear) {
     { k: "sala", x: VX + T / 2, y: HY + T / 2, w: x1 - VX - T / 2, h: y1 - HY - T / 2 },
   ];
   const clear = [keepClear, { x: VX - 60, y: gV - 6, w: 120, h: DG + 12 }, { x: gL - 6, y: HY - 60, w: DG + 12, h: 120 }, { x: gR - 6, y: HY - 60, w: GR + 12, h: 120 }];
+  // Cada coisa no lugar óbvio: móveis encostados na parede (de costas para ela, frente para o cômodo), geladeira
+  // num canto ou no meio de uma parede, planta e chuveiro nos cantos, cadeiras em volta da mesa, poltrona ao lado do sofá.
+  const PLACE = { "Planta": "corner", "Chuveiro": "cornerTop", "Cadeira": "near:Mesa", "Poltrona": "near:Sofá", "Mesa": "center", "Geladeira": "fridge" };
+  const BACK_LEFT = { "Cama": 1 };                         // a cama tem a cabeceira no lado esquerdo do desenho
+  const SIDES = ["t", "r", "b", "l"], m = 4;
   const addIn = (r, name, kind, table) => {
-    const f = FURN[name] || { w: 26, h: 20, color: "#8a5a2b" }, m = 6;
-    if (r.w < f.w + 2 * m || r.h < f.h + 2 * m) return;
-    // geladeira: num canto ou no meio de uma parede; móveis altos (armários, fogão…) sempre encostados numa parede
-    const hug = typeof TALL_FURN !== "undefined" && TALL_FURN[name], spots = [];
-    if (name === "Geladeira") {
-      const L = r.x + m, Rr = r.x + r.w - m - f.w, Tp = r.y + m, B = r.y + r.h - m - f.h, Cx = r.x + (r.w - f.w) / 2, Cy = r.y + (r.h - f.h) / 2;
-      spots.push([L, Tp], [Rr, Tp], [Cx, Tp], [L, Cy], [Rr, Cy], [L, B], [Rr, B]);
-      for (let i = spots.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [spots[i], spots[j]] = [spots[j], spots[i]]; }
-    }
-    for (let t = 0; t < 60 + spots.length; t++) {
-      let x, y; const s = hug ? R() * 0.7 : R();
-      if (t < spots.length) { [x, y] = spots[t]; x = Math.round(x); y = Math.round(y); } else
-      if (s < 0.3) { x = r.x + m + R() * (r.w - 2 * m - f.w); y = r.y + m; }                       // parede de cima
-      else if (s < 0.5) { x = r.x + m; y = r.y + m + R() * (r.h - 2 * m - f.h); }                  // esquerda
-      else if (s < 0.7) { x = r.x + r.w - m - f.w; y = r.y + m + R() * (r.h - 2 * m - f.h); }      // direita
-      else if (s < 0.85) { x = r.x + m + R() * (r.w - 2 * m - f.w); y = r.y + r.h - m - f.h; }     // de baixo
-      else { x = r.x + 40 + R() * Math.max(1, r.w - 80 - f.w); y = r.y + 40 + R() * Math.max(1, r.h - 80 - f.h); }
-      if (hits(list, x, y, f.w, f.h, kind === "decor" ? 10 : 16) || hits(clear, x, y, f.w, f.h, 0)) continue;
+    const f = FURN[name] || { w: 26, h: 20, color: "#8a5a2b" };
+    const front = typeof FURN_FRONT !== "undefined" && FURN_FRONT[name];
+    let mode = PLACE[name] || "wall";
+    const rotFor = (side) => (SIDES.indexOf(side) - (BACK_LEFT[name] ? 3 : 0) + 4) % 4;
+    const dims = (k) => (k % 2 ? [f.h, f.w] : [f.w, f.h]);
+    const put = (x, y, k, fw, fh, extra) => {
+      x = Math.round(x); y = Math.round(y);
+      if (x < r.x || y < r.y || x + fw > r.x + r.w || y + fh > r.y + r.h) return false;
+      const near = mode.startsWith("near:");
+      if (hits(list.filter(o => o.kind !== "wall"), x, y, fw, fh, near ? 3 : kind === "decor" ? 8 : 12) || hits(clear, x, y, fw, fh, 0)) return false;
       const items = [];
       for (let i = 0; i < 10; i++) items.push({ u: R(), v: R(), c: ITEM_DOTS[Math.floor(R() * ITEM_DOTS.length)] });
-      list.push({ x, y, w: f.w, h: f.h, color: f.color, kind, table, name, opened: false, items, room: r.k });
-      return;
+      list.push(Object.assign({ x, y, w: fw, h: fh, color: f.color, kind, table, name, opened: false, items, room: r.k, rot: k }, extra || {}));
+      return true;
+    };
+    const alongWall = (side, tpos) => {                     // tpos 0..1 ao longo da parede
+      const k = rotFor(side), [fw, fh] = dims(k);
+      if (side === "t") return put(r.x + m + tpos * (r.w - 2 * m - fw), r.y + m, k, fw, fh);
+      if (side === "b") return put(r.x + m + tpos * (r.w - 2 * m - fw), r.y + r.h - m - fh, k, fw, fh);
+      if (side === "l") return put(r.x + m, r.y + m + tpos * (r.h - 2 * m - fh), k, fw, fh);
+      return put(r.x + r.w - m - fw, r.y + m + tpos * (r.h - 2 * m - fh), k, fw, fh);
+    };
+    const pickSide = () => { const s = R(); return s < 0.4 ? "t" : s < 0.65 ? "l" : s < 0.9 ? "r" : front ? "t" : "b"; };
+    if (mode.startsWith("near:")) {
+      const tgt = list.find(o => o.name === mode.slice(5) && o.room === r.k);
+      if (tgt) {
+        for (let t = 0; t < 12; t++) {
+          if (name === "Cadeira") {                          // em volta da mesa, de costas para fora
+            const sd = SIDES[Math.floor(R() * 4)], k = sd === "t" ? 0 : sd === "r" ? 1 : sd === "b" ? 2 : 3, [fw, fh] = dims(k), g = 4;
+            const cx = tgt.x + tgt.w / 2 - fw / 2 + (R() - 0.5) * Math.max(0, (sd === "t" || sd === "b" ? tgt.w : 0) - fw - 6);
+            const cy = tgt.y + tgt.h / 2 - fh / 2 + (R() - 0.5) * Math.max(0, (sd === "l" || sd === "r" ? tgt.h : 0) - fh - 6);
+            const px = sd === "l" ? tgt.x - g - fw : sd === "r" ? tgt.x + tgt.w + g : cx;
+            const py = sd === "t" ? tgt.y - g - fh : sd === "b" ? tgt.y + tgt.h + g : cy;
+            // k: o encosto (topo do desenho) fica do lado de fora da mesa
+            if (put(px, py, k, fw, fh)) return;
+          } else {                                           // poltrona ao lado do sofá, mesma parede
+            const k = tgt.rot | 0, [fw, fh] = dims(k), g = 10, left = R() < 0.5;
+            const along = k % 2 === 0;
+            const px = along ? (left ? tgt.x - g - fw : tgt.x + tgt.w + g) : tgt.x + (k === 1 ? tgt.w - fw : 0);
+            const py = along ? tgt.y + (k === 2 ? tgt.h - fh : 0) : (left ? tgt.y - g - fh : tgt.y + tgt.h + g);
+            if (put(px, py, k, fw, fh)) return;
+          }
+        }
+      }
+      mode = name === "Cadeira" ? "wall" : "corner";
     }
+    if (mode === "center") {
+      for (let t = 0; t < 40; t++) { const [fw, fh] = dims(0); if (put(r.x + (r.w - fw) / 2 + (R() - 0.5) * r.w * 0.25, r.y + (r.h - fh) / 2 + (R() - 0.5) * r.h * 0.25, 0, fw, fh)) return; }
+      mode = "wall";
+    }
+    if (mode === "fridge") {                                 // canto ou meio de uma parede
+      const sp = [["t", 0], ["t", 1], ["t", 0.5], ["l", 0], ["r", 0], ["l", 0.5], ["r", 0.5], ["l", 1], ["r", 1]];
+      for (let i = sp.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [sp[i], sp[j]] = [sp[j], sp[i]]; }
+      for (const [sd, tp] of sp) if (alongWall(sd, tp)) return;
+      mode = "wall";
+    }
+    if (mode === "corner" || mode === "cornerTop") {
+      const cs = mode === "cornerTop" ? [["t", 0], ["t", 1]] : [["t", 0], ["t", 1], ["b", 0], ["b", 1]];
+      for (let i = cs.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [cs[i], cs[j]] = [cs[j], cs[i]]; }
+      for (const [sd, tp] of cs) {
+        const k = name === "Chuveiro" ? 0 : rotFor(sd), [fw, fh] = dims(k);
+        const x = tp ? r.x + r.w - m - fw : r.x + m, y = sd === "t" ? r.y + m : r.y + r.h - m - fh;
+        const extra = name === "Chuveiro" ? { open: ["s", tp ? "w" : "e"] } : null;
+        if (put(name === "Chuveiro" ? (tp ? r.x + r.w - fw : r.x) : x, name === "Chuveiro" ? r.y : y, k, fw, fh, extra)) return;
+      }
+      if (name === "Chuveiro") return;
+      mode = "wall";
+    }
+    for (let t = 0; t < 60; t++) if (alongWall(pickSide(), R())) return;
   };
   // móveis com saque: a mesma quantidade de antes (n, no mínimo um por cômodo), repartidos entre os cômodos
   const pool = [];
@@ -391,9 +442,13 @@ function houseRooms(h, list, lvl, R, iw, ih, n, keepClear) {
   // o móvel principal de cada cômodo vem sempre (cama, geladeira, sofá, armário do banheiro); o resto é sorteado
   const chosen = rooms.map(r => pool.find(p => p[0] === r && p[1] === HOUSE_ROOMS[r.k].furn[0])).filter(Boolean);
   for (const p of pool) { if (chosen.length >= Math.max(n, rooms.length)) break; if (!chosen.includes(p)) chosen.push(p); }
+  for (const r of rooms) if (r.k === "banheiro") addIn(r, "Chuveiro", "decor", null);   // o box vai primeiro, num canto
   for (const [r, name] of chosen) addIn(r, name, "furniture", name);
   if (R() < 0.22) addIn(rooms[1 + Math.floor(R() * 3)], "Baú", "chest", "chest");
-  for (const r of rooms) for (const name of HOUSE_ROOMS[r.k].decor) addIn(r, name, "decor", null);
+  for (const r of rooms) for (const name of HOUSE_ROOMS[r.k].decor) {
+    if (name === "Banheira" && list.some(o => o.name === "Chuveiro" && o.room === r.k)) continue;   // ou chuveiro, ou banheira
+    addIn(r, name, "decor", null);
+  }
   h.rooms = rooms.map(r => ({ x: r.x, y: r.y, w: r.w, h: r.h, name: HOUSE_ROOMS[r.k].name, floor: HOUSE_ROOMS[r.k].floor || null }));
   const s = rooms[3];                                    // tapete na sala
   h.rug = { x: s.x + 40 + R() * Math.max(1, s.w - 340), y: s.y + 30 + R() * Math.max(1, s.h - 200), w: 240 + R() * 60, h: 130 + R() * 30,
