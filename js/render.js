@@ -1703,12 +1703,11 @@ function drawLighting() {
     beam.clearRect(0, 0, W, H);
     beam.globalCompositeOperation = "source-over";
     holeTo(beam, px, py, 90, 0.6);
-    if (dark > 0.3) {                                   // feixe do peito terminando num círculo à frente
-      const a = player.angle, D = game.inside ? 105 : 125, R = game.inside ? 62 : 72, sx = px + Math.cos(a) * D, sy = py + Math.sin(a) * D;
-      const gb = beam.createRadialGradient(px, py, 10, px, py, D + R * 0.5);
-      gb.addColorStop(0, "rgba(0,0,0,0.8)"); gb.addColorStop(1, "rgba(0,0,0,0.2)");
-      beam.fillStyle = gb; beam.beginPath(); beam.moveTo(px, py); beam.arc(px, py, D + R * 0.5, a - 0.42, a + 0.42); beam.closePath(); beam.fill();
-      holeTo(beam, sx, sy, R, 0.95);
+    if (dark > 0.3) {                                   // feixe em gota: do peito até um círculo à frente
+      const [cx, cy, D] = flashTearPath(beam, px, py, player.angle);
+      const gb = beam.createRadialGradient(px, py, 8, px, py, D + 80);
+      gb.addColorStop(0, "rgba(0,0,0,0.75)"); gb.addColorStop(0.5, "rgba(0,0,0,0.92)"); gb.addColorStop(1, "rgba(0,0,0,0.95)");
+      beam.fillStyle = gb; beam.fill();
     }
     beam.globalCompositeOperation = "destination-out";
     beam.drawImage(flashlightBlocks(), 0, 0, W, H);

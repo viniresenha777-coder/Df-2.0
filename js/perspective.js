@@ -847,20 +847,15 @@ function drawAtmosphere() {
   // A lanterna só existe à noite; desliga automaticamente ao amanhecer.
   if (flashlightActive()) {
     // brilho quente circular, recortado onde a luz bate numa parede (não atravessa)
-    const reach = game.inside ? 320 : 360, I = 0.05 + Math.max(dark, 0.4) * 0.22;
+    const I = 0.03 + Math.max(dark, 0.4) * 0.11;
     if (!FLASH_GLOW.c) { FLASH_GLOW.c = document.createElement("canvas"); FLASH_GLOW.x = FLASH_GLOW.c.getContext("2d"); }
     const gc = FLASH_GLOW.c, gx = FLASH_GLOW.x;
     if (gc.width !== W || gc.height !== H) { gc.width = W; gc.height = H; }
     gx.globalCompositeOperation = "source-over"; gx.clearRect(0, 0, W, H);
-    const D = game.inside ? 105 : 125, R = game.inside ? 62 : 72, sx = px + Math.cos(a) * D, sy = py + Math.sin(a) * D;
-    const gb = gx.createLinearGradient(px, py, sx, sy);           // raios saindo do peito
-    gb.addColorStop(0, `rgba(255,214,140,${I * 0.5})`); gb.addColorStop(1, `rgba(255,200,120,${I * 0.25})`);
-    gx.fillStyle = gb; gx.beginPath(); gx.moveTo(px, py); gx.arc(px, py, D, a - 0.42, a + 0.42); gx.closePath(); gx.fill();
-    const g = gx.createRadialGradient(sx, sy, 8, sx, sy, R);        // círculo de luz no chão
-    g.addColorStop(0, `rgba(255,214,140,${I})`);
-    g.addColorStop(0.6, `rgba(255,200,120,${I * 0.55})`);
-    g.addColorStop(1, "rgba(255,190,110,0)");
-    gx.fillStyle = g; gx.beginPath(); gx.arc(sx, sy, R, 0, Math.PI * 2); gx.fill();
+    const [sx, sy, D, R] = flashTearPath(gx, px, py, a);            // feixe em gota: do peito até o círculo
+    const g = gx.createRadialGradient(px, py, 6, px, py, D + R);
+    g.addColorStop(0, `rgba(255,214,140,${I * 0.7})`); g.addColorStop(0.55, `rgba(255,208,130,${I})`); g.addColorStop(1, `rgba(255,200,120,${I * 0.9})`);
+    gx.fillStyle = g; gx.fill();
     gx.globalCompositeOperation = "destination-out"; gx.drawImage(flashlightBlocks(), 0, 0, W, H);
     ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.drawImage(gc, 0, 0); ctx.restore();
   }

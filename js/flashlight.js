@@ -172,3 +172,11 @@ function flashlightBlocks() {
   c.setTransform(1,0,0,1,0,0);
   return mask;
 }
+
+// Forma do feixe (gota): cone saindo do peito, tangente a um círculo de raio R a uma distância D.
+function flashTearSize() { return game.inside ? [112, 62] : [132, 74]; }
+function flashTearPath(c, px, py, a) {
+  const [D, R] = flashTearSize(), h = Math.asin(Math.min(0.95, R / D)), cx = px + Math.cos(a) * D, cy = py + Math.sin(a) * D;
+  c.beginPath(); c.moveTo(px, py); c.arc(cx, cy, R, a - Math.PI / 2 - h, a + Math.PI / 2 + h); c.closePath();
+  return [cx, cy, D, R];
+}

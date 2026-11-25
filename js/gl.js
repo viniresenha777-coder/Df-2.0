@@ -68,14 +68,27 @@ void main(){
   for (int i = 0; i < MAXL; i++){
     if (i >= uN) break;
     vec4 L = uL[i]; vec2 d = p - L.xy; float dist = length(d);
+    vec4 K = uK[i]; float att;
+    if (K.z < -2.5) {
+      // lanterna: feixe em gota (cone saindo do peito que termina num círculo). L.z = distância até o centro
+      // do círculo, K.xy = direção, K.w = raio do círculo. Luz quase uniforme, borda macia.
+      float R = K.w, D = L.z, sh = R / D, ch = sqrt(max(0.0, 1.0 - sh * sh));
+      float dc = length(p - (L.xy + K.xy * D));
+      float al = dot(d, K.xy), cs = clamp(al / max(dist, 0.001), -1.0, 1.0), sn = sqrt(1.0 - cs * cs);
+      // distância (com sinal) até a borda da gota: lado do cone antes do ponto de tangência, círculo depois
+      float sd = al < D * ch * ch ? dist * (sn * ch - cs * sh) : dc - R;
+      att = smoothstep(7.0, -7.0, sd) * smoothstep(4.0, 30.0, dist) * (0.78 + 0.22 * smoothstep(0.0, D, al));
+      if (att <= 0.0) continue;
+      att *= 1.0 - texture2D(uFlashBlocked, vUv).a;
+    } else {
     if (dist >= L.z) continue;
-    float att = 1.0 - dist / L.z; att *= att;
-    vec4 K = uK[i];
+    att = 1.0 - dist / L.z; att *= att;
     if (K.z > -1.5) {
       att *= smoothstep(K.z, K.z + K.w, dot(d / max(dist, 0.001), K.xy));
       // A máscara exclusiva da lanterna interrompe os raios na
       // parede/copa/haste. Não escurece a iluminação ambiental.
       att *= 1.0 - texture2D(uFlashBlocked, vUv).a;
+    }
     }
     vec4 C = uC[i];
     if (C.a > 0.5) att *= m;
@@ -303,10 +316,9 @@ function gfxLights(dark) {
       // Lanterna no peito: o feixe sai do peito e termina num círculo de luz à frente, para onde você mira.
       // A máscara (calculada a partir do peito) corta a luz nas paredes.
       const ALL = [1, 0, -1.2, 0.0001], fd = Math.max(dark, 0.42), ca = Math.cos(a), sa = Math.sin(a);
-      const D = game.inside ? 105 : 125, R = game.inside ? 62 : 72;
-      add(px, py, 80, fd * 0.35, [1, 0.96, 0.9], true, ALL);                                         // brilho fraco no corpo
-      add(px, py, D + 20, fd * 0.5, [1, 0.88, 0.6], true, [ca, sa, Math.cos(0.36), 0.1]);   // raios saindo do peito
-      add(px + ca * D, py + sa * D, R, Math.max(0, fd - 0.05) * 2.6, [1, 0.86, 0.55], true, ALL);   // círculo de luz
+      const D = game.inside ? 112 : 132, R = game.inside ? 62 : 74;
+      add(px, py, 70, fd * 0.3, [1, 0.96, 0.9], true, ALL);                                             // brilho fraco no corpo
+      L.push([px, py, D, Math.max(0, fd - 0.04) * 1.55, [1, 0.88, 0.62], 1, [ca, sa, -3, R]]);          // feixe em gota
     }
     if (player.flashT > 0) add(px + Math.cos(a) * 30, py + Math.sin(a) * 30, 280, 1.1 * glow * (Math.min(1, player.flashT / 60) + 0.4), [1, 0.75, 0.38], true);
   }
