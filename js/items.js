@@ -169,11 +169,11 @@ function cashProtection(pack = player.pack) {
 }
 function safeDescription(id) { return `Protege até $${MATS[id].cashProtection.toLocaleString("pt-BR")} ao morrer.`; }
 const RECIPES = [
-  { id: "besta",       mats: { pecas: 10, eletronicos: 6, nucleo: 2 },    money: 120000, level: 40 },   // Lendária: mesmos requisitos do Rifle Trovão
+  { id: "besta",       mats: { pecas: 12, eletronicos: 6, nucleo: 5 },    money: 120000, level: 40 },   // Lendária
   { id: "serra",       mats: { sucata: 6, pecas: 3, eletronicos: 3 },     money: 20000, level: 10 },
   { id: "lancachamas", mats: { sucata: 8, pecas: 5, eletronicos: 3 },     money: 35000, level: 15 },
   { id: "lamina",      mats: { sucata: 10, pecas: 4, nucleo: 1 },         money: 60000, level: 25 },
-  { id: "trovao",      mats: { pecas: 10, eletronicos: 6, nucleo: 2 },    money: 120000, level: 40 },
+  { id: "trovao",      mats: { pecas: 15, eletronicos: 7, nucleo: 10 },   money: 120000, level: 40 },
   { id: "minigun_inf", mats: { pecas: 14, eletronicos: 10, nucleo: 4 },   money: 250000, level: 60 },
   // colete nº 10: craft difícil (precisa ter o nº 9, que é consumido)
   { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 500000, level: 100, needVest: 8 },
