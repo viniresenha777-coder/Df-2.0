@@ -320,9 +320,6 @@ function gfxLights(dark) {
       const [D] = flashTearSize();
       add(px, py, 60, fd * 0.25, [1, 0.96, 0.9], true, ALL);                                             // reflexo fraco no corpo
       L.push([px, py, flashBeamLen(), Math.max(0, fd - 0.04) * 2.4, [1, 0.9, 0.68], 1, [ca, sa, -3, FLASH_HALF]]);   // cone reto
-      // perto da parede o feixe bate nela: mancha de luz na face da parede, mais forte e menor quanto mais perto
-      if (FLASH_TEAR.hit < FLASH_TEAR.max) { const hd = FLASH_TEAR.hit, q = 1 - hd / FLASH_TEAR.max;
-        add(px + ca * hd, py + sa * hd - 10 - 12 * q, 26 + hd * 0.55, fd * (0.6 + 1.2 * q), [1, 0.9, 0.7], true, ALL); }
     }
     if (player.flashT > 0) add(px + Math.cos(a) * 30, py + Math.sin(a) * 30, 280, 1.1 * glow * (Math.min(1, player.flashT / 60) + 0.4), [1, 0.75, 0.38], true);
   }

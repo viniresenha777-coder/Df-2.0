@@ -1725,11 +1725,13 @@ function drawLightingDark() {
     beam.clearRect(0, 0, W, H);
     beam.globalCompositeOperation = "source-over";
     holeTo(beam, px, py, 90, 0.6);
-    if (dark > 0.3) {                                   // feixe em gota: do peito até um círculo à frente
-      const [cx, cy, D] = flashTearPath(beam, px, py, player.angle);
-      const gb = beam.createRadialGradient(px, py, 8, px, py, D + 80);
-      gb.addColorStop(0, "rgba(0,0,0,0.75)"); gb.addColorStop(0.5, "rgba(0,0,0,0.92)"); gb.addColorStop(1, "rgba(0,0,0,0.95)");
-      beam.fillStyle = gb; beam.fill();
+    if (dark > 0.3) {                                   // cone reto (sem a gota): abre a escuridão onde o facho passa
+      const Lb = flashBeamLen(), hw = Math.tan(FLASH_HALF);
+      beam.save(); beam.translate(px, py); beam.rotate(player.angle); beam.filter = "blur(8px)";
+      const gb = beam.createLinearGradient(0, 0, Lb, 0);
+      gb.addColorStop(0, "rgba(0,0,0,0.9)"); gb.addColorStop(0.35, "rgba(0,0,0,0.85)"); gb.addColorStop(1, "rgba(0,0,0,0)");
+      beam.fillStyle = gb; beam.beginPath(); beam.moveTo(0, -3); beam.lineTo(Lb, -Lb * hw); beam.lineTo(Lb, Lb * hw); beam.lineTo(0, 3); beam.closePath(); beam.fill();
+      beam.restore(); beam.filter = "none";
     }
     beam.globalCompositeOperation = "destination-out";
     beam.drawImage(flashlightBlocks(), 0, 0, W, H);
