@@ -847,7 +847,7 @@ function drawAtmosphere() {
   // A lanterna só existe à noite; desliga automaticamente ao amanhecer.
   if (flashlightActive()) {
     // brilho quente circular, recortado onde a luz bate numa parede (não atravessa)
-    const reach = game.inside ? 320 : 360, I = 0.05 + dark * 0.22;
+    const reach = game.inside ? 320 : 360, I = 0.05 + Math.max(dark, 0.4) * 0.22;
     if (!FLASH_GLOW.c) { FLASH_GLOW.c = document.createElement("canvas"); FLASH_GLOW.x = FLASH_GLOW.c.getContext("2d"); }
     const gc = FLASH_GLOW.c, gx = FLASH_GLOW.x;
     if (gc.width !== W || gc.height !== H) { gc.width = W; gc.height = H; }
