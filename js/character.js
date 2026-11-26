@@ -240,7 +240,7 @@ function attrEffect(id, v) {
   }
 }
 function syncChar() {
-  save.char.level = player.level; save.char.xp = player.xp; save.char.points = player.points; save.char.wpoints = player.wpoints; save.char.skillCurve = 2;
+  save.char.level = player.level; save.char.xp = player.xp; save.char.points = player.points; save.char.wpoints = player.wpoints; save.char.skillCurve = WEAPON_CURVE;
   persist();
 }
 function gainXp(n) {

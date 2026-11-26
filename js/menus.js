@@ -113,7 +113,6 @@ function statsKey(k) {
   else if (k === "backspace" || k === "x" || k === "-") subPoint(k === "x" ? 5 : 1);
   else if (k === "f") confirmStats();
   else if (k === "z") revertStats();
-  else if (k === "r") { if (atBase()) game.sconfirm = true; else toast("Só dá para resetar atributos dentro da base"); }
 }
 // Distribuição com confirmação: os pontos colocados nesta visita à tela ficam "pendentes" e podem
 // ser tirados com o botão −. Só depois de Confirmar eles ficam fixos (não dá para tirar o que já foi
@@ -1377,23 +1376,8 @@ function drawStats() {
     btn(700, 342, 104, 22, "Confirmar (F)", confirmStats, true);
     btn(812, 342, 100, 22, "Desfazer (Z)", () => revertStats(false));
   }
-  // reset de atributos pago com créditos
-  ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(40, 398, 880, 110, 8); ctx.fill();
-  ctx.strokeStyle = "rgba(192,57,43,0.55)"; ctx.lineWidth = 1.5; ctx.stroke();
-  txt("Reset de atributos", W / 2, 424, 18, "#f2eedc", "center", true);
-  txt("Devolve todos os pontos investidos em stats e proficiências para você distribuir de novo.", W / 2, 446, 13, "#a9a58f", "center");
-  const ok = resetIsFree() || save.credits >= RESET_STATS_CREDITS;
-  txt(resetIsFree() ? "GRÁTIS (1 reset grátis por mês · não acumula)" : `${RESET_STATS_CREDITS} créditos · você tem ${save.credits} · próximo grátis ${resetFreeIn()}`, W / 2, 466, 14, resetIsFree() ? "#8bed92" : ok ? "#e05a4a" : "#6d6a58", "center", true);
-  btn(W / 2 - 90, 474, 180, 28, ok ? "Resetar (R)" : "Créditos insuficientes", () => { game.sconfirm = true; }, true, !ok);
-  if (game.sconfirm) {
-    ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = "#1a1913"; rr(W / 2 - 210, H / 2 - 64, 420, 128, 10); ctx.fill(); ctx.strokeStyle = "#e05a4a"; ctx.lineWidth = 2; ctx.stroke();
-    txt(resetIsFree() ? "Usar o reset grátis do mês?" : `Resetar atributos por ${RESET_STATS_CREDITS} créditos?`, W / 2, H / 2 - 26, 17, "#f2eedc", "center", true);
-    txt("Todos os pontos voltam para você distribuir de novo.", W / 2, H / 2 - 4, 13, "#a9a58f", "center");
-    btn(W / 2 - 150, H / 2 + 16, 140, 32, "Resetar", () => { game.sconfirm = false; resetStatsWithCredits(); }, true);
-    btn(W / 2 + 10, H / 2 + 16, 140, 32, "Cancelar", () => { game.sconfirm = false; });
-  }
-  hint("W/S escolhe · Enter +1 · D +5 · Backspace −1 · F confirma · Z desfaz · Shift no +/− soma 5 · R reset · C ou Esc");
+  // o reset de atributos fica só no Ferro Velho (aqui confundia com a distribuição de pontos)
+  hint("W/S escolhe · Enter +1 · D +5 · Backspace −1 · F confirma · Z desfaz · Shift no +/− soma 5 · C ou Esc");
 }
 
 function drawMissionRow(x, y, w, m, sel, active) {

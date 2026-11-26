@@ -84,6 +84,7 @@ function openMarket() {
   market.filterOpen = false;
   market.page = 0;
   market.confirm = null;
+  market.aviso = null;
   marketRefresh();
 }
 
@@ -146,10 +147,54 @@ function marketAskCredits(row) {
     }
   };
 }
+// valores de referência para quem anuncia: preço na Loja (créditos contam a $CREDIT_PRICE) e quanto o Ferro Velho paga
+function marketRefPrices(item) {
+  const q = Number(item.qty) || 1, R = { shop: 0, scrap: 0, shopTxt: "" };
+  try {
+    if (item.kind === "weapon" && WDEF[item.id]) {
+      const d = WDEF[item.id];
+      R.scrap = d.noTrade ? 0 : weaponSellPrice(item);
+      if (d.shop) R.shop = d.shop;
+      else if (SHOP_WEAPONS.includes(d)) R.shop = d.price;
+      else if (d.credits) { R.shop = d.credits * CREDIT_PRICE; R.shopTxt = `${d.credits.toLocaleString("pt-BR")} créditos`; }
+    } else if (item.kind === "implant" && IMP[item.id]) {
+      const im = IMP[item.id];
+      R.scrap = implantSellPrice(item);
+      if (im.price > 0 && !im.kitOnly && !im.craftOnly) { R.shop = im.price * CREDIT_PRICE; R.shopTxt = `${im.price.toLocaleString("pt-BR")} créditos`; }
+    } else if (item.kind === "vest" && VESTS[item.id]) {
+      const v = VESTS[item.id];
+      R.scrap = vestSellPrice(item.id);
+      if (v.price) R.shop = v.price;
+      else if (v.credits) { R.shop = v.credits * CREDIT_PRICE; R.shopTxt = `${v.credits.toLocaleString("pt-BR")} créditos`; }
+    } else if (item.kind === "mat" && MATS[item.id]) {
+      R.scrap = item.id === "reset_stats" ? 0 : matSellPrice(item.id) * q;
+      if (MATS[item.id].price) R.shop = MATS[item.id].price * q;
+    } else if (item.kind === "ammo" && AMMO[item.id]) {
+      R.scrap = Math.round(ammoSellPrice(item.id) * q);
+      R.shop = Math.round(ammoPackPrice(item.id) / AMMO_PACK_SIZE * q);
+    } else if (item.kind === "food" && JUNK_CONS[item.id]) R.scrap = JUNK_CONS[item.id] * q;
+    else if (JUNK_CONS[item.kind]) R.scrap = JUNK_CONS[item.kind] * q;
+  } catch (e) { /* item sem referência */ }
+  R.shop = Math.round(R.shop || 0); R.scrap = Math.round(R.scrap || 0);
+  return R;
+}
+function marketRefText(item) {
+  const R = marketRefPrices(item), parts = [];
+  if (R.shop) parts.push(`Loja: ${bankMoney(R.shop)}${R.shopTxt ? ` (${R.shopTxt})` : ""}`);
+  if (R.scrap) parts.push(`Ferro Velho: ${bankMoney(R.scrap)}`);
+  return parts.join(" · ");
+}
+// avisos antes de publicar: abaixo do preço da Loja e/ou abaixo do Ferro Velho (aí vender no Ferro Velho rende mais)
+function marketPriceWarnings(item, price) {
+  const R = marketRefPrices(item), w = [];
+  if (R.scrap && price < R.scrap) w.push(`Abaixo do Ferro Velho (${bankMoney(R.scrap)}): vender no Ferro Velho rende mais.`);
+  if (R.shop && price < R.shop) w.push(`Abaixo do preço da Loja (${bankMoney(R.shop)}${R.shopTxt ? " = " + R.shopTxt : ""}).`);
+  return w;
+}
 function marketAskPrice(row) {
   if (row.item.kind === "credits") { marketAskCredits(row); return; }
   game.input = {
-    mode: "market", text: "", label: marketItemName(row.item),
+    mode: "market", text: "", label: marketItemName(row.item), ref: marketRefText(row.item), refItem: row.item,
     fn(price) {
       if (!Number.isInteger(price) || price < 1 || price > 1000000) {
         toast("Digite um preço entre $1 e $1.000.000.");
@@ -160,6 +205,11 @@ function marketAskPrice(row) {
         toast("O item mudou. Selecione-o novamente.");
         return;
       }
+      const avisos = marketPriceWarnings(row.item, price);
+      if (avisos.length) {
+        setTimeout(() => { market.aviso = { row, price, avisos }; }, 0);
+        return;
+      }
       marketTrade("listar", { local_item: row.local, posicao: row.index, preco: price });
     }
   };
@@ -167,7 +217,7 @@ function marketAskPrice(row) {
 
 function drawMarket() {
   menuFrame("Mercado Negro", `Dinheiro na mochila · ${bankMoney(game.money)}`, "mercado_bg");
-  const locked = game.marketBusy || !!game.input || !!market.confirm;
+  const locked = game.marketBusy || !!game.input || !!market.confirm || !!market.aviso;
   const tabs = [["comprar", "Comprar"], ["vender", "Anunciar"], ["meus", "Meus anúncios"]];
   tabs.forEach(([key, label], i) => btn(60 + i * 132, 84, 122, 34, label, () => {
     market.tab = key;
@@ -215,12 +265,31 @@ function drawMarket() {
     drawMarketDropdown();
     return;
   }
-  if (!game.input && !market.confirm) return;
+  if (!game.input && !market.confirm && !market.aviso) return;
   ctx.fillStyle = "rgba(7,7,5,0.9)";
-  ctx.fillRect(W / 2 - 210, 196, 420, 170);
+  if (market.aviso && !game.input) {
+    const { row, price, avisos } = market.aviso;
+    const by = 258 + avisos.length * 22 + 10;
+    ctx.fillRect(W / 2 - 250, 176, 500, by + 33 + 18 - 176);
+    txt("Atenção: preço baixo", W / 2, 204, 18, "#ff8a5a", "center", true);
+    txt(`${marketItemName(row.item)} · ${bankMoney(price)}`, W / 2, 230, 15, "#f2eedc", "center", true, 460);
+    avisos.forEach((a, i) => txt(a, W / 2, 258 + i * 22, 14, i === 0 ? "#ffb08a" : "#e5d9a8", "center", false, 470));
+    btn(W / 2 - 235, by, 140, 33, "Mudar preço", () => { market.aviso = null; marketAskPrice(row); });
+    btn(W / 2 - 85, by, 110, 33, "Voltar", () => { market.aviso = null; });
+    btn(W / 2 + 35, by, 200, 33, "Anunciar mesmo assim", () => {
+      market.aviso = null;
+      marketTrade("listar", { local_item: row.local, posicao: row.index, preco: price });
+    }, true);
+    return;
+  }
+  ctx.fillRect(W / 2 - 210, 196, 420, game.input && game.input.ref ? 190 : 170);
   if (game.input) {
     txt(game.input.label, W / 2, 231, 16, "#f2eedc", "center", true, 375);
     txt(game.input.unit === "" ? `Quantidade · ${game.input.text || "0"}` : `Preço em dinheiro · $${game.input.text || "0"}`, W / 2, 275, 21, "#ffd96a", "center");
+    if (game.input.ref) {
+      const v = Number(game.input.text) || 0, baixo = v > 0 && marketPriceWarnings(game.input.refItem, v).length > 0;
+      txt(game.input.ref, W / 2, 372, 12, baixo ? "#ff8a5a" : "#9c977f", "center", false, 400);
+    }
     btn(W / 2 - 155, 310, 140, 33, "Voltar", () => { game.input = null; });
     btn(W / 2 + 15, 310, 140, 33, "Anunciar (Enter)", () => inputKey("enter"), true);
   } else {
