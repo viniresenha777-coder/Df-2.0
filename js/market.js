@@ -30,7 +30,8 @@ function marketItemName(item) {
 function marketInventory() {
   const rows = [];
   const add = (item, local, index = 0) => {
-    if (item && !item.tokenBound && !(item.kind === "weapon" && WDEF[item.id]?.noTrade) && !(item.kind === "implant" && IMP[item.id]?.noTrade)) rows.push({ item, local, index });
+    if (item && !item.tokenBound && !item.semTroca && !(item.kind === "weapon" && WDEF[item.id]?.noTrade) && !(item.kind === "implant" && IMP[item.id]?.noTrade)
+        && !(item.kind === "vest" && (save.vestSemTroca || []).includes(item.id))) rows.push({ item, local, index });
   };
   for (const [local, items] of [["slots", player.slots], ["pack", player.pack], ["vault", save.vault]])
     items.forEach((item, index) => add(item, local, index));

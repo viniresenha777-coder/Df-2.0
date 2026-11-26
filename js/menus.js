@@ -1046,11 +1046,23 @@ function toggleAdmin() {
 }
 function admAsk(label, fn) { if (!canUseAdmin()) return; game.input = { mode: "adm", text: "", label, fn }; }
 function admAskText(label, fn) { if (!canUseAdmin()) return; game.input = { mode: "admText", text: "", label, fn }; }
-const ADM_GIFT_TYPES = ["dinheiro", "vip", "arma", "material"];
-const ADM_GIFT_MATERIALS = ["sucata", "pecas", "eletronicos", "nucleo", "placa"];
+const ADM_GIFT_TYPES = ["dinheiro", "vip", "creditos", "arma", "implante", "colete", "roupa", "material", "municao", "suprimento"];
+const ADM_GIFT_LABEL = { dinheiro: "Dinheiro", vip: "VIP temporário", creditos: "Créditos", arma: "Arma", implante: "Implante",
+  colete: "Colete", roupa: "Roupa / mochila", material: "Material", municao: "Munição", suprimento: "Suprimento (comida, água, remédio)" };
+const ADM_GIFT_QTY = { dinheiro: 1000, vip: 1, creditos: 100, material: 10, municao: 500, suprimento: 5 };
 function admGiftOptions(g) {
-  return g.type === "arma" ? WLIST.filter(w => !w.fists).map(w => w.id) : ADM_GIFT_MATERIALS;
+  switch (g.type) {
+    case "arma": return WLIST.filter(w => !w.fists).map(w => w.id);
+    case "implante": return IMP_IDS.slice();
+    case "colete": return VESTS.map((_, i) => String(i));
+    case "roupa": return CLOTHING_ITEMS.map(c => c.id);
+    case "material": return Object.keys(MATS);
+    case "municao": return Object.keys(AMMO);
+    case "suprimento": return Object.keys(fmGifts.SUPRIMENTOS);
+    default: return [];
+  }
 }
+function admGiftItem(g) { const o = admGiftOptions(g); return o.length ? o[((g.itemIndex || 0) % o.length + o.length) % o.length] : null; }
 async function admSendGift() {
   if (!canUseAdmin()) return;
   const g = game.admGift;
@@ -1058,11 +1070,41 @@ async function admSendGift() {
   if (!g.name || g.name.trim().length < 3) { toast("Informe o nome do destinatário."); return; }
   g.busy = true;
   try {
-    const options = admGiftOptions(g), item = options[Math.abs(g.itemIndex || 0) % options.length];
-    toast(await fmGifts.send(g.name, g.type, g.qty, item));
+    toast(await fmGifts.send(g.name, g.type, g.qty, admGiftItem(g), g.transferivel !== false));
+    admLoadGiftHistory();
   } catch (err) {
     toast(err.message || "Não foi possível enviar.");
   } finally { g.busy = false; }
+}
+async function admLoadGiftHistory() {
+  game.admGiftHist = Object.assign({ page: 0 }, game.admGiftHist, { busy: true });
+  try { game.admGiftHist = { list: await fmGifts.history(), busy: false, page: 0 }; }
+  catch (e) { game.admGiftHist = { list: [], busy: false, page: 0, err: e.message || String(e) }; }
+}
+// histórico dos presentes enviados (aba Presentes, embaixo das opções)
+function drawGiftHistory(top) {
+  if (!game.admGiftHist) admLoadGiftHistory();
+  const h = game.admGiftHist || { list: [], busy: true, page: 0 };
+  const y0 = top + 8, bottom = 500, lineH = 22, per = Math.max(1, Math.floor((bottom - y0 - 34) / lineH));
+  const pages = Math.max(1, Math.ceil(h.list.length / per));
+  h.page = Math.max(0, Math.min(pages - 1, h.page || 0));
+  ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(60, y0, 840, bottom - y0, 8); ctx.fill();
+  ctx.strokeStyle = "rgba(212,175,55,0.35)"; ctx.lineWidth = 1; ctx.stroke();
+  txt("Histórico de presentes enviados", 74, y0 + 21, 14, "#ffd96a", "left", true);
+  btn(700, y0 + 6, 60, 22, "◀", () => { h.page = Math.max(0, h.page - 1); }, false, h.page <= 0);
+  txt(`${h.page + 1}/${pages}`, 790, y0 + 21, 12, "#a9a58f", "center");
+  btn(820, y0 + 6, 60, 22, "▶", () => { h.page = Math.min(pages - 1, h.page + 1); }, false, h.page >= pages - 1);
+  btn(600, y0 + 6, 92, 22, h.busy ? "..." : "Atualizar", () => admLoadGiftHistory(), false, h.busy);
+  if (h.err) { txt("Erro: " + h.err, 74, y0 + 52, 13, "#e05a4a"); return; }
+  if (!h.busy && !h.list.length) { txt("Nenhum presente enviado ainda.", 74, y0 + 52, 13, "#6d6a58"); return; }
+  h.list.slice(h.page * per, h.page * per + per).forEach((g, k) => {
+    const y = y0 + 48 + k * lineH;
+    const q = new Date(g.criado_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    txt(q, 74, y, 12, "#a9a58f");
+    txt(g.nome, 190, y, 13, "#e5e0c8", "left", true, 150);
+    txt(g.texto, 350, y, 13, g.texto.includes("Não transferível") ? "#ffb08a" : "#e5e0c8", "left", false, 430);
+    txt(g.recebido_em ? "entregue" : "pendente", 886, y, 12, g.recebido_em ? "#6fae4f" : "#ffd96a", "right", true);
+  });
 }
 async function admLoadRetido() {
   game.admRetido = { list: [], busy: true };
@@ -1156,28 +1198,38 @@ function admRows() {
     B("Limpar a mochila de implantes", () => { player.bag.length = 0; toast("Mochila de implantes vazia"); });
     B("Remover os implantes instalados", () => { save.installed.length = 0; persist(); recalcImplants(); toast("Implantes removidos"); });
   } else if (tab === 5) {
-    const g = game.admGift || (game.admGift = { name: "", type: "dinheiro", qty: 1000, itemIndex: 0, busy: false });
+    const g = game.admGift || (game.admGift = { name: "", type: "dinheiro", qty: 1000, itemIndex: 0, busy: false, transferivel: true });
     B("Destinatário: " + (g.name || "(digitar nome in-game)"), () => admAskText("Nome do jogador", name => { g.name = name.slice(0,16); }));
-    rows.push({ label: "Tipo de presente (A/D para escolher)", val: () =>
-      ({dinheiro:"Dinheiro",vip:"VIP temporário",arma:"Arma",material:"Material"})[g.type],
-      act: (d) => { g.type = ADM_GIFT_TYPES[(ADM_GIFT_TYPES.indexOf(g.type) + (d < 0 ? -1 : 1) + ADM_GIFT_TYPES.length) % ADM_GIFT_TYPES.length]; g.itemIndex = 0; g.qty = g.type === "vip" ? 1 : g.type === "arma" ? 1 : g.type === "material" ? 10 : 1000; } });
+    rows.push({ label: "Tipo de presente (A/D para escolher)", val: () => ADM_GIFT_LABEL[g.type],
+      act: (d) => { g.type = ADM_GIFT_TYPES[(ADM_GIFT_TYPES.indexOf(g.type) + (d < 0 ? -1 : 1) + ADM_GIFT_TYPES.length) % ADM_GIFT_TYPES.length];
+        g.itemIndex = 0; g.qty = ADM_GIFT_QTY[g.type] || 1; g.transferivel = true; } });
+    if (admGiftOptions(g).length) {
+      rows.push({ label: "Item (A/D alterna · Enter busca pelo nome)", val: () => fmGifts.itemNome(g.type, admGiftItem(g)),
+        act: (d, how) => {
+          const list = admGiftOptions(g);
+          if (how === "enter") {
+            admAskText("Buscar item pelo nome", (q) => {
+              const t = q.trim().toLocaleLowerCase("pt-BR"), k = list.findIndex(id => fmGifts.itemNome(g.type, id).toLocaleLowerCase("pt-BR").includes(t) || id.includes(t));
+              if (k >= 0) g.itemIndex = k; else toast("Nenhum item com esse nome.");
+            });
+            return;
+          }
+          g.itemIndex = ((g.itemIndex || 0) + (d < 0 ? -1 : 1) + list.length) % list.length;
+        } });
+    }
     if (g.type === "vip") {
       rows.push({ label: "Duração do VIP (A/D para escolher)", val: () =>
         g.qty === 1 ? "1 mês" : g.qty === 6 ? "6 meses" : "1 ano",
         act: (d) => { const o = [1,6,12]; g.qty = o[(o.indexOf([1,6,12].includes(g.qty)?g.qty:1)+(d<0?-1:1)+o.length)%o.length]; } });
-    } else if (g.type === "dinheiro" || g.type === "material") {
-      N("Quantidade", () => g.qty, n => { g.qty = n; }, 100, 1, g.type === "material" ? 1000 : 10000000);
+    } else if (["dinheiro", "creditos", "material", "municao", "suprimento"].includes(g.type)) {
+      const max = { dinheiro: 10000000, creditos: 100000, municao: 100000 }[g.type] || 1000;
+      N("Quantidade", () => g.qty, n => { g.qty = n; }, g.type === "dinheiro" ? 1000 : g.type === "municao" ? 100 : 10, 1, max);
     }
-    if (g.type === "arma" || g.type === "material") {
-      rows.push({label: "Item (A/D alterna)", val: () => {
-        const list = admGiftOptions(g), item = list[(g.itemIndex || 0) % list.length];
-        return g.type === "arma" ? WDEF[item].name : MATS[item].name;
-      }, act: (d) => { const list = admGiftOptions(g);
-        g.itemIndex = ((g.itemIndex || 0) + (d < 0 ? -1 : 1) + list.length) % list.length; }});
+    if (["arma", "implante", "colete"].includes(g.type)) {
+      rows.push({ label: "Pode vender no Mercado Negro? (A/D ou Enter)", val: () => g.transferivel !== false ? "Transferível" : "Não transferível",
+        on: () => g.transferivel !== false, act: () => { g.transferivel = g.transferivel === false; } });
     }
-    B("ENVIAR PRESENTE PARA O JOGADOR", () => admSendGift());
-    rows.push({ label: "A entrega é automática e aparece em Mensagens (I).",
-      val: () => g.busy ? "enviando..." : "somente ADM", act: () => {} });
+    B(g.busy ? "ENVIANDO..." : "ENVIAR PRESENTE PARA O JOGADOR", () => admSendGift());
   } else if (tab === 6) {
     // banidos: lista vem do servidor (só administradores conseguem ler)
     if (!game.admBans) admLoadBans();
@@ -1934,6 +1986,7 @@ function drawAdmin() {
     regClick(60, y, 840, 25, () => { game.ac = off + j; r.act(1,"enter"); });
   });
   if (rows.length > vis) txt(`${game.ac + 1}/${rows.length} · use W/S para rolar`, W / 2, 506, 12, "#a9a58f", "center");
+  if (game.at === 5) drawGiftHistory(100 + Math.min(vis, rows.length) * 28);
   hint("CLIQUE nas abas e opções · W/S seleciona · A/D muda valor · Enter confirma · F2/Esc fecha");
   if (game.msgT > 0) txt(game.msg, W / 2, 536, 16, "#ffd96a", "center", true);
   if (game.input && (game.input.mode === "adm" || game.input.mode === "admText")) {

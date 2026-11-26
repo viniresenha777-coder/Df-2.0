@@ -27,6 +27,7 @@ function validItem(it) {
     if (!obj) return false;
     it.alloc = obj.alloc;
     it.tokenBound = obj.tokenBound === true;
+    if (obj.semTroca) it.semTroca = true; else delete it.semTroca;
     return true;
   }
   if (it.kind === "vest") return Number.isInteger(it.id) && !!VESTS[it.id];
@@ -92,7 +93,8 @@ function loadSave() {
     save.outposts = OUTPOSTS.map((o, i) => i === 0 || !!(s.outposts && s.outposts[i]));
     save.muted = !!s.muted; save.hud = s.hud === 1 ? 1 : 0; save.skin = clamp(s.skin | 0, 0, SKINS.length - 1); save.clothing = clothingClean(s.clothing);
     save.resetFreeAt = Number(s.resetFreeAt) || 0;
-    save.natalFeita = !!s.natalFeita;   // Missão de Natal já entregue (uma vez por conta)
+    save.natalFeita = !!s.natalFeita;
+    save.vestSemTroca = Array.isArray(s.vestSemTroca) ? s.vestSemTroca.filter(Number.isInteger) : [];   // coletes não transferíveis   // Missão de Natal já entregue (uma vez por conta)
     save.dinLog = Array.isArray(s.dinLog) ? s.dinLog.filter(e => e && Number.isFinite(e.t) && Number.isFinite(e.v)).slice(-150) : [];   // registro de onde veio o dinheiro   // último reset de atributos grátis (1 por mês)
     // roupa inicial (moletom com capuz, calça cargo futurista, sapatos de couro): personagem novo já vem vestido;
     // save antigo recebe uma vez só nas partes que estiverem vazias (depois o jogador tira se quiser)
