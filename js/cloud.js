@@ -190,6 +190,11 @@ const fmCloud = (() => {
       if (!result.data || result.data.length !== 1 || result.data[0].revisao !== nextRevision)
         throw new Error("Esta partida foi alterada em outra aba ou dispositivo. Saia e entre novamente antes de salvar.");
       const accepted = result.data[0].progresso || progress;
+      // ganho acima do limite por hora: o servidor guardou a diferença como "Bloqueado" (em análise)
+      const cortadoMochila = (Number(progress.run?.g?.money) || 0) - (Number(accepted.run?.g?.money) || 0);
+      const cortadoBanco = (Number(progress.bank) || 0) - (Number(accepted.bank) || 0);
+      if (cortadoMochila > 0 || cortadoBanco > 0)
+        window.dispatchEvent(new CustomEvent("fm-dinheiro-retido", { detail: { mochila: Math.max(0, cortadoMochila), banco: Math.max(0, cortadoBanco) } }));
       snapshot = JSON.stringify(accepted);
       if (!ownerName && accepted.name) ownerName = accepted.name;
       revision = nextRevision;

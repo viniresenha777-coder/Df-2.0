@@ -699,7 +699,7 @@ function travelTo(id) {
   if (game.inside && game.inside.outpost === id) { toast("Você já está aqui"); return; }
   const cost = travelCost(id);
   if (game.money < cost) { toast(`A viagem custa $${cost} (dinheiro da mochila)`); return; }
-  game.money -= cost; game.menu = null; stat("travels");
+  game.money -= cost; logMoney("Viagem", "posto " + id, -cost); game.menu = null; stat("travels");
   game.inside = null;
   gotoCell(cell, (wd) => doorFront(wd.outposts[id]));
   const b = world.outposts[id];

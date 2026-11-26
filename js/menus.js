@@ -235,7 +235,7 @@ function missionAct(it) {
   } else if (it.m.progress >= it.m.target) {
     if (!game.atBase) { toast("Entregue no quadro de missões de um posto"); return; }
     save.missions.splice(save.missions.indexOf(it.m), 1);
-    game.money += it.m.money; gainXp(it.m.xp); sfx.buy();
+    game.money += it.m.money; logMoney("Missão", it.m.type, it.m.money); gainXp(it.m.xp); sfx.buy();
     toast(`Missão entregue: +$${it.m.money} e ${Math.round(it.m.xp * xpMult())} de XP`);
     if (game.board.length < 2) game.board = makeOffers();
     persist();
@@ -336,7 +336,7 @@ function applyClinicImplantConfirm() {
   player.bag.splice(i, 1);
   if (pending.action === "sell") {
     const price = implantSellPrice(pending.im);
-    game.money += price;
+    game.money += price; logMoney("Implante vendido", name, price);
     sfx.buy();
     toast(`Vendeu ${name} por $${price.toLocaleString("pt-BR")}`);
   } else if (pending.action === "discard") {
@@ -357,7 +357,7 @@ function buyTrindade() {
   if (!inSafe()) { toast("Compre a Trindade na base."); return; }
   if (game.money < TRINDADE_PRICE) { toast("É preciso $20.000.000."); return; }
   if (!addMat("trindade_eterna", 1)) { toast("Mochila cheia."); return; }
-  game.money -= TRINDADE_PRICE;
+  game.money -= TRINDADE_PRICE; logMoney("Compra", "Trindade", -TRINDADE_PRICE);
   sfx.buy(); checkpoint("compra de Trindade");
   toast("Trindade adquirida! Arraste-a sobre o personagem para consumir.");
 }
@@ -368,7 +368,7 @@ function buyShopWeapon(id) {
   if (!atBase()) { toast("Compre armas na Loja da base."); return; }
   if (game.money < d.shop) { toast(`Precisa de $${d.shop.toLocaleString("pt-BR")} na mochila`); return; }
   if (player.slots.indexOf(null) < 0 && packUsed() >= packCapacity()) { toast("Mochila cheia"); return; }
-  game.money -= d.shop;
+  game.money -= d.shop; logMoney("Loja", d.name, -d.shop);
   addWeapon(newInst(id)); registerWeapon(id);
   checkpoint("compra de arma na loja"); sfx.buy();
   game.banner = { text: `${d.name} comprada!`, sub: "Abra a mochila (B) para equipar", t: 2600, gold: true };
@@ -1001,7 +1001,7 @@ function travelKey(k) {
 
 // ---------- Painel de administrador (F2) ----------
 const adm = { god: false, infAmmo: false, noReq: false, infStamina: false, freeze: false, dmg: 1, direct: false, shopAnywhere: false };
-const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Armas", "Implantes", "Presentes", "Banidos", "Bugs"];
+const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Armas", "Implantes", "Presentes", "Banidos", "Bugs", "Dinheiro retido"];
 function canUseAdmin() {
   return typeof fmCloud !== "undefined" && fmCloud.isActive() && fmCloud.isAdmin();
 }
@@ -1035,6 +1035,11 @@ async function admSendGift() {
   } catch (err) {
     toast(err.message || "Não foi possível enviar.");
   } finally { g.busy = false; }
+}
+async function admLoadRetido() {
+  game.admRetido = { list: [], busy: true };
+  try { game.admRetido = { list: await fmRetido.adminList(), busy: false }; }
+  catch (e) { game.admRetido = { list: [], busy: false, err: e.message || String(e) }; }
 }
 async function admLoadBugs() {
   game.admBugs = { list: [], busy: true };
@@ -1176,6 +1181,19 @@ function admRows() {
           });
         } });
     });
+  } else if (tab === 8) {
+    // ganhos acima de $2.000.000/hora ficam Bloqueados; Enter abre a análise (login, personagem e de onde veio o dinheiro)
+    if (!game.admRetido) admLoadRetido();
+    const st = game.admRetido || { list: [], busy: true };
+    const abertos = st.list.filter((r) => r.status === "retido");
+    B(st.busy ? "Carregando..." : `Atualizar (${abertos.length} em análise)`, () => { game.admRetido = null; admLoadRetido(); });
+    if (st.err) rows.push({ label: "Erro: " + st.err, val: () => "", act: () => {} });
+    else if (!st.busy && !st.list.length) rows.push({ label: "Nenhum dinheiro retido.", val: () => "", act: () => {} });
+    st.list.forEach((r) => {
+      const q = new Date(r.quando).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+      rows.push({ label: `${r.nome || "?"} · ${r.login || "?"} · ${q} · $${Math.round(r.valor).toLocaleString("pt-BR")}`,
+        val: () => r.status === "retido" ? "Enter analisa" : r.status, act: (d, how) => { if (how === "enter") fmRetido.abrir(r); } });
+    });
   }
   return rows;
 }
@@ -1295,6 +1313,8 @@ function drawBank() {
     link(c.act, c.x, 418, () => { game.input = null; c.go(amount); }, typing && amount > 0);
     link(c.all, c.x, 456, () => { game.input = null; c.allFn(); }, c.val > 0);
   });
+  const retido = fmRetido.bloqueado();
+  if (retido > 0) txt(`Bloqueado (em análise): ${bankMoney(retido)}`, W / 2 + 150, 484, 13, "#e07a5a", "center", true);
   drawSaleStatement();
   hint("Clique no campo, digite o valor e Enter  ·  D/S digitar · A/T tudo  ·  E, B ou Esc fecha");
   if (game.input && game.input.mode === "credits") {

@@ -88,7 +88,7 @@ function sellEntry(e, n) {
     case "implant": player.bag.splice(player.bag.indexOf(e.im), 1); break;
     case "vest": save.vestsOwned[e.idx] = false; if (save.vestDur) delete save.vestDur[e.idx]; break;
   }
-  game.money += total; sfx.buy(); persist();
+  game.money += total; logMoney("Ferro Velho", (n > 1 ? n + "x " : "") + e.name, total); sfx.buy(); persist();
   toast(`Vendeu ${n > 1 ? `${n}x ` : ""}${e.name} por $${total}`);
   game.jcur = Math.max(0, Math.min(game.jcur, junkItems().length - 1));
 }
@@ -119,7 +119,7 @@ function buyResetStatsCard() {
   if (!inSafe()) { toast("Compre o cartão no Ferro Velho da base."); return; }
   if (game.money < RESET_STATS_PRICE) { toast("Dinheiro insuficiente para o cartão."); return; }
   if (!addMat("reset_stats", 1)) { toast("Mochila cheia."); return; }
-  game.money -= RESET_STATS_PRICE;
+  game.money -= RESET_STATS_PRICE; logMoney("Compra", "cartão reset", -RESET_STATS_PRICE);
   sfx.buy();
   checkpoint("compra de cartão de reset");
   toast("Cartão Reset de Stats comprado! Abra a mochila (B) e arraste-o até o personagem.");

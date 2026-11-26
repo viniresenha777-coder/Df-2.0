@@ -140,7 +140,7 @@ function repairVest() {
   if (need && player.level < need) { toast(`Só sobreviventes de nível ${need}+ conseguem consertar o ${VESTS[save.vest].name}`); return; }
   const c = Math.max(1, repairCost());
   if (game.money < c) { toast(`O conserto custa $${c} (dinheiro da mochila)`); return; }
-  game.money -= c; save.vestDur[save.vest] = 100; persist(); recalcImplants(); sfx.buy();
+  game.money -= c; logMoney("Conserto", "colete", -c); save.vestDur[save.vest] = 100; persist(); recalcImplants(); sfx.buy();
   toast(`${VESTS[save.vest].name} consertado por $${c}`);
 }
 

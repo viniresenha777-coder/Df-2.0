@@ -114,7 +114,9 @@ async function marketTrade(acao, args) {
       player.cur = Math.max(0, player.slots.findIndex(Boolean));
       player.reloading = 0;
     }
+    const antesMercado = game.money;
     game.money = result.run.g.money;
+    logMoney("Mercado Negro", acao, game.money - antesMercado);
     if (Number.isFinite(Number(result.credits))) save.credits = Number(result.credits);
     toast({ listar: "Anúncio publicado.", comprar: "Item entregue na mochila.", cancelar: "Item devolvido à mochila.", receber: "Dinheiro recebido." }[acao]);
   } catch (error) {
@@ -252,7 +254,7 @@ function drawMarketDropdown() {
 const saleMailState = { rows: [], next: 0, busy: false, loaded: false, error: false };
 window.addEventListener("fm-sales", ({ detail }) => {
   const extra = detail.total - (Number(save.saleTotal) || 0);
-  save.bank += extra;
+  save.bank += extra; if (extra > 0) logMoney("Mercado Negro", "venda recebida", extra);
   save.saleTotal = detail.total;
   if (extra > 0) toast("Mercado Negro · venda creditada no banco: " + bankMoney(extra));
   saleMailState.rows = detail.rows;

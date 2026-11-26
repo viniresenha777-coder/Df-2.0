@@ -49,7 +49,8 @@ const fmGifts = (() => {
     return g.tipo === "dinheiro" && Number.isInteger(g.quantidade) && g.quantidade > 0;
   }
   function apply(g) {
-    if (g.tipo === "dinheiro") game.money += g.quantidade;
+    if (g.tipo === "dinheiro" && g.item_id === "analise") { save.bank += g.quantidade; logMoney("Liberado pelo ADM", "análise", g.quantidade); }
+    else if (g.tipo === "dinheiro") { game.money += g.quantidade; logMoney("Presente ADM", "", g.quantidade); }
     else if (g.tipo === "vip") addVipMonths(g.quantidade);
     else if (g.tipo === "arma") return !!addWeapon(newInst(g.item_id));
     else if (g.tipo === "material") return !!addMat(g.item_id, g.quantidade);
@@ -78,14 +79,15 @@ const fmGifts = (() => {
         // Snapshot de rollback para falhas de rede. Nunca confirma presente
         // antes de salvar o UUID de recebimento no progresso do destinatário.
         const old = {
-          money: game.money, gm: save.gm, vipUntil: save.vipUntil, run: save.run,
+          money: game.money, bank: save.bank, gm: save.gm, vipUntil: save.vipUntil, run: save.run,
           gifts: save.receivedGifts.slice(), inbox: (save.inbox || []).slice(),
           slots: player.slots.slice(), pack: player.pack.slice()
         };
         try {
           if (!apply(g)) throw new Error("Sem espaço para o presente.");
           save.receivedGifts.push(g.id);
-          const description = g.tipo === "dinheiro" ? "$" + g.quantidade.toLocaleString("pt-BR") :
+          const description = g.tipo === "dinheiro" && g.item_id === "analise" ? "dinheiro retido liberado após análise: $" + g.quantidade.toLocaleString("pt-BR") + " (no banco)" :
+            g.tipo === "dinheiro" ? "$" + g.quantidade.toLocaleString("pt-BR") :
             g.tipo === "vip" ? "VIP de " + (g.quantidade === 12 ? "1 ano" : g.quantidade + (g.quantidade === 1 ? " mês" : " meses")) +
               " · válido até " + new Date(save.vipUntil).toLocaleDateString("pt-BR") :
             g.tipo === "arma" ? WDEF[g.item_id].name :
@@ -97,7 +99,7 @@ const fmGifts = (() => {
           save.run = runSnapshot();
           await storeWrite(JSON.stringify(save));
         } catch (err) {
-          game.money = old.money; save.gm = old.gm; save.vipUntil = old.vipUntil; save.run = old.run;
+          game.money = old.money; save.bank = old.bank; save.gm = old.gm; save.vipUntil = old.vipUntil; save.run = old.run;
           save.receivedGifts = old.gifts; save.inbox = old.inbox;
           player.slots = old.slots; player.pack = old.pack;
           throw err;
