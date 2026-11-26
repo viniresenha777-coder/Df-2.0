@@ -135,6 +135,10 @@ function loadSave() {
           else save.char.points += excess;
         }
       });
+      if ((c.skillCurve | 0) < WEAPON_CURVE) {
+        save.char.skillCurve = WEAPON_CURVE;
+        if (migrateWeaponCurve(save.char, s.prof)) fmWeaponCurveMsg = true;
+      }
     }
   } catch (e) { /* sem armazenamento: o progresso vale só nesta sessão */ }
 }

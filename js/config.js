@@ -447,15 +447,28 @@ function weaponSkillCap(id) {
   if (id === "str") return 100;
   return WEAPON_SKILL_IDS.includes(id) ? 120 : ATTR_MAX;
 }
-// 199 níveis ganhos = 665 pontos. Início: Força 25 + Melee 5 + Pistols 5 = 35.
-// Orçamento de arma até o nível 200: 35 + 665 = 700, antes de bônus da profissão.
+// Pontos de arma: 4 por nível do 2 ao 50 e 3 por nível do 51 ao 200 (curva 3).
+// Uma arma no máximo (proficiência 120 + Força 100) custa 190 pontos: só perto do nível 50.
+// Início: Força 25 + Melee 5 + Pistols 5 = 35. No nível 200: 35 + 196 + 450 = 681 (de 700 possíveis).
+const WEAPON_CURVE = 3;
+let fmWeaponCurveMsg = false;   // a conta passou pela migração (aviso ao entrar)
 function weaponPointsAtLevel(level) {
   const l = Math.min(MAX_LEVEL, Math.max(1, Math.floor(level)));
-  return Math.max(0, Math.min(l, 23) - 1) * 8 +
-    Math.max(0, Math.min(l, 50) - 23) * 7 +
-    Math.max(0, Math.min(l, 100) - 50) * 3 +
-    Math.max(0, Math.min(l, 150) - 100) * 2 +
-    Math.max(0, l - 150);
+  return Math.max(0, Math.min(l, 50) - 1) * 4 + Math.max(0, l - 50) * 3;
+}
+// personagem da curva antiga (8/7 por nível) com mais pontos de arma do que a curva nova dá:
+// devolve os pontos de arma gastos e acerta o total pela curva nova (reset grátis só das armas)
+function migrateWeaponCurve(ch, profId) {
+  const PROF_WEAPON = { lutador: { melee: 20, str: 10 }, militar: { machinegun: 20 }, atirador: { rifles: 15 } };
+  const start = (id) => (ATTRS.find((a) => a.id === id) || { start: 0 }).start;
+  const bonus = PROF_WEAPON[profId] || {};
+  const bonusSum = Object.values(bonus).reduce((a, b) => a + b, 0);
+  const budget = weaponPointsAtLevel(ch.level) + bonusSum;
+  const spent = WEAPON_SKILL_IDS.reduce((a, id) => a + Math.max(0, (ch.attrs[id] || 0) - start(id)), 0);
+  if (spent + (ch.wpoints || 0) <= budget) return false;
+  WEAPON_SKILL_IDS.forEach((id) => { ch.attrs[id] = start(id); });
+  ch.wpoints = budget;
+  return true;
 }
 function weaponPointsForLevel(level) {
   return weaponPointsAtLevel(level) - weaponPointsAtLevel(level - 1);

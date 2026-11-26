@@ -572,6 +572,7 @@ function drawUiLayer() {
 
 // ---------- Laço principal ----------
 loadSave();
+if (fmWeaponCurveMsg) setTimeout(() => toast("Pontos de arma refeitos pela regra nova (4 por nível até o 50, 3 depois). Redistribua em Atributos (C)."), 5000);
 SND.muted = save.muted;
 fitCanvas();
 gfxInit();
