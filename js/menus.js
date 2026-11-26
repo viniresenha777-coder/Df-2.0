@@ -178,10 +178,16 @@ function missionText(m) {
     case "killtype": return `Elimine ${m.target} ${ZTYPES[m.cat] ? ZTYPES[m.cat].plural : "zumbis"}`;
     case "search": return `Vasculhe ${m.target} lugares`;
     case "boss": return "Derrote um chefe";
+    case "natal": return `Missão de Natal: elimine ${NATAL_MISSAO.kills} zumbis e saqueie ${NATAL_MISSAO.searches} pontos de loot`;
     case "rescue": return m.progress >= m.target ? `Sobrevivente de ${m.code} resgatado` : game.escort ? "Leve o sobrevivente a um posto seguro" : `Resgate o sobrevivente em ${m.code} (num prédio marcado SOS)`;
     default: return `Chegue a uma área de perigo ${m.target} (${REGIONS[regionOf(m.target)].name})`;
   }
 }
+// Missão de Natal (uma vez por conta): recompensa Pistola Natalina (não vende no Mercado Negro).
+// Não ocupa uma das 3 vagas de missões comuns.
+const NATAL_MISSAO = { kills: 150, searches: 200 };
+function natalOffer() { return { type: "natal", target: 2, progress: 0, k: 0, s: 0, money: 0, xp: 0 }; }
+function natalDisponivel() { return !save.natalFeita && !save.missions.some((m) => m.type === "natal"); }
 function makeOffers() {
   const L = player.level, cats = Object.keys(CATNAME), offers = [];
   const mk = (type, target, f, extra) => offers.push(Object.assign({ type, target, progress: 0, money: Math.round((300 + 120 * L) * f * econ(game.best).reward), xp: Math.round(xpNeed(L) * 0.6 * f) }, extra || {}));
@@ -199,6 +205,14 @@ function makeOffers() {
 function missionProgress(type, n, cat) {
   let changed = false;
   for (const m of save.missions) {
+    if (m.type === "natal" && (type === "kill" || type === "search") && m.progress < m.target) {
+      if (type === "kill") m.k = Math.min(NATAL_MISSAO.kills, (m.k || 0) + n);
+      else m.s = Math.min(NATAL_MISSAO.searches, (m.s || 0) + n);
+      m.progress = (m.k >= NATAL_MISSAO.kills ? 1 : 0) + (m.s >= NATAL_MISSAO.searches ? 1 : 0);
+      changed = true;
+      if (m.progress >= m.target) toast("Missão de Natal concluída! Entregue no quadro de missões de um posto.");
+      continue;
+    }
     if (m.type !== type || m.progress >= m.target) continue;
     if ((type === "killcat" || type === "killtype") && m.cat !== cat) continue;
     m.progress = Math.min(m.target, type === "area" ? Math.max(m.progress, n) : m.progress + n);
@@ -208,6 +222,8 @@ function missionProgress(type, n, cat) {
   if (changed) persist();
 }
 function missionItems() {
+  if (game.atBase && natalDisponivel() && !(game.natalOferta && game.board.includes(game.natalOferta))) game.board.unshift(game.natalOferta = natalOffer());
+  if (!natalDisponivel() && game.natalOferta && game.board.includes(game.natalOferta)) game.board.splice(game.board.indexOf(game.natalOferta), 1);
   return [...(game.atBase ? game.board.map((m) => ({ src: "offer", m })) : []), ...save.missions.map((m) => ({ src: "active", m }))];
 }
 function missionKey(k) {
@@ -227,12 +243,25 @@ function missionKey(k) {
 function missionAct(it) {
   if (!it) return;
   if (it.src === "offer") {
-    if (save.missions.length >= 3) { toast("Máximo de 3 missões ativas"); return; }
+    if (it.m.type !== "natal" && save.missions.filter((m) => m.type !== "natal").length >= 3) { toast("Máximo de 3 missões ativas"); return; }
     game.board.splice(game.board.indexOf(it.m), 1);
     if (it.m.type === "area") it.m.progress = Math.min(it.m.target, game.best);
     save.missions.push(it.m); persist(); toast("Missão aceita");
   } else if (it.m.progress >= it.m.target) {
     if (!game.atBase) { toast("Entregue no quadro de missões de um posto"); return; }
+    if (it.m.type === "natal") {
+      const inst = newInst("pistola_natal");
+      inst.missao = true;
+      const onde = addWeapon(inst);
+      if (!onde) { toast("Abra espaço na mochila para receber a Pistola Natalina."); return; }
+      save.missions.splice(save.missions.indexOf(it.m), 1);
+      save.natalFeita = true;
+      registerWeapon("pistola_natal");
+      game.banner = { text: "Pistola Natalina recebida!", sub: "45 de dano · sem requisitos · não vende no Mercado Negro", t: 4200, gold: true };
+      sfx.level(); persist(); checkpoint("missão de Natal");
+      game.cur = Math.max(0, Math.min(game.cur, missionItems().length - 1));
+      return;
+    }
     save.missions.splice(save.missions.indexOf(it.m), 1);
     game.money += it.m.money; logMoney("Missão", it.m.type, it.m.money); gainXp(it.m.xp); sfx.buy();
     toast(`Missão entregue: +$${it.m.money} e ${Math.round(it.m.xp * xpMult())} de XP`);
@@ -1384,12 +1413,18 @@ function drawMissionRow(x, y, w, m, sel, active) {
   const done = active && m.progress >= m.target;
   rowBox(x, y, w, 48, sel, done ? "#6fae4f" : null);
   txt(missionText(m), x + 10, y + 19, 14, done ? "#6fae4f" : "#e5e0c8", "left", true, w - 20);
+  if (m.type === "natal") {
+    const rew = "Recompensa: Pistola Natalina (45 de dano, sem requisitos, não vende no Mercado Negro)";
+    txt(active ? (done ? "CONCLUÍDA, entregue num posto · Prêmio: Pistola Natalina" : `Zumbis ${m.k || 0}/${NATAL_MISSAO.kills} · Saques ${m.s || 0}/${NATAL_MISSAO.searches} · Prêmio: Pistola Natalina`) : rew, x + 10, y + 38, 12, "#ffd96a", "left", false, w - 20);
+    return;
+  }
   const rew = `Recompensa: $${m.money} + ${Math.round(m.xp * xpMult())} XP`;
   txt(active ? `${done ? "CONCLUÍDA, entregue num posto · " : `${m.progress}/${m.target} · `}${rew}` : rew, x + 10, y + 38, 12, "#a9a58f", "left", false, w - 20);
 }
 function drawMissions() {
   menuFrame(game.atBase ? "Quadro de missões" : "Missões ativas",
-    `Ativas: ${save.missions.length}/3 · Dinheiro: $${game.money}${game.atBase ? "" : " · entregue as concluídas no quadro de um posto"}`);
+    `Ativas: ${save.missions.filter((m) => m.type !== "natal").length}/3 · Dinheiro: $${game.money}${game.atBase ? "" : " · entregue as concluídas no quadro de um posto"}`);
+  missionItems();   // garante a Missão de Natal no quadro
   const offers = game.atBase ? game.board : [];
   if (game.atBase) txt("Disponíveis", 40, 104, 14, "#e5e0c8", "left", true);
   txt("Ativas", game.atBase ? 500 : 40, 104, 14, "#e5e0c8", "left", true);
