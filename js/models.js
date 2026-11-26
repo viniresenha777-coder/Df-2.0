@@ -293,7 +293,7 @@ function genScenery(wd) {
   }
   // base segura: torres, contêineres e um blindado
   const op = wd.opBlock;
-  if (op) {
+  if (op && !op.militar) {
     // só nas laterais: o meio fica livre entre o portão e a porta da base
     const side = (i) => ({ x: i ? op.x + op.w * 0.68 : op.x + 70, y: op.y + 70, w: op.w * 0.32 - 70, h: op.h - 140 });
     tryPlace(wd, "watchtower", side(0), R, 30, { margin: 4 });

@@ -196,7 +196,8 @@ function drawLampTall(l, e) {
 // quem está na frente de um prédio aparece por cima da parede; quem está atrás fica escondido
 function drawSortedScene() {
   const e = eye(), list = [];
-  for (const b of world.buildings) if (inView(b.x - 140, b.y - 40, b.w + 280, b.h + 260)) list.push({ y: b.y + b.h, f: () => drawBuildingTall(b, e) });
+  for (const b of world.buildings) if (!b.hidden && inView(b.x - 140, b.y - 40, b.w + 280, b.h + 260)) list.push({ y: b.y + b.h, f: () => drawBuildingTall(b, e) });
+  if (typeof estruturasNaCena === "function") estruturasNaCena(list);
   for (const l of world.lamps) if (inView(l.x - 80, l.y - 120, 160, 200)) list.push({ y: l.y, f: () => drawLampTall(l, e) });
   // cenário 3D, furgões e caçambas (ordenados pela beirada de baixo, como os prédios)
   for (const m of world.models || []) if (!m.bodyReplacement &&

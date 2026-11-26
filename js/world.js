@@ -306,20 +306,30 @@ function genSpecial(wd, blk, inner, R) {
 // hospital, prisão ou bunker ocupando a quadra inteira
 function genLandmark(wd, blk, inner, type, R) {
   blk.kind = "special"; blk.ground = type === "hospital" ? "plaza" : "dirt";
-  const fx = type === "bunker" ? { x: inner.x + inner.w / 2 - 160, y: inner.y + inner.h / 2 - 130, w: 320, h: 200 }
-                               : { x: inner.x + 56, y: inner.y + 60, w: inner.w - 112, h: inner.h - 250 };
+  let fx = type === "bunker" ? { x: inner.x + inner.w / 2 - 160, y: inner.y + inner.h / 2 - 130, w: 320, h: 200 }
+                             : { x: inner.x + 56, y: inner.y + 60, w: inner.w - 112, h: inner.h - 250 };
+  // bunker 3D (modelo novo): mesma frente e mesmo centro; o prédio invisível ocupa o miolo, com a porta na frente
+  const bk = type === "bunker" && typeof estrutOk === "function" && estrutOk("bunker") ? ESTRUT_DATA.bunker : null;
+  let bkPos = null;
+  if (bk) {
+    const k = 360 / bk.fw, w = bk.fw * k, h = bk.fd * k, gx0 = fx.x + fx.w / 2, y0 = fx.y + fx.h - h;
+    bkPos = { gx: gx0, y0, k };
+    fx = { x: gx0 - w * 0.36, y: y0 + h * 0.08, w: w * 0.72, h: h * 0.92 };
+  }
   const b = placeBuilding(wd, blk, { x: inner.x, y: inner.y, w: inner.w, h: inner.h, facing: "down" }, type, R, fx);
   b.landmark = true; b.enter = true;
+  if (bkPos) { b.hidden = true; addEstrutura(wd, "bunker", bkPos.gx, bkPos.y0, bkPos.k); }
   const gx = b.x + b.w / 2, f = { x: inner.x + 18, y: inner.y + 18, w: inner.w - 36, h: inner.h - 36 };
   if (type !== "hospital") {
     const t = 8, gate = 130;
     fence(wd, f.x, f.y, f.w, t); fence(wd, f.x, f.y, t, f.h); fence(wd, f.x + f.w - t, f.y, t, f.h);
     fence(wd, f.x, f.y + f.h - t, gx - gate / 2 - f.x, t); fence(wd, gx + gate / 2, f.y + f.h - t, f.x + f.w - gx - gate / 2, t);
   }
-  wd.lamps.push({ x: gx - 90, y: b.y + b.h + 40, big: true }, { x: gx + 90, y: b.y + b.h + 40, big: true });
+  const lx = bkPos ? 175 : 90, ly = bkPos ? 55 : 40;
+  wd.lamps.push({ x: gx - lx, y: b.y + b.h + ly, big: true }, { x: gx + lx, y: b.y + b.h + ly, big: true });
   if (type === "bunker") {
     wd.props.push({ type: "sandbags", x: gx - 150, y: b.y + b.h + 30, w: 56 }, { type: "sandbags", x: gx + 94, y: b.y + b.h + 30, w: 56 });
-    for (let i = 0; i < 5; i++) wd.props.push({ type: "crates", x: f.x + 40 + R() * (f.w - 120), y: f.y + 40 + R() * 80 });
+    for (let i = 0; i < 5; i++) { const c = { type: "crates", x: f.x + 40 + R() * (f.w - 120), y: f.y + 40 + R() * 80 }; if (!bkPos) wd.props.push(c); }
   } else if (type === "prisao") {
     wd.props.push({ type: "flag", x: b.x - 26, y: b.y + 20 });
   } else {
@@ -327,7 +337,26 @@ function genLandmark(wd, blk, inner, type, R) {
   }
 }
 
+// Base 1 (Refúgio): base militar 3D ocupando o terreno cercado (muros, tenda, contêineres e antena do modelo).
+// A tenda "US ARMY" é o prédio da base (porta para o menu); o resto do pátio é andável.
+function genBaseMilitar(wd, blk, inner, op, R) {
+  const f = { x: inner.x + 22, y: inner.y + 22, w: inner.w - 44, h: inner.h - 44 };
+  const d = ESTRUT_DATA.base_militar, k = f.w / d.fw, y0 = f.y + f.h - d.fd * k, gx = f.x + f.w / 2;
+  blk.militar = true;
+  addEstrutura(wd, "base_militar", gx, y0, k);
+  // tenda US ARMY (medida no modelo): é o prédio da base, invisível, com a porta na frente
+  const T = d.tent, tx = f.x + T[0] * k, ty = y0 + T[1] * k, tw = T[2] * k, th = T[3] * k;
+  const b = placeBuilding(wd, blk, { x: f.x, y: f.y, w: f.w, h: f.h, facing: "down" }, "seguro", R, { x: tx, y: ty, w: tw, h: th });
+  b.safe = true; b.outpost = op.id; b.name = op.name; b.door.name = op.name; b.color = "#3d5a46"; b.hidden = true;
+  wd.outposts[op.id] = b;
+  wd.paths.length = Math.max(0, wd.paths.length - 1);   // sem calçada desenhada por cima do pátio
+  // vigias na entrada: um de cada lado do portão, por dentro do muro
+  const gate = { x: f.x + d.gate[0] * k, w: d.gate[1] * k }, gy = f.y + f.h;
+  installBaseGuards(wd, op, f, [[gate.x + 16, gy - 22], [gate.x + gate.w - 16, gy - 22]]);
+}
+
 function genOutpost(wd, blk, inner, op, R) {
+  if (op.id === 0 && typeof estrutOk === "function" && estrutOk("base_militar")) { genBaseMilitar(wd, blk, inner, op, R); return; }
   const bw = 300, bh = 200, bx = inner.x + (inner.w - bw) / 2, by = inner.y + inner.h / 2 - bh / 2 - 30;
   const b = placeBuilding(wd, blk, { x: inner.x, y: inner.y, w: inner.w, h: inner.h, facing: "down" }, "seguro", R, { x: bx, y: by, w: bw, h: bh });
   b.safe = true; b.outpost = op.id; b.name = op.name; b.door.name = op.name; b.color = "#3d5a46";

@@ -104,3 +104,7 @@ Calça adaptada de [Pants Baked Ver](https://sketchfab.com/3d-models/pants-baked
 - "Police car" — Mateusz Woliński (https://sketchfab.com/jeandiz) — CC-BY-4.0 — https://sketchfab.com/3d-models/police-car-9166b13b6ae341f4bfc093edb71d74f4
 - "Destroyed Car 07 (Raw Scan)" — Renafox (https://sketchfab.com/kryik1023) — CC-BY-4.0 — https://sketchfab.com/3d-models/destroyed-car-07-raw-scan-916b51c7e5644eb2a6c9b3797ebb08cf (cores alteradas: vermelho, verde e prata)
 - "Old Rusty Car" — Renafox (https://sketchfab.com/kryik1023) — CC-BY-NC-4.0 (uso NÃO comercial) — https://sketchfab.com/3d-models/old-rusty-car-95baa20ebc5d4d2e869f0b549be838fe (cores alteradas: vermelho e bege)
+
+## Estruturas 3D (renderizadas na projeção do jogo, img/estruturas/)
+- "Army Base" — walter sanchez (https://sketchfab.com/waltersnchz) — CC-BY-4.0 — https://sketchfab.com/3d-models/army-base-090c7bb0f0624660993360cb4489e354 (base do Refúgio; chão escurecido)
+- "Bunker" — Uragan27 (https://sketchfab.com/Uragan27) — CC-BY-4.0 — https://sketchfab.com/3d-models/bunker-e9f9830ac06c4193b79043d9327a7a69 (bunkers do mapa)
