@@ -424,13 +424,13 @@ const IMP = {
   errx_salvage: { name: "Err X-Salvage", tier: 3, drop: true, err: true, price: 0, scrap: 30000, kind: 1, art: "img/implantes_t/errx_salvage.webp?v=20261125-t1", fx: { ammoLoot: 20, greed: 20, hunter: 20, armorFind: 20, thick: -15 } },
   // Evento de Natal: feito na Oficina com 10 Gorros de Natal + $2.000.000 (não cai, não vende na clínica nem na Loja de Créditos)
   implante_natal: {
-    name: "Implante Natalino", price: 0, scrap: 480000, kind: 0, event: true, craftOnly: true, art: "img/implante_natal.webp?v=20261123-natal1",
+    name: "Implante Natalino", price: 0, scrap: 100, kind: 0, event: true, craftOnly: true, noTrade: true, art: "img/implante_natal.webp?v=20261123-natal1",
     fx: { agility: 10, lootSpots: 10, thick: 5 },
   },
   // Mimic: só vem no Kit Mimic da Loja de Créditos (não cai nem aparece na clínica).
   implante_mimic: {
     name: "Mimic", price: 1500, vipPrice: 1200,   // ≈ R$ 75
-    scrap: 0, kind: 2, mimic: true, kitOnly: true,
+    scrap: 0, kind: 2, mimic: true, kitOnly: true, noTrade: true,
     text: "Copia os atributos do implante à esquerda. Penalidades copiadas valem em dobro. Equipamento único e intransferível.",
   },
 };

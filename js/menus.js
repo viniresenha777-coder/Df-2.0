@@ -1414,7 +1414,7 @@ function drawMissionRow(x, y, w, m, sel, active) {
   rowBox(x, y, w, 48, sel, done ? "#6fae4f" : null);
   txt(missionText(m), x + 10, y + 19, 14, done ? "#6fae4f" : "#e5e0c8", "left", true, w - 20);
   if (m.type === "natal") {
-    const rew = "Recompensa: Pistola Natalina (45 de dano, sem requisitos, não vende no Mercado Negro)";
+    const rew = "Recompensa: Pistola Natalina";
     txt(active ? (done ? "CONCLUÍDA, entregue num posto · Prêmio: Pistola Natalina" : `Zumbis ${m.k || 0}/${NATAL_MISSAO.kills} · Saques ${m.s || 0}/${NATAL_MISSAO.searches} · Prêmio: Pistola Natalina`) : rew, x + 10, y + 38, 12, "#ffd96a", "left", false, w - 20);
     return;
   }
