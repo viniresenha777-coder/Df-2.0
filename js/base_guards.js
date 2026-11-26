@@ -21,13 +21,13 @@ const GUARD_GUNS = [
   { name: "Fuzil pesado", damage: 49, interval: 660, range: 315 },
   { name: "Metralhadora", damage: 60, interval: 560, range: 340 }
 ];
-function installBaseGuards(wd, op, f) {
+function installBaseGuards(wd, op, f, spots) {
   const gun = GUARD_GUNS[Math.min(op.id, GUARD_GUNS.length - 1)];
   // Pequeno recuo dos cantos para não sobrepor o muro.
-  wd.guards = [
+  wd.guards = (spots || [
     [f.x + 25, f.y + 25], [f.x + f.w - 25, f.y + 25],
     [f.x + 25, f.y + f.h - 25], [f.x + f.w - 25, f.y + f.h - 25]
-  ].map(([x, y], i) => ({
+  ]).map(([x, y], i) => ({
     x, y, angle: i % 2 ? 0 : Math.PI, gun,
     cooldown: i * 180, speech: "", speechT: 0,
     chatDelay: 2500 + i * 1400, shotT: 0

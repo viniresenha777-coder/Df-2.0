@@ -256,7 +256,8 @@ function drawWorld() {
       } else drawCar(c);
     } carOver(c); }  // furgões 3D: drawSortedScene
   for (const o of world.bodies) if (inView(o.x, o.y, o.w, o.h, 20)) drawBody(o);
-  for (const b of world.buildings) if (inView(b.x, b.y, b.w, b.h, 20)) drawBuildingGround(b); // paredes e telhado: drawTall()
+  if (typeof drawEstruturasChao === "function") drawEstruturasChao();   // chão das estruturas 3D (base militar, bunkers)
+  for (const b of world.buildings) if (inView(b.x, b.y, b.w, b.h, 20)) { if (b.hidden) drawDoor(b); else drawBuildingGround(b); } // paredes e telhado: drawTall()
   drawAreaEdges();
 }
 // bordas da área: com passagem mostram a cor e o nome da vizinha; sem passagem, escombros
