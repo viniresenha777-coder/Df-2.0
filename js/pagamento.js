@@ -7,10 +7,11 @@ const fmPagamento = (() => {
   const db = () => fmCloud.socialClient();
   const uid = () => fmCloud.userId();
   const PACOTES = [
-    { id: "p200", cr: 200, valor: 0.01, bonus: "preço de teste" },   // TESTE: voltar para 9.9
-    { id: "p550", cr: 550, valor: 24.9, bonus: "+10% de bônus" },
-    { id: "p1200", cr: 1200, valor: 49.9, bonus: "+20% de bônus", tag: "MAIS VENDIDO" },
-    { id: "p2600", cr: 2600, valor: 99.9, bonus: "+30% de bônus", tag: "MELHOR VALOR" },
+    // promoção de inauguração (40% off): "de" = preço cheio · valor = o que o servidor cobra (fm-pagamento-criar)
+    { id: "p200", cr: 200, de: 9.9, valor: 5.9, bonus: "" },
+    { id: "p550", cr: 550, de: 24.9, valor: 14.9, bonus: "+10% de bônus" },
+    { id: "p1200", cr: 1200, de: 49.9, valor: 29.9, bonus: "+20% de bônus", tag: "MAIS VENDIDO" },
+    { id: "p2600", cr: 2600, de: 99.9, valor: 59.9, bonus: "+30% de bônus", tag: "MELHOR VALOR" },
   ];
   const KEY = "fm-compras-abertas";
   let box = null, busy = false, timer = null, lastVerif = 0;
@@ -33,7 +34,10 @@ const fmPagamento = (() => {
   #fmPayBox .c .n{font-size:26px;font-weight:800;color:#ffd96a}
   #fmPayBox .c .u{font-size:12px;color:#a9a58f;margin-bottom:6px}
   #fmPayBox .c .b{font-size:12px;color:#7fd06a;min-height:16px}
-  #fmPayBox .c .v{margin-top:10px;background:linear-gradient(#6e5a26,#463a19);border:1px solid #d4af37;border-radius:7px;padding:7px 0;font-weight:700;color:#f3ead0}
+  #fmPayBox .c .v{margin-top:4px;background:linear-gradient(#6e5a26,#463a19);border:1px solid #d4af37;border-radius:7px;padding:7px 0;font-weight:700;color:#f3ead0}
+  #fmPayBox h3 .promo{margin-left:auto;font-size:12px;font-weight:800;color:#fff;background:linear-gradient(#e0533f,#a8281c);padding:4px 10px;border-radius:12px;letter-spacing:.5px}
+  #fmPayBox .c .de{margin-top:8px;font-size:12px;color:#8a8672}
+  #fmPayBox .c .de s{color:#a9a58f}
   #fmPayBox .st{margin-top:14px;min-height:20px;font-size:13px;color:#ffd96a}
   #fmPayBox .ft{margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:11px;color:#8a8672}
   #fmPayBox button.x{background:#2a2c26;color:#e5e0c8;border:1px solid #5a5648;border-radius:6px;padding:7px 14px;cursor:pointer;font:600 13px system-ui}
@@ -44,18 +48,18 @@ const fmPagamento = (() => {
     const st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
     box = document.createElement("div"); box.id = "fmPayBox";
     box.innerHTML = `<div class="p">
-      <h3><b>$</b>Compre Créditos</h3>
+      <h3><b>$</b>Compre Créditos <span class="promo">INAUGURAÇÃO · 40% OFF</span></h3>
       <div class="sub">Pague com <b>Pix</b> ou <b>cartão de crédito</b> pelo Mercado Pago. Os créditos entram na sua conta sozinhos assim que o pagamento for aprovado (Pix: na hora).</div>
       <div class="g"></div>
       <div class="st"></div>
-      <div class="ft"><span>Pagamento processado pelo Mercado Pago · o jogo não vê os dados do seu cartão. 1 crédito = $500 no jogo.</span><button class="x">Fechar</button></div>
+      <div class="ft"><span>Pagamento processado pelo Mercado Pago · o jogo não vê os dados do seu cartão. Também dá para trocar dinheiro do jogo por créditos no Banco.</span><button class="x">Fechar</button></div>
     </div>`;
     document.body.appendChild(box);
     const g = box.querySelector(".g");
     for (const p of PACOTES) {
       const c = document.createElement("div"); c.className = "c";
       c.innerHTML = `${p.tag ? `<div class="t">${p.tag}</div>` : ""}<div class="n">${p.cr.toLocaleString("pt-BR")}</div><div class="u">créditos</div>
-        <div class="b">${p.bonus}</div><div class="v">${brl(p.valor)}</div>`;
+        <div class="b">${p.bonus}</div>${p.de ? `<div class="de">de <s>${brl(p.de)}</s></div>` : ""}<div class="v">${brl(p.valor)}</div>`;
       c.onclick = () => comprar(p);
       g.appendChild(c);
     }

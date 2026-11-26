@@ -725,12 +725,12 @@ function drawCreditShopServices() {
     481,
     324,
     29,
-    "Resetar · " + RESET_STATS_CREDITS + " créditos",
+    "Resetar · " + resetStatsLabel(),
     () => {
       game.creditConfirm = {
         kind: "reset",
         title: "Reset de atributos",
-        price: RESET_STATS_CREDITS,
+        price: resetStatsCost(),
         currency: "credits",
       };
     },
@@ -1307,13 +1307,13 @@ function drawStats() {
   ctx.strokeStyle = "rgba(192,57,43,0.55)"; ctx.lineWidth = 1.5; ctx.stroke();
   txt("Reset de atributos", W / 2, 424, 18, "#f2eedc", "center", true);
   txt("Devolve todos os pontos investidos em stats e proficiências para você distribuir de novo.", W / 2, 446, 13, "#a9a58f", "center");
-  const ok = save.credits >= RESET_STATS_CREDITS;
-  txt(`${RESET_STATS_CREDITS} créditos · você tem ${save.credits}`, W / 2, 466, 14, ok ? "#e05a4a" : "#6d6a58", "center", true);
+  const ok = resetIsFree() || save.credits >= RESET_STATS_CREDITS;
+  txt(resetIsFree() ? "GRÁTIS (1 reset grátis por mês · não acumula)" : `${RESET_STATS_CREDITS} créditos · você tem ${save.credits} · próximo grátis ${resetFreeIn()}`, W / 2, 466, 14, resetIsFree() ? "#8bed92" : ok ? "#e05a4a" : "#6d6a58", "center", true);
   btn(W / 2 - 90, 474, 180, 28, ok ? "Resetar (R)" : "Créditos insuficientes", () => { game.sconfirm = true; }, true, !ok);
   if (game.sconfirm) {
     ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "#1a1913"; rr(W / 2 - 210, H / 2 - 64, 420, 128, 10); ctx.fill(); ctx.strokeStyle = "#e05a4a"; ctx.lineWidth = 2; ctx.stroke();
-    txt(`Resetar atributos por ${RESET_STATS_CREDITS} créditos?`, W / 2, H / 2 - 26, 17, "#f2eedc", "center", true);
+    txt(resetIsFree() ? "Usar o reset grátis do mês?" : `Resetar atributos por ${RESET_STATS_CREDITS} créditos?`, W / 2, H / 2 - 26, 17, "#f2eedc", "center", true);
     txt("Todos os pontos voltam para você distribuir de novo.", W / 2, H / 2 - 4, 13, "#a9a58f", "center");
     btn(W / 2 - 150, H / 2 + 16, 140, 32, "Resetar", () => { game.sconfirm = false; resetStatsWithCredits(); }, true);
     btn(W / 2 + 10, H / 2 + 16, 140, 32, "Cancelar", () => { game.sconfirm = false; });

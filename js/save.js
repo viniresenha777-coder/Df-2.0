@@ -90,6 +90,7 @@ function loadSave() {
       save.vestUpgrades[i] = cleanVestUpgrade(s.vestUpgrades && s.vestUpgrades[i]);
     save.outposts = OUTPOSTS.map((o, i) => i === 0 || !!(s.outposts && s.outposts[i]));
     save.muted = !!s.muted; save.hud = s.hud === 1 ? 1 : 0; save.skin = clamp(s.skin | 0, 0, SKINS.length - 1); save.clothing = clothingClean(s.clothing);
+    save.resetFreeAt = Number(s.resetFreeAt) || 0;   // último reset de atributos grátis (1 por mês)
     // roupa inicial (moletom com capuz, calça cargo futurista, sapatos de couro): personagem novo já vem vestido;
     // save antigo recebe uma vez só nas partes que estiverem vazias (depois o jogador tira se quiser)
     if (!s.roupaInicial) {

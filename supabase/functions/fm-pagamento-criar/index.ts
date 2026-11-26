@@ -5,10 +5,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const PACOTES: Record<string, { creditos: number; valor: number; nome: string }> = {
-  p200: { creditos: 200, valor: 0.01, nome: "200 créditos" },   // TESTE: voltar para 9.9
-  p550: { creditos: 550, valor: 24.9, nome: "550 créditos (+10%)" },
-  p1200: { creditos: 1200, valor: 49.9, nome: "1.200 créditos (+20%)" },
-  p2600: { creditos: 2600, valor: 99.9, nome: "2.600 créditos (+30%)" },
+  // promoção de inauguração: 40% de desconto (preço cheio: 9,90 · 24,90 · 49,90 · 99,90)
+  p200: { creditos: 200, valor: 5.9, nome: "200 créditos" },
+  p550: { creditos: 550, valor: 14.9, nome: "550 créditos (+10%)" },
+  p1200: { creditos: 1200, valor: 29.9, nome: "1.200 créditos (+20%)" },
+  p2600: { creditos: 2600, valor: 59.9, nome: "2.600 créditos (+30%)" },
 };
 const SITE = "https://fronteiramorta.pages.dev/";
 const cors = {
