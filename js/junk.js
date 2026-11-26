@@ -124,11 +124,12 @@ function buyResetStatsCard() {
   checkpoint("compra de cartão de reset");
   toast("Cartão Reset de Stats comprado! Abra a mochila (B) e arraste-o até o personagem.");
 }
+// o cartão não é mais vendido por dinheiro: o Ferro Velho faz o reset direto (grátis 1x por mês, senão 100 créditos)
 function confirmBuyResetStats() {
   game.jconfirm = {
-    text: "Comprar Cartão Reset de Stats?",
-    sub: "Custa $" + RESET_STATS_PRICE.toLocaleString("pt-BR") + " · Uso único · Arraste no personagem",
-    fn: buyResetStatsCard
+    text: resetIsFree() ? "Usar o reset grátis do mês?" : `Resetar atributos por ${RESET_STATS_CREDITS} créditos?`,
+    sub: "Todos os pontos de atributo e proficiência voltam para você distribuir de novo.",
+    fn: () => { game.jconfirm = null; resetStatsWithCredits(); }
   };
 }
 
@@ -194,16 +195,16 @@ function drawJunk() {
   // de vender/desmontar, sem cobrir detalhes de armas ou outros itens.
   ctx.fillStyle = "rgba(45,35,15,0.96)"; rr(532, 444, 394, 101, 7); ctx.fill();
   ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 1.5; ctx.stroke();
-  txt("★ CARTÃO RESET DE STATS", 547, 468, 16, "#ffdf70", "left", true);
-  txt("Recupere seus pontos de atributo · uso único", 547, 488, 11, "#d8d2ba");
+  txt("★ RESET DE ATRIBUTOS", 547, 468, 16, "#ffdf70", "left", true);
+  txt(resetIsFree() ? "Reset grátis disponível (1 por mês, não acumula)" : `Próximo grátis ${resetFreeIn()} · agora ${RESET_STATS_CREDITS} créditos`, 547, 488, 11, "#d8d2ba");
   // Miniatura original no canto superior direito do cartão, como solicitado.
   if (RESET_CARD_ART.complete && RESET_CARD_ART.naturalWidth) {
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(RESET_CARD_ART, 815, 446, 100, 47);
   }
-  btn(547, 496, 362, 39, "COMPRAR · $" + RESET_STATS_PRICE.toLocaleString("pt-BR") + " (C)", confirmBuyResetStats, true);
+  btn(547, 496, 362, 39, "RESETAR · " + resetStatsLabel().toUpperCase() + " (C)", confirmBuyResetStats, true);
 
-  hint("C compra cartão de reset · W/S escolhe · Enter vende · T vende tudo · D desmonta · Esc fecha");
+  hint("C reseta atributos · W/S escolhe · Enter vende · T vende tudo · D desmonta · Esc fecha");
   // confirmação para itens raros
   if (game.jconfirm) {
     const c = game.jconfirm;

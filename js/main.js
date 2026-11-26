@@ -109,14 +109,26 @@ function useResetStatsCard() {
   if (!it.qty) player.pack.splice(player.pack.indexOf(it), 1);
   resetAttrsCore("uso do cartão de reset de stats");
 }
-// reset pela tela de atributos, pago com créditos
-const RESET_STATS_CREDITS = 200;
+// Reset de atributos: o primeiro é grátis; depois, 1 reset grátis por mês (não acumula) e os outros custam 100 créditos.
+const RESET_STATS_CREDITS = 100, RESET_FREE_MS = 30 * 24 * 3600e3;
+function resetIsFree() { const t = Number(save.resetFreeAt) || 0; return !t || Date.now() - t >= RESET_FREE_MS; }
+function resetStatsCost() { return resetIsFree() ? 0 : RESET_STATS_CREDITS; }
+function resetStatsLabel() { return resetIsFree() ? "grátis" : RESET_STATS_CREDITS + " créditos"; }
+// quando volta a ter reset grátis (texto curto, ex.: "em 12 dias")
+function resetFreeIn() {
+  if (resetIsFree()) return "disponível agora";
+  const d = Math.ceil((Number(save.resetFreeAt) + RESET_FREE_MS - Date.now()) / 86400e3);
+  return d <= 1 ? "amanhã" : `em ${d} dias`;
+}
 function resetStatsWithCredits() {
   if (!atBase()) { toast("Só dá para resetar atributos dentro da base"); return; }
-  if (save.credits < RESET_STATS_CREDITS) { toast(`Precisa de ${RESET_STATS_CREDITS} créditos (compre no banco)`); return; }
-  save.credits -= RESET_STATS_CREDITS;
+  if (resetIsFree()) save.resetFreeAt = Date.now();
+  else {
+    if (save.credits < RESET_STATS_CREDITS) { toast(`Precisa de ${RESET_STATS_CREDITS} créditos (o próximo reset grátis vem ${resetFreeIn()})`); return; }
+    save.credits -= RESET_STATS_CREDITS;
+  }
   persist();
-  resetAttrsCore("reset de atributos com créditos");
+  resetAttrsCore("reset de atributos");
 }
 
 // Token da Loja: a Loja da base fica de graça por 1 dia (soma, se já estiver ativo).
