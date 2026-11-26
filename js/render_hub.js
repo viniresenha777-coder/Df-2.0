@@ -212,6 +212,27 @@ function hubNatalHover(x, y, w, h, r) {
   rr(x + 1, y + 1, w - 2, h - 2, r); ctx.stroke();
   ctx.restore();
 }
+// botão "$ Compre Créditos" (dinheiro real: Pix ou cartão) ao lado da Loja de Créditos
+function drawBuyCreditsBtn(bx, by, bw, bh) {
+  {
+    const hov = !game.menu && mouse.x >= bx && mouse.x <= bx + bw && mouse.y >= by && mouse.y <= by + bh;
+    ctx.save();
+    const g = ctx.createLinearGradient(bx, by, bx, by + bh);
+    g.addColorStop(0, hov ? "#4e8a3a" : "#3d6e2e"); g.addColorStop(1, hov ? "#2f5a24" : "#24461c");
+    if (hov) { ctx.shadowColor = "rgba(127,208,106,0.55)"; ctx.shadowBlur = 12; }
+    ctx.fillStyle = g; rr(bx, by, bw, bh, 7); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.strokeStyle = hov ? "#ffd96a" : "#d4af37"; ctx.lineWidth = 1.4; rr(bx, by, bw, bh, 7); ctx.stroke();
+    // moeda com o cifrão
+    const cy = by + bh / 2;
+    const mg = ctx.createRadialGradient(bx + 17, cy - 2, 2, bx + 17, cy, 11);
+    mg.addColorStop(0, "#fff2b0"); mg.addColorStop(1, "#b88a22");
+    ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(bx + 17, cy, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    txt("$", bx + 17, cy + 5, 15, "#3a2a06", "center", true);
+    txt("Compre Créditos", bx + 32, cy + 5, 13, "#f3ead0", "left", true);
+    regClick(bx, by, bw, bh, () => fmPagamento.open());
+  }
+}
 function hubNatalButton(key, fn) {
   const [x, y, w, h] = HUB_NATAL_BTNS[key];
   if (!game.menu && mouse.x >= x && mouse.x <= x + w && mouse.y >= y && mouse.y <= y + h) hubNatalHover(x, y, w, h, 6);
@@ -283,6 +304,7 @@ function drawHub() {
     btn(cbx, cby + 3, cbw, 28, "Créditos", openCreditShop, true);
   }
 
+  drawBuyCreditsBtn(cbx + cbw + 8, 5, 150, 28);   // Compre Créditos (Pix ou cartão), ao lado da Loja de Créditos
   btn(W - 300, 6, 158, 26, "Mercado Negro", openMarket);
 
   // planta da base
@@ -418,6 +440,7 @@ function drawHubNatal() {
   uiSnow(268, 50, 678, 545, 0.5);                    // neve caindo sobre as salas
   shadowTxt(h.name.toUpperCase(), 438, 31, 20, "#ffe2a8", "center", true, 420);
   hubNatalButton("credit", openCreditShop);
+  drawBuyCreditsBtn(168, 10, 150, 29);
   hubNatalButton("market", openMarket);
   hubNatalButton("exit", () => leaveHouse());
   drawHubNatalRooms();

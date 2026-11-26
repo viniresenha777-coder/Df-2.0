@@ -159,6 +159,7 @@ window.addEventListener("keydown", (e) => {
   if (game) game.rawKey = e.key;
   if (typeof fmChat !== "undefined" && fmChat.typing()) return;   // digitando no chat: o jogo não recebe as teclas
   if (typeof fmBugs !== "undefined" && fmBugs.isOpen()) return;  // escrevendo um relatório de bug
+  if (typeof fmPagamento !== "undefined" && fmPagamento.isOpen()) return;  // tela de compra de créditos aberta
   keys[k] = true;
   if (["tab", " ", "arrowup", "arrowdown", "arrowleft", "arrowright", "backspace", "f2"].includes(k)) e.preventDefault();
   if (e.repeat && !game.menu) return;
@@ -567,6 +568,7 @@ loadSprites();
 ensureDaily();
 restoreRun(); // volta do último checkpoint, se houver
 fmBugs.start(); // botão "Reportar bug" (F8) e entrega das recompensas
+fmPagamento.start(); // entrega dos créditos comprados (Pix/cartão)
 fmGifts.start(); // correio: entrega presentes do ADM quando o jogo está pronto
 fmWorld.start(); // consulta relógio oficial do servidor Supabase
 if (save.name) fmSocial.start(); // publica posição somente após autenticação e nome definitivo
