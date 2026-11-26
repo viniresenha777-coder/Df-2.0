@@ -1077,7 +1077,7 @@ async function admSendGift() {
   } finally { g.busy = false; }
 }
 async function admLoadGiftHistory() {
-  game.admGiftHist = Object.assign({ page: 0 }, game.admGiftHist, { busy: true });
+  game.admGiftHist = Object.assign({ page: 0, list: [] }, game.admGiftHist, { busy: true });
   try { game.admGiftHist = { list: await fmGifts.history(), busy: false, page: 0 }; }
   catch (e) { game.admGiftHist = { list: [], busy: false, page: 0, err: e.message || String(e) }; }
 }
@@ -1085,6 +1085,7 @@ async function admLoadGiftHistory() {
 function drawGiftHistory(top) {
   if (!game.admGiftHist) admLoadGiftHistory();
   const h = game.admGiftHist || { list: [], busy: true, page: 0 };
+  if (!Array.isArray(h.list)) h.list = [];
   const y0 = top + 8, bottom = 500, lineH = 22, per = Math.max(1, Math.floor((bottom - y0 - 34) / lineH));
   const pages = Math.max(1, Math.ceil(h.list.length / per));
   h.page = Math.max(0, Math.min(pages - 1, h.page || 0));
