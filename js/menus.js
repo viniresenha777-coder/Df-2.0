@@ -108,10 +108,53 @@ function statsKey(k) {
   else if (k === "arrowright") { if (!col) game.cur = STATS_LEFT.length + Math.min(PROF_IDS.length - 1, game.cur); }
   else if (k === "enter") addPoint(1);
   else if (k === "d") addPoint(5);
+  else if (k === "backspace" || k === "x" || k === "-") subPoint(k === "x" ? 5 : 1);
+  else if (k === "f") confirmStats();
+  else if (k === "z") revertStats();
   else if (k === "r") { if (atBase()) game.sconfirm = true; else toast("Só dá para resetar atributos dentro da base"); }
+}
+// Distribuição com confirmação: os pontos colocados nesta visita à tela ficam "pendentes" e podem
+// ser tirados com o botão −. Só depois de Confirmar eles ficam fixos (não dá para tirar o que já foi
+// confirmado; para isso existe o reset). Fechar a tela sem confirmar devolve os pontos pendentes.
+function statsBase() { if (!game.statBase) game.statBase = Object.assign({}, player.attrs); return game.statBase; }
+function statsPending() { const b = statsBase(); return ATTRS.some((a) => (player.attrs[a.id] || 0) !== (b[a.id] || 0)); }
+function subPoint(n, id) {
+  const d = ATTRS.find((a) => a.id === (id || STATS_ORDER[game.cur] || STATS_ORDER[0]));
+  const weapon = WEAPON_SKILL_IDS.includes(d.id), pool = weapon ? "wpoints" : "points";
+  const amt = Math.min(n, player.attrs[d.id] - (statsBase()[d.id] || 0));
+  if (amt <= 0) { toast("Só dá para tirar pontos que ainda não foram confirmados"); return; }
+  player.attrs[d.id] -= amt; player[pool] += amt;
+  if (d.id === "endurance") { recalcImplants(); player.hp = Math.min(player.hp, player.maxHp); }
+  syncChar();
+}
+function confirmStats() {
+  if (!statsPending()) { toast("Nenhum ponto para confirmar"); return; }
+  game.statBase = Object.assign({}, player.attrs);
+  syncChar(); persist();
+  if (typeof checkpoint === "function") checkpoint("atributos confirmados");
+  sfx.level && sfx.level();
+  toast("Pontos confirmados!");
+}
+// devolve tudo o que foi colocado e não confirmado
+function revertStats(silent) {
+  const b = game.statBase;
+  if (!b) return;
+  let any = false;
+  for (const a of ATTRS) {
+    const diff = (player.attrs[a.id] || 0) - (b[a.id] || 0);
+    if (diff > 0) { player.attrs[a.id] -= diff; player[WEAPON_SKILL_IDS.includes(a.id) ? "wpoints" : "points"] += diff; any = true; }
+  }
+  if (any) { recalcImplants(); player.hp = Math.min(player.hp, player.maxHp); syncChar(); if (!silent) toast("Pontos não confirmados foram devolvidos"); }
+}
+// chamado a cada quadro: saiu da tela de atributos sem confirmar → devolve os pendentes
+function statsWatch() {
+  if (game.menu === "stats" || !game.statBase) return;
+  revertStats(false);
+  game.statBase = null;
 }
 function addPoint(n, id) {
   if (!atBase()) { toast("Só dá para mudar atributos dentro da base"); return; }
+  statsBase();
   const d = ATTRS.find((a) => a.id === (id || STATS_ORDER[game.cur] || STATS_ORDER[0]));
   const weapon = WEAPON_SKILL_IDS.includes(d.id), pool = weapon ? "wpoints" : "points";
   if (player[pool] <= 0) { toast(weapon ? "Sem pontos de armas" : "Sem pontos de atributo"); return; }
@@ -1283,14 +1326,20 @@ function drawStats() {
       regClick(x + 8, ry, w - 60, 26, () => { game.cur = i; });
       txt(PROF_NAMES[id] || d.name, x + 18, ry + 18, 14, "#e5e0c8", "left", true, 170);
       txt(String(v), x + 210, ry + 18, 14, full ? "#6fae4f" : "#e05a4a", "right", true);
-      ctx.fillStyle = "#000"; ctx.fillRect(x + 220, ry + 10, w - 290, 6);
-      ctx.fillStyle = WEAPON_SKILL_IDS.includes(id) ? "#d08a5a" : "#6d8aa8"; ctx.fillRect(x + 220, ry + 10, (w - 290) * Math.min(1, v / cap), 6);
+      ctx.fillStyle = "#000"; ctx.fillRect(x + 250, ry + 10, w - 340, 6);
+      ctx.fillStyle = WEAPON_SKILL_IDS.includes(id) ? "#d08a5a" : "#6d8aa8"; ctx.fillRect(x + 250, ry + 10, (w - 340) * Math.min(1, v / cap), 6);
       // botão +: clique soma 1 (Shift + clique soma 5)
       const bx = x + w - 44, by = ry + 2, hov = mouse.x >= bx && mouse.x <= bx + 28 && mouse.y >= by && mouse.y <= by + 22;
       ctx.fillStyle = !can ? "#1f1e19" : hov ? "#5a4a2a" : "#352d1a"; rr(bx, by, 28, 22, 4); ctx.fill();
       ctx.strokeStyle = can ? "#d4af37" : "#3d3b30"; ctx.lineWidth = 1; ctx.stroke();
       txt("+", bx + 14, by + 17, 17, can ? "#f2eedc" : "#4a4840", "center", true);
       if (can) regClick(bx, by, 28, 22, () => { game.cur = i; addPoint(keys && keys.shift ? 5 : 1, id); });
+      // botão −: só tira pontos ainda não confirmados
+      const mx = bx - 34, pend = v - (statsBase()[id] || 0), canM = pend > 0, hovM = mouse.x >= mx && mouse.x <= mx + 28 && mouse.y >= by && mouse.y <= by + 22;
+      ctx.fillStyle = !canM ? "#1f1e19" : hovM ? "#5a2a2a" : "#351a1a"; rr(mx, by, 28, 22, 4); ctx.fill();
+      ctx.strokeStyle = canM ? "#e05a4a" : "#3d3b30"; ctx.lineWidth = 1; ctx.stroke();
+      txt("−", mx + 14, by + 17, 17, canM ? "#f2eedc" : "#4a4840", "center", true);
+      if (canM) { regClick(mx, by, 28, 22, () => { game.cur = i; subPoint(keys && keys.shift ? 5 : 1, id); }); txt("+" + pend, x + 216, ry + 18, 11, "#ffd96a", "left", true); }
     });
   };
   column(40, 86, 430, "Stats", STATS_LEFT, 0, "points", "Pontos");
@@ -1301,7 +1350,13 @@ function drawStats() {
   txt(PROF_NAMES[sid] || sd.name, 506, 298, 15, "#f2eedc", "left", true);
   txtWrap(attrEffect(sid, player.attrs[sid]), 506, 318, 12, "#a9a58f", 398, 15, 2);
   txt(WEAPON_SKILL_IDS.includes(sid) ? `Usa pontos de arma · máx. ${weaponSkillCap(sid)}` : `Usa pontos de atributo · máx. ${weaponSkillCap(sid)}`, 506, 356, 11, WEAPON_SKILL_IDS.includes(sid) ? "#d08a5a" : "#6d8aa8");
-  txt("Força conta como ponto de arma (exigência das armas).", 506, 372, 11, "#6d6a58");
+  if (statsPending()) txt("Pontos ainda não confirmados: use − para tirar ou Confirmar para fixar.", 506, 380, 11, "#ffd96a", "left", true);
+  else txt("Força conta como ponto de arma (exigência das armas).", 506, 372, 11, "#6d6a58");
+  // confirmar / desfazer a distribuição pendente
+  if (statsPending()) {
+    btn(700, 342, 104, 22, "Confirmar (F)", confirmStats, true);
+    btn(812, 342, 100, 22, "Desfazer (Z)", () => revertStats(false));
+  }
   // reset de atributos pago com créditos
   ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(40, 398, 880, 110, 8); ctx.fill();
   ctx.strokeStyle = "rgba(192,57,43,0.55)"; ctx.lineWidth = 1.5; ctx.stroke();
@@ -1318,7 +1373,7 @@ function drawStats() {
     btn(W / 2 - 150, H / 2 + 16, 140, 32, "Resetar", () => { game.sconfirm = false; resetStatsWithCredits(); }, true);
     btn(W / 2 + 10, H / 2 + 16, 140, 32, "Cancelar", () => { game.sconfirm = false; });
   }
-  hint("W/S escolhe · A/→ troca de coluna · Enter +1 · D +5 · clique no + (Shift soma 5) · R reset · C ou Esc");
+  hint("W/S escolhe · Enter +1 · D +5 · Backspace −1 · F confirma · Z desfaz · Shift no +/− soma 5 · R reset · C ou Esc");
 }
 
 function drawMissionRow(x, y, w, m, sel, active) {

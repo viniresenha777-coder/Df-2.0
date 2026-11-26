@@ -85,6 +85,7 @@ function resetGame() {
 
 // devolve todos os pontos investidos em atributos e proficiências (cartão ou créditos)
 function resetAttrsCore(reason) {
+  game.statBase = null;   // depois do reset, a nova distribuição começa do zero (pendente até confirmar)
   let normal = 0, weapons = 0;
   ATTRS.forEach(a => {
     const invested = Math.max(0, Math.round((player.attrs[a.id] || a.start) - a.start));
@@ -594,6 +595,7 @@ function loop(now) {
   const dt = Math.max(0, Math.min(now - last, 50));
   last = now;
   if (game.msgT > 0) game.msgT -= dt;
+  if (typeof statsWatch === "function") statsWatch();   // saiu dos atributos sem confirmar: devolve os pontos pendentes
   if (game.slashT > 0) game.slashT -= dt;
   if (game.banner && (game.banner.t -= dt) <= 0) game.banner = null;
   game.shake = Math.max(0, game.shake - dt * 0.03);
