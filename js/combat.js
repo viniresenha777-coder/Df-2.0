@@ -214,6 +214,7 @@ function hurt(z, dmg, ang, quiet, fx) {
   // Em um setor compartilhado, só o líder altera a vida dos zumbis.
   // Os tiros de outros jogadores são encaminhados ao líder via Broadcast.
   if (typeof fmWorld !== "undefined" && fmWorld.isFollower()) {
+    xpForDamage(z, d);   // no setor compartilhado cada jogador ganha XP pelo próprio dano
     fmWorld.reportHit(z, d, ang);
     z.flash = 90;
     if (!quiet) {
@@ -222,6 +223,7 @@ function hurt(z, dmg, ang, quiet, fx) {
     }
     return d;
   }
+  xpForDamage(z, d);
   z.hp -= d; z.flash = 90;
   if (player.fx.leech) player.hp = Math.min(player.maxHp, player.hp + Math.min(player.maxHp * 0.05, d * player.fx.leech / 100));
   if (fx && z.hp > 0) {
@@ -400,6 +402,14 @@ function spawnBoss(x, y, zone, forceId) {
   }
   return z;
 }
+// XP por dano: cada zumbi vale o mesmo XP de antes, dividido pela vida dele; cada ponto de dano
+// (até a vida que ainda resta) dá a parte correspondente. Quem ajuda a matar também ganha.
+function zombieXpTotal(z) { return z.boss ? 80 + 25 * z.zone : (8 + 1.5 * z.zone) * ((ZTYPES[z.type] && ZTYPES[z.type].xp) || 1); }
+function xpForDamage(z, d) {
+  if (!z || z.dead || !(d > 0) || !(z.maxHp > 0) || !(z.hp > 0)) return;
+  const eff = Math.min(d, z.hp);
+  gainXp(zombieXpTotal(z) * eff / z.maxHp);
+}
 function killZombie(z) {
   z.dead = true; z.hp = Math.min(z.hp, 0);
   game.kills++;
@@ -428,14 +438,13 @@ function killZombie(z) {
   if (z.boss) {
     missionProgress("boss", 1);
     if (!game.inside && world.cell.boss === z.bossId) { world.cell.boss = null; world.cell.bossHp = null; }
-    game.score += 150; gainXp(80 + 25 * z.zone);
+    game.score += 150;   // XP do chefe já veio pelo dano (xpForDamage)
     corpses.push({ x: z.x - 22, y: z.y - 22, w: 44, h: 44, kind: "corpse", table: "boss", bossId: z.bossId, name: z.bossName || "Chefe", opened: false, life: Infinity,
       ang: z.angle, deathTime: game.time, radius: z.r, zone: z.zone, skin: z.skin, cloth: z.cloth });
     game.banner = { text: `${z.bossName || "Chefe"} derrotado!`, sub: "Vasculhe o corpo (E): arma ou colete", t: 3000, gold: true };
     return;
   }
-  game.score += Math.round(10 * zx);
-  gainXp((8 + 1.5 * z.zone) * zx);
+  game.score += Math.round(10 * zx);   // XP já veio pelo dano (xpForDamage)
   // Cada um dos quatro alces de Natal deixa UM drop garantido, separado
   // do loot do Papai Noel. O corpo é vasculhável (E) como os demais saques.
   if (z.type === "alce_natal") {
@@ -642,11 +651,11 @@ function updateZombies(dt, k) {
     if (z.lunge > 0) z.lunge -= dt;
     // fogo e sangramento
     if (z.burn > 0) {
-      z.burn -= dt; z.hp -= z.burnDps * dt / 1000;
+      z.burn -= dt; xpForDamage(z, z.burnDps * dt / 1000); z.hp -= z.burnDps * dt / 1000;
       if (Math.random() < dt / 60) game.parts.push({ x: z.x + rand(-z.r, z.r), y: z.y + rand(-z.r, z.r), vx: rand(-0.3, 0.3), vy: rand(-1.2, -0.4), life: 350, max: 350, color: pick(["#ffb040", "#ff7020", "#ffd060"]), size: rand(2, 4), fr: 0.95 });
     }
     if (z.bleed > 0) {
-      z.bleed -= dt; z.hp -= z.bleedDps * dt / 1000;
+      z.bleed -= dt; xpForDamage(z, z.bleedDps * dt / 1000); z.hp -= z.bleedDps * dt / 1000;
       if (Math.random() < dt / 300) addBlood(z.x + rand(-6, 6), z.y + rand(-6, 6), rand(2, 4));
     }
     if (z.hp <= 0) { if (!z.dead) killZombie(z); continue; }

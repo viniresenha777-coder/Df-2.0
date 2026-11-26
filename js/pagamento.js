@@ -90,6 +90,7 @@ const fmPagamento = (() => {
         if (aba) aba.close();
         status(erro === "nao_configurado" ? "A compra de créditos ainda não está disponível. Volte em breve!"
           : erro === "muitos_pedidos" ? "Você abriu muitos pagamentos seguidos. Termine um deles ou espere um pouco."
+          : erro === "bloqueado" ? "Compras bloqueadas nesta conta por causa de um estorno. Fale com o suporte."
           : erro === "login" ? "Sua sessão expirou: entre de novo na conta." : "Não foi possível gerar o pagamento agora. Tente de novo.");
         return;
       }

@@ -51,7 +51,19 @@ Deno.serve(async (req) => {
   } else if (["refunded", "charged_back"].includes(pg.status)) {
     // estorno/cancelamento: o pedido vira "estornado" (se já tinha sido resgatado, resgatado_em fica preenchido
     // e o administrador vê no painel que os créditos já tinham sido entregues)
-    if (c.status !== "estornado") await admin.from("fm_compras").update({ status: "estornado", mp_pagamento: id }).eq("id", ref);
+    if (c.status !== "estornado") {
+      await admin.from("fm_compras").update({ status: "estornado", mp_pagamento: id }).eq("id", ref);
+      // créditos já entregues: tira da conta (até zero) e registra para o administrador
+      if (c.status === "resgatado") {
+        const { data: comp } = await admin.from("fm_compras").select("jogador,creditos").eq("id", ref).maybeSingle();
+        const { data: part } = comp ? await admin.from("fm_partidas").select("progresso").eq("jogador", comp.jogador).maybeSingle() : { data: null };
+        if (comp && part) {
+          const antes = Number(part.progresso?.credits) || 0, depois = Math.max(0, antes - comp.creditos);
+          await admin.from("fm_partidas").update({ progresso: { ...part.progresso, credits: depois }, revisao: crypto.randomUUID() }).eq("jogador", comp.jogador);
+          await admin.from("fm_suspeitas").insert({ jogador: comp.jogador, motivo: `estorno de pagamento: -${comp.creditos} créditos (${antes} -> ${depois})`, antes: null, depois: null });
+        }
+      }
+    }
   }
   return ok();
 });
