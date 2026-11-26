@@ -137,7 +137,7 @@ function marketAskPrice(row) {
 }
 
 function drawMarket() {
-  menuFrame("Mercado Negro", `Dinheiro na mochila · ${bankMoney(game.money)}`);
+  menuFrame("Mercado Negro", `Dinheiro na mochila · ${bankMoney(game.money)}`, "mercado_bg");
   const locked = game.marketBusy || !!game.input || !!market.confirm;
   const tabs = [["comprar", "Comprar"], ["vender", "Anunciar"], ["meus", "Meus anúncios"]];
   tabs.forEach(([key, label], i) => btn(60 + i * 132, 84, 122, 34, label, () => {
@@ -166,7 +166,7 @@ function drawMarket() {
   }
   entries.slice(market.page * pageSize, (market.page + 1) * pageSize).forEach((row, i) => {
     const y = 212 + i * 44;
-    ctx.fillStyle = "#27251e";
+    ctx.fillStyle = UI_GLASS ? "rgba(20,19,14,0.78)" : "#27251e";
     ctx.fillRect(60, y, W - 120, 40);
     txt(marketItemName(row.item), 78, y + 25, 15, "#f2eedc", "left", true, W - 390);
     if (row.price) txt(bankMoney(row.price), W - 214, y + 25, 15, "#aad279", "right", true);
@@ -208,7 +208,7 @@ const MARKET_VISIBLE = 5;
 function drawMarketDropdown() {
   const x = 60, y = 162, width = 230, row = 32;
   regClick(0, 0, W, H, () => { market.filterOpen = false; });
-  ctx.fillStyle = "#211f19";
+  ctx.fillStyle = UI_GLASS ? "rgba(22,21,16,0.94)" : "#211f19";
   ctx.fillRect(x, y, width, row * MARKET_VISIBLE);
   MARKET_FILTERS.slice(market.filterOffset, market.filterOffset + MARKET_VISIBLE).forEach(([key, label], i) => {
     btn(x, y + i * row, width - 8, row, label, () => {
