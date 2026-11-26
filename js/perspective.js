@@ -274,7 +274,7 @@ const GEAR_IMG = {};
 function gearImg(id, pose) {
   const k = id + "_" + pose;
   let im = GEAR_IMG[k];
-  if (!im) { im = GEAR_IMG[k] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/gear/${k}.png${CHAR_V}${id.startsWith("w_fm_trovao_") ? "&grip=2" : ""}`; }
+  if (!im) { im = GEAR_IMG[k] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/gear/${k}.png${CHAR_V}${id.startsWith("w_fm_trovao_") ? "&grip=3" : ""}`; }
   if (!(im.complete && !im.bad && im.naturalWidth)) return null;
   const tint = gearTint(id);
   return tint ? tintedImg(im, k, tint) : im;
