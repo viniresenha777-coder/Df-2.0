@@ -39,7 +39,7 @@ const fmChat = (() => {
   function add(m, mine) {
     if (!m || typeof m.texto !== "string") return;
     if (m.id != null && lines.some((l) => l.id === m.id)) return;
-    lines.push({ id: m.id, name: String(m.nome || ""), text: m.texto, at: performance.now(), mine: !!mine, sys: !!m.sys });
+    lines.push({ id: m.id, name: String(m.nome || ""), text: m.texto, at: performance.now(), mine: !!mine, sys: !!m.sys, alerta: !!m.alerta });
     while (lines.length > MAX_LINES) lines.shift();
     render(true);
   }
@@ -52,7 +52,7 @@ const fmChat = (() => {
     if (!force && !open && !show.length && !log.childElementCount) return;
     log.replaceChildren(...show.map((l) => {
       const p = document.createElement("div");
-      p.className = "fm-chat-line" + (l.sys ? " sys" : "");
+      p.className = "fm-chat-line" + (l.sys ? " sys" : "") + (l.alerta ? " alerta" : "");
       if (!l.sys) {
         const n = document.createElement("b");
         n.textContent = l.name + ": ";
@@ -121,5 +121,6 @@ const fmChat = (() => {
         : /row-level security/i.test(msg) ? "Você não pode enviar mensagens agora." : msg || "Mensagem não enviada.");
     }
   }
-  return { start, open: openChat, close, typing: () => open };
+  function alert(text) { build(); add({ texto: text, sys: true, alerta: true }); }
+  return { start, open: openChat, close, typing: () => open, system, alert };
 })();
