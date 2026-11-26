@@ -72,7 +72,7 @@ const fmGifts = (() => {
   // histórico do que este ADM enviou (o RLS só deixa ler os presentes que ele mesmo mandou)
   async function history() {
     const { data, error } = await db().from("fm_presentes")
-      .select("id,destinatario,tipo,quantidade,item_id,transferivel,criado_em,recebido_em")
+      .select("id,destinatario,tipo,quantidade,item_id,transferivel,criado_em,recebido_em,reivindicar_em,reivindicado_em,reivindicado_resultado")
       .eq("remetente", uid()).order("criado_em", { ascending: false }).limit(60);
     if (error) throw new Error(error.message);
     const ids = [...new Set((data || []).map(g => g.destinatario))];
@@ -82,6 +82,54 @@ const fmGifts = (() => {
       (perfis || []).forEach(p => { nomes[p.jogador] = p.nome; });
     }
     return (data || []).map(g => ({ ...g, nome: nomes[g.destinatario] || "?", texto: descrever(g) }));
+  }
+
+  // ADM: reivindica um presente (pendente: exclui; entregue: arma, dinheiro e créditos são retirados do jogador)
+  async function reclaim(id) {
+    const { data, error } = await db().rpc("fm_presente_reivindicar", { presente: id });
+    if (error) throw new Error(error.message);
+    return data === "excluido" ? "Presente excluído: o jogador não vai mais receber." : "Reivindicado: o item sai do jogador assim que o jogo dele conferir (em até 12 s, ou quando ele entrar).";
+  }
+  // jogador: retira o que o ADM reivindicou (a arma é achada pela marca do presente)
+  function retirar(g) {
+    const n = Number(g.quantidade) || 0;
+    if (g.tipo === "arma") {
+      const i = player.slots.findIndex(w => w && w.presente === g.id);
+      if (i >= 0) { player.slots[i] = null; if (player.cur === i) { player.cur = Math.max(0, player.slots.findIndex(Boolean)); player.reloading = 0; } return "arma retirada"; }
+      for (const list of [player.pack, save.vault]) {
+        const k = list.findIndex(w => w && w.kind === "weapon" && w.presente === g.id);
+        if (k >= 0) { list.splice(k, 1); return "arma retirada"; }
+      }
+      return "arma não encontrada (vendida ou descartada)";
+    }
+    if (g.tipo === "dinheiro") {
+      const daMochila = Math.min(game.money, n), doBanco = Math.min(save.bank, n - daMochila);
+      game.money -= daMochila; save.bank -= doBanco;
+      if (daMochila + doBanco) logMoney("Reivindicado pelo ADM", "", -(daMochila + doBanco));
+      return "$" + (daMochila + doBanco).toLocaleString("pt-BR") + " de $" + n.toLocaleString("pt-BR") + " retirados";
+    }
+    if (g.tipo === "creditos") {
+      const t = Math.min(save.credits || 0, n);
+      save.credits = (save.credits || 0) - t;
+      return t + " de " + n + " créditos retirados";
+    }
+    return "nada a retirar";
+  }
+  async function pollReclaims() {
+    const { data, error } = await db().from("fm_presentes")
+      .select("id,tipo,quantidade,item_id,transferivel")
+      .eq("destinatario", uid()).not("reivindicar_em", "is", null).is("reivindicado_em", null).limit(10);
+    if (error) throw error;
+    for (const g of data || []) {
+      const resultado = retirar(g);
+      if (!Array.isArray(save.inbox)) save.inbox = [];
+      save.inbox.push({ id: "r" + g.id, text: "O administrador reivindicou: " + descrever(g) + " (" + resultado + ")", createdAt: Date.now(), read: false });
+      save.inbox = save.inbox.slice(-100);
+      save.run = runSnapshot();
+      await storeWrite(JSON.stringify(save));
+      await db().rpc("fm_presente_reivindicado", { presente: g.id, resultado });
+      toast("O administrador reivindicou um presente. Veja em Mensagens (I).");
+    }
   }
 
   async function acknowledge(id) {
@@ -104,7 +152,7 @@ const fmGifts = (() => {
     else if (g.tipo === "dinheiro") { game.money += g.quantidade; logMoney("Presente ADM", "", g.quantidade); }
     else if (g.tipo === "vip") addVipMonths(g.quantidade);
     else if (g.tipo === "creditos") save.credits = (save.credits || 0) + g.quantidade;
-    else if (g.tipo === "arma") { const inst = newInst(g.item_id); if (semTroca) inst.semTroca = true; return !!addWeapon(inst); }
+    else if (g.tipo === "arma") { const inst = newInst(g.item_id); inst.presente = g.id; if (semTroca) inst.semTroca = true; return !!addWeapon(inst); }
     else if (g.tipo === "implante") { const im = newImplant(g.item_id); if (semTroca) im.semTroca = true; player.bag.push(im); }
     else if (g.tipo === "colete") {
       const i = Number(g.item_id);
@@ -178,6 +226,7 @@ const fmGifts = (() => {
           t: 4800, gold: true };
         toast("Novo presente do administrador! Veja em Mensagens (I).");
       }
+      await pollReclaims();
     } catch (err) {
       console.warn("Correio de presentes:", err);
     } finally { busy = false; }
@@ -188,5 +237,5 @@ const fmGifts = (() => {
     timer = setInterval(poll, 12000);
   }
   function stop() { if (timer) clearInterval(timer); timer = null; }
-  return { send, start, stop, poll, history, itemNome, descrever, SUPRIMENTOS };
+  return { send, start, stop, poll, history, reclaim, itemNome, descrever, SUPRIMENTOS };
 })();

@@ -1103,8 +1103,20 @@ function drawGiftHistory(top) {
     const q = new Date(g.criado_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
     txt(q, 74, y, 12, "#a9a58f");
     txt(g.nome, 190, y, 13, "#e5e0c8", "left", true, 150);
-    txt(g.texto, 350, y, 13, g.texto.includes("Não transferível") ? "#ffb08a" : "#e5e0c8", "left", false, 430);
-    txt(g.recebido_em ? "entregue" : "pendente", 886, y, 12, g.recebido_em ? "#6fae4f" : "#ffd96a", "right", true);
+    txt(g.reivindicado_em && g.reivindicado_resultado ? g.texto + " · " + g.reivindicado_resultado : g.texto, 350, y, 13,
+      g.reivindicado_em ? "#9c977f" : g.texto.includes("Não transferível") ? "#ffb08a" : "#e5e0c8", "left", false, 300);
+    const podeReivindicar = !g.reivindicar_em && (!g.recebido_em || ["arma", "dinheiro", "creditos"].includes(g.tipo));
+    const status = g.reivindicado_em ? "reivindicado" : g.reivindicar_em ? "reivindicando..." : g.recebido_em ? "entregue" : "pendente";
+    txt(status, podeReivindicar ? 772 : 886, y, 12, g.reivindicado_em ? "#c58bff" : g.reivindicar_em ? "#ff9a7a" : g.recebido_em ? "#6fae4f" : "#ffd96a", "right", true);
+    if (podeReivindicar) {
+      const conf = h.confirm === g.id;
+      btn(780, y - 15, 106, 20, conf ? "Confirmar?" : "Reivindicar", async () => {
+        if (!conf) { h.confirm = g.id; return; }
+        h.confirm = null;
+        try { toast(await fmGifts.reclaim(g.id)); } catch (e) { toast(e.message || "Não foi possível reivindicar."); }
+        admLoadGiftHistory();
+      }, conf);
+    }
   });
 }
 async function admLoadRetido() {
