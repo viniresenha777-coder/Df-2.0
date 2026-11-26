@@ -38,6 +38,7 @@ const fmCloud = (() => {
   });
   let user = null;
   let userIsAdmin = false;
+  let ownerName = null;   // nome do personagem desta conta: um save com outro nome nunca é gravado aqui
   let snapshot = null;
   let revision = null;
   let pending = Promise.resolve();
@@ -115,6 +116,7 @@ const fmCloud = (() => {
     if (adminCheck.error) console.warn("Sem confirmação de privilégio de administrador; acesso administrativo bloqueado.");
     user = account;
     snapshot = data ? JSON.stringify(data.progresso) : null;
+    ownerName = (data && data.progresso && typeof data.progresso.name === "string" && data.progresso.name) || null;
     revision = data ? data.revisao : null;
     saleTotal = Number(data?.progresso?.saleTotal) || 0;
     pending = Promise.resolve();
@@ -161,6 +163,9 @@ const fmCloud = (() => {
     let progress;
     try { progress = JSON.parse(str); } catch (error) { return Promise.reject(error); }
     const userId = user.id;
+    // trava: nunca gravar a partida de outro personagem nesta conta (duas contas no mesmo navegador)
+    if (ownerName && progress.name && progress.name !== ownerName)
+      return Promise.reject(new Error(`Esta aba está com a partida de "${progress.name}", mas a conta logada é de "${ownerName}". Nada foi salvo: recarregue a página.`));
     const operation = pending.then(async () => {
       if (!user || user.id !== userId) throw new Error("A conta mudou durante o salvamento.");
       const db = requireClient();
@@ -186,6 +191,7 @@ const fmCloud = (() => {
         throw new Error("Esta partida foi alterada em outra aba ou dispositivo. Saia e entre novamente antes de salvar.");
       const accepted = result.data[0].progresso || progress;
       snapshot = JSON.stringify(accepted);
+      if (!ownerName && accepted.name) ownerName = accepted.name;
       revision = nextRevision;
       // Um trigger de validação pode alterar apenas o nível no banco.
       // Nunca confirmar um checkpoint se o servidor salvou outro nível.
