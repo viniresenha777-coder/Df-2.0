@@ -117,7 +117,7 @@ function cycleVest() {
 function acceptFound() {
   const e = game.found[0];
   if (!e) return true;
-  if (e.type === "cash") game.money += e.amt;
+  if (e.type === "cash") { game.money += e.amt; logMoney("Saque", e.src || "loot", e.amt); }
   else if (e.type === "food") addFood(e.q || "comum", e.amt);
   else if (e.type === "anti") player.anti += e.amt;
   else if (e.type === "water") player.water += e.amt;
@@ -931,7 +931,7 @@ function fmVaultBuy() {
     toast("Dinheiro insuficiente: $" + price.toLocaleString("pt-BR"));
     return;
   }
-  game.money -= price;
+  game.money -= price; logMoney("Compra", "linha do baú", -price);
   save.vaultRows = rows + 1;
   save.run = runSnapshot();
   persist();
@@ -1205,7 +1205,7 @@ function shopBuy() {
   if (!free && game.money < cost) { toast("Você precisa de $" + cost.toLocaleString("pt-BR") + " para comprar essa munição."); return; }
   if (ammoRoom(type) < AMMO_PACK_SIZE) { toast("Espaço insuficiente para 999 munições na mochila."); return; }
   if (free) player.tokenAmmo[type] = (player.tokenAmmo[type] || 0) + AMMO_PACK_SIZE;
-  else game.money -= cost;
+  else { game.money -= cost; logMoney("Compra", "munição " + type, -cost); }
   player.reserve[type] = (player.reserve[type] || 0) + AMMO_PACK_SIZE;
   sfx.buy();
   checkpoint("compra de pacote de munição");
@@ -1225,7 +1225,7 @@ function buyVest(i) {
     save.credits -= cr;
   } else {
     if (game.money < v.price) { toast("Dinheiro insuficiente"); return; }
-    game.money -= v.price;
+    game.money -= v.price; logMoney("Compra", "colete " + v.name, -v.price);
   }
   sfx.buy(); gainVest(i); save.vest = i; recalcImplants(); persist();
 }
@@ -1344,7 +1344,7 @@ function craftRecipe() {
   if (!r.implant && r.vest == null && player.slots.indexOf(null) < 0 && packUsed() >= packCapacity()) { toast("Mochila cheia"); return; }
   for (const m in r.mats) takeMat(m, r.mats[m]);
   takeImps(r.needImp);
-  game.money -= cost; stat("crafts");
+  game.money -= cost; logMoney("Oficina", "craft " + (r.name || r.id || ""), -cost); stat("crafts");
   if (r.vest != null) {
     save.vestsOwned[r.needVest] = false;
     if (save.vestUpgrades) delete save.vestUpgrades[r.needVest];
@@ -1360,7 +1360,7 @@ function payUpgrade(c) {
   if (game.money < cost) { toast(`Precisa de $${cost} na mochila`); return false; }
   if (!hasMats(c.mats)) { toast("Faltam materiais"); return false; }
   for (const m in c.mats) takeMat(m, c.mats[m]);
-  game.money -= cost;
+  game.money -= cost; logMoney("Oficina", "melhoria", -cost);
   return true;
 }
 function finishUpgrade(message) {
@@ -1380,7 +1380,7 @@ function craftPerfect() {
   if (game.money < CRAFT_PERFEITO_PRECO) {
     toast("Craft Perfeito exige $100.000."); return;
   }
-  game.money -= CRAFT_PERFEITO_PRECO;
+  game.money -= CRAFT_PERFEITO_PRECO; logMoney("Oficina", "craft perfeito", -CRAFT_PERFEITO_PRECO);
   it.up = { acc: 8, dmg: 8, rel: 8 };
   it.gc = true;
   finishUpgrade(instName(it) + " · Craft Perfeito 8/8/8!");

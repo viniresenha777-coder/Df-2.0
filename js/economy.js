@@ -23,10 +23,21 @@ function econ(zone) { return ECON[regionOf(zone == null ? game.area : zone)] || 
 // dinheiro achado no saque, já com a região, o implante Ganância e o VIP
 function lootCash(base, zone) { return Math.max(1, Math.round(base * econ(zone).cash * moneyMult())); }
 // recompensa por abate: desligada (zumbis e chefes não dão dinheiro; só o saque dá)
+// registro de onde veio (e para onde foi) o dinheiro: vai junto no save, e o servidor guarda
+// uma cópia quando um ganho passa do limite por hora, para o ADM analisar
+function logMoney(origem, detalhe, valor) {
+  valor = Math.round(Number(valor) || 0);
+  if (!valor) return;
+  if (!Array.isArray(save.dinLog)) save.dinLog = [];
+  const t = Date.now();
+  save.dinLog.push({ t, o: String(origem).slice(0, 24), d: String(detalhe || "").slice(0, 48), v: valor, z: game.area | 0 });
+  const lim = t - 3 * 3600e3;
+  while (save.dinLog.length && (save.dinLog.length > 150 || save.dinLog[0].t < lim)) save.dinLog.shift();
+}
 function killBounty(z) {
   const b = Math.round(econ(z.zone).bounty * (z.boss ? 40 : 1) * moneyMult());
   if (b <= 0) return;
-  game.money += b;
+  game.money += b; logMoney("Abate", z.boss ? "chefe" : z.type, b);
   game.floats.push({ x: z.x + 10, y: z.y - z.r - 18, text: `+$${b}`, t: 900, money: true });
 }
 

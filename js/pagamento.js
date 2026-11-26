@@ -52,7 +52,7 @@ const fmPagamento = (() => {
       <div class="sub">Pague com <b>Pix</b> ou <b>cartão de crédito</b> pelo Mercado Pago. Os créditos entram na sua conta sozinhos assim que o pagamento for aprovado (Pix: na hora).</div>
       <div class="g"></div>
       <div class="st"></div>
-      <div class="ft"><span>Pagamento processado pelo Mercado Pago · o jogo não vê os dados do seu cartão. Também dá para trocar dinheiro do jogo por créditos no Banco.</span><button class="x">Fechar</button></div>
+      <div class="ft"><span>Pagamento processado pelo Mercado Pago · o jogo não vê os dados do seu cartão.</span><button class="x">Fechar</button></div>
     </div>`;
     document.body.appendChild(box);
     const g = box.querySelector(".g");

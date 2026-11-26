@@ -93,7 +93,7 @@ function dailyVal(d) { return S(d.stat) - ((save.daily.base && save.daily.base[d
 // ---------- Recompensas ----------
 function giveReward(rw, title, sub) {
   const parts = [];
-  if (rw.money) { save.bank += rw.money; parts.push(`$${rw.money} no banco`); }
+  if (rw.money) { save.bank += rw.money; logMoney("Recompensa", title, rw.money); parts.push(`$${rw.money} no banco`); }
   if (rw.xp) { gainXp(rw.xp); parts.push(`${rw.xp} XP`); }
   if (rw.food) { player.food += rw.food; parts.push(`${rw.food} comida`); }
   if (rw.med) { player.med += rw.med; parts.push(`${rw.med} kit médico`); }
