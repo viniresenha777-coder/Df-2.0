@@ -1221,7 +1221,7 @@ function buyVest(i) {
   if (v.craft) { toast("Esse colete só pode ser criado na oficina"); return; }
   if (v.credits) {
     const cr = vestCredits(v);
-    if (save.credits < cr) { toast(`Precisa de ${cr} créditos (compre no banco)`); return; }
+    if (save.credits < cr) { toast(`Precisa de ${cr} créditos (compre em $ Compre Créditos)`); return; }
     save.credits -= cr;
   } else {
     if (game.money < v.price) { toast("Dinheiro insuficiente"); return; }
