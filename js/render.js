@@ -1503,7 +1503,7 @@ function drawPlayer() {
   }
   ctx.fillStyle = "rgba(255,255,255,0.1)"; circle(3, -3, 3);
   ctx.restore();
-  if (p.flashT > 0 && !w.melee) {
+  if (p.flashT > 0 && !p.thunderFlash && !w.melee) {
     const tx = p.x + Math.cos(p.angle) * (w.len + 14), ty = p.y + Math.sin(p.angle) * (w.len + 14);
     ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.translate(tx, ty); ctx.rotate(p.angle);
     ctx.fillStyle = "rgba(255,220,120,0.9)"; ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(16, 0); ctx.lineTo(0, 6); ctx.lineTo(4, 0); ctx.closePath(); ctx.fill();
@@ -1632,7 +1632,94 @@ function drawZombie(z) {
     ctx.fillStyle = "#c0392b"; ctx.fillRect(z.x - 13, z.y - z.r - 9, 26 * Math.max(0, z.hp / z.maxHp), 4);
   }
 }
+function thunderInk(alpha) { return "rgba(44,188,255," + alpha + ")"; }
+function thunderStroke(points, width, color) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(...points[0]);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(...points[i]);
+  ctx.stroke();
+}
+function drawThunderShots(ground) {
+  if (!game.thunderBeams?.length) return;
+  const area = game.inside || world.cell, now = performance.now();
+  const duration = THUNDER_FLASH_MS + THUNDER_FADE_MS;
+  game.thunderBeams = game.thunderBeams.filter(shot => shot.area === area && now - shot.began < duration);
+  for (const shot of game.thunderBeams) {
+    const age = now - shot.began;
+    const reach = shot.range * Math.min(1, age / THUNDER_TRAVEL_MS);
+    if (reach <= 0) continue;
+    const alpha = (1 - Math.max(0, age - THUNDER_FLASH_MS) / THUNDER_FADE_MS) ** 1.45;
+    ctx.save();
+    ctx.translate(shot.x, shot.y);
+    ctx.rotate(shot.angle);
+    ctx.globalCompositeOperation = "lighter";
+    ctx.beginPath();
+    ctx.rect(-18, -76, reach + 18, 152);
+    ctx.clip();
+    if (ground) {
+      const radius = 72;
+      ctx.translate(reach / 2, 0);
+      ctx.scale((reach / 2 + 29) / radius, 0.72);
+      const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+      glow.addColorStop(0, "rgba(165,237,255," + alpha * 0.57 + ")");
+      glow.addColorStop(0.4, thunderInk(alpha * 0.48));
+      glow.addColorStop(0.78, thunderInk(alpha * 0.30));
+      glow.addColorStop(1, thunderInk(0));
+      ctx.fillStyle = glow;
+      ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+    } else {
+      let seed = shot.seed;
+      const noise = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 0x100000000);
+      const points = [[0, 0], [Math.min(reach, 90), 0]];
+      let side = noise() < .5 ? -1 : 1, offset = 0;
+      for (let x = 104; x < reach; x += 12 + noise() * 17) {
+        side *= -1;
+        offset = side * (3 + noise() * 9);
+        points.push([x, offset]);
+      }
+      if (reach > 90) points.push([reach, offset * .58]);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.save();
+      ctx.shadowColor = thunderInk(alpha * .8);
+      ctx.shadowBlur = 22;
+      thunderStroke(points, 16, thunderInk(alpha * .24));
+      thunderStroke(points, 6, thunderInk(alpha * .74));
+      ctx.restore();
+      thunderStroke(points, 26, thunderInk(alpha * .11));
+      thunderStroke(points, 9, thunderInk(alpha * .35));
+      thunderStroke(points, 3.5, thunderInk(alpha * .88));
+      thunderStroke(points, 1.8, "rgba(231,252,255," + alpha + ")");
+      const bent = points.slice(1);
+      if (bent.length >= 3) for (const side of [-1, 1]) {
+        const filament = bent.map(([x, y], i) =>
+          [x, i === 0 || i === bent.length - 1 ? y : y + side * (1.5 + Math.abs(Math.sin(i * .91 + age / 40)) * 2.7)]);
+        thunderStroke(filament, .72, thunderInk(alpha * .30));
+      }
+      for (const [fraction, side] of [[.33, -1], [.72, 1]]) {
+        const target = points.find(([x]) => x >= 90 + (shot.range - 90) * fraction);
+        if (!target || target[0] < 100 || target[0] + 24 > reach) continue;
+        const [x, y] = target;
+        const arc = [[x, y], [x + 7, y + side * 6], [x + 13, y + side * 4], [x + 24, y + side * 16]];
+        thunderStroke(arc, 2.5, thunderInk(alpha * .18));
+        thunderStroke(arc, 1, thunderInk(alpha * .55));
+      }
+      for (const hit of shot.hits) {
+        if (hit.forward > reach) break;
+        const glow = ctx.createRadialGradient(hit.forward, hit.lateral, 0, hit.forward, hit.lateral, 21);
+        glow.addColorStop(0, thunderInk(alpha * .66));
+        glow.addColorStop(1, thunderInk(0));
+        ctx.fillStyle = glow;
+        ctx.fillRect(hit.forward - 21, hit.lateral - 21, 42, 42);
+      }
+    }
+    ctx.restore();
+  }
+}
 function drawProjectiles() {
+  drawThunderShots(false);
   for (const b of bullets) {
     if (b.fire) {
       const age = 1 - b.life / b.max, r = 5 + age * 16;
@@ -1739,7 +1826,7 @@ function drawLightingDark() {
     beam.globalCompositeOperation = "source-over";
     lctx.globalCompositeOperation = "destination-out";
     lctx.drawImage(FLASH_BLOCK.cut, 0, 0);
-    if (player.flashT > 0) hole(px + Math.cos(player.angle) * 40, py + Math.sin(player.angle) * 40, 230, 0.85);
+    if (player.flashT > 0 && !player.thunderFlash) hole(px + Math.cos(player.angle) * 40, py + Math.sin(player.angle) * 40, 230, 0.85);
   }
   const lamps = game.inside ? [] : world.lamps.filter((l) => inView(l.x - 220, l.y - 220, 440, 440));
   for (const l of lamps) hole(l.x - cam.x, l.y - (l.big ? 53 : 40) - cam.y, l.big ? 230 : 145, 0.9);

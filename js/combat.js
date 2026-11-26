@@ -204,7 +204,7 @@ function explode(x, y, r, dmg) {
 function hurt(z, dmg, ang, quiet, fx) {
   let d = dmg * (1 + player.fx.firepower / 100) * adm.dmg * (trindadeActive() ? 1.35 : 1), crit = false;
   if (player.fx.rage && player.hp / player.maxHp < 0.4) d *= 1 + player.fx.rage / 100;
-  if (!(fx && fx.noCrit) && Math.random() * 100 < Math.min(85, A("crit") * 0.5 + player.fx.crit + (fx && fx.crit ? fx.crit : 0))) { d *= 2 + player.fx.critDmg / 100; crit = true; }
+  if ((fx?.shotCrit ?? (!(fx && fx.noCrit) && Math.random() * 100 < Math.min(85, A("crit") * 0.5 + player.fx.crit + (fx && fx.crit ? fx.crit : 0))))) { d *= 2 + player.fx.critDmg / 100; crit = true; }
   // o Capataz bloqueia de frente: atire pelas costas ou pelos lados
   if (z.bossId === "capataz" && ang != null && Math.cos(angDiff(z.angle, ang + Math.PI)) > 0.35) {
     d *= 0.25;
@@ -243,6 +243,43 @@ function hurt(z, dmg, ang, quiet, fx) {
 }
 // só arma de cartucho com ferrolho/slide ejeta cápsula: besta (virote) e revólver (cápsulas ficam no tambor) não
 function ejectsCasing(w) { return !w.fire && !w.melee && w.look !== "crossbow" && w.look !== "revolver"; }
+// Rifle Trovão: faixa de 255 unidades a partir do cano, com dano por ordem de encontro.
+const THUNDER_RANGE = 255, THUNDER_HALF_WIDTH = 34, THUNDER_TRAVEL_MS = 33, THUNDER_FLASH_MS = 46, THUNDER_FADE_MS = 92;
+function traceThunder(x, y, dx, dy, range) {
+  let last = 0;
+  for (let sample = Math.min(4, range); ; sample = Math.min(sample + 4, range)) {
+    const obstacle = hitObstacle(x + dx * sample, y + dy * sample);
+    if (obstacle) return { range: last, obstacle };
+    if (sample === range) return { range };
+    last = sample;
+  }
+}
+function fireThunder(x, y, angle, damage, weapon) {
+  const dx = Math.cos(angle), dy = Math.sin(angle);
+  const trace = traceThunder(x, y, dx, dy, THUNDER_RANGE);
+  const hits = [];
+  if (trace.range > 0) for (const zombie of Zs()) {
+    if (zombie.hp <= 0) continue;
+    const center = zCenter(zombie), offsetX = center.x - x, offsetY = center.y - y;
+    const forward = offsetX * dx + offsetY * dy;
+    const lateral = -offsetX * dy + offsetY * dx;
+    if (forward < 0 || forward > trace.range + 1e-6 || Math.abs(lateral) > THUNDER_HALF_WIDTH) continue;
+    const distance = Math.hypot(offsetX, offsetY);
+    if (Math.abs(lateral) > 1 && traceThunder(x, y, offsetX / distance, offsetY / distance, distance).obstacle) continue;
+    hits.push({ zombie, forward, lateral });
+  }
+  hits.sort((a, b) => a.forward - b.forward);
+  if (weapon) {
+    const shotCrit = Math.random() * 100 < Math.min(85, A("crit") * 0.5 + player.fx.crit + (weapon.crit || 0));
+    const effect = { ...weapon, shotCrit };
+    hits.forEach(({ zombie }, i) => hurt(zombie, damage * (i === 0 ? 1 : i === 1 ? 0.4 : 0.2), angle, false, effect));
+    if (trace.obstacle?.kind === "car") carHit(trace.obstacle, damage);
+  }
+  if (trace.range > 0) {
+    (game.thunderBeams ||= []).push({ x, y, angle, range: trace.range, hits, began: performance.now(),
+      area: game.inside || world.cell, seed: Math.floor(Math.random() * 0x100000000) });
+  }
+}
 function attack() {
   const w = curW(), it = curInst(), st = wStat(it);
   player.cooldown = st.delay * (w.infinite ? 1 + 2 * (1 - player.spin) : 1) / Math.max(0.3, 1 + player.fx.atkSpeed / 100);
@@ -272,7 +309,8 @@ function attack() {
   if (mz) { mx = mz.x; my = mz.y; }
   player.shotAng = aim;
   const n = w.pellets || 1;
-  for (let i = 0; i < n; i++) {
+  if (w.thunder) fireThunder(mx, my, aim, st.dmg * dmgMult(w), w);
+  else for (let i = 0; i < n; i++) {
     const a = aim + (Math.random() - 0.5) * 2 * st.spread * Math.max(0.15, 10 / A("acc")) * (1 - Math.min(0.6, player.fx.accImp / 100));
     const sp = (w.speed || 12) * (w.fire ? rand(0.8, 1.2) : 1);
     bullets.push({ x: mx, y: my, px: mx, py: my, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: w.life || 900, max: w.life || 900,
@@ -282,6 +320,7 @@ function attack() {
   if (typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(mx, my, aim, w.id, n);   // os outros veem o tiro
   if (!w.fire) {
     player.flashT = 60;
+    player.thunderFlash = !!w.thunder;
     if (ejectsCasing(w)) casing(player.x + Math.cos(player.angle) * 10, player.y + Math.sin(player.angle) * 10, player.angle);
   }
   game.shake = Math.min(10, game.shake + (w.cat === "shotguns" ? 5 : w.cat === "rifles" ? 4 : w.fire ? 0.4 : 1.2));

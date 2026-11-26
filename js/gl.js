@@ -321,7 +321,7 @@ function gfxLights(dark) {
       add(px, py, 60, fd * 0.25, [1, 0.96, 0.9], true, ALL);                                             // reflexo fraco no corpo
       L.push([px, py, flashBeamLen(), Math.max(0, fd - 0.04) * 2.4, [1, 0.9, 0.68], 1, [ca, sa, -3, FLASH_HALF]]);   // cone reto
     }
-    if (player.flashT > 0) add(px + Math.cos(a) * 30, py + Math.sin(a) * 30, 280, 1.1 * glow * (Math.min(1, player.flashT / 60) + 0.4), [1, 0.75, 0.38], true);
+    if (player.flashT > 0 && !player.thunderFlash) add(px + Math.cos(a) * 30, py + Math.sin(a) * 30, 280, 1.1 * glow * (Math.min(1, player.flashT / 60) + 0.4), [1, 0.75, 0.38], true);
   }
   for (const f of game.flashes) {
     add(f.x - ox, f.y - oy, f.r * 1.7, 1.2 * Math.min(1, f.t / 220) * glow, [1, 0.58, 0.22], false);

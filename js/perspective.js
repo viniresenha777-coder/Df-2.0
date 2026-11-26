@@ -722,7 +722,7 @@ function drawPlayerSprite() {
     ctx.fillStyle = flashlightActive() ? "#fff4cf" : "#595850"; circle(L.x, L.y, 1.6);
   }
   // clarão do tiro na ponta do cano
-  if (p.flashT > 0 && !w.melee) {
+  if (p.flashT > 0 && !p.thunderFlash && !w.melee) {
     const m = muzzlePoint(), ang = p.shotAng != null ? p.shotAng : (p.gunAngle != null ? p.gunAngle : p.angle);
     if (m) {
       ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.translate(m.x, m.y); ctx.rotate(ang);

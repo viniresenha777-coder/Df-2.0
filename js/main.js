@@ -507,6 +507,7 @@ function drawWorldView(shx, shy) {
   ctx.save();
   ctx.translate(-Math.round(cam.x) + shx, -Math.round(cam.y) + shy);
   if (game.inside) drawInterior(); else { drawWorld(); drawAirdrops(); }
+  drawThunderShots(true);
   drawGroundDrops(); // itens recusados continuam visíveis por 10s reais
   drawHazards();
   for (const p of game.pings) {

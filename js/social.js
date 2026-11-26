@@ -471,7 +471,7 @@ function drawOnlinePlayer(p) {
     g.addColorStop(0, "rgba(255,240,190,0.95)"); g.addColorStop(1, "rgba(255,220,140,0)");
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(L.x, L.y, 7, 0, Math.PI * 2); ctx.fill(); ctx.restore();
   }
-  if (flash && !w.melee && !w.fire) {                        // clarão do tiro
+  if (flash && !w.melee && !w.fire && !w.thunder) {                        // clarão do tiro
     const L = pt("a"), mx = L.x + Math.cos(aim) * 26, my = L.y + Math.sin(aim) * 26;
     ctx.save(); ctx.globalCompositeOperation = "lighter";
     const g = ctx.createRadialGradient(mx, my, 0, mx, my, 16);
@@ -484,7 +484,8 @@ function drawOnlinePlayer(p) {
 const NET_SHOTS = [];
 function netShot(x, y, a, w, n) {
   // usa as mesmas balas do jogo (chamas, virotes, granadas, rastros), marcadas como "ghost": sem dano
-  for (let i = 0; i < n; i++) {
+  if (w.thunder) fireThunder(x, y, a);
+  else for (let i = 0; i < n; i++) {
     const aa = a + (Math.random() - 0.5) * 2 * (w.spread || 0.05) * (n > 1 ? 1 : 0.5);
     const sp = (w.speed || 12) * (w.fire ? rand(0.8, 1.2) : 1);
     bullets.push({ x, y, px: x, py: y, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, life: w.life || 900, max: w.life || 900, ghost: true,
