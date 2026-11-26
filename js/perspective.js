@@ -320,8 +320,8 @@ const WEAPON_3D = {
   incendiaria: { m: "w_fm_incendiaria_hd", grip: 0.23, heldView: true },
   spas: { m: "w_spas" }, aa12: { m: "w_aa12" },
   caca: { m: "w_caca" }, sniper: { m: "w_sniper" }, barrett: { m: "w_barrett" },
-  pistola: { m: "w_fm_pistola", grip: 0.24, heldView: true }, glock: { m: "w_fm_glock", grip: 0.24, heldView: true },
-  silenciada: { m: "w_fm_vp9", grip: 0.23, heldView: true }, colt: { m: "w_fm_colt", grip: 0.23, heldView: true }, deagle: { m: "w_deagle" },
+  pistola: { m: "w_fm_pistola", grip: 0.24, heldView: true, poseLayer: true }, glock: { m: "w_fm_glock", grip: 0.24, heldView: true },
+  silenciada: { m: "w_fm_vp9", grip: 0.23, heldView: true }, colt: { m: "w_fm_colt", grip: 0.23, heldView: true, poseLayer: true }, deagle: { m: "w_deagle" },
   revolver: { m: "w_peacemaker" }, revolver_orn: { m: "w_peacemaker", f: "sepia(0.8) saturate(2.2) brightness(1.1)" },
   katana: { m: "w_katana" }, katana_dragao: { m: "w_fm_katana_dragao", grip: 0.13, heldView: true },
   lamina: { m: "w_fm_lamina", grip: 0.1, heldView: true },
@@ -341,7 +341,7 @@ function weaponIcon(d, heldView = false) {
   if (!im) { im = WEAPON_ICON[key] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/weapons/${key}.png`; }
   return im.bad || !im.complete || !im.naturalWidth ? null : im;
 }
-function weapon3dImg(w, pose) { const d = w && WEAPON_3D[w.id]; return d && d.grip == null ? gearImg(d.m, pose) : null; }
+function weapon3dImg(w, pose) { const d = w && WEAPON_3D[w.id]; return d && (d.poseLayer || d.grip == null) ? gearImg(d.m, pose) : null; }
 function hexRgb(h) { const n = parseInt((h || "#808080").slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
 // pinta a roupa cinza com as cores do personagem escolhido (uma vez por troca de personagem)
 function tintedSheet(pose) {
@@ -433,12 +433,12 @@ function dualReady(key) {
   return !!(im && im.complete && im.naturalWidth && mk && mk.complete && mk.naturalWidth && SPRITE_POSES[key]);
 }
 // peça do tronco (capa, colete, moletom, máscara...) cuja camada nesse ângulo não existe (a imagem deu erro)
-function torsoLayerMissing(key) {
+function torsoLayerMissing(key, waitForLayer = false) {
   for (const id of playerGear()) {
     if (/^cl_(boots|pants)/.test(id)) continue;      // pernas não giram: usam a camada normal
-    gearImg(id, key);                                  // pede a imagem (carrega sob demanda)
+    const layer = gearImg(id, key);                   // pede a imagem (carrega sob demanda)
     const im = GEAR_IMG[id + "_" + key];
-    if (im && im.bad) return true;
+    if ((im && im.bad) || (waitForLayer && !layer)) return true;
   }
   return false;
 }
@@ -449,7 +449,8 @@ function poseHasTwist(pose) {
   return TW_HAS[pose];
 }
 function dualTwistTick(pose = "punhos") {
-  const p = player, aim = p.angle;
+  const p = player, aim = p.angle, aimRow = p.sRow, w = curW();
+  const fixedGrip = !!WEAPON_3D[w.id]?.poseLayer;
   if (p.legRow == null) p.legRow = p.sRow;
   let legAng = -Math.PI / 2 + p.legRow * Math.PI / 4, d = angDelta(legAng, aim);
   if (Math.abs(d) > Math.PI / 2 + 0.13) {           // passou de 90°: as pernas viram e o tronco recomeça
@@ -465,13 +466,15 @@ function dualTwistTick(pose = "punhos") {
     if (suf) {
       if (!SPRITE_POSES[pose + suf]) continue;         // ângulo ainda não renderizado
       ensureTwistSheet(pose + suf); if (!dualReady(pose + suf)) continue;
-      if (torsoLayerMissing(pose + suf)) continue;    // roupa do tronco sem esse ângulo: não torce
+      if (torsoLayerMissing(pose + suf, fixedGrip)) continue;
+      if (fixedGrip && !weapon3dImg(w, pose + suf)) continue;
     }
     const a = twistBaseAngle(pose + suf, p.legRow, col);
     const e = a == null ? Infinity : Math.abs(angDelta(a, aim));
     if (e < bestE) { bestE = e; best = suf; }
   }
   TW.suf = best;
+  if (fixedGrip && !best && bestE > Math.PI / 8) p.sRow = aimRow;
 }
 // ---------- Tronco girando com a mira ----------
 // Além das 8 direções, cada pose tem variantes com o tronco torcido 15° para cada lado (_tm15 / _tp15),
@@ -558,8 +561,10 @@ function muzzlePoint() {
     return { x: H.x + Math.cos(a) * L, y: H.y + Math.sin(a) * L };
   }
   const grip = gunGripAndLength(w);
-  const a = Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle;
-  const L = grip.length + (weaponPose(w) === "pistola" ? PISTOL_FWD : 0);   // o cano acompanha a pistola mais à frente
+  const pose = weaponPose(w), fixedGrip = !!WEAPON_3D[w.id]?.poseLayer;
+  const a = fixedGrip ? twistBaseAngle(pose + TW.suf, player.sRow | 0, spriteFrame())
+    : (Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle);
+  const L = grip.length + (!fixedGrip && pose === "pistola" ? PISTOL_FWD : 0);
   return { x: grip.x + Math.cos(a) * L, y: grip.y + Math.sin(a) * L };
 }
 function chestPoint() { return useSpriteChar() ? posePt("c") : { x: player.x, y: player.y }; }
@@ -593,8 +598,9 @@ function drawHeldWeapon(w, pose) {
     drawWeaponShape(w, 0);
   } else {
     // Rotação contínua da arma 2D enquanto o corpo usa oito poses.
-    ctx.rotate(Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle);
-    if (w.look === "pistol" || w.look === "revolver") ctx.translate(PISTOL_FWD, 0);   // pistola um pouco à frente na mão
+    const fixedGrip = !!WEAPON_3D[w.id]?.poseLayer;
+    ctx.rotate(fixedGrip ? ang : (Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle));
+    if (!fixedGrip && (w.look === "pistol" || w.look === "revolver")) ctx.translate(PISTOL_FWD, 0);
     const model = (w.len || 20) + 20, start = w.look === "pistol" || w.look === "revolver" ? 10 : 0;
     ctx.scale(Math.max(0.2, lenPx / (model - start)), thick); ctx.translate(-start, 0);
     if (w.tint) ctx.filter = w.tint;
@@ -669,7 +675,7 @@ function drawPlayerSprite() {
   const drawW3 = () => {
     const d = WEAPON_3D[w.id];
     ctx.save();
-    if (!w.melee) {
+    if (!w.melee && !d.poseLayer) {
       // Camada da arma 3D: vira em torno da empunhadura sem rodar o
       // personagem inteiro. A mira e o disparo usam este mesmo ângulo.
       const A = posePt("a", pose), A0 = w3Base ? posePt("a", basePose) : A, B0 = posePt("b", w3Base ? basePose : pose);
@@ -679,10 +685,10 @@ function drawPlayerSprite() {
       ctx.rotate(angDelta(baseAngle, aim));
       if (basePose === "pistola") ctx.translate(Math.cos(baseAngle) * PISTOL_FWD, Math.sin(baseAngle) * PISTOL_FWD);   // pistola um pouco à frente na mão
       ctx.translate(-A0.x, -A0.y);
-    } else if (w.look !== "chainsaw" && game.slashT > 0) {
+    } else if (w.melee && w.look !== "chainsaw" && game.slashT > 0) {
       const A = posePt("a", pose), A0 = w3Base ? posePt("a", basePose) : A, sw = (-1 + (1 - game.slashT / 200) * 2) * (game.slashA || 0.9) * 0.9;
       ctx.translate(A.x, A.y); ctx.rotate(sw); ctx.translate(-A0.x, -A0.y);
-    } else if (w3Base) {                                    // corpo a corpo parado: só leva a arma até a mão
+    } else if (w3Base && !d.poseLayer) {                                    // corpo a corpo parado: só leva a arma até a mão
       const A = posePt("a", pose), A0 = posePt("a", basePose);
       ctx.translate(A.x - A0.x, A.y - A0.y);
     }
