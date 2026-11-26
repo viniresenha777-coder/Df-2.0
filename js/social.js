@@ -420,14 +420,14 @@ function drawOnlinePlayer(p) {
   const flash = p.flashAt && performance.now() - p.flashAt < 70;
   // arma: camada 3D (da pose girada ou levada da pose normal até a mão) ou o desenho da arma
   let w3 = weapon3dImg(w, pose), w3Base = false;
-  if (!w3 && pose !== base) { w3 = weapon3dImg(w, base); w3Base = !!w3; }
+  if (!w3 && pose !== base && !w.thunder) { w3 = weapon3dImg(w, base); w3Base = !!w3; }
   const drawGun = () => {
     if (w.fists) return;
     const d = WEAPON_3D[w.id];
     if (w3) {
       ctx.save();
       const A = pt("a"), A0 = w3Base ? pt("a", base) : A, B0 = pt("b", w3Base ? base : pose);
-      if (!w.melee) {
+      if (!w.melee && !w.thunder) {
         const ba = Math.atan2(B0.y - A0.y, B0.x - A0.x);
         ctx.translate(A.x, A.y); ctx.rotate(angDelta(ba, aim));
         if (base === "pistola") ctx.translate(Math.cos(ba) * PISTOL_FWD, Math.sin(ba) * PISTOL_FWD);
@@ -435,6 +435,7 @@ function drawOnlinePlayer(p) {
       } else if (w3Base) ctx.translate(A.x - A0.x, A.y - A0.y);
       if (d && d.f) ctx.filter = d.f;
       ctx.drawImage(w3, col * cell, row * cell, cell, cell, o.x, o.y, S, S);
+      drawHeldGlow(d, pose, col, row, cell, o.x, o.y, S, flash);
       ctx.restore();
       return;
     }
