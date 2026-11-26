@@ -6,19 +6,53 @@ const fmGifts = (() => {
   const db = () => fmCloud.socialClient();
   const uid = () => fmCloud.userId();
   const normalize = v => String(v || "").trim();
-  const types = new Set(["dinheiro", "vip", "arma", "material"]);
+  const types = new Set(["dinheiro", "vip", "creditos", "arma", "implante", "colete", "roupa", "material", "municao", "suprimento"]);
+  const SUPRIMENTOS = { comida: "Comida", water: "Água", med: "Kit médico", anti: "Antibiótico" };
+  const comItem = new Set(["arma", "implante", "colete", "roupa", "material", "municao", "suprimento"]);
+  const unico = new Set(["arma", "implante", "colete", "roupa"]);     // quantidade sempre 1
+  const comTroca = new Set(["arma", "implante", "colete"]);           // aceitam "não transferível"
+  function itemValido(type, id) {
+    if (type === "arma") return !!WDEF[id] && !WDEF[id].fists;
+    if (type === "implante") return !!IMP[id];
+    if (type === "colete") return !!VESTS[Number(id)];
+    if (type === "roupa") return !!CLOTHING_BY_ID[id];
+    if (type === "material") return Object.prototype.hasOwnProperty.call(MATS, id);
+    if (type === "municao") return Object.prototype.hasOwnProperty.call(AMMO, id);
+    if (type === "suprimento") return Object.prototype.hasOwnProperty.call(SUPRIMENTOS, id);
+    return true;
+  }
+  function itemNome(type, id) {
+    if (type === "arma") return WDEF[id] ? WDEF[id].name : id;
+    if (type === "implante") return IMP[id] ? IMP[id].name : id;
+    if (type === "colete") return VESTS[Number(id)] ? VESTS[Number(id)].name : id;
+    if (type === "roupa") return CLOTHING_BY_ID[id] ? CLOTHING_BY_ID[id].name : id;
+    if (type === "material") return MATS[id] ? MATS[id].name : id;
+    if (type === "municao") return "Munição " + id;
+    if (type === "suprimento") return SUPRIMENTOS[id] || id;
+    return "";
+  }
+  // texto curto de um presente (histórico do ADM e Mensagens do jogador)
+  function descrever(g) {
+    const n = Number(g.quantidade) || 0;
+    if (g.tipo === "dinheiro") return (g.item_id === "analise" ? "Liberado da análise: " : "") + "$" + n.toLocaleString("pt-BR");
+    if (g.tipo === "vip") return "VIP de " + (n === 12 ? "1 ano" : n + (n === 1 ? " mês" : " meses"));
+    if (g.tipo === "creditos") return n.toLocaleString("pt-BR") + " créditos";
+    const nome = itemNome(g.tipo, g.item_id);
+    const base = unico.has(g.tipo) ? nome : n.toLocaleString("pt-BR") + "x " + nome;
+    return base + (comTroca.has(g.tipo) && g.transferivel === false ? " (Não transferível)" : "");
+  }
 
-  async function send(name, type, amount, itemId) {
+  async function send(name, type, amount, itemId, transferivel = true) {
     if (!fmCloud.isActive() || !fmCloud.isAdmin()) throw new Error("Envio indisponível.");
     const targetName = normalize(name);
     if (targetName.length < 3 || targetName.length > 16) throw new Error("Digite o nome exato do jogador.");
     if (!types.has(type)) throw new Error("Tipo de presente inválido.");
-    const n = type === "arma" ? 1 : Math.floor(Number(amount));
+    const n = unico.has(type) ? 1 : Math.floor(Number(amount));
     if (type === "vip" && ![1, 6, 12].includes(n)) throw new Error("Escolha VIP por 1 mês, 6 meses ou 1 ano.");
     if (!Number.isInteger(n) || n < 1 || n > 10000000) throw new Error("Quantidade inválida.");
-    if (type === "material" && n > 1000) throw new Error("Máximo: 1.000 materiais.");
-    if (type === "arma" && (!WDEF[itemId] || WDEF[itemId].fists)) throw new Error("Arma inexistente. Use o ID da arma.");
-    if (type === "material" && !Object.prototype.hasOwnProperty.call(MATS, itemId)) throw new Error("Material inexistente.");
+    if ((type === "material" || type === "suprimento") && n > 1000) throw new Error("Máximo: 1.000 unidades.");
+    if ((type === "municao" || type === "creditos") && n > 100000) throw new Error("Máximo: 100.000.");
+    if (comItem.has(type) && !itemValido(type, itemId)) throw new Error("Item inexistente.");
     const { data: profiles, error: lookupError } = await db().from("fm_perfis")
       .select("jogador,nome").ilike("nome", targetName).limit(25);
     if (lookupError) throw new Error("Falha ao buscar jogador: " + lookupError.message);
@@ -27,11 +61,27 @@ const fmGifts = (() => {
     if (target.jogador === uid()) throw new Error("O destinatário precisa ser outra conta.");
     const payload = {
       remetente: uid(), destinatario: target.jogador, tipo: type,
-      quantidade: n, item_id: type === "arma" || type === "material" ? itemId : null
+      quantidade: n, item_id: comItem.has(type) ? String(itemId) : null,
+      transferivel: comTroca.has(type) ? !!transferivel : true
     };
     const { error } = await db().from("fm_presentes").insert(payload);
     if (error) throw new Error("Envio recusado pelo servidor: " + error.message);
-    return "Presente enviado para " + target.nome + ".";
+    return "Presente enviado para " + target.nome + ": " + descrever(payload) + ".";
+  }
+
+  // histórico do que este ADM enviou (o RLS só deixa ler os presentes que ele mesmo mandou)
+  async function history() {
+    const { data, error } = await db().from("fm_presentes")
+      .select("id,destinatario,tipo,quantidade,item_id,transferivel,criado_em,recebido_em")
+      .eq("remetente", uid()).order("criado_em", { ascending: false }).limit(60);
+    if (error) throw new Error(error.message);
+    const ids = [...new Set((data || []).map(g => g.destinatario))];
+    const nomes = {};
+    if (ids.length) {
+      const { data: perfis } = await db().from("fm_perfis").select("jogador,nome").in("jogador", ids);
+      (perfis || []).forEach(p => { nomes[p.jogador] = p.nome; });
+    }
+    return (data || []).map(g => ({ ...g, nome: nomes[g.destinatario] || "?", texto: descrever(g) }));
   }
 
   async function acknowledge(id) {
@@ -41,19 +91,35 @@ const fmGifts = (() => {
     if (error) console.warn("Aviso: entrega já salva, confirmação pendente:", error);
   }
   function canReceive(g) {
-    if (g.tipo === "arma") return !!WDEF[g.item_id] && !WDEF[g.item_id].fists &&
-      (player.slots.includes(null) || packUsed() < PACK_MAX);
-    if (g.tipo === "material") return !!MATS[g.item_id] &&
-      (player.pack.some(it => it.kind === "mat" && it.id === g.item_id) || packUsed() < PACK_MAX);
+    if (!types.has(g.tipo) || (comItem.has(g.tipo) && !itemValido(g.tipo, g.item_id))) return false;
+    if (g.tipo === "arma") return player.slots.includes(null) || packUsed() < packCapacity();
+    if (g.tipo === "material") return player.pack.some(it => it.kind === "mat" && it.id === g.item_id && !it.loot) || packUsed() < packCapacity();
+    if (g.tipo === "implante") return player.bag.length < BAG_MAX;
     if (g.tipo === "vip") return [1, 6, 12].includes(g.quantidade);
-    return g.tipo === "dinheiro" && Number.isInteger(g.quantidade) && g.quantidade > 0;
+    return Number.isInteger(g.quantidade) && g.quantidade > 0;
   }
   function apply(g) {
+    const semTroca = g.transferivel === false;
     if (g.tipo === "dinheiro" && g.item_id === "analise") { save.bank += g.quantidade; logMoney("Liberado pelo ADM", "análise", g.quantidade); }
     else if (g.tipo === "dinheiro") { game.money += g.quantidade; logMoney("Presente ADM", "", g.quantidade); }
     else if (g.tipo === "vip") addVipMonths(g.quantidade);
-    else if (g.tipo === "arma") return !!addWeapon(newInst(g.item_id));
+    else if (g.tipo === "creditos") save.credits = (save.credits || 0) + g.quantidade;
+    else if (g.tipo === "arma") { const inst = newInst(g.item_id); if (semTroca) inst.semTroca = true; return !!addWeapon(inst); }
+    else if (g.tipo === "implante") { const im = newImplant(g.item_id); if (semTroca) im.semTroca = true; player.bag.push(im); }
+    else if (g.tipo === "colete") {
+      const i = Number(g.item_id);
+      save.vestsOwned[i] = true; if (save.vestDur) save.vestDur[i] = 100;
+      if (!Array.isArray(save.vestSemTroca)) save.vestSemTroca = [];
+      const k = save.vestSemTroca.indexOf(i);
+      if (semTroca && k < 0) save.vestSemTroca.push(i); else if (!semTroca && k >= 0) save.vestSemTroca.splice(k, 1);
+    }
+    else if (g.tipo === "roupa") { if (!save.clothesOwned) save.clothesOwned = {}; save.clothesOwned[g.item_id] = true; }
     else if (g.tipo === "material") return !!addMat(g.item_id, g.quantidade);
+    else if (g.tipo === "municao") player.reserve[g.item_id] = (player.reserve[g.item_id] || 0) + g.quantidade;
+    else if (g.tipo === "suprimento") {
+      if (g.item_id === "comida") { player.foodQ.comum = (player.foodQ.comum || 0) + g.quantidade; player.food += g.quantidade; }
+      else player[g.item_id] = (player[g.item_id] || 0) + g.quantidade;
+    }
     return true;
   }
   async function poll() {
@@ -62,7 +128,7 @@ const fmGifts = (() => {
     busy = true;
     try {
       const { data, error } = await db().from("fm_presentes")
-        .select("id,tipo,quantidade,item_id,criado_em")
+        .select("id,tipo,quantidade,item_id,transferivel,criado_em")
         .eq("destinatario", uid()).is("recebido_em", null)
         .order("criado_em", { ascending: true }).limit(30);
       if (error) throw error;
@@ -81,17 +147,17 @@ const fmGifts = (() => {
         const old = {
           money: game.money, bank: save.bank, gm: save.gm, vipUntil: save.vipUntil, run: save.run,
           gifts: save.receivedGifts.slice(), inbox: (save.inbox || []).slice(),
-          slots: player.slots.slice(), pack: player.pack.slice()
+          slots: player.slots.slice(), pack: player.pack.slice(), bag: player.bag.slice(),
+          credits: save.credits, vestsOwned: JSON.stringify(save.vestsOwned), vestDur: JSON.stringify(save.vestDur || {}),
+          vestSemTroca: (save.vestSemTroca || []).slice(), clothesOwned: JSON.stringify(save.clothesOwned || {}),
+          reserve: JSON.stringify(player.reserve), foodQ: JSON.stringify(player.foodQ), food: player.food,
+          water: player.water, med: player.med, anti: player.anti
         };
         try {
           if (!apply(g)) throw new Error("Sem espaço para o presente.");
           save.receivedGifts.push(g.id);
           const description = g.tipo === "dinheiro" && g.item_id === "analise" ? "dinheiro retido liberado após análise: $" + g.quantidade.toLocaleString("pt-BR") + " (no banco)" :
-            g.tipo === "dinheiro" ? "$" + g.quantidade.toLocaleString("pt-BR") :
-            g.tipo === "vip" ? "VIP de " + (g.quantidade === 12 ? "1 ano" : g.quantidade + (g.quantidade === 1 ? " mês" : " meses")) +
-              " · válido até " + new Date(save.vipUntil).toLocaleDateString("pt-BR") :
-            g.tipo === "arma" ? WDEF[g.item_id].name :
-              g.quantidade + "x " + MATS[g.item_id].name;
+            g.tipo === "vip" ? descrever(g) + " · válido até " + new Date(save.vipUntil).toLocaleDateString("pt-BR") : descrever(g);
           if (!Array.isArray(save.inbox)) save.inbox = [];
           save.inbox.push({ id: g.id, text: "Presente do administrador: " + description,
             createdAt: Date.now(), read: false });
@@ -101,7 +167,10 @@ const fmGifts = (() => {
         } catch (err) {
           game.money = old.money; save.bank = old.bank; save.gm = old.gm; save.vipUntil = old.vipUntil; save.run = old.run;
           save.receivedGifts = old.gifts; save.inbox = old.inbox;
-          player.slots = old.slots; player.pack = old.pack;
+          player.slots = old.slots; player.pack = old.pack; player.bag = old.bag; save.credits = old.credits;
+          save.vestsOwned = JSON.parse(old.vestsOwned); save.vestDur = JSON.parse(old.vestDur); save.vestSemTroca = old.vestSemTroca;
+          save.clothesOwned = JSON.parse(old.clothesOwned); player.reserve = JSON.parse(old.reserve); player.foodQ = JSON.parse(old.foodQ);
+          player.food = old.food; player.water = old.water; player.med = old.med; player.anti = old.anti;
           throw err;
         }
         await acknowledge(g.id);
@@ -119,5 +188,5 @@ const fmGifts = (() => {
     timer = setInterval(poll, 12000);
   }
   function stop() { if (timer) clearInterval(timer); timer = null; }
-  return { send, start, stop, poll };
+  return { send, start, stop, poll, history, itemNome, descrever, SUPRIMENTOS };
 })();

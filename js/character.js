@@ -30,6 +30,7 @@ function cleanImplant(im) {
   if (!im || !IMP[im.id]) return null;
   const d = IMP[im.id], out = newImplant(im.id);
   if (im.tokenBound === true) out.tokenBound = true;
+  if (im.semTroca === true) out.semTroca = true;   // presente do ADM marcado como não transferível
   if (d.alloc && im.alloc) {
     let left = d.alloc.points;
     for (const o of d.alloc.opts) { const n = Math.max(0, Math.min(left, im.alloc[o.key] | 0)); if (n) { out.alloc[o.key] = n; left -= n; } }

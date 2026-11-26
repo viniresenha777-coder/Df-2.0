@@ -86,7 +86,8 @@ function sellEntry(e, n) {
     case "med": player.med -= n; break;
     case "anti": player.anti -= n; break;
     case "implant": player.bag.splice(player.bag.indexOf(e.im), 1); break;
-    case "vest": save.vestsOwned[e.idx] = false; if (save.vestDur) delete save.vestDur[e.idx]; break;
+    case "vest": save.vestsOwned[e.idx] = false; if (save.vestDur) delete save.vestDur[e.idx];
+      if (Array.isArray(save.vestSemTroca) && save.vestSemTroca.includes(e.idx)) save.vestSemTroca.splice(save.vestSemTroca.indexOf(e.idx), 1); break;
   }
   game.money += total; logMoney("Ferro Velho", (n > 1 ? n + "x " : "") + e.name, total); sfx.buy(); persist();
   toast(`Vendeu ${n > 1 ? `${n}x ` : ""}${e.name} por $${total}`);

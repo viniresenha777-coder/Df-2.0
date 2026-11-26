@@ -770,12 +770,14 @@ function fmBalãoDetalhes(it) {
       }
       if (obj.gc) add("Craft perfeito", "#c6a4ff");
       add("Requisitos: " + reqText(base), canUse(base) ? "#88d997" : "#ff8383");
+      if (base.noTrade || obj.semTroca) add("(Não transferível)", "#ff9a7a");
     } else if (kind === "ammo") {
       add("Calibre: " + obj.t, "#8bc9f5");
       add("Quantidade: " + obj.n, "#f4c44d");
     } else if (kind === "vest") {
       const vest = VESTS[obj.i];
       add("Tipo: colete", "#8bc9f5");
+      if ((save.vestSemTroca || []).includes(obj.i)) add("(Não transferível)", "#ff9a7a");
       add("Proteção: " + (vest.armor || 0), "#8bed92");
     } else if (kind === "clothing") {
       add("Tipo: " + (obj.kind === "pack" ? "mochila" : "roupa"), "#8bc9f5");
@@ -790,6 +792,7 @@ function fmBalãoDetalhes(it) {
       }
     } else if (kind === "implant") {
       add("Tipo: implante", "#8bc9f5");
+      if ((IMP[obj.id] && IMP[obj.id].noTrade) || obj.semTroca) add("(Não transferível)", "#ff9a7a");
       if (IMP[obj.id].mimic) {
         // Mimic: mostra o implante copiado e os atributos que ele está dando agora
         const i = save.installed.indexOf(obj), left = i > 0 ? save.installed[i - 1] : null;
