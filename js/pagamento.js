@@ -7,7 +7,7 @@ const fmPagamento = (() => {
   const db = () => fmCloud.socialClient();
   const uid = () => fmCloud.userId();
   const PACOTES = [
-    { id: "p200", cr: 200, valor: 9.9, bonus: "" },
+    { id: "p200", cr: 200, valor: 0.01, bonus: "preço de teste" },   // TESTE: voltar para 9.9
     { id: "p550", cr: 550, valor: 24.9, bonus: "+10% de bônus" },
     { id: "p1200", cr: 1200, valor: 49.9, bonus: "+20% de bônus", tag: "MAIS VENDIDO" },
     { id: "p2600", cr: 2600, valor: 99.9, bonus: "+30% de bônus", tag: "MELHOR VALOR" },
