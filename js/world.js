@@ -552,6 +552,7 @@ function randomInArea(minDist) {
 function randomInRow(r, minDist) { return randomInArea(minDist); }
 function bossAlive() { const c = world.cell; return !!c.boss; }
 // chega na área: zumbis aparecem; numa área de chefe, todos vêm atrás de você
+const ZOMBIE_MULT = 1.3;   // +30% de zumbis em cada área (na chegada e no limite de quem vai aparecendo)
 function activateArea() {
   const cell = world.cell;
   if (world.pop) return;
@@ -559,7 +560,7 @@ function activateArea() {
   if (typeof fmWorld !== "undefined" && fmWorld.isFollower()) { fmWorld.requestSync(); return; }
   for (const o of world.lootList) if (o.opened && game.time - o.openedAt > 300000) o.opened = false; // saques voltam depois de 5 min
   const z = cell.zone, reg = regionOf(z), frac = clamp((game.time - cell.leftAt) / 90000, 0.25, 1);
-  let n = Math.round(Math.min(18, z === 0 ? 5 : 7 + (z % REGION_ROWS) * 1.2 + reg * 1.1) * REGIONS[reg].spawn * frac * (isNight() ? 1.25 : 1));
+  let n = Math.round(Math.min(18, z === 0 ? 5 : 7 + (z % REGION_ROWS) * 1.2 + reg * 1.1) * ZOMBIE_MULT * REGIONS[reg].spawn * frac * (isNight() ? 1.25 : 1));
   if (cell.op != null) n = Math.round(n * 0.6);
   const boss = !!cell.boss;
   if (boss) n = Math.max(n, 10);
@@ -628,7 +629,7 @@ function resetRows() {
 }
 function trickleSpawn() {
   const cell = world.cell, z = cell.zone, reg = regionOf(z), night = isNight(), calm = cell.cleared ? 0.7 : 1;
-  const cap = Math.round(Math.min(45, (12 + (z % REGION_ROWS) * 2 + reg * 1.6) * REGIONS[reg].spawn * (night ? 1.4 : 1)) * calm * (cell.op != null ? 0.5 : 1));
+  const cap = Math.round(Math.min(45, (12 + (z % REGION_ROWS) * 2 + reg * 1.6) * REGIONS[reg].spawn * (night ? 1.4 : 1)) * ZOMBIE_MULT * calm * (cell.op != null ? 0.5 : 1));
   if (zombies.length >= cap) return;
   if (calm < 1 && Math.random() < 0.3) return;
   for (let t = 0; t < 12; t++) {
