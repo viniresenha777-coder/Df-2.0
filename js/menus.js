@@ -28,7 +28,7 @@ function menuKey(k) {
   if (game.menu === "bank") {
     if (k === "d") game.input = { mode: "deposit", text: "" };
     else if (k === "s") game.input = { mode: "withdraw", text: "" };
-    else if (k === "c") game.input = { mode: "credits", text: "" };
+    else if (k === "c") fmPagamento.open();   // créditos só com dinheiro real (o Banco não troca mais dinheiro do jogo por créditos)
     else if (k === "a") deposit(game.money);
     else if (k === "t") withdraw(save.bank);
     else if (k === "g") buyGM();
@@ -77,7 +77,9 @@ function withdraw(a) {
   if (save.bank < a) { toast("Saldo insuficiente"); return; }
   save.bank -= a; game.money += a; persist(); toast(`Sacou $${a}`);
 }
+// desativado: créditos não são mais trocados por dinheiro do jogo (só comprados com dinheiro real)
 function buyCredits(n) {
+  toast("Créditos agora só pela loja Compre Créditos (Pix ou cartão)."); game.input = null; return;
   if (n <= 0) { toast("Digite uma quantidade de créditos"); return; }
   const cost = n * CREDIT_PRICE;
   if (save.bank < cost) { toast(`Saldo do banco insuficiente (${n} créditos = $${cost})`); return; }
@@ -294,7 +296,7 @@ function buyImplant(i) {
   const st = game.stock[i];
   if (!st) return;
   if (player.bag.length >= BAG_MAX) { toast("Mochila de implantes cheia"); return; }
-  if (save.credits < st.price) { toast(`Precisa de ${st.price} créditos (compre no banco)`); return; }
+  if (save.credits < st.price) { toast(`Precisa de ${st.price} créditos (compre em $ Compre Créditos)`); return; }
   save.credits -= st.price; sfx.buy();
   const im = newImplant(st.id);
   player.bag.push(im); persist();
@@ -377,7 +379,7 @@ function buyCreditWeapon(id) {
   if (d && !d.credits && d.shop) { buyShopWeapon(id); return; }
   if (!d || !d.credits) return;
   if (!atBase()) { toast("Use a Loja de Créditos na base."); return; }
-  if (save.credits < d.credits) { toast(`Precisa de ${d.credits.toLocaleString("pt-BR")} créditos (compre no banco)`); return; }
+  if (save.credits < d.credits) { toast(`Precisa de ${d.credits.toLocaleString("pt-BR")} créditos (compre em $ Compre Créditos)`); return; }
   if (player.slots.indexOf(null) < 0 && packUsed() >= packCapacity()) { toast("Mochila cheia"); return; }
   save.credits -= d.credits;
   addWeapon(newInst(id)); registerWeapon(id);
@@ -667,11 +669,9 @@ function drawCreditShopSidebar() {
       },
     ],
     [
-      "Comprar créditos",
-      "$" + CREDIT_PRICE + " do banco por crédito",
-      () => {
-        game.input = { mode: "credits", text: "" };
-      },
+      "Compre Créditos",
+      "Pix ou cartão · promoção 40%",
+      () => fmPagamento.open(),
     ],
     [
       "Baú da Base",

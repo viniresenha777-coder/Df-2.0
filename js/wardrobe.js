@@ -46,7 +46,7 @@ function buyCreditClothing(id) {
   if (!item || !price) return;
   if (clothingOwned(id)) { toast("Você já tem " + item.name); return; }
   if (!atBase()) { toast("Use a Loja de Créditos na base."); return; }
-  if (save.credits < price) { toast(`Precisa de ${price.toLocaleString("pt-BR")} créditos (compre no banco)`); return; }
+  if (save.credits < price) { toast(`Precisa de ${price.toLocaleString("pt-BR")} créditos (compre em $ Compre Créditos)`); return; }
   save.credits -= price;
   save.clothesOwned = save.clothesOwned || {};
   save.clothesOwned[id] = true;
