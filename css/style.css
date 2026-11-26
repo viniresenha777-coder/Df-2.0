@@ -63,6 +63,7 @@ canvas {
 #fm-chat .fm-chat-line b { color: #8fd0ff; }
 #fm-chat .fm-chat-line b.me { color: #ffd96a; }
 #fm-chat .fm-chat-line.sys { color: #ff9a7a; font-style: italic; }
+#fm-chat .fm-chat-line.alerta { color: #ffd96a; font-style: normal; font-weight: 800; background: rgba(140,20,10,.55); border-left: 3px solid #ff5a3a; padding: 2px 6px; }
 #fm-chat .fm-chat-input { display: none; width: 100%; box-sizing: border-box; margin-top: 5px; padding: 5px 8px;
   font: inherit; color: #f2eedc; background: rgba(10,11,9,.82); border: 1px solid #8a7a4a; border-radius: 4px; outline: none; }
 #fm-chat.open { pointer-events: auto; }
