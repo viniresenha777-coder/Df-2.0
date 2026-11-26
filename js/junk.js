@@ -35,7 +35,7 @@ function matSellPrice(id) { return { sucata: 300, pecas: 700, eletronicos: 1100,
 function vestSellPrice(i) {
   const v = VESTS[i];
   if (v.scrap) { const u = vestUpgrade(i); return u.armor >= VEST_UP_MAX && u.speed >= VEST_UP_MAX ? v.scrapMC || v.scrap : v.scrap; }
-  const base = v.price || (v.credits || 0) * CREDIT_PRICE;
+  const base = v.price || (v.credits || 0) * 500;   // valor de referência: $500 por crédito
   return Math.round(base * SCRAP_RATE * (vestDur(i) / 100)) || 20;
 }
 function ammoSellPrice(t) { return Math.max(0.5, ammoPackPrice(t) / AMMO_PACK_SIZE * SCRAP_RATE); }

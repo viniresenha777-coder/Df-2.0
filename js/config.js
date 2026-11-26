@@ -503,4 +503,4 @@ const CAPES = [
 ];
 
 // ---------- Créditos e VIP ----------
-const CREDIT_PRICE = 500, GM_COST = 200;
+const CREDIT_PRICE = 1000, GM_COST = 200;   // $1.000 do banco por crédito (o antitrapaça do servidor usa o mesmo valor)
