@@ -1,9 +1,9 @@
 "use strict";
 
-const market = { rows: [], tab: "comprar", page: 0, filter: "all", filterOpen: false, filterOffset: 0, error: "", loading: false, confirm: null };
+const market = { vendaveis: 0, rows: [], tab: "comprar", page: 0, filter: "all", filterOpen: false, filterOffset: 0, error: "", loading: false, confirm: null };
 
 const MARKET_FILTERS = [
-  ["all", "Todos"], ["ammo", "Munição"], ["vest", "Coletes"], ["machinegun", "Metralhadoras"],
+  ["all", "Todos"], ["credits", "Créditos"], ["ammo", "Munição"], ["vest", "Coletes"], ["machinegun", "Metralhadoras"],
   ["pistols", "Pistolas"], ["rifles", "Rifles"], ["shotguns", "Escopetas"], ["melee", "Corpo a corpo"],
   ["implant", "Implantes"], ["mat", "Materiais"], ["food", "Comida"], ["supplies", "Suprimentos"]
 ];
@@ -11,10 +11,12 @@ const MARKET_SUPPLIES = { water: "Água", med: "Kit médico", anti: "Antibiótic
 
 function marketCategory(item) {
   if (item.kind === "weapon") return WDEF[item.id]?.cat;
+  if (item.kind === "credits") return "credits";
   return Object.hasOwn(MARKET_SUPPLIES, item.kind) ? "supplies" : item.kind;
 }
 
 function marketItemName(item) {
+  if (item.kind === "credits") return `${Number(item.qty).toLocaleString("pt-BR")} créditos`;
   if (item.kind === "weapon" && WDEF[item.id]) return instName(item);
   if (item.kind === "mat" && MATS[item.id]) return `${item.qty}× ${MATS[item.id].name}`;
   if (item.kind === "ammo") return `${item.qty}× Munição ${item.id}`;
@@ -48,6 +50,9 @@ function marketInventory() {
   for (const kind of Object.keys(MARKET_SUPPLIES)) {
     if (player[kind] > 0) add({ kind, qty: player[kind] }, kind);
   }
+  // créditos comprados com dinheiro real (o servidor diz quantos podem ser vendidos)
+  const cr = Math.min(market.vendaveis, save.credits || 0);
+  if (cr >= 10) rows.unshift({ item: { kind: "credits", id: "credits", qty: cr }, local: "credits", index: cr });
   return rows;
 }
 
@@ -55,6 +60,7 @@ async function marketRefresh() {
   if (market.loading) return;
   market.loading = true;
   market.error = "";
+  fmCloud.socialClient().rpc("fm_creditos_vendaveis").then(({ data }) => { market.vendaveis = Number(data) || 0; }).catch(() => {});
   try {
     const { data, error } = await fmCloud.socialClient().rpc("fm_mercado_listar");
     if (error) throw error;
@@ -109,6 +115,7 @@ async function marketTrade(acao, args) {
       player.reloading = 0;
     }
     game.money = result.run.g.money;
+    if (Number.isFinite(Number(result.credits))) save.credits = Number(result.credits);
     toast({ listar: "Anúncio publicado.", comprar: "Item entregue na mochila.", cancelar: "Item devolvido à mochila.", receber: "Dinheiro recebido." }[acao]);
   } catch (error) {
     toast(error.message || "Operação indisponível.");
@@ -118,7 +125,27 @@ async function marketTrade(acao, args) {
   }
 }
 
+// créditos: primeiro a quantidade (lotes de 10), depois o preço por crédito ($1.000 a $5.000); taxa de 10% na venda
+function marketAskCredits(row) {
+  const max = Math.min(500, Math.floor(row.item.qty / 10) * 10);
+  game.input = {
+    mode: "market", text: "", label: `Quantos créditos anunciar? (lotes de 10 · até ${max})`, unit: "",
+    fn(qty) {
+      if (!Number.isInteger(qty) || qty < 10 || qty > max || qty % 10) { toast(`Digite um múltiplo de 10 entre 10 e ${max}.`); return; }
+      setTimeout(() => {
+        game.input = {
+          mode: "market", text: "", label: `${qty} créditos · preço POR crédito ($1.000 a $5.000) · taxa de 10%`,
+          fn(per) {
+            if (!Number.isInteger(per) || per < 1000 || per > 5000) { toast("Preço por crédito: de $1.000 a $5.000."); return; }
+            marketTrade("listar", { local_item: "credits", posicao: qty, preco: qty * per });
+          }
+        };
+      }, 0);
+    }
+  };
+}
 function marketAskPrice(row) {
+  if (row.item.kind === "credits") { marketAskCredits(row); return; }
   game.input = {
     mode: "market", text: "", label: marketItemName(row.item),
     fn(price) {
@@ -191,7 +218,7 @@ function drawMarket() {
   ctx.fillRect(W / 2 - 210, 196, 420, 170);
   if (game.input) {
     txt(game.input.label, W / 2, 231, 16, "#f2eedc", "center", true, 375);
-    txt(`Preço em dinheiro · $${game.input.text || "0"}`, W / 2, 275, 21, "#ffd96a", "center");
+    txt(game.input.unit === "" ? `Quantidade · ${game.input.text || "0"}` : `Preço em dinheiro · $${game.input.text || "0"}`, W / 2, 275, 21, "#ffd96a", "center");
     btn(W / 2 - 155, 310, 140, 33, "Voltar", () => { game.input = null; });
     btn(W / 2 + 15, 310, 140, 33, "Anunciar (Enter)", () => inputKey("enter"), true);
   } else {
