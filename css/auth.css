@@ -309,3 +309,33 @@ body:has(#login:not([hidden]))::before {
 @media (prefers-reduced-motion: reduce) {
   #login:not([hidden]) .fm-event-hero { animation: none; }
 }
+
+/* Histórico de novidades — apenas na tela de login. */
+#login:not([hidden]) .fm-updates-ad {
+  width: min(100%, 300px); max-width: 390px; min-width: 0;
+  flex: 0 1 300px; padding: 19px 20px 17px;
+}
+#login:not([hidden]) .fm-updates-ad h2 {
+  font-size: 17px; letter-spacing: .055em; margin: 4px 0 13px;
+}
+#login .fm-updates-list {
+  max-height: 240px; overflow-y: auto; text-align: left;
+  scrollbar-width: thin; scrollbar-color: #ab8835 transparent;
+}
+#login .fm-updates-list:focus-visible { outline: 2px solid #c9aa40; outline-offset: 2px; }
+#login .fm-updates-list article + article {
+  border-top: 1px solid rgba(201,162,58,.30); margin-top: 12px; padding-top: 12px;
+}
+#login .fm-updates-list h3 {
+  color: #e9e7d7; font-size: 14px; margin: 6px 0 8px;
+}
+#login .fm-updates-note { margin-top: 10px; }
+@media (max-width: 1260px) {
+  #login:not([hidden]) .fm-updates-ad { flex: 0 1 270px; }
+}
+@media (max-width: 970px) {
+  #login:not([hidden]) .fm-updates-ad { flex: 1 1 265px; max-width: 300px; }
+}
+@media (max-width: 620px) {
+  #login:not([hidden]) .fm-updates-ad { flex: 0 1 100%; width: 100%; max-width: 390px; }
+}
