@@ -64,7 +64,7 @@ function checkpoint(reason) {
   game.cpT = 0; // evita salvar novamente enquanto uma gravação está pendente
   return storeWrite(payload).then(() => {
     game.lastSave = performance.now();
-    toast(`Checkpoint: progresso salvo (${reason})`);
+    // salvamento silencioso (sem aviso a cada minuto); só os erros aparecem na tela
     return true;
   }).catch((error) => {
     console.error("Erro ao gravar checkpoint:", error);
