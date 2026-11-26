@@ -27,8 +27,8 @@ function installBaseGuards(wd, op, f, spots) {
   wd.guards = (spots || [
     [f.x + 25, f.y + 25], [f.x + f.w - 25, f.y + 25],
     [f.x + 25, f.y + f.h - 25], [f.x + f.w - 25, f.y + f.h - 25]
-  ]).map(([x, y], i) => ({
-    x, y, angle: i % 2 ? 0 : Math.PI, gun,
+  ]).map(([x, y, ang], i) => ({
+    x, y, angle: ang != null ? ang : i % 2 ? 0 : Math.PI, rest: ang, gun,
     cooldown: i * 180, speech: "", speechT: 0,
     chatDelay: 2500 + i * 1400, shotT: 0
   }));
@@ -48,6 +48,7 @@ function tickBaseGuards(dt) {
       if (d < minD) { minD = d; target = z; }
     }
     if (target) g.angle = Math.atan2(target.y - g.y, target.x - g.x);
+    else if (g.rest != null) g.angle = g.rest;   // sem alvo: volta a olhar para a frente
     if (g.chatDelay <= 0) {
       g.speech = GUARD_LINES[Math.floor(Math.random() * GUARD_LINES.length)];
       g.speechT = 2800;

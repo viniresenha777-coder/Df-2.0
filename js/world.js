@@ -352,7 +352,7 @@ function genBaseMilitar(wd, blk, inner, op, R) {
   wd.paths.length = Math.max(0, wd.paths.length - 1);   // sem calçada desenhada por cima do pátio
   // vigias na entrada: um de cada lado do portão, por dentro do muro
   const gate = { x: f.x + d.gate[0] * k, w: d.gate[1] * k }, gy = f.y + f.h;
-  installBaseGuards(wd, op, f, [[gate.x + 16, gy - 22], [gate.x + gate.w - 16, gy - 22]]);
+  installBaseGuards(wd, op, f, [[gate.x + 16, gy - 22, Math.PI / 2], [gate.x + gate.w - 16, gy - 22, Math.PI / 2]]);   // virados para fora (sul)
 }
 
 function genOutpost(wd, blk, inner, op, R) {
