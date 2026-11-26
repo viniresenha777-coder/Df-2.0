@@ -58,6 +58,11 @@ Deno.serve(async (req) => {
   const p = PACOTES[body.pacote || ""];
   if (!p) return json({ erro: "pacote" }, 400);
 
+  // quem já estornou uma compra depois de receber os créditos não compra de novo
+  const { count: estornos } = await admin.from("fm_compras").select("id", { count: "exact", head: true })
+    .eq("jogador", jogador).eq("status", "estornado").not("resgatado_em", "is", null);
+  if ((estornos || 0) > 0) return json({ erro: "bloqueado" }, 403);
+
   // limite contra spam: no máximo 6 pedidos abertos por hora
   const desde = new Date(Date.now() - 3600e3).toISOString();
   const { count } = await admin.from("fm_compras").select("id", { count: "exact", head: true }).eq("jogador", jogador).eq("status", "pendente").gte("criado_em", desde);
