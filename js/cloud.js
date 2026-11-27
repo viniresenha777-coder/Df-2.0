@@ -52,8 +52,9 @@ const fmCloud = (() => {
     if (!error) return new Error("Erro desconhecido");
     if (error.message && /failed to fetch|networkerror|load failed/i.test(error.message))
       return new Error("Não foi possível conectar ao Supabase. Confira se o projeto está ativo, se a URL/API Key estão corretas e se sua rede permite acesso ao Supabase.");
-    if (error.code === "PGRST205" || error.code === "42P01" || error.code === "42501")
+    if (error.code === "PGRST205" || error.code === "42P01")
       return new Error("O banco de partidas ainda não foi configurado no Supabase. Execute o SQL de instalação.");
+    if (error.code === "42501") return new Error("O servidor recusou a permissão desta sessão.");
     if (error.code === "23505")
       return new Error("Já existe uma partida online para essa conta. Entre novamente para carregá-la.");
     if (error.code === "user_already_exists" || /user already registered|user already exists/i.test(error.message || ""))
@@ -189,6 +190,20 @@ const fmCloud = (() => {
       saveIndicator(saveFailed ? "error" : saveCount ? "pending" : "ok");
     });
   }
+  let lastSaveRefresh = -Infinity;
+  async function writeWithSession(db, ownerId, send) {
+    const first = await send();
+    if (first.status !== 401) return first;
+    if (performance.now() - lastSaveRefresh < 30000) return first;
+    lastSaveRefresh = performance.now();
+    const current = await db.auth.getSession();
+    if (current.error || current.data?.session?.user?.id !== ownerId)
+      throw new Error("Sessão indisponível. Mantenha o jogo aberto e entre novamente nesta conta para salvar.");
+    const renewed = await db.auth.refreshSession();
+    if (renewed.error || renewed.data?.session?.user?.id !== ownerId)
+      throw new Error("Falha ao renovar a sessão. Mantenha o jogo aberto para tentar salvar novamente.");
+    return send();
+  }
   function writeRemote(str) {
     if (!user) return Promise.reject(new Error("Entre na sua conta para salvar."));
     let progress;
@@ -214,11 +229,11 @@ const fmCloud = (() => {
           .update({ progresso: progress, revisao: nextRevision })
           .eq("jogador", userId).eq("revisao", revision).select("revisao,progresso");
         };
-        result = await saveCurrent();
+        result = await writeWithSession(db, userId, saveCurrent);
         if (!result.error && !result.data?.length && await syncSales()) result = await saveCurrent();
       } else {
-        result = await db.from("fm_partidas")
-          .insert({ jogador: userId, progresso: progress, revisao: nextRevision }).select("revisao,progresso");
+        result = await writeWithSession(db, userId, () => db.from("fm_partidas")
+          .insert({ jogador: userId, progresso: progress, revisao: nextRevision }).select("revisao,progresso"));
       }
       if (result.error) throw friendly(result.error);
       if (!result.data || result.data.length !== 1 || result.data[0].revisao !== nextRevision)
