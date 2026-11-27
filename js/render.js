@@ -468,6 +468,10 @@ function drawCorpse(c) {
   }
 }
 function drawCorpseBase(c) {
+  if (c.bossId === "ceifador") {
+    const age = Number.isFinite(c.deathTime) ? Math.max(0, game.time - c.deathTime) : 900;
+    if (drawReaperFrame(c.x + c.w / 2, c.y + c.h / 2, c.ang || 0, "fall", Math.min(8, Math.floor(age / 100)))) return;
+  }
   if (c.dsheet && typeof drawZombieDeath === "function" && drawZombieDeath(c)) return;
   ctx.save(); ctx.translate(c.x + c.w / 2, c.y + c.h / 2); ctx.rotate(c.ang);
   const s = c.w / 26;

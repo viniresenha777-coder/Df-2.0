@@ -97,11 +97,38 @@ function drawChristmasBoss(z, kind) {
 }
 
 // ---------- Chefes (vistos de cima, apontando para +x) ----------
+const reaperSheets = {};
+function drawReaperFrame(x, y, angle, action, frame) {
+  let sheet = reaperSheets[action];
+  if (!sheet) {
+    sheet = reaperSheets[action] = new Image();
+    sheet.src = "img/ceifador_" + action + ".webp";
+  }
+  if (!sheet.complete || !sheet.naturalWidth) return false;
+  const row = (Math.round(angle / (Math.PI / 4)) + 8) % 8;
+  const size = 336;
+  ctx.drawImage(sheet, frame * 256, row * 256, 256, 256,
+    x - size / 2, y - size * 0.54, size, size);
+  return true;
+}
+function drawReaper(z) {
+  const attacking = z.abilT > 0;
+  const frame = attacking ? Math.min(11, Math.floor((1 - z.abilT / REAPER_SWING_MS) * 12))
+    : Math.floor(z.anim * 0.6) % 6;
+  if (!drawReaperFrame(z.x, z.y, z.angle, attacking ? "attack" : "walk", Math.max(0, frame))) return false;
+  drawZombieFx(z);
+  txt(z.bossName || "O Ceifador", z.x, z.y - 83, 12, "#ffb070", "center", true);
+  if (z.hp < z.maxHp) {
+    ctx.fillStyle = "#241813"; ctx.fillRect(z.x - 28, z.y - 78, 56, 5);
+    ctx.fillStyle = "#c0392b"; ctx.fillRect(z.x - 28, z.y - 78, 56 * z.hp / z.maxHp, 5);
+  }
+  return true;
+}
 function drawBoss(z) {
+  if (z.bossId === "ceifador" && drawReaper(z)) return;
   if (z.bossId === "santa_natal") { drawChristmasBoss(z, "santa"); return; }
   const B = BOSSES[z.bossId] || BOSSES.acougueiro, s = z.r / 28, t = game.time, sway = Math.sin(z.anim) * 4 * s;
-  const fade = z.bossId === "ceifador" && z.phase > 0 ? 0.18 : 1;
-  ctx.globalAlpha = fade;
+  ctx.globalAlpha = 1;
   const aura = { acougueiro: "200,40,30", matriarca: "200,120,60", capataz: "160,170,190", pestilento: "120,200,60", carrasco: "220,60,30",
     necromante: "80,255,120", alfa: "220,60,40", ceifador: "150,140,200" }[z.bossId] || "200,40,30";
   const g = ctx.createRadialGradient(z.x, z.y, z.r * 0.4, z.x, z.y, z.r * 2.4);
@@ -214,7 +241,7 @@ function drawBoss(z) {
       ctx.fillStyle = "#b8a8ff"; circle(9 * s, -3 * s, 0.9 * s); circle(9 * s, 3 * s, 0.9 * s);
     }
   }
-  if (z.flash > 0) { ctx.globalAlpha = 0.5 * fade; ctx.fillStyle = "#fff"; circle(0, 0, z.r); }
+  if (z.flash > 0) { ctx.globalAlpha = 0.5; ctx.fillStyle = "#fff"; circle(0, 0, z.r); }
   ctx.restore();
   ctx.globalAlpha = 1;
   drawZombieFx(z);

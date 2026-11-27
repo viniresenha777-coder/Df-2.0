@@ -108,3 +108,8 @@ Calça adaptada de [Pants Baked Ver](https://sketchfab.com/3d-models/pants-baked
 ## Estruturas 3D (renderizadas na projeção do jogo, img/estruturas/)
 - "Army Base" — walter sanchez (https://sketchfab.com/waltersnchz) — CC-BY-4.0 — https://sketchfab.com/3d-models/army-base-090c7bb0f0624660993360cb4489e354 (base do Refúgio; chão escurecido)
 - "Bunker" — Uragan27 (https://sketchfab.com/Uragan27) — CC-BY-4.0 — https://sketchfab.com/3d-models/bunker-e9f9830ac06c4193b79043d9327a7a69 (bunkers do mapa)
+
+## Ceifador
+
+This work is based on "Grim Reaper Dark Knight Warrior" (https://sketchfab.com/3d-models/grim-reaper-dark-knight-warrior-6a31ad680aa2441d9e63964fd0a889f7) by Pigcraft (https://sketchfab.com/s8819296) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+Adaptação para o Ceifador: modelo otimizado e sprites de caminhada, golpe de foice e queda.

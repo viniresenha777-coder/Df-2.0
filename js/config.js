@@ -20,6 +20,7 @@ const FONT = "'Trebuchet MS', 'Segoe UI', sans-serif";
 // ruas todas da mesma largura (como no Dead Frontier): a rua da borda tem meia largura e
 // junta com a meia rua da área vizinha.
 const AREA_EDGE = 196, BLOCK_W = 620, BLOCK_H = 640, ST_W = 280;   // ruas laterais (borda) 40% mais largas
+const REAPER_REACH = 155, REAPER_SWING_MS = 1050;
 const ZOMBIE_ATTACK_RATE = 0.55;
 const WORLD_W = 2 * AREA_EDGE + 2 * BLOCK_W + ST_W;   // 1912
 const WORLD_H = 2 * AREA_EDGE + 2 * BLOCK_H + ST_W;   // 1952
@@ -164,7 +165,7 @@ const ZTYPES = {
   // mutantes
   mutant:  { name: "Mutante",     plural: "mutantes",    hp: 5,   spd: 1.05, dmg: 2.4, r: 22, from: 13, weight: 1.5, xp: 5, charge: true, group: "Mutante" },
   // demônios
-  demon:   { name: "Demônio",     plural: "demônios",    hp: 3.2, spd: 1.6,  dmg: 2.2, r: 17, from: 15, weight: 1.2, xp: 5, leap: true, group: "Demônio" },
+  demon:   { name: "Demônio",     plural: "demônios",    hp: 3.2, spd: 1.6,  dmg: 2.2, r: 17, from: 15, weight: 1.2, xp: 5, group: "Demônio" },
   abomination: { name: "Abominação", plural: "abominações", hp: 9, spd: 0.75, dmg: 3.4, r: 27, from: 18, weight: 1, xp: 9, slam: true, energyResistance: 20, group: "Mutante" },
   // Companheiro do Papai Noel: não pode nascer como zumbi aleatório.
   alce_natal: { name: "Alce Zumbi", plural: "alces zumbis", hp: 3, spd: 1.65, dmg: 1.5, r: 24, from: 999, weight: 0, xp: 4, group: "Evento Natalino" }

@@ -218,7 +218,6 @@ function hurt(z, dmg, ang, quiet, fx) {
     d *= 0.25;
     if (!quiet && Math.random() < 0.3) game.floats.push({ x: z.x, y: z.y - z.r - 10, text: "BLOQUEADO", t: 600 });
   }
-  if (z.bossId === "ceifador" && z.phase > 0) d *= 0.2; // sumindo: quase imune
   // Em um setor compartilhado, só o líder altera a vida dos zumbis.
   // Os tiros de outros jogadores são encaminhados ao líder via Broadcast.
   if (typeof fmWorld !== "undefined" && fmWorld.isFollower()) {
@@ -539,7 +538,7 @@ function killZombie(z) {
     if (!game.inside && world.cell.boss === z.bossId) { world.cell.boss = null; world.cell.bossHp = null; }
     game.score += 150;   // XP do chefe já veio pelo dano (xpForDamage)
     corpses.push({ x: z.x - 22, y: z.y - 22, w: 44, h: 44, kind: "corpse", table: "boss", bossId: z.bossId, name: z.bossName || "Chefe", opened: false, life: Infinity,
-      ang: z.angle, deathTime: game.time, radius: z.r, zone: z.zone, skin: z.skin, cloth: z.cloth });
+      netId: z.netId, ang: z.angle, deathTime: game.time, radius: z.r, zone: z.zone, skin: z.skin, cloth: z.cloth });
     game.banner = { text: `${z.bossName || "Chefe"} derrotado!`, sub: "Vasculhe o corpo (E): arma ou colete", t: 3000, gold: true };
     return;
   }
@@ -664,10 +663,50 @@ function updateSpits(dt, k) {
   game.spits = game.spits.filter((s) => s.life > 0);
 }
 // ---------- Ataques especiais dos chefes ----------
+// A lâmina percorre o arco entre 32% e 73% da animação. Cada sobrevivente
+// só recebe um golpe por movimento, mesmo se vários quadros o alcançarem.
+function reaperStrike(z, previous, remaining) {
+  if (z.reaperHit === z.swingId || !z.swingId) return;
+  const start = 1 - previous / REAPER_SWING_MS, end = 1 - remaining / REAPER_SWING_MS;
+  if (end < 0.32 || start > 0.73) return;
+  const dx = player.x - z.x, dy = player.y - z.y;
+  if (Math.hypot(dx, dy) > REAPER_REACH || !losClear(z.x, z.y, player.x, player.y)) return;
+  const angle = angDiff(Math.atan2(dy, dx), z.angle);
+  const blade = t => -1.8 + 2.55 * clamp((t - 0.32) / 0.41, 0, 1);
+  if (angle < blade(start) - 0.22 || angle > blade(end) + 0.22) return;
+  z.reaperHit = z.swingId;
+  damagePlayer(z.dmg * 1.6);
+  game.shake = 10;
+}
+function reaperAttack(z, dt) {
+  if (z.abilT > 0) {
+    const previous = z.abilT;
+    z.abilT = Math.max(0, previous - dt);
+    reaperStrike(z, previous, z.abilT);
+    return true;
+  }
+  if (z.abil > 0) return false;
+  const targets = [player];
+  if (typeof fmSocial !== "undefined") targets.push(...fmSocial.online().filter(fmSocial.sameLocation));
+  let nearest = null, distance = REAPER_REACH;
+  for (const target of targets) {
+    const d = Math.hypot(target.x - z.x, target.y - z.y);
+    if (d <= distance && losClear(z.x, z.y, target.x, target.y)) {
+      nearest = target; distance = d;
+    }
+  }
+  if (!nearest) return false;
+  z.angle = Math.atan2(nearest.y - z.y, nearest.x - z.x);
+  z.swingId = (z.swingId || 0) + 1;
+  z.abilT = REAPER_SWING_MS;
+  z.abil = 5000;
+  return true;
+}
 // devolve true quando o chefe está ocupado com o ataque (não anda normal neste quadro)
 function bossAbility(z, d, dt, k) {
   const id = z.bossId || (z.type === "alce_natal" ? "alce_natal" : null), reg = diffOf(z.zone);
   z.abil -= dt * ZOMBIE_ATTACK_RATE;
+  if (id === "ceifador") return reaperAttack(z, dt);
   const minions = () => zombies.filter((m) => m.mother === z && m.hp > 0).length;
   const summon = (type, n) => { for (let i = 0; i < n; i++) { const a = Math.random() * 6.283; const m = makeZombie(z.x + Math.cos(a) * (z.r + 20), z.y + Math.sin(a) * (z.r + 20), type, z.zone); m.mother = z; alertZombie(m); zombies.push(m); } };
   if (z.abilT > 0) {
@@ -688,15 +727,7 @@ function bossAbility(z, d, dt, k) {
       }
       if (id === "acougueiro" && d < 105 && Math.abs(angDiff(z.angle, Math.atan2(player.y - z.y, player.x - z.x))) < 1.1) { damagePlayer(z.dmg * 1.5); game.shake = 10; }
       if (id === "capataz") { game.flashes.push({ x: z.x, y: z.y, r: 120, t: 200 }); if (d < 110) damagePlayer(z.dmg); game.shake = 8; }
-      if (id === "ceifador") {
-        if (z.phase > 0) { // reaparece atrás de você e golpeia
-          const a = player.angle + Math.PI;
-          z.x = player.x + Math.cos(a) * 70; z.y = player.y + Math.sin(a) * 70; pushOut(z, z.r);
-          z.phase = 0; z.abilT = 320; z.angle = Math.atan2(player.y - z.y, player.x - z.x);
-          return true;
-        }
-        if (Math.hypot(player.x - z.x, player.y - z.y) < 115) { damagePlayer(z.dmg * 1.6); game.shake = 10; }
-      }
+
     }
     return true;
   }
@@ -715,14 +746,14 @@ function bossAbility(z, d, dt, k) {
     case "carrasco": if (d < 150) { z.abilT = 1400; z.abil = 5500; return true; } break;
     case "necromante": if (minions() < 9) { summon(reg >= 3.3 ? "infected" : "walker", 3); game.flashes.push({ x: z.x, y: z.y, r: 90, t: 200 }); z.abil = 7000; } break;
     case "alfa": if (minions() < 6) { summon("dog", 3); z.abil = 10000; toast("O Alfa uivou: cães a caminho!"); } break;
-    case "ceifador": if (d < 500) { z.phase = 1; z.abilT = 600; z.abil = 5000; return true; } break;
+
   }
   return false;
 }
 // Ataque corpo a corpo dos zumbis: param a uma distância (não entram no personagem), fazem o golpe
 // (folha img/z_*_attack.png, 8 quadros) e o dano sai no meio dele, se você ainda estiver ao alcance.
 const ZATK_MS = 560, ZATK_HIT = 0.45;
-function zReach(z) { return z.r + player.r + (z.type === "dog" ? 12 : 18) * Math.max(1, z.r / 13); }
+function zReach(z) { if (z.bossId === "ceifador") return REAPER_REACH; return z.r + player.r + (z.type === "dog" ? 12 : 18) * Math.max(1, z.r / 13); }
 
 function wanderDuringPause(dt) {
   for (const z of Zs()) {
@@ -890,7 +921,7 @@ function updateZombies(dt, k) {
       creeperAlarm(z, list, dt, d);
       continue;
     }
-    if (z.type === "alce_natal" || z.bossId === "santa_natal") continue;
+    if (z.type === "alce_natal" || z.bossId === "santa_natal" || z.bossId === "ceifador") continue;
     if (z.atkT > 0) {                    // golpe em andamento: o dano sai no meio dele
       z.atkT -= dt * ZOMBIE_ATTACK_RATE * chill;
       z.angle = Math.atan2(dy, dx);

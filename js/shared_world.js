@@ -147,7 +147,7 @@ const fmWorld = (() => {
       skin: z.skin, cloth: z.cloth, stains: z.stains, flash: z.flash,
       burn: z.burn, burnDps: z.burnDps, bleed: z.bleed, bleedDps: z.bleedDps,
       stun: z.stun, alertT: z.alertT, chargeT: z.chargeT, windT: z.windT,
-      phase: z.phase, abil: z.abil, abilT: z.abilT, slamT: z.slamT,
+      swingId: z.swingId || 0, phase: z.phase, abil: z.abil, abilT: z.abilT, slamT: z.slamT,
       screamCount: z.screamCount || 0, screamCd: z.screamCd || 0,
       half: z.half, horde: z.horde, wave1: z.wave1
     };
@@ -163,6 +163,9 @@ const fmWorld = (() => {
     const data = {
       cx: world.cell.cx, cy: world.cell.cy, location: fmSocial.location(), host: id(), stream, seq: ++seq,
       ts: Date.now(), zombies: Zs().filter(z => z.hp > 0).slice(0, 100).map(packedZombie),
+      reaperCorpses: curCorpses().filter(c => c.bossId === "ceifador" && c.netId).map(c => ({
+        id: c.netId, x: c.x, y: c.y, angle: c.ang, age: Math.max(0, game.time - c.deathTime)
+      })),
       boss: world.cell.boss || null, bossHp: world.cell.bossHp || null
     };
     snapshotBusy = true;
@@ -192,7 +195,14 @@ const fmWorld = (() => {
       if (!z) z = makeZombie(d.x, d.y, d.type, world.cell.zone);
       const fromX = z.x, fromY = z.y;
       const previousScreams = z.screamCount || 0;
+      const sameSwing = z.swingId && z.swingId === d.swingId;
+      const previousTimer = z.abilT;
       Object.assign(z, d);
+      if (z.bossId === "ceifador" && z.swingId) {
+        const previous = sameSwing ? previousTimer : REAPER_SWING_MS;
+        z.abilT = Math.min(previous, Math.max(0, Number(z.abilT) || 0));
+        if (z.abilT < previous) reaperStrike(z, previous, z.abilT);
+      }
       z.noiseUntil = now + Math.max(0, Math.min(18000, Number(d.noiseRemaining) || 0));
       if (!wasNew && ZTYPES[z.type].screams && z.screamCount > previousScreams) playCreeperScream(z);
       const skipLerp = wasNew || Math.hypot(fromX - d.x, fromY - d.y) > 140;
@@ -202,6 +212,15 @@ const fmWorld = (() => {
       z.netToY = d.y;
       z.netAt = now;
       next.push(z);
+    }
+    if (!game.inside && Array.isArray(data.reaperCorpses)) {
+      for (const c of data.reaperCorpses) {
+        if (!c || typeof c.id !== "string" || !Number.isFinite(c.x) || !Number.isFinite(c.y) ||
+            !Number.isFinite(c.angle) || !Number.isFinite(c.age) || curCorpses().some(o => o.netId === c.id)) continue;
+        curCorpses().push({ netId: c.id, x: c.x, y: c.y, ang: c.angle, w: 44, h: 44, kind: "corpse",
+          table: "boss", bossId: "ceifador", name: BOSSES.ceifador.name, zone: world.cell.zone,
+          radius: BOSSES.ceifador.r, deathTime: game.time - Math.max(0, c.age), opened: false, life: Infinity });
+      }
     }
     if (game.inside) game.inside.zombies = next;
     else zombies = next;
@@ -260,6 +279,14 @@ const fmWorld = (() => {
     if (!isFollower() || game.trans || game.paused || game.menu) return;
     for (const z of Zs()) {
       if (z.hp <= 0 || ZTYPES[z.type].screams) continue;
+      if (z.bossId === "ceifador") {
+        if (z.abilT > 0) {
+          const previous = z.abilT;
+          z.abilT = Math.max(0, previous - dt);
+          reaperStrike(z, previous, z.abilT);
+        }
+        continue;
+      }
       z.netHitCd = Math.max(0, (z.netHitCd || 0) - dt * ZOMBIE_ATTACK_RATE);
       if (z.netHitCd > 0 || Math.hypot(player.x - z.x, player.y - z.y) >= z.r + player.r + 3) continue;
       damagePlayer(z.dmg);
