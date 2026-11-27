@@ -16,7 +16,8 @@ const AMMO = {
   "combustível": { box: 60, price: 45 },
   "virote":      { box: 6,  price: 30 },
   "granada":     { box: 4,  price: 120 },
-  "Célula de Energia": { box: 8, price: 45 }
+  "Célula de Energia": { box: 8, price: 45 },
+  "12.7mm Rifle": { box: 8, price: 22 }
 };
 // ---------- Raridade ----------
 const RARITY = [
@@ -96,6 +97,7 @@ const WLIST = [
   { id: "lancachamas", name: "Lança-chamas", short: "Lança-ch.", cat: "machinegun", look: "flamer", dmg: 2, delay: 33.33, mag: 120, reload: 2600, ammo: "combustível", price: 0, req: [35, 70], len: 30, color: "#a33b32", pellets: 3, spread: 0.22, life: 300, speed: 7, pierce: true, fire: true, sound: [0.5, 0.6], special: true },
   { id: "lamina",   name: "Lâmina Sombria", short: "Lâmina S.", cat: "melee", look: "katana", dmg: 90, delay: 1000, range: 74, arc: 1.05, price: 0, req: [60, 120], len: 40, color: "#8a5ae0", lifesteal: 0.08, special: true },
   { id: "trovao",   name: "Rifle Trovão",  short: "Trovão", cat: "rifles", look: "rifle", dmg: 1000, delay: 4000 / 3, mag: 2, reload: 3250, ammo: "Célula de Energia", price: 0, req: [70, 120], minLevel: 75, len: 40, color: "#3a5a8a", pierce: true, thunder: true, alwaysCrit: true, damageType: "energy", spread: 4.8 * Math.PI / 180, sound: [1, 1], special: true },
+  { id: "vingador", name: "Sniper do Vingador", short: "Vingador", cat: "rifles", look: "rifle", dmg: 160, delay: 1000, mag: 15, reload: 3250, ammo: "12.7mm Rifle", price: 0, req: [70,120], minLevel: 75, len: 40, color: "#586c7a", speed: 20, life: 1500, spread: 4.8 * Math.PI / 180, vindicator: true, pierce: true, pveArmorPierce: true, stun: 0.75, stunMs: 1500, special: true },
   // novas armas com efeitos (bleed = chance de sangramento · burn = dano de fogo por segundo · stun = chance de atordoar · crit = +% de crítico)
   { id: "silenciada", name: "Pistola silenciada", short: "Silenciada", cat: "pistols", look: "pistol", dmg: 7, delay: 500, mag: 15, reload: 1100, ammo: "9mm", price: 550, req: [10, 30], len: 18, color: "#2a2a2a", sound: [0.02, 0.05] },
   { id: "incendiaria", name: "Escopeta Incendiária", short: "Incendiária", cat: "shotguns", look: "shotgun", dmg: 10, delay: 666.67, mag: 8, reload: 2400, ammo: "cartucho", price: 0, req: [40, 100], len: 28, color: "#c0502a", wood: true, pellets: 8, spread: 0.3, life: 380, burn: 18 },
@@ -121,7 +123,7 @@ const W_RAR = {
   deagle: 2, p90: 2, ak47: 2, m4: 2, fal: 2, spas: 2, sniper: 2, marreta: 2, serra: 2,
   vector: 3, scar: 3, m249: 3, aa12: 3, barrett: 3, espada: 3, minigun: 3, lancachamas: 3, lamina: 3,
   revolver_orn: 3, incendiaria: 3, choque: 3, baioneta: 3, lancador: 3,
-  ak_ouro: 4, katana_dragao: 4, trovao: 4, besta: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, pistola_natal: 4, dose: 3, punhos: 0
+  ak_ouro: 4, katana_dragao: 4, trovao: 4, vingador: 4, besta: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, pistola_natal: 4, dose: 3, punhos: 0
 };
 // arte das folhas em img/ usada por cada arma (tint = filtro de cor)
 const W_SPR = {
@@ -132,15 +134,15 @@ const W_SPR = {
   espadafogo: "flamesword", ak_ouro: "ak", incendiaria: "shotgun_pump", choque: "o_sniper2", scar: "o_ar",
   // pacote CC0 "2D Guns" (OpenGameArt)
   colt: "o_pistol", glock: "o_pistol2", deagle: "o_pistol3", vector: "o_smg", p90: "o_smg2", spas: "o_shotgun2", aa12: "o_shotgun",
-  caca: "o_sniper", barrett: "o_sniper2", fal: "o_ar2", m249: "o_ar2"
+  caca: "o_sniper", barrett: "o_sniper2", vingador: "o_sniper2", fal: "o_ar2", m249: "o_ar2"
 };
 const W_TINT = { ak_ouro: "sepia(1) saturate(4) hue-rotate(-12deg) brightness(1.25)", incendiaria: "sepia(0.6) saturate(3) hue-rotate(-25deg)",
   choque: "hue-rotate(-20deg) saturate(2.2) brightness(1.1)", barrett: "grayscale(0.7) brightness(0.75)", uzi: "brightness(0.8)",
   canoduplo: "sepia(0.4) brightness(0.9)", scar: "sepia(0.8) saturate(1.4) brightness(1.05)", m249: "grayscale(0.8) brightness(0.65) contrast(1.3)",
   p90: "hue-rotate(60deg) saturate(0.8)", aa12: "grayscale(0.8) brightness(0.7)", glock: "grayscale(0.9) brightness(0.7)", deagle: "grayscale(0.6) brightness(1.15)" };
 // ícone de cada munição
-const AMMO_SPR = { "9mm": "o_mag", ".45": "o_mag2", "5.56": "o_mag3", "7.62": "o_bullet_l", ".50": "o_bullet_l", "granada": "o_grenade", "virote": "crossbow" };
-const CRAFT_ONLY = ["besta", "serra", "lancachamas", "lamina", "trovao"];
+const AMMO_SPR = { "9mm": "o_mag", ".45": "o_mag2", "5.56": "o_mag3", "7.62": "o_bullet_l", ".50": "o_bullet_l", "12.7mm Rifle": "o_bullet_l", "granada": "o_grenade", "virote": "crossbow" };
+const CRAFT_ONLY = ["besta", "serra", "lancachamas", "lamina", "trovao", "vingador"];
 const WDEF = {};
 WLIST.forEach((d) => {
   WDEF[d.id] = d;
@@ -192,7 +194,8 @@ const RECIPES = [
   { id: "serra",       mats: { sucata: 6, pecas: 3, eletronicos: 3 },     money: 20000, level: 10 },
   { id: "lancachamas", mats: { sucata: 8, pecas: 5, eletronicos: 3 },     money: 35000, level: 15 },
   { id: "lamina",      mats: { sucata: 10, pecas: 4, nucleo: 1 },         money: 60000, level: 25 },
-  { id: "trovao",      mats: { pecas: 15, eletronicos: 7, nucleo: 10 },   money: 120000, level: 75 },
+  { id: "trovao",      mats: { pecas: 15, eletronicos: 7, nucleo: 10 },   money: 2500000, level: 75 },
+  { id: "vingador", mats: { pecas: 14, eletronicos: 8, nucleo: 8 }, money: 2400000, level: 75 },
   { id: "minigun_inf", mats: { pecas: 14, eletronicos: 10, nucleo: 4 },   money: 250000, level: 60 },
   // colete nº 10: craft difícil (precisa ter o nº 9, que é consumido)
   { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 500000, level: 100, needVest: 8 },
@@ -265,7 +268,7 @@ function wStat(inst) {
     dmg: d.dmg * (1 + 0.06 * u.dmg),
     spread: (d.spread || 0.03) * (1 - 0.09 * u.acc),
     // Rifles: recarga 15% mais lenta, mantendo upgrades e atributos ativos.
-    reload: (d.reload || 0) * (1 - 0.06 * u.rel) * (d.cat === "rifles" && !d.thunder ? 1.15 : 1),
+    reload: (d.reload || 0) * (1 - 0.06 * u.rel) * (d.cat === "rifles" && !d.thunder && !d.vindicator ? 1.15 : 1),
     delay: d.melee ? d.delay * (1 - 0.04 * u.rel) : d.delay,
     range: d.melee ? d.range * (1 + 0.04 * u.acc) : 0
   };
@@ -280,6 +283,7 @@ function thunderSpread(st) {
   const progress = Math.max(0, Math.min(1, A("acc") / 49));
   return st.spread * (1 - progress) * (1 - Math.max(0, Math.min(0.6, player.fx.accImp / 100)));
 }
+function vindicatorCritChance() { return Math.min(80, Math.max(15, 15 + 65 * Math.max(0, Math.min(1, A("crit") / 79)) + (player.fx.crit || 0))); }
 function curInst() { return player.slots[player.cur]; }
 function curW() { const i = curInst(); return WDEF[i ? i.id : "punhos"]; }
 function upSum(inst) { return inst.up.acc + inst.up.dmg + inst.up.rel; }

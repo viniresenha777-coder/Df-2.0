@@ -43,6 +43,14 @@ function weaponDetail(d, inst, x, y, w) {
   rows.push(["Dano", d.pellets ? `${Math.round(st.dmg)} x${d.pellets}` : `${Math.round(st.dmg)}`]);
   rows.push([d.melee ? "Golpes/s" : "Tiros/s", (1000 / st.delay).toFixed(d.thunder ? 2 : 1)]);
   if (d.melee) rows.push(["Alcance", `${Math.round(st.range)}`]);
+  else if (d.vindicator) {
+    rows.push(["Carregador", `${d.mag} · ${d.ammo}`]);
+    rows.push(["Recarga", `${(thunderReloadTime(st) / 1000).toFixed(2)} s`]);
+    rows.push(["Cone de mira", `${(thunderSpread(st) * 360 / Math.PI).toFixed(2)}°`]);
+    rows.push(["Crítico", `${Math.round(vindicatorCritChance())}% · 5x`]);
+    rows.push(["Modo (Q)", "60/20/20% ou alvo único"]);
+    rows.push(["Penetração PvE", "100%"]);
+  }
   else if (d.thunder) {
     rows.push(["Carregador", `${d.mag} · ${d.ammo}`]);
     rows.push(["Recarga", `${(thunderReloadTime(st) / 1000).toFixed(2)} s`]);
@@ -1202,7 +1210,7 @@ const SHOP_TABS = ["Munição"];
 const AMMO_PACK_SIZE = 999;
 // preço do pacote de 999 balas, por calibre (dinheiro da mochila)
 const AMMO_PACK_PRICES = { "9mm": 6000, ".45": 8000, "cartucho": 9000, "5.56": 12000, "7.62": 14000, ".50": 18000,
-  "combustível": 10000, "virote": 16000, "granada": 60000, "Célula de Energia": 14000 };
+  "combustível": 10000, "virote": 16000, "granada": 60000, "Célula de Energia": 14000, "12.7mm Rifle": 18000 };
 function ammoPackPrice(type) { return AMMO_PACK_PRICES[type] || 14000; }
 const AMMO_PACK_PRICE = 14000;   // legado (valor de referência)
 const CAT_ORDER = { pistols: 0, machinegun: 1, shotguns: 2, rifles: 3, melee: 4 };

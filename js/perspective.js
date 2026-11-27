@@ -319,7 +319,7 @@ const WEAPON_3D = {
   pistolalamina: { m: "w_fm_presa", grip: 0.15, heldView: true }, escopeta: { m: "w_fm_escopeta", grip: 0.29, heldView: true },
   incendiaria: { m: "w_fm_incendiaria_hd", grip: 0.23, heldView: true },
   spas: { m: "w_spas" }, aa12: { m: "w_aa12" },
-  caca: { m: "w_caca" }, sniper: { m: "w_sniper" }, barrett: { m: "w_barrett" },
+  caca: { m: "w_caca" }, sniper: { m: "w_sniper" }, vingador: { m: "w_sniper" }, barrett: { m: "w_barrett" },
   pistola: { m: "w_fm_pistola", grip: 0.24, heldView: true, poseLayer: true }, glock: { m: "w_fm_glock", grip: 0.24, heldView: true },
   silenciada: { m: "w_fm_vp9", grip: 0.23, heldView: true }, colt: { m: "w_fm_colt", grip: 0.23, heldView: true, poseLayer: true }, deagle: { m: "w_deagle" },
   revolver: { m: "w_peacemaker" }, revolver_orn: { m: "w_peacemaker", f: "sepia(0.8) saturate(2.2) brightness(1.1)" },

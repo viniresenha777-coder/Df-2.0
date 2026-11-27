@@ -222,7 +222,7 @@ const fmWorld = (() => {
       z.y = z.netFromY + (z.netToY - z.netFromY) * t;
     }
   }
-  function reportHit(zombie, damage, angle) {
+  function reportHit(zombie, damage, angle, stunMs = 0) {
     if (!isFollower() || !channelReady || !channel || !zombie.netId) return false;
     const uid = id();
     if (!uid) return false;
@@ -230,6 +230,7 @@ const fmWorld = (() => {
       cx: world.cell.cx, cy: world.cell.cy, location: fmSocial.location(), uid, netId: zombie.netId,
       damage: Math.max(0, Math.min(2000, Math.round(damage))),
       angle: Number.isFinite(angle) ? angle : 0,
+      stunMs: Math.max(0, Math.min(1500, Number(stunMs) || 0)),
       at: Date.now()
     };
     channel.send({ type: "broadcast", event: "zombie-hit", payload }).catch(() => {});
@@ -247,6 +248,7 @@ const fmWorld = (() => {
     if (!z || Math.hypot(shooter.x - z.x, shooter.y - z.y) > 1000) return;
     z.hp -= p.damage;
     z.flash = 110;
+    if (p.stunMs > 0) z.stun = Math.max(z.stun || 0, Math.min(z.boss ? 300 : 1500, Number(p.stunMs) || 0));
     if (z.hp <= 0 && !z.dead) killZombie(z);
     else alertZombie(z);
     sendSnapshot(true);

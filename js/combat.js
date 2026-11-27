@@ -151,7 +151,7 @@ function startReload() {
   if (game.over || w.melee || !it || player.reloading > 0 || it.ammo >= w.mag) return;
   if (w.id === "glock") player.glockBurstLeft = 0;
   if (!w.infinite && player.reserve[w.ammo] <= 0) { toast("Sem munição de reserva"); sfx.empty(); return; }
-  const reloadTime = w.thunder ? thunderReloadTime(wStat(it)) : wStat(it).reload *
+  const reloadTime = (w.thunder || w.vindicator) ? thunderReloadTime(wStat(it)) : wStat(it).reload *
     (1 - Math.max(-0.5, Math.min(0.6, player.fx.reload / 100))) /
     (1 + (A("reload") - 10) * 0.012);
   player.reloadRound = w.id === "caca";
@@ -206,7 +206,7 @@ function hurt(z, dmg, ang, quiet, fx) {
   if (player.fx.rage && player.hp / player.maxHp < 0.4) d *= 1 + player.fx.rage / 100;
   if (fx?.alwaysCrit || (fx?.shotCrit ?? (!(fx && fx.noCrit) && Math.random() * 100 < Math.min(85, A("crit") * 0.5 + player.fx.crit + (fx && fx.crit ? fx.crit : 0))))) {
     // O dano do Trovão já inclui o crítico base; não duplicar os 1000.
-    d *= fx?.alwaysCrit ? 1 + player.fx.critDmg / 200 : 2 + player.fx.critDmg / 100;
+    d *= fx?.alwaysCrit ? 1 + player.fx.critDmg / 200 : fx?.vindicator ? 5 + player.fx.critDmg / 100 : 2 + player.fx.critDmg / 100;
     crit = true;
   }
   if (fx?.damageType === "energy") {
@@ -214,7 +214,7 @@ function hurt(z, dmg, ang, quiet, fx) {
     d *= 1 - Math.max(0, Math.min(100, resistance)) / 100;
   }
   // o Capataz bloqueia de frente: atire pelas costas ou pelos lados
-  if (z.bossId === "capataz" && ang != null && Math.cos(angDiff(z.angle, ang + Math.PI)) > 0.35) {
+  if (!fx?.pveArmorPierce && z.bossId === "capataz" && ang != null && Math.cos(angDiff(z.angle, ang + Math.PI)) > 0.35) {
     d *= 0.25;
     if (!quiet && Math.random() < 0.3) game.floats.push({ x: z.x, y: z.y - z.r - 10, text: "BLOQUEADO", t: 600 });
   }
@@ -223,7 +223,7 @@ function hurt(z, dmg, ang, quiet, fx) {
   // Os tiros de outros jogadores são encaminhados ao líder via Broadcast.
   if (typeof fmWorld !== "undefined" && fmWorld.isFollower()) {
     xpForDamage(z, d);   // no setor compartilhado cada jogador ganha XP pelo próprio dano
-    fmWorld.reportHit(z, d, ang);
+    fmWorld.reportHit(z, d, ang, fx?.vindicator && Math.random() < fx.stun ? (z.boss ? 300 : 1500) : 0);
     z.flash = 90;
     if (!quiet) {
       game.floats.push({ x: z.x, y: z.y - z.r, text: Math.round(d).toString(), t: 700 });
@@ -237,7 +237,7 @@ function hurt(z, dmg, ang, quiet, fx) {
   if (fx && z.hp > 0) {
     if (fx.burn) { z.burn = 3000; z.burnDps = fx.burn * (1 + player.fx.firepower / 100); }
     if (fx.bleed && Math.random() < fx.bleed) { z.bleed = 4000; z.bleedDps = Math.max(z.bleedDps || 0, d * 0.15); }
-    if (fx.stun && Math.random() < fx.stun) z.stun = z.boss ? 300 : 900;
+    if (fx.stun && Math.random() < fx.stun) z.stun = Math.max(z.stun || 0, z.boss ? 300 : (fx.stunMs || 900));
     // Cryo (armas de Natal): fica mais lento para andar e atacar por um tempo
     if (fx.cryo) { z.chillMul = Math.min(z.chill > 0 ? z.chillMul || 1 : 1, 1 - fx.cryo); z.chill = fx.cryoMs || 1000; }
   }
@@ -324,6 +324,12 @@ function attack() {
     fireThunder(mx, my, shotAngle, st.dmg, w);
     player.shotAng = shotAngle;
   }
+  else if (w.vindicator) {
+    const a = aim + (Math.random() * 2 - 1) * thunderSpread(st), alt = !!player.vindicatorAlt;
+    const fractions = alt ? [1] : [0.6, 0.2, 0.2];
+    bullets.push({ x: mx, y: my, px: mx, py: my, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, life: w.life, max: w.life, dmg: st.dmg * fractions[0], baseDmg: st.dmg, fractions, pierce: !alt, hit: [], big: true, fx: { ...w, shotCrit: Math.random() * 100 < vindicatorCritChance() }, color: RARITY[w.rar].color });
+    player.shotAng = a;
+  }
   else for (let i = 0; i < n; i++) {
     const a = aim + (Math.random() - 0.5) * 2 * st.spread * Math.max(0.15, 10 / A("acc")) * (1 - Math.min(0.6, player.fx.accImp / 100));
     const sp = (w.speed || 12) * (w.fire ? rand(0.8, 1.2) : 1);
@@ -331,7 +337,7 @@ function attack() {
       dmg: st.dmg * dmgMult(w), pierce: !!w.pierce, hit: [], big: w.cat === "rifles" || w.rar >= 3, fire: !!w.fire, explode: w.explode || 0, bolt: w.look === "crossbow",
       grenade: !!w.grenade, fx: w, knock: !!w.knock, color: w.rar >= 3 ? RARITY[w.rar].color : null });
   }
-  if (typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(mx, my, w.thunder ? player.shotAng : aim, w.id, n, player.fx.silence);   // os outros veem o tiro
+  if (typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(mx, my, (w.thunder || w.vindicator) ? player.shotAng : aim, w.id, n, player.fx.silence);   // os outros veem o tiro
   if (!w.fire) {
     player.flashT = 60;
     player.thunderFlash = !!w.thunder;
@@ -617,7 +623,8 @@ function updateBullets(dt, k) {
         if (b.fire) { b.hit.push(z); hurt(z, b.dmg, null, Math.random() < 0.7, b.fx); continue; }
         hurt(z, b.dmg, Math.atan2(b.vy, b.vx), false, b.fx);
         if (b.explode) { b.life = 0; explode(b.x, b.y, b.explode, b.dmg * 0.5); break; }
-        if (b.pierce) { b.hit.push(z); b.dmg *= 0.8; } else { b.life = 0; break; }
+        if (b.fractions) { b.hit.push(z); if (b.hit.length >= b.fractions.length) { b.life = 0; break; } b.dmg = b.baseDmg * b.fractions[b.hit.length]; }
+        else if (b.pierce) { b.hit.push(z); b.dmg *= 0.8; } else { b.life = 0; break; }
       }
     }
     b.life -= dt;
