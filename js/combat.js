@@ -289,7 +289,7 @@ function fireThunder(x, y, angle, damage, weapon) {
 }
 function attack() {
   const w = curW(), it = curInst(), st = wStat(it);
-  player.cooldown = st.delay * (w.infinite ? 1 + 2 * (1 - player.spin) : 1) / Math.max(0.3, 1 + player.fx.atkSpeed / 100);
+  player.cooldown = st.delay * ((w.infinite || w.spinup) ? 1 + 2 * (1 - player.spin) : 1) / Math.max(0.3, 1 + player.fx.atkSpeed / 100);
   if (w.melee) {
     game.slash = player.angle; game.slashT = 200; game.slashR = st.range; game.slashA = w.arc;
     sfx.shot(w);

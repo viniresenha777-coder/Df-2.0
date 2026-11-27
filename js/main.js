@@ -422,7 +422,7 @@ function update(dt) {
     if (player.reloading <= 0) finishReload();
   }
   // minigun de munição infinita: gira para acelerar (sem superaquecer)
-  const firingInf = w.infinite && mouse.down && player.reloading === 0;
+  const firingInf = (w.infinite || w.spinup) && mouse.down && player.reloading === 0;
   player.spin = firingInf ? Math.min(1, player.spin + sec * 1.3) : Math.max(0, player.spin - sec * 2);
   // Armas comuns permanecem automáticas. Na Glock, só dispara se há tiros pendentes do clique.
   if (w.id !== "glock") player.glockBurstLeft = 0;

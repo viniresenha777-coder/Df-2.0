@@ -164,7 +164,7 @@ function fmNewShotLoad() {
 function fmNewShotKey(w) {
   if (!w || !w.id) return null;
   if (w.id === "besta") return "flecha";
-  if (w.id === "minigun" || w.id === "minigun_inf") return "minigun";
+  if (w.id === "minigun" || w.id === "minigun_inf" || w.id === "minigun_inf_oficina") return "minigun";
   if (w.id === "m249") return "m249";
   if (w.id === "barrett" || w.id === "choque" || w.id === "vingador") return "barrett";
   if (w.cat === "shotguns") return "doze";

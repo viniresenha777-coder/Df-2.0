@@ -107,7 +107,9 @@ const WLIST = [
   { id: "espadaserra", name: "Espada-Serra", short: "Esp.-Serra", cat: "melee", look: "chainsaw", dmg: 15, delay: 116.67, range: 70, arc: 0.8, price: 0, req: [60, 120], len: 40, color: "#a33b32", bleed: 0.6, sound: [0.6, 0.8] },
   { id: "espadafogo", name: "Espada Flamejante", short: "Esp. Fogo", cat: "melee", look: "sword", dmg: 100, delay: 666.67, range: 82, arc: 1.05, price: 0, req: [70, 120], len: 42, color: "#ff8a3a", burn: 40 },
   // munição infinita, mas superaquece: segure o tiro com cuidado
-  { id: "minigun_inf", name: "Minigun Infernal", short: "Infernal", cat: "machinegun", look: "minigun", dmg: 23, pellets: 3, delay: 81.67, mag: 600, reload: 3250, ammo: "", price: 0, req: [100, 120], minLevel: 25, len: 36, color: "#8a6a4a", slow: 20, infinite: true, noCrit: true, spread: 0.2, sound: [1, 1] },
+  { id: "minigun_inf", name: "Minigun Infernal", short: "Infernal", cat: "machinegun", look: "minigun", dmg: 23, pellets: 3, delay: 81.67, mag: 600, reload: 3250, ammo: "", price: 0, credits: 10000, req: [100, 120], minLevel: 25, len: 36, color: "#8a6a4a", slow: 20, infinite: true, noCrit: true, spread: 0.2, sound: [1, 1] },
+  // Variante fabricável: mesma arma, carregador finito e recarga com munição de reserva.
+  { id: "minigun_inf_oficina", name: "Minigun Infernal (Oficina)", short: "Infernal Of.", cat: "machinegun", look: "minigun", dmg: 23, pellets: 3, delay: 81.67, mag: 600, reload: 3250, ammo: "5.56", price: 0, req: [100, 120], minLevel: 25, len: 36, color: "#8a6a4a", slow: 20, spinup: true, noCrit: true, spread: 0.2, sound: [1, 1] },
   // ---------- Evento de Natal (dano Cryo: deixa o zumbi mais lento e atacando mais devagar) ----------
   // cai só nas Caixas de Natal (1%), intransferível
   { id: "pistola_natal", name: "Pistola Natalina", short: "P. Natalina", cat: "pistols", look: "pistol", dmg: 45, delay: 666.67, mag: 18, reload: 1750, ammo: ".50", price: 0, req: [0, 0], len: 18, color: "#b02a2a", noCrit: true, cryo: 0.5, cryoMs: 1000, scrap: 100, scrapMC: 100, upCost: 81000, eventOnly: true, noTrade: true },
@@ -123,14 +125,14 @@ const W_RAR = {
   deagle: 2, p90: 2, ak47: 2, m4: 2, fal: 2, spas: 2, sniper: 2, marreta: 2, serra: 2,
   vector: 3, scar: 3, m249: 3, aa12: 3, barrett: 3, espada: 3, minigun: 3, lancachamas: 3, lamina: 3,
   revolver_orn: 3, incendiaria: 3, choque: 3, baioneta: 3, lancador: 3,
-  ak_ouro: 4, katana_dragao: 4, trovao: 4, vingador: 4, besta: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, pistola_natal: 4, dose: 3, punhos: 0
+  ak_ouro: 4, katana_dragao: 4, trovao: 4, vingador: 4, besta: 4, pistolalamina: 4, espadaserra: 4, espadafogo: 4, minigun_inf: 4, minigun_inf_oficina: 4, pistola_natal: 4, dose: 3, punhos: 0
 };
 // arte das folhas em img/ usada por cada arma (tint = filtro de cor)
 const W_SPR = {
   pistola: "pistol_sil", silenciada: "pistol_sil", revolver: "revolver", m4: "m4", ak47: "ak", fal: "ak", mp5: "smg", uzi: "smg",
   escopeta: "shotgun_pump", canoduplo: "shotgun_pump", sniper: "sniper", caca: "sniper", barrett: "sniper", besta: "crossbow",
   minigun: "minigun", machado: "axe", taco: "spikebat", facao: "machete", revolver_orn: "revolver_orn", baioneta: "bayonet",
-  pistolalamina: "gunblade", lancador: "spiked", espadaserra: "chainsword", minigun_inf: "minigun_orn",
+  pistolalamina: "gunblade", lancador: "spiked", espadaserra: "chainsword", minigun_inf: "minigun_orn", minigun_inf_oficina: "minigun_orn",
   espadafogo: "flamesword", ak_ouro: "ak", incendiaria: "shotgun_pump", choque: "o_sniper2", scar: "o_ar",
   // pacote CC0 "2D Guns" (OpenGameArt)
   colt: "o_pistol", glock: "o_pistol2", deagle: "o_pistol3", vector: "o_smg", p90: "o_smg2", spas: "o_shotgun2", aa12: "o_shotgun",
@@ -142,7 +144,7 @@ const W_TINT = { ak_ouro: "sepia(1) saturate(4) hue-rotate(-12deg) brightness(1.
   p90: "hue-rotate(60deg) saturate(0.8)", aa12: "grayscale(0.8) brightness(0.7)", glock: "grayscale(0.9) brightness(0.7)", deagle: "grayscale(0.6) brightness(1.15)" };
 // ícone de cada munição
 const AMMO_SPR = { "9mm": "o_mag", ".45": "o_mag2", "5.56": "o_mag3", "7.62": "o_bullet_l", ".50": "o_bullet_l", "12.7mm Rifle": "o_bullet_l", "granada": "o_grenade", "virote": "crossbow" };
-const CRAFT_ONLY = ["besta", "serra", "lancachamas", "lamina", "trovao", "vingador"];
+const CRAFT_ONLY = ["besta", "serra", "lancachamas", "lamina", "trovao", "vingador", "minigun_inf_oficina"];
 const WDEF = {};
 WLIST.forEach((d) => {
   WDEF[d.id] = d;
@@ -200,7 +202,7 @@ const RECIPES = [
   { id: "lamina",      mats: { sucata: 10, pecas: 4, nucleo: 1 },         money: 60000, level: 25 },
   { id: "trovao",      mats: { pecas: 15, eletronicos: 7, nucleo: 10, blueprint_sniper: 1 },   money: 2500000, level: 75 },
   { id: "vingador", mats: { pecas: 14, eletronicos: 8, nucleo: 8, blueprint_sniper: 1 }, money: 2400000, level: 75 },
-  { id: "minigun_inf", mats: { pecas: 14, eletronicos: 10, nucleo: 4, blueprint_fuzil: 1 },   money: 250000, level: 60 },
+  { id: "minigun_inf_oficina", mats: { pecas: 14, eletronicos: 10, nucleo: 4, blueprint_fuzil: 1 },   money: 250000, level: 60 },
   // colete nº 10: craft difícil (precisa ter o nº 9, que é consumido)
   { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 500000, level: 100, needVest: 8 },
   // implantes X: 3 do tier 2 correspondente · Err X: 2 do X correspondente (needImp = implantes consumidos da mochila de implantes)
@@ -410,6 +412,7 @@ function drawSweetLights(g, x, y, width, flash) {
   g.restore();
 }
 function drawWeaponEnergy(g, id, x, y, width, equipped, flash = 0) {
+  if (id === "minigun_inf_oficina") id = "minigun_inf";
   if (id === "dose") { drawSweetLights(g, x, y, width, flash); return; }
   if (id !== "trovao" && id !== "minigun_inf" && id !== "incendiaria") return;
   const t = performance.now() / 1000;

@@ -313,6 +313,7 @@ const WEAPON_3D = {
   // MP5 e P90 não tinham modelo: usam o da Vector (P90 esverdeada), em vez do desenho 2D solto da mão
   mp5: { m: "w_vector", f: "grayscale(0.6) brightness(0.9)" }, p90: { m: "w_vector", f: "hue-rotate(60deg) saturate(0.8)" },
   minigun: { m: "w_minigun" }, minigun_inf: { m: "w_fm_minigun_inf_hd", grip: 0.3, heldView: true },
+  minigun_inf_oficina: { m: "w_fm_minigun_inf_hd", grip: 0.3, heldView: true },
   canoduplo: { m: "w_canoduplo" },
   // grip: arma com arte própria na mão (img/weapons/<m>_held.png quando heldView), segurada nesse ponto do comprimento
   choque: { m: "w_fm_mks50", grip: 0.22, heldView: true }, trovao: { m: "w_fm_trovao_hd", grip: 0.3, heldView: true, poseLayer: true, glow: "w_fm_trovao_luz" },

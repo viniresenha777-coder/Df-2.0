@@ -369,6 +369,18 @@ function moveImplant(im, to) {
   persist(); recalcImplants();
 }
 
+function fmDiscardAmmo(ammo) {
+  if (!ammo || !Object.prototype.hasOwnProperty.call(AMMO, ammo.t)) return;
+  const held = Math.max(0, Math.floor(player.reserve[ammo.t] || 0));
+  const qty = Math.min(held, Math.max(0, Math.floor(ammo.n || 0)));
+  if (!qty) return;
+  player.reserve[ammo.t] = held - qty;
+  player.tokenAmmo = player.tokenAmmo || {};
+  player.tokenAmmo[ammo.t] = Math.max(0, (player.tokenAmmo[ammo.t] || 0) - qty);
+  fmStashSave();
+  toast("Descartou " + qty + "x munição " + ammo.t);
+}
+
 function invDrop(src, dst) {
   if (!dst || dst === src) return;
   if (src.type === "mat" && src.item.id === FM_ADVANCED_CASE_ID && dst.area === "doll") { fmOpenAdvancedImplantCase(src.item); return; }
@@ -376,6 +388,10 @@ function invDrop(src, dst) {
   const inv = packSel();
   // descartar (pede confirmação)
   if (dst.area === "discard") {
+    if (src.type === "ammo") {
+      INV.confirm = { ammo: { t: src.item.t, n: src.item.n }, name: src.item.n + "x " + invItemName(src) };
+      return;
+    }
     if (src.sel == null) { toast("Isso não dá para descartar aqui"); return; }
     inv.sel = src.sel; INV.confirm = { name: invItemName(src) }; return;
   }
@@ -732,7 +748,7 @@ function drawInventory() {
     ctx.fillStyle = "#1a1913"; rr(W / 2 - 200, H / 2 - 60, 400, 120, 10); ctx.fill(); ctx.strokeStyle = "#e05a4a"; ctx.lineWidth = 2; ctx.stroke();
     txt((INV.confirm.token || INV.confirm.trindade)?.validadeDias ? "Ativar por " + (INV.confirm.token || INV.confirm.trindade).validadeDias + " dia(s)?" : INV.confirm.token ? "Ativar o Token da Loja?" : INV.confirm.trindade ? "Consumir Trindade por 100 anos?" : INV.confirm.resetStats ? "Resetar atributos e proficiências?" : `Descartar ${INV.confirm.name}?`, W / 2, H / 2 - 22, 16, "#f2eedc", "center", true, 370);
     txt(INV.confirm.token ? "A Loja da base fica de graça pelo prazo do token. Consome 1 item." : INV.confirm.trindade ? "+35% dano, corrida e armadura. Consome 1 item." : INV.confirm.resetStats ? "Todos os pontos investidos voltam. O cartão será consumido." : "Some para sempre.", W / 2, H / 2, 12, "#a9a58f", "center");
-    btn(W / 2 - 150, H / 2 + 16, 140, 30, INV.confirm.token ? "Ativar" : INV.confirm.trindade ? "Consumir" : INV.confirm.resetStats ? "Resetar" : "Descartar", () => { const reset = INV.confirm.resetStats, trindade = INV.confirm.trindade, token = INV.confirm.token; INV.confirm = null; if (token) useTokenLoja(token); else if (trindade) useTrindadeItem(trindade); else if (reset) useResetStatsCard(); else packDiscard(); }, true);
+    btn(W / 2 - 150, H / 2 + 16, 140, 30, INV.confirm.token ? "Ativar" : INV.confirm.trindade ? "Consumir" : INV.confirm.resetStats ? "Resetar" : "Descartar", () => { const reset = INV.confirm.resetStats, trindade = INV.confirm.trindade, token = INV.confirm.token, ammo = INV.confirm.ammo; INV.confirm = null; if (ammo) fmDiscardAmmo(ammo); else if (token) useTokenLoja(token); else if (trindade) useTrindadeItem(trindade); else if (reset) useResetStatsCard(); else packDiscard(); }, true);
     btn(W / 2 + 10, H / 2 + 16, 140, 30, "Cancelar", () => { INV.confirm = null; });
   }
   drawAllocPanel();
