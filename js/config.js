@@ -131,7 +131,7 @@ const VESTS = [
   // creditsVip = preço para VIP (Membros Gold) · repairLevel = nível mínimo para consertar ·
   // scrap/scrapMC = valor fixo no Ferro Velho (MC = melhorias no máximo) · upCost = preço de cada melhoria
   { name: "Colete Tático Natalino",         armor: 75, credits: 2000, creditsVip: 1500, color: "#8a1f1f", rar: 4,
-    dur: 350, repairLevel: 75, scrap: 128250, scrapMC: 256500, upCost: 67000,
+    dur: 350, scrap: 128250, scrapMC: 256500, upCost: 67000,
     wear: "cl_colete_natal" }   // wear = camada 3D vestida no personagem (img/gear/<wear>_<pose>.png e img/portrait_<wear>.png)
 ];
 // camada 3D do colete equipado, se ele tiver uma e o jogador quiser mostrar vestido (só o Natalino tem)
