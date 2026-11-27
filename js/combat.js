@@ -357,7 +357,6 @@ function weaponNoise(w, x, y, silence = 0) {
   if (typeof fmWorld !== "undefined" && fmWorld.isFollower()) return false;
   if (Math.random() >= w.aggroChance) return false;
   const radius = w.aggroRadius * (1 - Math.max(0, Math.min(0.9, (Number(silence) || 0) / 100)));
-  game.pings.push({ x, y, r: radius, t: 350 });
   const now = performance.now();
   for (const z of Zs()) {
     if (z.hp <= 0 || Math.hypot(z.x - x, z.y - y) > radius) continue;
@@ -374,7 +373,7 @@ function weaponHordeNoise(x, y, radius, now) {
   const zone = world.cell.zone, tier = regionOf(zone);
   let a = game.weaponAggro;
   if (!a || a.cell !== world.cell) a = game.weaponAggro = { cell: world.cell, pressure: 0, last: now, next: 0 };
-  a.pressure = Math.max(0, a.pressure - (now - a.last) / 650);
+  a.pressure = Math.max(0, a.pressure - (now - a.last) / 1800);
   a.last = now;
   if (radius < 100) return;
   a.pressure = Math.min(14, a.pressure + radius / 450);

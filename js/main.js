@@ -513,11 +513,6 @@ function drawWorldView(shx, shy) {
   drawThunderShots(true);
   drawGroundDrops(); // itens recusados continuam visíveis por 10s reais
   drawHazards();
-  for (const p of game.pings) {
-    const f = 1 - p.t / 350;
-    ctx.strokeStyle = `rgba(255,255,255,${0.3 * (1 - f)})`; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1, p.r * f), 0, Math.PI * 2); ctx.stroke();
-  }
   if (game.inside) {
     if (game.inside) drawInteriorWalls("back");   // paredes atrás do personagem
     for (const z of Zs()) { drawZombie(z); drawZombieExtra(z); }
