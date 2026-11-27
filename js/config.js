@@ -443,17 +443,16 @@ const IMP_COLOR = ["#d4af37", "#e07b5a", "#c58bff"];     // comum · com penalid
 // ---------- Personagem: nível (1 a 200) e atributos ----------
 const MAX_LEVEL = 200, ATTR_MAX = 100, PLAYER_HP_CAP = 200;
 // Limites de distribuição: stats gerais até 100, Força até 100,
-// e as cinco proficiências de armas até 120 cada (700 pontos no total).
-const WEAPON_SKILL_IDS = ["str", "melee", "pistols", "rifles", "shotguns", "machinegun"];
+// e as cinco proficiências de armas até 120 cada, em reserva separada da Força.
+const WEAPON_SKILL_IDS = ["melee", "pistols", "rifles", "shotguns", "machinegun"];
 const FM_MIMIC_ID = "implante_mimic", FM_ADVANCED_CASE_ID = "caixa_implante_avancada";
 function weaponSkillCap(id) {
   if (id === "str") return 100;
   return WEAPON_SKILL_IDS.includes(id) ? 120 : ATTR_MAX;
 }
 // Pontos de arma: 4 por nível do 2 ao 50 e 3 por nível do 51 ao 200 (curva 3).
-// Uma arma no máximo (proficiência 120 + Força 100) custa 190 pontos: só perto do nível 50.
-// Início: Força 25 + Melee 5 + Pistols 5 = 35. No nível 200: 35 + 196 + 450 = 681 (de 700 possíveis).
-const WEAPON_CURVE = 3;
+// Força consome pontos de atributo; proficiências consomem pontos de arma.
+const WEAPON_CURVE = 4;
 let fmWeaponCurveMsg = false;   // a conta passou pela migração (aviso ao entrar)
 function weaponPointsAtLevel(level) {
   const l = Math.min(MAX_LEVEL, Math.max(1, Math.floor(level)));
@@ -467,11 +466,21 @@ function migrateWeaponCurve(ch, profId) {
   const bonus = PROF_WEAPON[profId] || {};
   const bonusSum = Object.values(bonus).reduce((a, b) => a + b, 0);
   const budget = weaponPointsAtLevel(ch.level) + bonusSum;
-  const spent = WEAPON_SKILL_IDS.reduce((a, id) => a + Math.max(0, (ch.attrs[id] || 0) - start(id)), 0);
+  const oldWeaponIds = ["str", ...WEAPON_SKILL_IDS];
+  const spent = oldWeaponIds.reduce((a, id) => a + Math.max(0, (ch.attrs[id] || 0) - start(id)), 0);
   if (spent + (ch.wpoints || 0) <= budget) return false;
-  WEAPON_SKILL_IDS.forEach((id) => { ch.attrs[id] = start(id); });
+  oldWeaponIds.forEach((id) => { ch.attrs[id] = start(id); });
   ch.wpoints = budget;
   return true;
+}
+function migrateStrengthPool(ch, profId) {
+  const base = Math.min(ch.attrs.str, 25 + (profId === "lutador" ? 10 : 0));
+  const invested = Math.max(0, ch.attrs.str - base);
+  const funded = Math.min(invested, Math.max(0, ch.points || 0));
+  ch.wpoints += invested;
+  ch.points -= funded;
+  ch.attrs.str = base + funded;
+  return invested > 0;
 }
 function weaponPointsForLevel(level) {
   return weaponPointsAtLevel(level) - weaponPointsAtLevel(level - 1);

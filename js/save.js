@@ -137,14 +137,13 @@ function loadSave() {
         save.char.attrs[d.id] = Math.min(cap, previous);
         const excess = Math.max(0, previous - cap);
         if (excess) {
-          if (WEAPON_SKILL_IDS.includes(d.id)) save.char.wpoints += excess;
+          if (WEAPON_SKILL_IDS.includes(d.id) || (d.id === "str" && (c.skillCurve | 0) < 4)) save.char.wpoints += excess;
           else save.char.points += excess;
         }
       });
-      if ((c.skillCurve | 0) < WEAPON_CURVE) {
-        save.char.skillCurve = WEAPON_CURVE;
-        if (migrateWeaponCurve(save.char, s.prof)) fmWeaponCurveMsg = true;
-      }
+      if ((c.skillCurve | 0) < 3 && migrateWeaponCurve(save.char, s.prof)) fmWeaponCurveMsg = true;
+      if ((c.skillCurve | 0) < 4) migrateStrengthPool(save.char, s.prof);
+      save.char.skillCurve = WEAPON_CURVE;
     }
   } catch (e) { /* sem armazenamento: o progresso vale só nesta sessão */ }
 }

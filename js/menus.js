@@ -1489,7 +1489,7 @@ function drawStats() {
   txtWrap(attrEffect(sid, player.attrs[sid]), 506, 318, 12, "#a9a58f", 398, 15, 2);
   txt(WEAPON_SKILL_IDS.includes(sid) ? `Usa pontos de arma · máx. ${weaponSkillCap(sid)}` : `Usa pontos de atributo · máx. ${weaponSkillCap(sid)}`, 506, 356, 11, WEAPON_SKILL_IDS.includes(sid) ? "#d08a5a" : "#6d8aa8");
   if (statsPending()) txt("Pontos ainda não confirmados: use − para tirar ou Confirmar para fixar.", 506, 380, 11, "#ffd96a", "left", true);
-  else txt("Força conta como ponto de arma (exigência das armas).", 506, 372, 11, "#6d6a58");
+  else txt("Força usa pontos de atributo (Stats).", 506, 372, 11, "#6d6a58");
   // confirmar / desfazer a distribuição pendente
   if (statsPending()) {
     btn(700, 342, 104, 22, "Confirmar (F)", confirmStats, true);
