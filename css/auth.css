@@ -345,6 +345,9 @@ body:has(#login:not([hidden]))::before {
 #login .fm-updates-list .fm-update-thumb {
   flex: 0 0 64px; width: 64px; height: 42px; object-fit: contain;
   margin: 0; animation: none; filter: none;
+  box-sizing: border-box; padding: 4px;
+  background: #f5f3ed; border: 1px solid #dedbd2; border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.22);
 }
-#login .fm-updates-list .fm-update-thumb.fm-update-mp5 { filter: grayscale(.6) brightness(.9); }
+#login .fm-updates-list .fm-update-thumb.fm-update-mp5 { filter: grayscale(.6); }
 #login .fm-updates-list .fm-update-item strong { font-size: 12px; }
