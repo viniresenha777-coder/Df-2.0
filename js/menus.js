@@ -190,7 +190,7 @@ function natalOffer() { return { type: "natal", target: 2, progress: 0, k: 0, s:
 function natalDisponivel() { return !save.natalFeita && !save.missions.some((m) => m.type === "natal"); }
 function makeOffers() {
   const L = player.level, cats = Object.keys(CATNAME), offers = [];
-  const mk = (type, target, f, extra) => offers.push(Object.assign({ type, target, progress: 0, money: Math.round((300 + 120 * L) * f * econ(game.best).reward), xp: Math.round(xpNeed(L) * 0.6 * f) }, extra || {}));
+  const mk = (type, target, f, extra) => offers.push(Object.assign({ type, target, progress: 0, money: Math.round((300 + 120 * L) * f * econ(game.best).reward), xp: Math.round(baseXpNeed(L) * 0.6 * f) }, extra || {}));
   mk("kill", Math.min(80, 8 + Math.floor(L * 0.6)), 1);
   mk("killcat", Math.min(40, 6 + Math.floor(L / 8)), 1.1, { cat: pick(cats) });
   const types = Object.keys(ZTYPES).filter((t) => t !== "walker" && ZTYPES[t].from <= Math.max(game.best, 2));

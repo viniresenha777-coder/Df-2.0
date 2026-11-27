@@ -229,9 +229,17 @@ function implantPresetTotals(preset) {
 }
 
 // ---------- Atributos ----------
-// curva de XP: nível 200 leva ~300 h jogando COM o bônus de evento (+100% XP) e ~630 h sem bônus
-// (simulação com ~300 abates/h subindo de região). VIP dobra o XP por cima.
-function xpNeed(l) { return Math.round(200 + 100 * l + 0.6 * Math.pow(l, 2.5)); }
+function baseXpNeed(level) { return Math.round(200 + 100 * level + 0.6 * Math.pow(level, 2.5)); }
+// O desconto inicial diminui gradualmente até o nível 20.
+function xpNeed(level) {
+  const base = baseXpNeed(level);
+  if (level >= 20) return base;
+  let percent;
+  if (level <= 5) percent = 40 + (level - 1) * 2.5;
+  else if (level <= 10) percent = 50 + (level - 5) * 4;
+  else percent = 70 + (level - 10) * 3;
+  return Math.round(base * percent / 100);
+}
 function A(id) { return player.attrs[id]; }
 // Vest and implant protection stack additively; attribute armor remains a separate layer.
 function equipmentProtection() {
