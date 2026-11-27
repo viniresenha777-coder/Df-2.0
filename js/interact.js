@@ -112,6 +112,17 @@ function implantPartsDrop(table, t, zone) {
   return out;
 }
 // sorteia QUANTOS itens e depois QUAIS (tipos diferentes, pesados pelo que cada lugar costuma ter)
+function blueprintDrop(table, zone) {
+  if (regionOf(zone) < 4 || ["boss","airdrop","natal"].includes(table)) return [];
+  const roll = Math.random();
+  let threshold = 0;
+  for (const id of Object.keys(MATS)) {
+    if (!MATS[id].blueprint) continue;
+    threshold += MATS[id].chance;
+    if (roll < threshold) return [{type:"mat",id,amt:1}];
+  }
+  return [];
+}
 function rollLoot(table, zone) {
   if (table === "airdrop") return rollLootFull(table, zone);
   if (table === "natal") return natalBoxLoot(zone);
@@ -135,6 +146,7 @@ function rollLoot(table, zone) {
     out.push(lootEntry(pool.splice(idx, 1)[0][0], t, table, zone));
   }
   out.push(...implantPartsDrop(table, t, zone));   // componentes de implante: fora da conta de itens
+  out.push(...blueprintDrop(table, zone));
   if (want === 4) out.push({ type: "credit", amt: 1 });
   return out;
 }

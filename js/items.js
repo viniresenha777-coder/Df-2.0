@@ -163,6 +163,10 @@ const OLD_IDS = ["pistola", "ak47", "deagle", "katana", "uzi", "escopeta", "snip
 
 // ---------- Materiais e receitas ----------
 const MATS = {
+  blueprint_pistola: {"name":"Blueprint de Pistola","price":0,"credits":500,"chance":0.001,"rar":4,"blueprint":true,"short":"PISTOLA"},
+  blueprint_escopeta: {"name":"Blueprint de Escopeta","price":0,"credits":750,"chance":0.001,"rar":4,"blueprint":true,"short":"ESCOPETA"},
+  blueprint_fuzil: {"name":"Blueprint de Fuzil","price":0,"credits":1000,"chance":0.001,"rar":4,"blueprint":true,"short":"FUZIL"},
+  blueprint_sniper: {"name":"Blueprint de Sniper","price":0,"credits":1500,"chance":0.0005,"rar":4,"blueprint":true,"short":"SNIPER"},
   reset_stats: { name: "Cartão Reset de Stats", price: 5000 },
   trindade_eterna: { name: "Trindade · 100 anos", price: 20000000 },
   token_loja: { name: "Token da Loja", price: 0 },
@@ -194,9 +198,9 @@ const RECIPES = [
   { id: "serra",       mats: { sucata: 6, pecas: 3, eletronicos: 3 },     money: 20000, level: 10 },
   { id: "lancachamas", mats: { sucata: 8, pecas: 5, eletronicos: 3 },     money: 35000, level: 15 },
   { id: "lamina",      mats: { sucata: 10, pecas: 4, nucleo: 1 },         money: 60000, level: 25 },
-  { id: "trovao",      mats: { pecas: 15, eletronicos: 7, nucleo: 10 },   money: 2500000, level: 75 },
-  { id: "vingador", mats: { pecas: 14, eletronicos: 8, nucleo: 8 }, money: 2400000, level: 75 },
-  { id: "minigun_inf", mats: { pecas: 14, eletronicos: 10, nucleo: 4 },   money: 250000, level: 60 },
+  { id: "trovao",      mats: { pecas: 15, eletronicos: 7, nucleo: 10, blueprint_sniper: 1 },   money: 2500000, level: 75 },
+  { id: "vingador", mats: { pecas: 14, eletronicos: 8, nucleo: 8, blueprint_sniper: 1 }, money: 2400000, level: 75 },
+  { id: "minigun_inf", mats: { pecas: 14, eletronicos: 10, nucleo: 4, blueprint_fuzil: 1 },   money: 250000, level: 60 },
   // colete nº 10: craft difícil (precisa ter o nº 9, que é consumido)
   { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 500000, level: 100, needVest: 8 },
   // implantes X: 3 do tier 2 correspondente · Err X: 2 do X correspondente (needImp = implantes consumidos da mochila de implantes)
@@ -656,6 +660,16 @@ const TOKEN_LOJA_CHANCE = 0.0001, TOKEN_LOJA_MS = 24 * 3600 * 1000;
 function shopFree() { return (Number(save.shopFreeUntil) || 0) > fmWorld.nowMs(); }
 function drawMatIcon(id, cx, cy, s) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
+  if (MATS[id]?.blueprint) {
+    ctx.fillStyle="#16416b"; ctx.fillRect(-29,-21,58,42);
+    ctx.strokeStyle="#e6bd55"; ctx.lineWidth=1.5; ctx.strokeRect(-29,-21,58,42);
+    ctx.strokeStyle="#5380a3"; ctx.lineWidth=.5;
+    for(let x=-24;x<=24;x+=8){ctx.beginPath();ctx.moveTo(x,-17);ctx.lineTo(x,17);ctx.stroke();}
+    for(let y=-16;y<=16;y+=8){ctx.beginPath();ctx.moveTo(-25,y);ctx.lineTo(25,y);ctx.stroke();}
+    txt("BLUEPRINT",0,-5,8,"#ffffff","center",true);
+    txt(MATS[id].short,0,9,9,"#ffffff","center",true);
+    ctx.restore(); return;
+  }
   const art = MAT_ART[id];
   if (art && art.complete && art.naturalWidth) {
     ctx.imageSmoothingQuality = "high";

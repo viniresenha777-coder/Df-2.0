@@ -475,7 +475,13 @@ function buyCreditImplant(id) {
 }
 function creditShopBuy(id) {
   if (id === "trindade_eterna") buyTrindade();
-  else if (IMP[id]) buyCreditImplant(id);
+  else if (MATS[id]?.blueprint) {
+    if (!atBase()) return;
+    const cost = MATS[id].credits;
+    if (save.credits < cost) { toast("Créditos insuficientes"); return; }
+    if (!addMat(id, 1)) { toast("Mochila cheia"); return; }
+    save.credits -= cost; persist(); checkpoint("compra de blueprint"); toast("Blueprint adquirido!");
+  } else if (IMP[id]) buyCreditImplant(id);
 }
 const CREDIT_SHOP_SCENE = new Image();
 CREDIT_SHOP_SCENE.src = "img/fm_loja_creditos.webp";
@@ -491,6 +497,7 @@ const CREDIT_SHOP_SECTIONS = [
   ["rifles", "Rifles"],
   ["shotguns", "Escopetas"],
   ["machinegun", "Metralhadoras"],
+  ["blueprints", "Blueprints"],
 ];
 const CREDIT_SHOP_PAGE_SIZE = 5;
 function openCreditShop() {
@@ -505,6 +512,7 @@ function creditShopSelectSection(section) {
   game.creditCur = 0;
 }
 function creditShopRows(section) {
+  if (section === "blueprints") return Object.keys(MATS).filter(id => MATS[id].blueprint).map(id => ({kind:"mat",id,title:MATS[id].name,price:MATS[id].credits,currency:"credits"}));
   if (section === "implant")
     // do mais fraco (mais barato) para o mais forte; o Kit Mimic fica no fim
     return IMP_IDS.filter((id) => !IMP[id].craftOnly && (IMP[id].price > 0 || IMP[id].kitOnly))
@@ -736,6 +744,7 @@ function drawCreditShopSidebar() {
   txt(vipStatus(), 42, 480, 13, "#e6b37b", "left", false, 170);
 }
 function creditShopSample(section) {
+  if (section === "blueprints") return {kind:"mat",id:"blueprint_sniper"};
   if (section === "special") return { kind: "mat", id: "reset_stats" };
   if (section === "implant") return { kind: "implant", id: FM_MIMIC_ID };
   if (section === "vest") return { kind: "vest", id: 1 };
@@ -750,7 +759,7 @@ function creditShopSample(section) {
 function drawCreditShopSections(section) {
   CREDIT_SHOP_SECTIONS.forEach(([id, title], index) => {
     const row = Math.floor(index / 6);
-    const x = 246 + (index % 6) * 115 + row * 57,
+    const x = 246 + (index % 6) * 115,
       y = 112 + row * 63;
     const w = 108,
       h = 55;
@@ -841,6 +850,7 @@ function drawCreditShopServices() {
   );
 }
 function creditShopDescription(row) {
+  if (row.kind === "mat" && MATS[row.id]?.blueprint) return "Lendário · Consumido na Oficina. Drop comum a partir da região vermelha. Negociável no Mercado Negro.";
   switch (row.kind) {
     case "implant": {
       const description = implantDesc({ id: row.id, alloc: {} });

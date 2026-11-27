@@ -389,7 +389,7 @@ function drawFound() {
     info = RARITY[wd.rar].name + " · " + CAT_LABEL[wd.cat] + " · Dano " + wd.dmg +
       (wd.pellets ? " x" + wd.pellets : "") +
       (wd.melee ? " · Sem munição" : " · " + wd.mag + " balas");
-  } else if (e.type === "mat") info = "Material de criação e melhoria";
+  } else if (e.type === "mat") info = MATS[e.id]?.blueprint ? "Lendário · Blueprint de fabricação" : "Material de criação e melhoria";
   else if (e.type === "implant") info = implantDesc(e.im);
   else if (e.type === "food") info = "Alimento encontrado";
   else if (e.type === "ammo") info = "Munição: " + e.ammo;
@@ -600,7 +600,7 @@ function drawItemCell(it, x, y, w, h, sel, label) {
   } else {
     drawMatIcon(it.id, x + w / 2, y + h / 2 - 6, 0.6);
     txt(`${it.qty}x`, x + w - 6, y + 13, 10, "#ffd96a", "right", true);
-    txt(MATS[it.id].name, x + w / 2, y + h - 8, 9, "#e5e0c8", "center", false, w - 8);
+    txt(MATS[it.id].name, x + w / 2, y + h - 8, 9, MATS[it.id].blueprint ? "#e6bd55" : "#e5e0c8", "center", false, w - 8);
   }
 }
 function drawAmmoCell(st, x, y, w, h) {
