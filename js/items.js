@@ -28,6 +28,23 @@ const RARITY = [
 ];
 // ruído padrão por categoria: [raio (1 = máximo), chance de ouvir]
 const CAT_SOUND = { pistols: [0.35, 0.5], machinegun: [1, 1], shotguns: [1, 1], rifles: [0.7, 0.8], melee: [0, 0] };
+// Aggro por ataque: [probabilidade, raio em unidades do mapa, pode atrair reforços].
+function weaponAggro(d) {
+  if (d.grenade || d.explode) return [1, 600, true];
+  if (d.look === "chainsaw") return [0.18, 350, true];
+  if (d.fire || d.look === "flamer") return [0.18, 400, true];
+  if (d.look === "crossbow" || d.cat === "melee") return [0, 0, false];
+  if (d.id === "silenciada" || d.silenced) return [0.05, 100, false];
+  if (d.look === "minigun") return [1, 500, true];
+  if (d.cat === "pistols") return [0.18, 250, false];
+  if (d.cat === "rifles") return [0.18, 350, false];
+  if (d.look === "smg") return [1, 400, true];
+  if (d.cat === "shotguns" || d.cat === "machinegun") return [1, 450, true];
+  return [0, 0, false];
+}
+function weaponAggroText(d) {
+  return d.aggroChance ? Math.round(d.aggroChance * 100) + "% · raio " + d.aggroRadius + (d.aggroHorde ? " · horda" : " · local") : "0% · silenciosa";
+}
 const CAT_LABEL = { pistols: "Pistola", machinegun: "Metralhadora", shotguns: "Escopeta", rifles: "Rifle", melee: "Corpo a corpo" };
 
 // ---------- Arsenal ----------
@@ -130,6 +147,7 @@ WLIST.forEach((d) => {
   d.melee = d.cat === "melee";
   const s = d.sound || CAT_SOUND[d.cat];
   d.sound = s[0]; d.hear = s[1];
+  [d.aggroChance, d.aggroRadius, d.aggroHorde] = weaponAggro(d);
   d.rar = W_RAR[d.id] != null ? W_RAR[d.id] : 0;
   d.spr = W_SPR[d.id]; d.tint = W_TINT[d.id];
   d.craftOnly = CRAFT_ONLY.includes(d.id);

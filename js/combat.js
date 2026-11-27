@@ -294,7 +294,8 @@ function attack() {
   if (w.melee) {
     game.slash = player.angle; game.slashT = 200; game.slashR = st.range; game.slashA = w.arc;
     sfx.shot(w);
-    if (w.sound > 0) makeNoise(player.x, player.y, NOISE_R * w.sound * 0.6, w.hear);
+    weaponNoise(w, player.x, player.y, player.fx.silence);
+    if (w.aggroChance && typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(player.x, player.y, player.angle, w.id, 1, player.fx.silence);
     for (const z of Zs()) {
       if (z.hp <= 0) continue;
       if (Math.hypot(z.x - player.x, z.y - player.y) > st.range + z.r) continue;
@@ -330,7 +331,7 @@ function attack() {
       dmg: st.dmg * dmgMult(w), pierce: !!w.pierce, hit: [], big: w.cat === "rifles" || w.rar >= 3, fire: !!w.fire, explode: w.explode || 0, bolt: w.look === "crossbow",
       grenade: !!w.grenade, fx: w, knock: !!w.knock, color: w.rar >= 3 ? RARITY[w.rar].color : null });
   }
-  if (typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(mx, my, w.thunder ? player.shotAng : aim, w.id, n);   // os outros veem o tiro
+  if (typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(mx, my, w.thunder ? player.shotAng : aim, w.id, n, player.fx.silence);   // os outros veem o tiro
   if (!w.fire) {
     player.flashT = 60;
     player.thunderFlash = !!w.thunder;
@@ -338,7 +339,7 @@ function attack() {
   }
   game.shake = Math.min(10, game.shake + (w.cat === "shotguns" ? 5 : w.cat === "rifles" ? 4 : w.fire ? 0.4 : 1.2));
   if (!w.fire || Math.random() < 0.3) sfx.shot(w);
-  if (w.sound > 0) makeNoise(player.x, player.y, NOISE_R * w.sound * (1 - Math.min(0.9, player.fx.silence / 100)), w.hear);
+  weaponNoise(w, player.x, player.y, player.fx.silence);
   // munição infinita: o pente de 600 só precisa ser recarregado
   if (w.infinite) { if (!adm.infAmmo) it.ammo--; }
   else if (!adm.infAmmo && Math.random() * 100 >= player.fx.saver) it.ammo--;
@@ -349,6 +350,47 @@ function attack() {
 function alertZombie(z) {
   if (z.state !== "chase") { z.state = "chase"; z.alertT = 700; }
   z.lose = 0;
+}
+// Ruído de arma é sorteado uma vez por ataque, não por zumbi nem por pellet.
+function weaponNoise(w, x, y, silence = 0) {
+  if (!w.aggroChance || !game || game.hub || game.trans || game.over || inSafe()) return false;
+  if (typeof fmWorld !== "undefined" && fmWorld.isFollower()) return false;
+  if (Math.random() >= w.aggroChance) return false;
+  const radius = w.aggroRadius * (1 - Math.max(0, Math.min(0.9, (Number(silence) || 0) / 100)));
+  game.pings.push({ x, y, r: radius, t: 350 });
+  const now = performance.now();
+  for (const z of Zs()) {
+    if (z.hp <= 0 || Math.hypot(z.x - x, z.y - y) > radius) continue;
+    if (z.state === "chase") { z.lose = 0; continue; }
+    if (z.state === "alert" && z.noiseUntil > now) { alertZombie(z); continue; }
+    z.state = "alert"; z.noiseX = x; z.noiseY = y; z.noiseUntil = now + 6000; z.alertT = 700;
+  }
+  if (w.aggroHorde) weaponHordeNoise(x, y, radius, now);
+  return true;
+}
+// Reforços normais de grinding: sem bônus repetível do evento de horda.
+function weaponHordeNoise(x, y, radius, now) {
+  if (game.inside || !world?.cell || nearSafe(x, y, 360) || adm.freeze) return;
+  const zone = world.cell.zone, tier = regionOf(zone);
+  let a = game.weaponAggro;
+  if (!a || a.cell !== world.cell) a = game.weaponAggro = { cell: world.cell, pressure: 0, last: now, next: 0 };
+  a.pressure = Math.max(0, a.pressure - (now - a.last) / 650);
+  a.last = now;
+  if (radius < 100) return;
+  a.pressure = Math.min(14, a.pressure + radius / 450);
+  if (a.pressure < 8 || now < a.next || zombies.length >= 55) return;
+  a.pressure = 0; a.next = now + 20000;
+  const count = Math.min(55 - zombies.length, 2 + Math.floor(tier / 2));
+  for (let j = 0; j < count; j++) {
+    for (let t = 0; t < 12; t++) {
+      const angle = Math.random() * Math.PI * 2, dist = rand(560, 820);
+      const sx = x + Math.cos(angle) * dist, sy = y + Math.sin(angle) * dist;
+      if (sx < 20 || sy < 20 || sx > WORLD_W - 20 || sy > WORLD_H - 20 || nearSafe(sx, sy, 360) || !walkable(sx, sy, 16)) continue;
+      const z = makeZombie(sx, sy, pickZType(zone), zone);
+      z.state = "alert"; z.noiseX = x; z.noiseY = y; z.noiseUntil = now + 18000; z.alertT = 700;
+      zombies.push(z); break;
+    }
+  }
 }
 function makeNoise(x, y, radius, chance) {
   game.pings.push({ x, y, r: radius, t: 350 });
@@ -679,7 +721,8 @@ function zReach(z) { return z.r + player.r + (z.type === "dog" ? 12 : 18) * Math
 function wanderDuringPause(dt) {
   for (const z of Zs()) {
     if (z.hp <= 0) continue;
-    if (z.state === "chase") z.wt = 0;
+    if (z.state === "chase" || z.state === "alert") z.wt = 0;
+    z.noiseUntil = 0;
     z.state = "idle";
     z.seen = false;
     z.alertT = z.lose = z.blind = z.atkT = z.lunge = 0;
@@ -770,7 +813,8 @@ function updateZombies(dt, k) {
     if (!game.inside && d > 1400) continue; // longe demais: parado
     if (z.alertT > 0) z.alertT -= dt;
     const ox = z.x, oy = z.y;
-    if (z.state === "idle") {
+    if (z.state === "alert" && performance.now() >= (z.noiseUntil || 0)) { z.state = "idle"; z.wt = 0; }
+    if (z.state === "idle" || z.state === "alert") {
       let sight = (z.boss ? 130 : SIGHT_R) * (player.sprinting ? 2 : 1) * (1 - Math.min(0.9, player.fx.silence / 100)) / (1 + (A("silence") - 10) * 0.015);
       if (game.inside) sight *= 2.2;
       if (d < sight && losClear(z.x, z.y, player.x, player.y)) {
@@ -809,12 +853,19 @@ function updateZombies(dt, k) {
       z.lose = d > 560 ? z.lose + dt : 0;
       if (z.lose > 6000) { z.state = "idle"; z.wt = 0; }
       if (Math.random() < dt / 5000) sfx.groan(clamp(1 - d / 700, 0, 1), z);
+    } else if (z.state === "alert") {
+      const nd = Math.hypot(z.noiseX - z.x, z.noiseY - z.y);
+      if (nd > 12) {
+        let ang = Math.atan2(z.noiseY - z.y, z.noiseX - z.x);
+        if (z.detourT > 0) { z.detourT -= dt; ang += z.detourDir * 1.2; }
+        step = Math.min(nd, z.speed * 0.6 * k * chill); z.angle = ang; moveZ(z, ang, step);
+      }
     } else step = wander(z, k, dt);
     pushOut(z, z.r);
     if (game.inside) { z.x = clamp(z.x, 56, IW() - 56); z.y = clamp(z.y, 56, IH() - 56); }
     else { z.x = clamp(z.x, z.r, WORLD_W - z.r); z.y = clamp(z.y, z.r, WORLD_H - z.r); }
     // preso atrás de uma parede? tenta contornar
-    if (z.state === "chase" && step > 0) {
+    if ((z.state === "chase" || z.state === "alert") && step > 0) {
       if (Math.hypot(z.x - ox, z.y - oy) < step * 0.35) {
         z.stuckT += dt;
         if (z.stuckT > 250 && z.detourT <= 0) { z.detourT = 700 + Math.random() * 500; z.detourDir = Math.random() < 0.5 ? -1 : 1; z.stuckT = 0; }

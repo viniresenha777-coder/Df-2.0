@@ -773,6 +773,7 @@ function fmBalãoDetalhes(it) {
       add("Categoria: " + (CAT_LABEL[base.cat] || CATNAME[base.cat] || "Arma"), "#8bc9f5");
       add("Dano: " + Math.round(stat.dmg), "#f2e9df");
       add("Ataques por segundo: " + (1000 / stat.delay).toFixed(2), "#eee1d2");
+      add("Aggro: " + weaponAggroText(base), base.aggroHorde ? "#ffad78" : "#8bed92");
       if (stat.reload) add("Recarga: " + (stat.reload / 1000).toFixed(2) + " s", "#eee1d2");
       const sum = (up.acc || 0) + (up.dmg || 0) + (up.rel || 0);
       if (sum) {

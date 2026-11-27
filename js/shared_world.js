@@ -141,6 +141,7 @@ const fmWorld = (() => {
       netId: z.netId, type: z.type, zone: z.zone, x: Math.round(z.x * 10) / 10,
       y: Math.round(z.y * 10) / 10, hp: Math.round(z.hp), maxHp: z.maxHp,
       r: z.r, angle: z.angle, state: z.state, anim: z.anim,
+      noiseX: z.noiseX, noiseY: z.noiseY, noiseRemaining: Math.max(0, (z.noiseUntil || 0) - performance.now()),
       boss: !!z.boss, bossId: z.bossId || null, bossName: z.bossName || null,
       speed: z.speed, dmg: z.dmg, hitDelay: z.hitDelay,
       skin: z.skin, cloth: z.cloth, stains: z.stains, flash: z.flash,
@@ -192,6 +193,7 @@ const fmWorld = (() => {
       const fromX = z.x, fromY = z.y;
       const previousScreams = z.screamCount || 0;
       Object.assign(z, d);
+      z.noiseUntil = now + Math.max(0, Math.min(18000, Number(d.noiseRemaining) || 0));
       if (!wasNew && ZTYPES[z.type].screams && z.screamCount > previousScreams) playCreeperScream(z);
       const skipLerp = wasNew || Math.hypot(fromX - d.x, fromY - d.y) > 140;
       z.netFromX = skipLerp ? d.x : fromX;

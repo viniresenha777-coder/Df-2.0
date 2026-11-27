@@ -59,7 +59,7 @@ function weaponDetail(d, inst, x, y, w) {
       : `${(st.reload / 1000).toFixed(1)} s`]);
     rows.push(["Precisão", `${Math.round(100 - st.spread * 250)}%`]);
   }
-  rows.push(["Ruído", d.sound === 0 ? "nenhum" : d.sound <= 0.1 ? "baixo" : d.sound < 1 ? "médio" : "alto"]);
+  rows.push(["Aggro", weaponAggroText(d)]);
   if (d.slow) rows.push(["Peso", `-${d.slow}% velocidade`]);
   if (d.lifesteal) rows.push(["Especial", `cura ${d.lifesteal * 100}% do dano`]);
   if (d.explode) rows.push(["Especial", d.grenade ? "granada explosiva" : "tiro explosivo"]);

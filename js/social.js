@@ -284,18 +284,20 @@ const fmSocial = (() => {
   }
   // ----- tiros dos outros jogadores: só o visual e o som (o dano no zumbi já vem pelo canal dos zumbis) -----
   let lastShotSent = 0;
-  function sendShot(x, y, a, wid, n) {
+  function sendShot(x, y, a, wid, n, silence = 0) {
     if (!moveReady || !moveChannel || !userId || !connected) return;
     const now = Date.now();
     if (now - lastShotSent < 80) return;                        // no máximo ~12 por segundo
     lastShotSent = now;
-    moveChannel.send({ type: "broadcast", event: "shot", payload: { uid: userId, x: Math.round(x), y: Math.round(y), a: Math.round(a * 1000) / 1000, w: wid, n: Math.min(8, n | 0) } }).catch(() => {});
+    moveChannel.send({ type: "broadcast", event: "shot", payload: { uid: userId, x: Math.round(x), y: Math.round(y), a: Math.round(a * 1000) / 1000, w: wid, n: Math.min(8, n | 0), silence: Math.max(0, Math.min(90, Number(silence) || 0)) } }).catch(() => {});
   }
   function receiveShot(event) {
     const p = event && event.payload, prev = p && peers.get(p.uid);
     if (!prev || !sameLocation(prev) || !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.a) || !WDEF[p.w]) return;
     if (Math.hypot(p.x - prev.x, p.y - prev.y) > 260) return;    // tiro longe de onde o jogador está: ignora
-    netShot(p.x, p.y, p.a, WDEF[p.w], Math.max(1, Math.min(8, p.n | 0)));
+    const weapon = WDEF[p.w];
+    if (!weapon.melee) netShot(p.x, p.y, p.a, weapon, Math.max(1, Math.min(8, p.n | 0)));
+    weaponNoise(weapon, prev.x, prev.y, p.silence);
     prev.flashAt = performance.now();
   }
   function interpolate(p, now) {
