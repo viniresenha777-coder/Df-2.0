@@ -8,7 +8,8 @@
 //  para um arquivo no computador; no navegador, para o armazenamento local.
 // =====================================================================
 const NATIVE = typeof window !== "undefined" && !!window.__FM_NATIVE__;
-const CP_EVERY = 60000;
+const CP_EVERY = 5000;
+let fmCheckpointBusy = false;
 
 function storeGet() {
   if (typeof fmCloud !== "undefined" && fmCloud.isActive()) return fmCloud.read();
@@ -188,5 +189,8 @@ function restoreRun() {
 function checkpointTick(dt) {
   if (!game || game.over) return;
   game.cpT = (game.cpT || 0) + dt;
-  if (game.cpT >= CP_EVERY) checkpoint("1 minuto");
+  if (game.cpT >= CP_EVERY && !fmCheckpointBusy) {
+    fmCheckpointBusy = true;
+    checkpoint("automático").finally(() => { fmCheckpointBusy = false; });
+  }
 }

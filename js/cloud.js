@@ -42,6 +42,7 @@ const fmCloud = (() => {
   let snapshot = null;
   let revision = null;
   let pending = Promise.resolve();
+  let retainedWallet = 0, retainedBank = 0;
 
   function requireClient() {
     if (!client) throw new Error("Não foi possível carregar o serviço de login. Verifique a conexão e atualize a página.");
@@ -120,6 +121,7 @@ const fmCloud = (() => {
     revision = data ? data.revisao : null;
     saleTotal = Number(data?.progresso?.saleTotal) || 0;
     pending = Promise.resolve();
+    retainedWallet = retainedBank = 0;
   }
   async function resume() {
     const db = requireClient();
@@ -163,6 +165,7 @@ const fmCloud = (() => {
     let progress;
     try { progress = JSON.parse(str); } catch (error) { return Promise.reject(error); }
     const userId = user.id;
+    const walletAtCapture = retainedWallet, bankAtCapture = retainedBank;
     // trava: nunca gravar a partida de outro personagem nesta conta (duas contas no mesmo navegador)
     if (ownerName && progress.name && progress.name !== ownerName)
       return Promise.reject(new Error(`Esta aba está com a partida de "${progress.name}", mas a conta logada é de "${ownerName}". Nada foi salvo: recarregue a página.`));
@@ -170,6 +173,8 @@ const fmCloud = (() => {
       if (!user || user.id !== userId) throw new Error("A conta mudou durante o salvamento.");
       const db = requireClient();
       const nextRevision = crypto.randomUUID();
+      if (progress.run?.g) progress.run.g.money = Math.max(0, (Number(progress.run.g.money) || 0) - (retainedWallet - walletAtCapture));
+      progress.bank = Math.max(0, (Number(progress.bank) || 0) - (retainedBank - bankAtCapture));
       let result;
       if (revision) {
         const saveCurrent = () => {
@@ -193,6 +198,8 @@ const fmCloud = (() => {
       // ganho acima do limite por hora: o servidor guardou a diferença como "Bloqueado" (em análise)
       const cortadoMochila = (Number(progress.run?.g?.money) || 0) - (Number(accepted.run?.g?.money) || 0);
       const cortadoBanco = (Number(progress.bank) || 0) - (Number(accepted.bank) || 0);
+      retainedWallet += Math.max(0, cortadoMochila);
+      retainedBank += Math.max(0, cortadoBanco);
       if (cortadoMochila > 0 || cortadoBanco > 0)
         window.dispatchEvent(new CustomEvent("fm-dinheiro-retido", { detail: { mochila: Math.max(0, cortadoMochila), banco: Math.max(0, cortadoBanco) } }));
       snapshot = JSON.stringify(accepted);
