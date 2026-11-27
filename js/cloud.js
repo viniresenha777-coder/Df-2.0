@@ -160,7 +160,36 @@ const fmCloud = (() => {
     pending = result.catch(() => {});
     return result;
   }
+  let saveCount = 0, saveSequence = 0, saveFailed = false;
+  function saveIndicator(state) {
+    if (!document.body) return;
+    let el = document.getElementById("fm-save-status");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "fm-save-status";
+      el.setAttribute("role", "status");
+      el.style.cssText = "position:fixed;bottom:12px;left:12px;z-index:98;padding:5px 9px;background:rgba(12,15,12,.9);border:1px solid currentColor;border-radius:4px;font:12px sans-serif;pointer-events:none";
+      document.body.appendChild(el);
+    }
+    el.style.color = state === "ok" ? "#8ddd91" : state === "pending" ? "#ffd478" : "#ff8585";
+    el.textContent = state === "ok" ? "✓ Progresso salvo" : state === "pending" ? "Salvando progresso..." : "Falha ao salvar — não feche o jogo";
+  }
   function write(str) {
+    const seq = ++saveSequence;
+    saveCount++;
+    saveIndicator("pending");
+    return Promise.resolve().then(() => writeRemote(str)).then(value => {
+      if (seq === saveSequence) saveFailed = false;
+      return value;
+    }, error => {
+      if (seq === saveSequence) saveFailed = true;
+      throw error;
+    }).finally(() => {
+      saveCount--;
+      saveIndicator(saveFailed ? "error" : saveCount ? "pending" : "ok");
+    });
+  }
+  function writeRemote(str) {
     if (!user) return Promise.reject(new Error("Entre na sua conta para salvar."));
     let progress;
     try { progress = JSON.parse(str); } catch (error) { return Promise.reject(error); }
