@@ -667,14 +667,14 @@ function updateSpits(dt, k) {
 // devolve true quando o chefe está ocupado com o ataque (não anda normal neste quadro)
 function bossAbility(z, d, dt, k) {
   const id = z.bossId || (z.type === "alce_natal" ? "alce_natal" : null), reg = diffOf(z.zone);
-  z.abil -= dt;
+  z.abil -= dt * ZOMBIE_ATTACK_RATE;
   const minions = () => zombies.filter((m) => m.mother === z && m.hp > 0).length;
   const summon = (type, n) => { for (let i = 0; i < n; i++) { const a = Math.random() * 6.283; const m = makeZombie(z.x + Math.cos(a) * (z.r + 20), z.y + Math.sin(a) * (z.r + 20), type, z.zone); m.mother = z; alertZombie(m); zombies.push(m); } };
   if (z.abilT > 0) {
     z.abilT -= dt;
     if (id === "carrasco") { // giro com a serra
       z.angle += 0.5 * k; moveZ(z, Math.atan2(player.y - z.y, player.x - z.x), z.speed * 1.2 * k); pushOut(z, z.r);
-      z.spinTick = (z.spinTick || 0) - dt;
+      z.spinTick = (z.spinTick || 0) - dt * ZOMBIE_ATTACK_RATE;
       if (z.spinTick <= 0) { z.spinTick = 250; if (d < 100) damagePlayer(z.dmg * 0.45); }
       return true;
     }
@@ -773,7 +773,7 @@ function updateZombies(dt, k) {
     const zt = ZTYPES[z.type];
     // pancada no chão da abominação (área)
     if (zt.slam && z.state === "chase") {
-      z.slamCd -= dt;
+      z.slamCd -= dt * ZOMBIE_ATTACK_RATE;
       if (z.slamT > 0) {
         z.slamT -= dt;
         if (z.slamT <= 0) {
@@ -797,13 +797,13 @@ function updateZombies(dt, k) {
       : z.bossId === "alfa" ? { w: 250, t: 380, m: 4.2, cd: 2400, min: 80, max: 300 }
       : (z.bossId === "acougueiro" || z.bossId === "carrasco") ? { w: 500, t: 600, m: 3, cd: 5000, min: 110, max: 320 } : null;
     if (chg && z.state === "chase") {
-      z.chargeCd -= dt;
+      z.chargeCd -= dt * ZOMBIE_ATTACK_RATE;
       if (z.windT > 0) { z.windT -= dt; if (z.windT <= 0) z.chargeT = chg.t; continue; }
       if (z.chargeT > 0) {
         z.chargeT -= dt;
         moveZ(z, z.chargeAng, z.speed * chg.m * k); pushOut(z, z.r);
         if (d < z.r + player.r + 4 && z.hitCd <= 0) { damagePlayer(z.dmg * 1.3); addInfection(z, 1.3); z.hitCd = z.hitDelay; z.chargeT = 0; game.shake = Math.min(14, game.shake + 5); }
-        z.hitCd -= dt;
+        z.hitCd -= dt * ZOMBIE_ATTACK_RATE;
         continue;
       }
       if (d < chg.max && d > chg.min && z.chargeCd <= 0 && losClear(z.x, z.y, player.x, player.y)) {
@@ -813,7 +813,7 @@ function updateZombies(dt, k) {
     }
     // tóxico deixa rastro de veneno
     if (zt.puddle && z.state === "chase") {
-      z.puddleCd = (z.puddleCd || 0) - dt;
+      z.puddleCd = (z.puddleCd || 0) - dt * ZOMBIE_ATTACK_RATE;
       if (z.puddleCd <= 0) { addHazard(z.x, z.y, 24, 4000, 4 + diffOf(z.zone) * 2, "poison"); z.puddleCd = 1400; }
     }
     if (!game.inside && d > 1400) continue; // longe demais: parado
@@ -844,7 +844,7 @@ function updateZombies(dt, k) {
         }
       }
       if ((ZTYPES[z.type].ranged && !z.boss) || z.bossId === "necromante") {
-        z.spitCd -= dt;
+        z.spitCd -= dt * ZOMBIE_ATTACK_RATE;
         if (d < 330 && losClear(z.x, z.y, player.x, player.y)) {
           if (d < 170) step = -z.speed * 0.6 * k; else if (d < 290) step = 0;
           if (z.spitCd <= 0) { spit(z); z.spitCd = z.boss ? 900 : 2200 + Math.random() * 1200; }
@@ -878,7 +878,7 @@ function updateZombies(dt, k) {
       } else z.stuckT = 0;
     }
     z.anim += Math.abs(step) * 0.12;
-    z.hitCd -= dt * chill;
+    z.hitCd -= dt * ZOMBIE_ATTACK_RATE * chill;
     // Colosso: você empurra os infectados comuns; correndo, derruba (e corta o cuspe)
     if (player.flags.jugger && !z.boss && d < z.r + player.r + 4) {
       z.x -= (dx / d) * 3; z.y -= (dy / d) * 3;
@@ -892,7 +892,7 @@ function updateZombies(dt, k) {
     }
     if (z.type === "alce_natal" || z.bossId === "santa_natal") continue;
     if (z.atkT > 0) {                    // golpe em andamento: o dano sai no meio dele
-      z.atkT -= dt * chill;
+      z.atkT -= dt * ZOMBIE_ATTACK_RATE * chill;
       z.angle = Math.atan2(dy, dx);
       if (!z.atkHit && z.atkT <= ZATK_MS * (1 - ZATK_HIT)) {
         z.atkHit = true;

@@ -260,7 +260,7 @@ const fmWorld = (() => {
     if (!isFollower() || game.trans || game.paused || game.menu) return;
     for (const z of Zs()) {
       if (z.hp <= 0 || ZTYPES[z.type].screams) continue;
-      z.netHitCd = Math.max(0, (z.netHitCd || 0) - dt);
+      z.netHitCd = Math.max(0, (z.netHitCd || 0) - dt * ZOMBIE_ATTACK_RATE);
       if (z.netHitCd > 0 || Math.hypot(player.x - z.x, player.y - z.y) >= z.r + player.r + 3) continue;
       damagePlayer(z.dmg);
       addInfection(z);

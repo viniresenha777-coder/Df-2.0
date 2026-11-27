@@ -20,6 +20,7 @@ const FONT = "'Trebuchet MS', 'Segoe UI', sans-serif";
 // ruas todas da mesma largura (como no Dead Frontier): a rua da borda tem meia largura e
 // junta com a meia rua da área vizinha.
 const AREA_EDGE = 196, BLOCK_W = 620, BLOCK_H = 640, ST_W = 280;   // ruas laterais (borda) 40% mais largas
+const ZOMBIE_ATTACK_RATE = 0.55;
 const WORLD_W = 2 * AREA_EDGE + 2 * BLOCK_W + ST_W;   // 1912
 const WORLD_H = 2 * AREA_EDGE + 2 * BLOCK_H + ST_W;   // 1952
 const SIDEWALK = 26;

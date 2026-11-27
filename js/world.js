@@ -608,11 +608,14 @@ function mapTick(dt) {
 // com 50% da vida o chefe chama todos os zumbis da área para cima de você
 function bossHalf(z) {
   z.half = true;
+  const survivors = [player];
+  if (typeof fmSocial !== "undefined") survivors.push(...fmSocial.online().filter(fmSocial.sameLocation));
   const n = Math.max(5, Math.round((world.wave1N || 8) * 0.6 * (world.cell.cleared ? 0.7 : 1)));
   for (let i = 0; i < n; i++) {
-    for (let t = 0; t < 12; t++) {
-      const a = Math.random() * 6.283, d = rand(160, 420), x = z.x + Math.cos(a) * d, y = z.y + Math.sin(a) * d;
+    for (let t = 0; t < 48; t++) {
+      const a = Math.random() * 6.283, d = rand(560, 920), x = z.x + Math.cos(a) * d, y = z.y + Math.sin(a) * d;
       if (x < 30 || y < 30 || x > WORLD_W - 30 || y > WORLD_H - 30 || !walkable(x, y, 16)) continue;
+      if (survivors.some(p => Math.hypot(x - p.x, y - p.y) < 560)) continue;
       const m = makeZombie(x, y, pickZType(z.zone), z.zone); m.mother = z; zombies.push(m); break;
     }
   }
