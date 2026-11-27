@@ -40,7 +40,9 @@ const IMPORTED_CLOTHING = [W3D("cape_hood", "cape", "cape_hood", "Capa com capuz
   W3D("cl_pants_cargo", "pants", "cl_pants_cargo", "Calça Cargo", "Cargo")];
 // Capa e máscaras: compradas na Loja de Créditos (o resto das roupas o personagem já tem desde o início)
 const CREDIT_CLOTHING = { cape_hood: 400, mask_vendetta: 400, mask_hope: 400 };   // ≈ R$ 20 cada (20 créditos por R$ 1)
-function clothingOwned(id) { return !CREDIT_CLOTHING[id] || !!(save.clothesOwned && save.clothesOwned[id]); }
+function clothingOwned(id) {
+  if (CLOTHING_BY_ID[id]?.kind === "pack") return !!save.clothesOwned?.[id] || save.clothing?.pack === id || fmStashStoredClothing(id);
+  return !CREDIT_CLOTHING[id] || !!(save.clothesOwned && save.clothesOwned[id]); }
 function buyCreditClothing(id) {
   const item = CLOTHING_BY_ID[id], price = CREDIT_CLOTHING[id];
   if (!item || !price) return;

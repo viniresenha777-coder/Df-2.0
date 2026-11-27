@@ -29,8 +29,13 @@ function allocUsed(im) { let n = 0; for (const k in im.alloc || {}) n += im.allo
 function cleanImplant(im) {
   if (!im || !IMP[im.id]) return null;
   const d = IMP[im.id], out = newImplant(im.id);
+  if (im.id === "implante_28" && typeof im.betaGiftId === "string") {
+    out.betaGiftId = im.betaGiftId;
+    out.semTroca = true;
+  }
   if (im.tokenBound === true) out.tokenBound = true;
   if (im.semTroca === true) out.semTroca = true;   // presente do ADM marcado como não transferível
+  if (im.validadeDias && im.presente) Object.assign(out, { presente: im.presente, validadeDias: im.validadeDias, expiraEm: im.expiraEm, semTroca: true });
   if (d.alloc && im.alloc) {
     let left = d.alloc.points;
     for (const o of d.alloc.opts) { const n = Math.max(0, Math.min(left, im.alloc[o.key] | 0)); if (n) { out.alloc[o.key] = n; left -= n; } }
@@ -49,6 +54,12 @@ function implantFx(im, i, list) {
   }
   for (const k in d.fx) fx[k] = d.fx[k];
   if (d.alloc) for (const o of d.alloc.opts) { const n = (im.alloc && im.alloc[o.key]) || 0; if (n) fx[o.key] = (fx[o.key] || 0) + n * o.per; }
+  if (im.id === "implante_28" && im.betaGiftId) {
+    const beta = window.fmBetaAccess;
+    const now = beta?.clockTime + (performance.now() - beta?.clockBase);
+    if (!(beta?.implant_gift_id === im.betaGiftId && now < Date.parse(beta.beta_expires_at)))
+      for (const key of Object.keys(fx)) fx[key] *= 0.5;
+  }
   return fx;
 }
 function fxText(fx) { return Object.keys(fx).filter((k) => fx[k]).map((k) => `${sgn(fx[k])}% ${FX_LABEL[k] || k}`).join(" · "); }
@@ -58,7 +69,8 @@ function implantDesc(im) {
     const left = i > 0 ? save.installed[i - 1] : null;
     if (left && !IMP[left.id].mimic) parts.push(`Copiando ${implantName(left)}: ${fxText(implantFx(im, i, save.installed)) || "nada"}`);
   } else {
-    const t = fxText(d.fx || {});
+    const t = fxText(im.betaGiftId ? implantFx(im, i, save.installed) : d.fx || {});
+    if (im.betaGiftId) parts.push("Beta Tester · bônus integral por 60 dias; depois metade permanente");
     if (t) parts.push(t);
     if (d.alloc) {
       const a = {}; for (const o of d.alloc.opts) if (im.alloc && im.alloc[o.key]) a[o.key] = im.alloc[o.key] * o.per;
@@ -102,7 +114,7 @@ function recalcImplants() {
     safe[k] = (safe[k] || 0) + bonus;
   }
   player.fxAll = all; player.fxSafe = safe; player.flags = flags; player.fx = all;
-  const vest = save.vest >= 0 ? VESTS[save.vest] : null;
+  const vest = save.vest >= 0 ? vestDefinition(save.vest) : null;
   // Endurance vale a mesma quantidade em HP. Colete e implantes acrescentam
   // pontos de vida até o limite absoluto de 200, sem bônus automático por nível.
   const baseHp = Number.isFinite(player.attrs.endurance) ? player.attrs.endurance : 25;
@@ -115,6 +127,13 @@ function recalcImplants() {
 // Último Suspiro (Desafia-Morte): com a vida crítica, as penalidades dos implantes deixam de valer
 function lastStandTick() {
   if (!player.fxAll) return;
+  const beta = window.fmBetaAccess;
+  if (beta?.beta_expires_at) {
+    const expired = beta.clockTime + performance.now() - beta.clockBase >= Date.parse(beta.beta_expires_at);
+    const changed = player.betaExpired !== undefined && player.betaExpired !== expired;
+    player.betaExpired = expired;
+    if (changed) { recalcImplants(); return; }
+  }
   player.fx = player.flags.lastStand && player.hp / player.maxHp < 0.25 ? player.fxSafe : player.fxAll;
 }
 function makeStock() { return IMP_IDS.filter((id) => !IMP[id].kitOnly && !IMP[id].craftOnly && IMP[id].price > 0).sort((a, b) => IMP[a].price - IMP[b].price).map((id) => ({ id, price: IMP[id].price })); }
@@ -168,6 +187,9 @@ function implantPresetApply(name) {
     toast("Não há espaço na mochila para trocar este esquema (precisa de " + remaining.length + ").");
     return false;
   }
+  for (const {actual} of chosen) {
+    if (!fmGifts.ready(actual, () => implantPresetApply(name))) return false;
+  }
   // Todas as verificações foram realizadas, agora a troca é atômica.
   for (const item of chosen) {
     const cleaned = cleanImplant(item.template);
@@ -213,10 +235,10 @@ function xpNeed(l) { return Math.round(200 + 100 * l + 0.6 * Math.pow(l, 2.5)); 
 function A(id) { return player.attrs[id]; }
 // Vest and implant protection stack additively; attribute armor remains a separate layer.
 function equipmentProtection() {
-  const vest = save.vest >= 0 ? (VESTS[save.vest].armor + vestUpgrade().armor) * vestEff() : 0;
+  const vest = save.vest >= 0 ? (vestDefinition(save.vest).armor + vestUpgrade().armor) * vestEff() : 0;
   return Math.max(-50, Math.min(95, vest + (player.fx.thick || 0)));
 }
-function trindadeActive() { return (save.trindadeUntil || 0) > Date.now(); }
+function trindadeActive() { return (save.trindadeUntil || 0) > fmWorld.nowMs(); }
 function armorRed() {
   const a = A("armor") / (A("armor") + 150);
   const baseline = Math.min(0.78, 1 - (1 - a) * (1 - equipmentProtection() / 100));

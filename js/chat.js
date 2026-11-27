@@ -8,6 +8,7 @@
 const fmChat = (() => {
   const MAX_LINES = 60, SHOW_MS = 12000, FADE_MS = 2000;
   let box = null, log = null, input = null, open = false, started = false, channel = null;
+  let rendered = -1, wasOpen = false;
   const lines = [];
   const db = () => fmCloud.socialClient();
 
@@ -19,6 +20,9 @@ const fmChat = (() => {
     box.id = "fm-chat";
     log = document.createElement("div");
     log.className = "fm-chat-log";
+    log.tabIndex = 0;
+    log.addEventListener("wheel", e => { if (open) e.stopPropagation(); }, {passive: true});
+    log.addEventListener("pointerdown", e => { if (open) e.stopPropagation(); });
     input = document.createElement("input");
     input.className = "fm-chat-input";
     input.maxLength = 200;
@@ -30,7 +34,7 @@ const fmChat = (() => {
       if (e.key === "Enter") { e.preventDefault(); send(); }
       else if (e.key === "Escape") { e.preventDefault(); close(); }
     });
-    input.addEventListener("blur", () => { if (open) setTimeout(() => { if (open && document.activeElement !== input) close(); }, 0); });
+    input.addEventListener("blur", () => { if (open) setTimeout(() => { if (open && document.activeElement !== input && !box.contains(document.activeElement)) close(); }, 0); });
     box.append(log, input);
     stage.appendChild(box);
     setInterval(render, 500);          // apaga as mensagens velhas quando o chat está fechado
@@ -47,8 +51,11 @@ const fmChat = (() => {
 
   function render(force) {
     if (!log) return;
+    if (open && wasOpen && !force && rendered === lines.length) return;
+    const keepBottom = !wasOpen || log.scrollHeight - log.clientHeight - log.scrollTop < 30;
+    const oldTop = log.scrollTop;
     const now = performance.now();
-    const show = open ? lines.slice(-14) : lines.filter((l) => now - l.at < SHOW_MS + FADE_MS).slice(-6);
+    const show = open ? lines.slice() : lines.filter((l) => now - l.at < SHOW_MS + FADE_MS).slice(-6);
     if (!force && !open && !show.length && !log.childElementCount) return;
     log.replaceChildren(...show.map((l) => {
       const p = document.createElement("div");
@@ -64,6 +71,8 @@ const fmChat = (() => {
       return p;
     }));
     box.classList.toggle("open", open);
+    if (open) log.scrollTop = keepBottom ? log.scrollHeight : oldTop;
+    wasOpen = open; rendered = lines.length;
   }
 
   async function start() {

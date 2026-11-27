@@ -41,7 +41,7 @@ const WLIST = [
   { id: "deagle",   name: "Desert Eagle",  short: "Desert", cat: "pistols", look: "pistol", dmg: 17, delay: 500, mag: 7, reload: 1400, ammo: ".50", price: 900, req: [20, 45], len: 18, color: "#9aa0a6" },
   // submetralhadoras
   { id: "uzi",      name: "Uzi",           cat: "machinegun", look: "smg",   dmg: 2.25, delay: 116.64,  mag: 32, reload: 1500, ammo: "9mm",  price: 500,  req: [10, 25], len: 18, color: "#3a3a3a", sound: [0.8, 0.9] },
-  { id: "mp5",      name: "MP5",           cat: "machinegun", look: "smg",   dmg: 3, delay: 116.69,  mag: 30, reload: 1600, ammo: "9mm",  price: 800,  req: [15, 35], len: 20, color: "#2f3236", sound: [0.8, 0.9] },
+  { id: "mp5",      name: "MP5",           cat: "machinegun", look: "smg",   dmg: 3, delay: 116.69,  mag: 30, reload: 1600, ammo: "9mm",  price: 800, shop: 15000,  req: [15, 35], len: 20, color: "#2f3236", sound: [0.8, 0.9] },
   { id: "p90",      name: "P90",           cat: "machinegun", look: "smg",   dmg: 2.5, delay: 116.66,  mag: 50, reload: 2000, ammo: "5.56", price: 1700, req: [20, 60], len: 20, color: "#3d4436" },
   { id: "vector",   name: "Vector",        cat: "machinegun", look: "smg",   dmg: 7, delay: 116.67,  mag: 25, reload: 1500, ammo: ".45",  price: 2600, req: [25, 80], len: 20, color: "#22262a" },
   // fuzis de assalto
@@ -50,8 +50,8 @@ const WLIST = [
   { id: "fal",      name: "FAL",           cat: "machinegun", look: "ar",    dmg: 14, delay: 116.67, mag: 20, reload: 2000, ammo: "7.62", price: 2000, req: [35, 85], len: 32, color: "#4a3a28", wood: true },
   { id: "scar",     name: "SCAR-H",        cat: "machinegun", look: "ar",    dmg: 14, delay: 116.67, mag: 20, reload: 1900, ammo: "7.62", price: 3000, req: [40, 100], len: 31, color: "#8a7a5a" },
   // metralhadoras pesadas
-  { id: "m249",     name: "M249",          cat: "machinegun", look: "lmg",   dmg: 18, delay: 83.33,  mag: 100, reload: 4000, ammo: "5.56", price: 4200, req: [55, 110], len: 34, color: "#2a2d30", slow: 6 },
-  { id: "minigun",  name: "Minigun",       cat: "machinegun", look: "minigun", dmg: 15, pellets: 2, delay: 81.67, mag: 250, reload: 6000, ammo: "5.56", price: 9000, req: [80, 120], len: 34, color: "#4a4d50", slow: 14 },
+  { id: "m249",     name: "M249",          cat: "machinegun", look: "lmg",   dmg: 18, delay: 83.33,  mag: 100, reload: 4000, ammo: "5.56", price: 4200, shop: 180000, req: [55, 110], len: 34, color: "#2a2d30", slow: 6 },
+  { id: "minigun",  name: "Minigun",       cat: "machinegun", look: "minigun", dmg: 15, pellets: 2, delay: 81.67, mag: 250, reload: 6000, ammo: "5.56", price: 9000, shop: 450000, req: [80, 120], len: 34, color: "#4a4d50", slow: 14 },
   // escopetas
   { id: "canoduplo", name: "Cano Duplo",   cat: "shotguns", look: "shotgun", dmg: 4.5, delay: 666.67, mag: 2,  reload: 1500, ammo: "cartucho", price: 450,  req: [15, 30], len: 26, color: "#6b4a2b", wood: true, pellets: 8, spread: 0.32, life: 360 },
   { id: "escopeta", name: "Escopeta",      cat: "shotguns", look: "shotgun", dmg: 3.85, delay: 666.67, mag: 6,  reload: 2200, ammo: "cartucho", price: 3000, shop: 3000, req: [10, 0], len: 28, color: "#6b4a2b", wood: true, pellets: 8, spread: 0.28, life: 380 },
@@ -223,6 +223,7 @@ function vestUpgrade(i = save.vest) {
   return cleanVestUpgrade(i >= 0 && save.vestUpgrades ? save.vestUpgrades[i] : null);
 }
 function vestUpgradeCost(i) {
+  i = save.giftVests[i]?.id ?? i;
   if (VESTS[i].upCost) return { money: VESTS[i].upCost, mats: { sucata: 2 } };
   return { money: Math.round(240 + VESTS[i].price * 0.24), mats: { sucata: 2 } };
 }
@@ -271,7 +272,7 @@ function addMat(id, n, list, max, loot = false) {
   list = list || player.pack;
   max = list === player.pack ? Math.min(max || PACK_MAX, packCapacity())
     : list === save.vault ? Math.min(max || VAULT_MAX, fmVaultCapacity()) : (max || VAULT_MAX);
-  const st = list.find((it) => it.kind === "mat" && it.id === id && !!it.loot === loot);
+  const st = list.find((it) => it.kind === "mat" && it.id === id && !it.validadeDias && !!it.loot === loot);
   if (st) { st.qty += n; return true; }
   if ((list === player.pack ? packUsed() : list.length) >= max) return false;
   list.push({ kind: "mat", id, qty: n, loot });
@@ -612,7 +613,7 @@ for (const id of ["sucata", "pecas"]) { const im = new Image(); im.src = `img/ma
 // Token da Loja: raríssimo em qualquer saque (chance fixa, nenhum bônus do jogo aumenta). Arrastado até o
 // personagem, deixa a Loja da base de graça por 1 dia.
 const TOKEN_LOJA_CHANCE = 0.0001, TOKEN_LOJA_MS = 24 * 3600 * 1000;
-function shopFree() { return (Number(save.shopFreeUntil) || 0) > Date.now(); }
+function shopFree() { return (Number(save.shopFreeUntil) || 0) > fmWorld.nowMs(); }
 function drawMatIcon(id, cx, cy, s) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
   const art = MAT_ART[id];
@@ -695,6 +696,7 @@ function vestArt(i) {
   return im.bad || !im.complete || !im.naturalWidth ? null : im;
 }
 function drawVestIcon(i, cx, cy, s) {
+  i = save.giftVests[i]?.id ?? i;
   const art = vestArt(i);
   if (art) { const d = 84 * s; ctx.imageSmoothingQuality = "high"; ctx.drawImage(art, cx - d / 2, cy - d / 2, d, d); return; }
   const v = VESTS[i], c = v.color, dk = shade(c, -0.4), lt = shade(c, 0.25);

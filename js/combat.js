@@ -107,7 +107,7 @@ function carExplode(c) {
 // ---------- Poças e nuvens (veneno, ácido, gás, fogo) ----------
 function addHazard(x, y, r, t, dps, kind) { game.hazards.push({ x, y, r, t, max: t, dps, kind, inside: game.inside || null }); if (game.hazards.length > 60) game.hazards.shift(); }
 function updateHazards(dt) {
-  const sec = dt / 1000, v = save.vest >= 0 ? VESTS[save.vest] : null, resist = 1 - ((v && v.acid) || 0) / 100;
+  const sec = dt / 1000, v = save.vest >= 0 ? vestDefinition(save.vest) : null, resist = 1 - ((v && v.acid) || 0) / 100;
   for (const h of game.hazards) {
     h.t -= dt;
     if (h.inside !== (game.inside || null)) continue;
@@ -761,7 +761,7 @@ function updateZombies(dt, k) {
       let sight = (z.boss ? 130 : SIGHT_R) * (player.sprinting ? 2 : 1) * (1 - Math.min(0.9, player.fx.silence / 100)) / (1 + (A("silence") - 10) * 0.015);
       if (game.inside) sight *= 2.2;
       if (d < sight && losClear(z.x, z.y, player.x, player.y)) {
-        if (!z.seen) { z.seen = true; z.blind = Math.random() * 100 < Math.min(75, A("stealth") + player.fx.stealthImp + ((save.vest >= 0 && VESTS[save.vest].stealth) || 0)) ? 4000 : 0; }
+        if (!z.seen) { z.seen = true; z.blind = Math.random() * 100 < Math.min(75, A("stealth") + player.fx.stealthImp + ((save.vest >= 0 && vestDefinition(save.vest).stealth) || 0)) ? 4000 : 0; }
         if (z.blind > 0) z.blind -= dt; else alertZombie(z);
       } else z.seen = false;
     }

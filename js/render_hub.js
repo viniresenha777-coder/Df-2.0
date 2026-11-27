@@ -63,7 +63,7 @@ function drawHero(cx, cy, s) {
   ctx.fillStyle = "rgba(0,0,0,0.18)"; ctx.fillRect(-1, -40, 2, 62);
   if (pal.accent) { ctx.strokeStyle = pal.accent; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-20, -36); ctx.lineTo(20, 18); ctx.stroke(); }
   if (save.vest >= 0) {
-    ctx.fillStyle = VESTS[save.vest].color; rr(-20, -36, 40, 50, 7); ctx.fill();
+    ctx.fillStyle = vestDefinition(save.vest).color; rr(-20, -36, 40, 50, 7); ctx.fill();
     ctx.fillStyle = "rgba(0,0,0,0.25)"; for (let i = 0; i < 3; i++) ctx.fillRect(-14 + i * 10, -6, 8, 12);
   }
   ctx.fillStyle = "#5a4a32"; ctx.fillRect(-26, -40, 6, 30); // alça da mochila
@@ -396,7 +396,7 @@ function drawHubPanel(natal) {
   const damageMultiplier = (1 + (player.fx.firepower || 0) / 100) *
     dmgMult(hubWeapon) * (trindadeActive() ? 1.35 : 1);
   const hubSlow = (player.flags.jugger ? 0 :
-    (save.vest >= 0 ? VESTS[save.vest].slow || 0 : 0) + (hubWeapon.slow || 0)) -
+    (save.vest >= 0 ? vestDefinition(save.vest).slow || 0 : 0) + (hubWeapon.slow || 0)) -
     (player.fx.adren && player.hp / player.maxHp < 0.5 ? player.fx.adren : 0);
   const sprintMultiplier = (1 + profVal("sprint")) *
     (1 + ((player.fx.agility || 0) + vestSpeedBonus()) / 100) *

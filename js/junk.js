@@ -60,10 +60,11 @@ function junkItems() {
   });
   const vestScrap = vestSellPrice;
   VESTS.forEach((v, i) => { if (save.vestsOwned[i] && i !== save.vest) L.push({ kind: "vest", idx: i, name: v.name, unit: vestScrap(i), qty: 1, rare: v.rar >= 2, sub: `colete guardado · ${Math.round(vestDur(i))}%` }); });
-  return L;
+  return L.filter(e => !e.it?.validadeDias && !e.im?.validadeDias);
 }
 function sellableAmmo(t) { return Math.max(0, player.reserve[t] - (player.tokenAmmo[t] || 0)); }
 function sellEntry(e, n) {
+  if (e.it?.validadeDias || e.im?.validadeDias) return;
   if (e.kind === "implant" && (e.im.tokenBound || !player.bag.includes(e.im))) {
     toast("Implante não disponível para venda.");
     return;
@@ -94,6 +95,7 @@ function sellEntry(e, n) {
   game.jcur = Math.max(0, Math.min(game.jcur, junkItems().length - 1));
 }
 function dismantle(e) {
+  if (e.it?.validadeDias) return;
   const p = weaponParts(e.it);
   if (e.where === "slot") { player.slots[e.i] = null; if (player.cur === e.i) { const j = player.slots.findIndex(Boolean); player.cur = j >= 0 ? j : 0; } player.reloading = 0; }
   else player.pack.splice(player.pack.indexOf(e.it), 1);

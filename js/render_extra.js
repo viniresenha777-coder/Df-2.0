@@ -372,7 +372,7 @@ const NEG_GOOD = [];
 function sgn(v) { v = Math.round(v * 100) / 100; return v > 0 ? `+${v}` : `${v}`; }
 function activeBonuses() {
   const out = [], fx = { ...(player.fx || {}) };
-  const vest = save.vest >= 0 ? VESTS[save.vest] : null, w = curW();
+  const vest = save.vest >= 0 ? vestDefinition(save.vest) : null, w = curW();
   fx.thick = armorRed() * 100;
   fx.vigor = (fx.vigor || 0) + (vest ? vest.hp || 0 : 0);
   fx.stealthImp = (fx.stealthImp || 0) + (vest ? vest.stealth || 0 : 0);

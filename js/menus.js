@@ -295,6 +295,7 @@ function clinicAct() {
   if (it.src === "bag") {
     const why = installBlock(it.im);
     if (why) { toast(why); return; }
+    if (!fmGifts.ready(it.im, () => { if (clinicItems()[game.cur]?.im === it.im) clinicAct(); })) return;
     player.bag.splice(player.bag.indexOf(it.im), 1); save.installed.push(it.im);
     toast(`Instalou ${implantName(it.im)}`);
   } else {
@@ -339,7 +340,7 @@ function confirmClinicImplant(action) {
     toast("Remova o implante instalado antes de vender ou descartar.");
     return;
   }
-  if (selected.im.tokenBound) {
+  if (selected.im.tokenBound || (action === "sell" && selected.im.validadeDias)) {
     toast("Este implante é intransferível e não pode ser vendido nem descartado.");
     return;
   }
@@ -356,7 +357,7 @@ function applyClinicImplantConfirm() {
   if (!pending) return;
   game.implantConfirm = null;
   const i = player.bag.indexOf(pending.im);
-  if (i < 0 || !IMP[pending.im.id] || pending.im.tokenBound) {
+  if (i < 0 || !IMP[pending.im.id] || pending.im.tokenBound || (pending.action === "sell" && pending.im.validadeDias)) {
     toast("Implante não disponível para essa operação.");
     return;
   }
@@ -1029,7 +1030,7 @@ function travelKey(k) {
 
 // ---------- Painel de administrador (F2) ----------
 const adm = { god: false, infAmmo: false, noReq: false, infStamina: false, freeze: false, dmg: 1, direct: false, shopAnywhere: false };
-const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Armas", "Implantes", "Presentes", "Banidos", "Bugs", "Dinheiro retido"];
+const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Presentes", "Implantes", "Armas", "Banidos", "Bugs", "Dinheiro retido"];
 function canUseAdmin() {
   return typeof fmCloud !== "undefined" && fmCloud.isActive() && fmCloud.isAdmin();
 }
@@ -1070,7 +1071,7 @@ async function admSendGift() {
   if (!g.name || g.name.trim().length < 3) { toast("Informe o nome do destinatário."); return; }
   g.busy = true;
   try {
-    toast(await fmGifts.send(g.name, g.type, g.qty, admGiftItem(g), g.transferivel !== false));
+    toast(await fmGifts.send(g.name, g.type, g.qty, admGiftItem(g), g.transferivel !== false, fmGifts.permitePrazo(g.type, admGiftItem(g)) ? g.dias || 0 : 0));
     admLoadGiftHistory();
   } catch (err) {
     toast(err.message || "Não foi possível enviar.");
@@ -1145,7 +1146,7 @@ function admGiveImplant(id) {
   else toast("Mochila de implantes cheia");
 }
 function admReset() {
-  save.bank = 0; save.vault = []; save.installed = []; save.credits = 0; save.gm = false; save.missions = [];
+  save.giftVests = {}; save.bank = 0; save.vault = []; save.installed = []; save.credits = 0; save.gm = false; save.missions = [];
   save.vestUpgrades = {}; save.vestDur = {}; save.vest = -1; save.vestsOwned = VESTS.map(() => false); save.outposts = OUTPOSTS.map((o, i) => i === 0);
   save.char = { level: 1, xp: 0, points: 0, wpoints: 0, attrs: defaultAttrs() };
   persist(); resetGame(); toast("Progresso apagado");
@@ -1190,14 +1191,14 @@ function admRows() {
     N("Dinheiro no banco", () => save.bank, (v) => { save.bank = v; persist(); }, 10000, 0, 999999999);
     N("Créditos", () => save.credits, (v) => { save.credits = v; persist(); }, 50, 0, 999999);
     T("VIP ativo", () => save.gm, (v) => { save.gm = v; persist(); });
-    rows.push({ label: "Colete (A/D troca, ganha o colete)", val: () => (save.vest >= 0 ? VESTS[save.vest].name : "nenhum"), act: (d) => { save.vest = ((save.vest + 1 + (d || 1) + VESTS.length + 1) % (VESTS.length + 1)) - 1; if (save.vest >= 0) save.vestsOwned[save.vest] = true; recalcImplants(); persist(); } });
+    rows.push({ label: "Colete (A/D troca, ganha o colete)", val: () => (save.vest >= 0 ? vestDefinition(save.vest).name : "nenhum"), act: (d) => { save.vest = ((save.vest + 1 + (d || 1) + VESTS.length + 1) % (VESTS.length + 1)) - 1; if (save.vest >= 0) save.vestsOwned[save.vest] = true; recalcImplants(); persist(); } });
     N("Comida", () => player.food, (v) => { player.food = v; }, 1, 0, 999);
     N("Água", () => player.water, (v) => { player.water = v; }, 1, 0, 999);
     N("Kits médicos", () => player.med, (v) => { player.med = v; }, 1, 0, 999);
     B("Munição +200 de todos os tipos", () => { for (const t in AMMO) player.reserve[t] += 200; toast("Munição adicionada"); });
     B("Concluir as missões ativas", () => { save.missions.forEach((m) => { m.progress = m.target; }); persist(); toast("Missões concluídas (entregue no quadro)"); });
     B("Novas missões no quadro", () => { game.board = makeOffers(); toast("Quadro renovado"); });
-  } else if (tab === 3) {
+  } else if (tab === 5) {
     B("Materiais +10 de cada (na mochila)", () => { for (const m in MATS) addMat(m, 10); toast("Materiais adicionados"); });
     B("Arma na mão: todas as melhorias no máximo", () => { const it = curInst(); if (!it) { toast("Sem arma na mão"); return; } UP_STATS.forEach((s) => { it.up[s.id] = UP_MAX; }); toast("Arma no máximo"); });
     B("Esvaziar a mochila", () => { player.pack.length = 0; toast("Mochila vazia"); });
@@ -1210,12 +1211,12 @@ function admRows() {
     IMP_IDS.forEach((id) => rows.push({ label: `${IMP[id].name} · ${IMP[id].price} créditos`, val: () => "dar", act: (d, how) => { if (how === "enter") admGiveImplant(id); } }));
     B("Limpar a mochila de implantes", () => { player.bag.length = 0; toast("Mochila de implantes vazia"); });
     B("Remover os implantes instalados", () => { save.installed.length = 0; persist(); recalcImplants(); toast("Implantes removidos"); });
-  } else if (tab === 5) {
+  } else if (tab === 3) {
     const g = game.admGift || (game.admGift = { name: "", type: "dinheiro", qty: 1000, itemIndex: 0, busy: false, transferivel: true });
     B("Destinatário: " + (g.name || "(digitar nome in-game)"), () => admAskText("Nome do jogador", name => { g.name = name.slice(0,16); }));
     rows.push({ label: "Tipo de presente (A/D para escolher)", val: () => ADM_GIFT_LABEL[g.type],
       act: (d) => { g.type = ADM_GIFT_TYPES[(ADM_GIFT_TYPES.indexOf(g.type) + (d < 0 ? -1 : 1) + ADM_GIFT_TYPES.length) % ADM_GIFT_TYPES.length];
-        g.itemIndex = 0; g.qty = ADM_GIFT_QTY[g.type] || 1; g.transferivel = true; } });
+        g.dias = 0; g.itemIndex = 0; g.qty = ADM_GIFT_QTY[g.type] || 1; g.transferivel = true; } });
     if (admGiftOptions(g).length) {
       rows.push({ label: "Item (A/D alterna · Enter busca pelo nome)", val: () => fmGifts.itemNome(g.type, admGiftItem(g)),
         act: (d, how) => {
@@ -1234,15 +1235,37 @@ function admRows() {
       rows.push({ label: "Duração do VIP (A/D para escolher)", val: () =>
         g.qty === 1 ? "1 mês" : g.qty === 6 ? "6 meses" : "1 ano",
         act: (d) => { const o = [1,6,12]; g.qty = o[(o.indexOf([1,6,12].includes(g.qty)?g.qty:1)+(d<0?-1:1)+o.length)%o.length]; } });
-    } else if (["dinheiro", "creditos", "material", "municao", "suprimento"].includes(g.type)) {
+    } else if (!(fmGifts.permitePrazo(g.type, admGiftItem(g)) && g.dias) && ["dinheiro", "creditos", "material", "municao", "suprimento"].includes(g.type)) {
       const max = { dinheiro: 10000000, creditos: 100000, municao: 100000 }[g.type] || 1000;
       N("Quantidade", () => g.qty, n => { g.qty = n; }, g.type === "dinheiro" ? 1000 : g.type === "municao" ? 100 : 10, 1, max);
     }
-    if (["arma", "implante", "colete"].includes(g.type)) {
+    const aceitaPrazo = fmGifts.permitePrazo(g.type, admGiftItem(g));
+    if (aceitaPrazo) N("Validade em dias (0 = duração normal)", () => g.dias || 0, n => { g.dias = Math.floor(n); }, 1, 0, 36500);
+    if (aceitaPrazo && g.dias) B("1 unidade vinculada ao destinatário", () => {});
+    else if (["arma", "implante", "colete"].includes(g.type)) {
       rows.push({ label: "Pode vender no Mercado Negro? (A/D ou Enter)", val: () => g.transferivel !== false ? "Transferível" : "Não transferível",
         on: () => g.transferivel !== false, act: () => { g.transferivel = g.transferivel === false; } });
     }
     B(g.busy ? "ENVIANDO..." : "ENVIAR PRESENTE PARA O JOGADOR", () => admSendGift());
+    B("Beta: consultar resumo dos convites", async () => {
+      try {
+        const {data, error} = await fmCloud.socialClient().rpc("fm_beta_admin", {p_code: null, p_action: "resumo"});
+        if (error) throw error;
+        toast("Beta: " + data.disponiveis + " livres · " + data.utilizados + " usados · " + data.revogados + " revogados.");
+      } catch (err) { toast(err.message || "Falha ao consultar convites."); }
+    });
+    for (const [action, label] of [["consultar","Consultar código"], ["revogar","Bloquear código e conta"],
+      ["restaurar","Restaurar acesso"], ["liberar","Liberar código para outro jogador"]]) {
+      B("Beta: " + label, async () => {
+        try {
+          const code = window.prompt(label + " — cole o convite completo:");
+          if (!code?.trim() || (action !== "consultar" && !window.confirm(label + "?"))) return;
+          const {data, error} = await fmCloud.socialClient().rpc("fm_beta_admin", {p_code: code, p_action: action});
+          if (error) throw error;
+          window.alert("Convite: " + data.status + (data.email ? "\nE-mail: " + data.email : ""));
+        } catch (err) { toast(err.message || "Falha ao gerenciar convite."); }
+      });
+    }
   } else if (tab === 6) {
     // banidos: lista vem do servidor (só administradores conseguem ler)
     if (!game.admBans) admLoadBans();
@@ -1999,7 +2022,7 @@ function drawAdmin() {
     regClick(60, y, 840, 25, () => { game.ac = off + j; r.act(1,"enter"); });
   });
   if (rows.length > vis) txt(`${game.ac + 1}/${rows.length} · use W/S para rolar`, W / 2, 506, 12, "#a9a58f", "center");
-  if (game.at === 5) drawGiftHistory(100 + Math.min(vis, rows.length) * 28);
+  if (game.at === 3) drawGiftHistory(100 + Math.min(vis, rows.length) * 28);
   hint("CLIQUE nas abas e opções · W/S seleciona · A/D muda valor · Enter confirma · F2/Esc fecha");
   if (game.msgT > 0) txt(game.msg, W / 2, 536, 16, "#ffd96a", "center", true);
   if (game.input && (game.input.mode === "adm" || game.input.mode === "admText")) {

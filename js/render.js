@@ -1444,7 +1444,7 @@ function drawPlayer() {
   ctx.fillStyle = pal.jacket; ellipse(0.5, 0, 8, 13.2);
   ctx.fillStyle = "rgba(255,255,255,0.07)"; ellipse(2.5, -4, 4, 6);
   if (pal.accent) { ctx.strokeStyle = pal.accent; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(5, 10); ctx.stroke(); }
-  if (save.vest >= 0) { ctx.fillStyle = VESTS[save.vest].color; ellipse(0.5, 0, 6.5, 10.5); ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(-1, -8, 2, 16); ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(2, -7, 3, 14); }
+  if (save.vest >= 0) { ctx.fillStyle = vestDefinition(save.vest).color; ellipse(0.5, 0, 6.5, 10.5); ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(-1, -8, 2, 16); ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(2, -7, 3, 14); }
   // onde ficam as mãos com cada tipo de arma
   const SL = { x: 1, y: -11 }, SR = { x: 1, y: 11 };
   let HL, HR, swing = 0;
@@ -2037,7 +2037,7 @@ function drawHUD() {
     hudT("★ EVENTO DE NATAL · BÔNUS PARA TODOS", 12, ny, 11, "#ffdb78", "left", true); ny += 15;
   }
   if (!compact) {
-    if (save.vest >= 0) { const vd = Math.round(vestDur()); hudT(`COLETE: ${VESTS[save.vest].name.toUpperCase()} ${vd}%${vd <= 0 ? " · QUEBRADO" : ""}`, 12, ny, 10, vd <= 25 ? "#e05a4a" : "#c9c4ad", "left", true); ny += 14; }
+    if (save.vest >= 0) { const vd = Math.round(vestDur()); hudT(`COLETE: ${vestDefinition(save.vest).name.toUpperCase()} ${vd}%${vd <= 0 ? " · QUEBRADO" : ""}`, 12, ny, 10, vd <= 25 ? "#e05a4a" : "#c9c4ad", "left", true); ny += 14; }
     ny += 6;
     const RG = REGIONS[world.cell.tier], rc = RG.color === "#2a2a2e" ? "#9a9aa0" : RG.color;
     if (inSafe()) hudT("ÁREA SEGURA", 12, ny, 11, "#6fd06a", "left", true);

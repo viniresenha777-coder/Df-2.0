@@ -133,28 +133,31 @@ function resetStatsWithCredits() {
 }
 
 // Token da Loja: a Loja da base fica de graça por 1 dia (soma, se já estiver ativo).
-function useTokenLoja() {
-  const it = player.pack.find(x => x && x.kind === "mat" && x.id === "token_loja" && x.qty > 0);
-  if (!it) { toast("Você não possui um Token da Loja."); return; }
+function useTokenLoja(selected) {
+  const it = selected || player.pack.find(x => x && x.kind === "mat" && x.id === "token_loja" && x.qty > 0);
+  if (!it || !player.pack.includes(it) || it.id !== "token_loja" || it.qty < 1) { toast("Você não possui um Token da Loja."); return; }
+  if (!fmGifts.ready(it, () => useTokenLoja(it))) return;
   it.qty--;
   if (!it.qty) player.pack.splice(player.pack.indexOf(it), 1);
-  save.shopFreeUntil = Math.max(Date.now(), Number(save.shopFreeUntil) || 0) + TOKEN_LOJA_MS;
+  save.shopFreeUntil = it.validadeDias ? Math.max(save.shopFreeUntil || 0, it.expiraEm) : Math.max(Date.now(), Number(save.shopFreeUntil) || 0) + TOKEN_LOJA_MS;
   checkpoint("Token da Loja ativado");
   sfx.level();
   toast("Token da Loja ativado: a Loja da base está de graça até " + new Date(save.shopFreeUntil).toLocaleString("pt-BR"));
 }
 // Consumo da Trindade: 100 anos de calendário desde a ativação.
-function useTrindadeItem() {
-  const it = player.pack.find(x => x && x.kind === "mat" && x.id === "trindade_eterna" && x.qty > 0);
-  if (!it) { toast("Você não possui uma Trindade."); return; }
+function useTrindadeItem(selected) {
+  const it = selected || player.pack.find(x => x && x.kind === "mat" && x.id === "trindade_eterna" && x.qty > 0);
+  if (!it || !player.pack.includes(it) || it.id !== "trindade_eterna" || it.qty < 1) { toast("Você não possui uma Trindade."); return; }
+  if (!fmGifts.ready(it, () => useTrindadeItem(it))) return;
   const exp = new Date(Math.max(Date.now(), Number(save.trindadeUntil) || 0));
-  exp.setUTCFullYear(exp.getUTCFullYear() + 100);
+  if (it.validadeDias) exp.setTime(Math.max(save.trindadeUntil || 0, it.expiraEm));
+  else exp.setUTCFullYear(exp.getUTCFullYear() + 100);
   if (!Number.isFinite(exp.getTime())) { toast("Erro ao calcular validade."); return; }
   it.qty--;
   if (!it.qty) player.pack.splice(player.pack.indexOf(it), 1);
   save.trindadeUntil = exp.getTime();
   checkpoint("uso da Trindade");
-  toast("Trindade ativada: +35% de dano, corrida e armadura por 100 anos!");
+  toast("Trindade ativa até " + exp.toLocaleString("pt-BR"));
 }
 // ---------- Controles ----------
 function audioStart() {
@@ -335,7 +338,7 @@ function update(dt) {
   // deslocamento aos solavancos sem alterar a velocidade máxima do personagem.
   let goalVX = 0, goalVY = 0;
   if (moving) {
-    const slow = (player.flags.jugger ? 0 : (save.vest >= 0 ? VESTS[save.vest].slow || 0 : 0) + (curW().slow || 0)) - (player.fx.adren && player.hp / player.maxHp < 0.5 ? player.fx.adren : 0);
+    const slow = (player.flags.jugger ? 0 : (save.vest >= 0 ? vestDefinition(save.vest).slow || 0 : 0) + (curW().slow || 0)) - (player.fx.adren && player.hp / player.maxHp < 0.5 ? player.fx.adren : 0);
     const len = Math.hypot(dx, dy);
     const sp = (sprinting ? 3.38 * (1 + profVal("sprint")) : player.speed) *
       (1 + (player.fx.agility + vestSpeedBonus()) / 100) *
@@ -609,6 +612,7 @@ function loop(now) {
   fmWorld.tick(); // relógio global e snapshots dos zumbis, inclusive durante pausas
   floorPursuitTick(now); // perseguidores atravessam a escada após 2 segundos
   groundDropsTick(now); // o prazo dos itens continua correndo mesmo com menus abertos
+  fmGifts.expire(now);
   update(dt);
   checkpointTick(dt);
   draw();

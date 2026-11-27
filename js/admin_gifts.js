@@ -11,6 +11,9 @@ const fmGifts = (() => {
   const comItem = new Set(["arma", "implante", "colete", "roupa", "material", "municao", "suprimento"]);
   const unico = new Set(["arma", "implante", "colete", "roupa"]);     // quantidade sempre 1
   const comTroca = new Set(["arma", "implante", "colete"]);           // aceitam "não transferível"
+  function permitePrazo(type, id) {
+    return comTroca.has(type) || (type === "material" && ["trindade_eterna", "token_loja"].includes(id));
+  }
   function itemValido(type, id) {
     if (type === "arma") return !!WDEF[id] && !WDEF[id].fists;
     if (type === "implante") return !!IMP[id];
@@ -39,15 +42,17 @@ const fmGifts = (() => {
     if (g.tipo === "creditos") return n.toLocaleString("pt-BR") + " créditos";
     const nome = itemNome(g.tipo, g.item_id);
     const base = unico.has(g.tipo) ? nome : n.toLocaleString("pt-BR") + "x " + nome;
+    if (g.validade_dias) return base + " · " + g.validade_dias + " dia(s) após o primeiro uso · Não transferível";
     return base + (comTroca.has(g.tipo) && g.transferivel === false ? " (Não transferível)" : "");
   }
 
-  async function send(name, type, amount, itemId, transferivel = true) {
+  async function send(name, type, amount, itemId, transferivel = true, dias = 0) {
     if (!fmCloud.isActive() || !fmCloud.isAdmin()) throw new Error("Envio indisponível.");
     const targetName = normalize(name);
     if (targetName.length < 3 || targetName.length > 16) throw new Error("Digite o nome exato do jogador.");
     if (!types.has(type)) throw new Error("Tipo de presente inválido.");
-    const n = unico.has(type) ? 1 : Math.floor(Number(amount));
+    if (!Number.isInteger(dias) || dias < 0 || dias > 36500 || (dias && !permitePrazo(type, itemId))) throw new Error("Validade inválida.");
+    const n = (dias > 0 || unico.has(type)) ? 1 : Math.floor(Number(amount));
     if (type === "vip" && ![1, 6, 12].includes(n)) throw new Error("Escolha VIP por 1 mês, 6 meses ou 1 ano.");
     if (!Number.isInteger(n) || n < 1 || n > 10000000) throw new Error("Quantidade inválida.");
     if ((type === "material" || type === "suprimento") && n > 1000) throw new Error("Máximo: 1.000 unidades.");
@@ -62,7 +67,7 @@ const fmGifts = (() => {
     const payload = {
       remetente: uid(), destinatario: target.jogador, tipo: type,
       quantidade: n, item_id: comItem.has(type) ? String(itemId) : null,
-      transferivel: comTroca.has(type) ? !!transferivel : true
+      validade_dias: dias, transferivel: dias ? false : comTroca.has(type) ? !!transferivel : true
     };
     const { error } = await db().from("fm_presentes").insert(payload);
     if (error) throw new Error("Envio recusado pelo servidor: " + error.message);
@@ -72,7 +77,7 @@ const fmGifts = (() => {
   // histórico do que este ADM enviou (o RLS só deixa ler os presentes que ele mesmo mandou)
   async function history() {
     const { data, error } = await db().from("fm_presentes")
-      .select("id,destinatario,tipo,quantidade,item_id,transferivel,criado_em,recebido_em,reivindicar_em,reivindicado_em,reivindicado_resultado")
+      .select("id,destinatario,tipo,quantidade,item_id,validade_dias,transferivel,criado_em,recebido_em,reivindicar_em,reivindicado_em,reivindicado_resultado")
       .eq("remetente", uid()).order("criado_em", { ascending: false }).limit(60);
     if (error) throw new Error(error.message);
     const ids = [...new Set((data || []).map(g => g.destinatario))];
@@ -140,6 +145,8 @@ const fmGifts = (() => {
   }
   function canReceive(g) {
     if (!types.has(g.tipo) || (comItem.has(g.tipo) && !itemValido(g.tipo, g.item_id))) return false;
+    if (g.validade_dias && ["arma","material"].includes(g.tipo)) return packUsed() < packCapacity();
+    if (g.tipo === "arma" && window.fmBetaAccess?.weapon_gift_ids?.includes(g.id)) return packUsed() < packCapacity();
     if (g.tipo === "arma") return player.slots.includes(null) || packUsed() < packCapacity();
     if (g.tipo === "material") return player.pack.some(it => it.kind === "mat" && it.id === g.item_id && !it.loot) || packUsed() < packCapacity();
     if (g.tipo === "implante") return player.bag.length < BAG_MAX;
@@ -147,13 +154,32 @@ const fmGifts = (() => {
     return Number.isInteger(g.quantidade) && g.quantidade > 0;
   }
   function apply(g) {
+    if (g.validade_dias) {
+      const marca = { presente: g.id, validadeDias: g.validade_dias, semTroca: true };
+      if (g.tipo === "arma") player.pack.push(Object.assign(newInst(g.item_id), marca));
+      else if (g.tipo === "implante") player.bag.push(Object.assign(newImplant(g.item_id), marca));
+      else if (g.tipo === "material") player.pack.push({ ...marca, kind: "mat", id: g.item_id, qty: 1 });
+      else if (g.tipo === "colete") {
+        const key = Math.max(10000, ...Object.keys(save.giftVests).map(Number)) + 1;
+        save.giftVests = { ...save.giftVests, [key]: { ...marca, id: Number(g.item_id), i: key } };
+      } else return false;
+      return true;
+    }
     const semTroca = g.transferivel === false;
     if (g.tipo === "dinheiro" && g.item_id === "analise") { save.bank += g.quantidade; logMoney("Liberado pelo ADM", "análise", g.quantidade); }
     else if (g.tipo === "dinheiro") { game.money += g.quantidade; logMoney("Presente ADM", "", g.quantidade); }
     else if (g.tipo === "vip") addVipMonths(g.quantidade);
     else if (g.tipo === "creditos") save.credits = (save.credits || 0) + g.quantidade;
-    else if (g.tipo === "arma") { const inst = newInst(g.item_id); inst.presente = g.id; if (semTroca) inst.semTroca = true; return !!addWeapon(inst); }
-    else if (g.tipo === "implante") { const im = newImplant(g.item_id); if (semTroca) im.semTroca = true; player.bag.push(im); }
+    else if (g.tipo === "arma") { const inst = newInst(g.item_id); inst.presente = g.id; if (semTroca) inst.semTroca = true;
+      if (window.fmBetaAccess?.weapon_gift_ids?.includes(g.id)) {
+        if (packUsed() >= packCapacity()) return false;
+        player.pack.push(inst); return true;
+      }
+      return !!addWeapon(inst); }
+    else if (g.tipo === "implante") { const im = newImplant(g.item_id); if (g.id === window.fmBetaAccess?.implant_gift_id && im.id === "implante_28") {
+        im.betaGiftId = g.id; im.semTroca = true;
+      }
+      if (semTroca) im.semTroca = true; player.bag.push(im); }
     else if (g.tipo === "colete") {
       const i = Number(g.item_id);
       save.vestsOwned[i] = true; if (save.vestDur) save.vestDur[i] = 100;
@@ -176,7 +202,7 @@ const fmGifts = (() => {
     busy = true;
     try {
       const { data, error } = await db().from("fm_presentes")
-        .select("id,tipo,quantidade,item_id,transferivel,criado_em")
+        .select("id,tipo,quantidade,item_id,validade_dias,transferivel,criado_em")
         .eq("destinatario", uid()).is("recebido_em", null)
         .order("criado_em", { ascending: true }).limit(30);
       if (error) throw error;
@@ -196,7 +222,7 @@ const fmGifts = (() => {
           money: game.money, bank: save.bank, gm: save.gm, vipUntil: save.vipUntil, run: save.run,
           gifts: save.receivedGifts.slice(), inbox: (save.inbox || []).slice(),
           slots: player.slots.slice(), pack: player.pack.slice(), bag: player.bag.slice(),
-          credits: save.credits, vestsOwned: JSON.stringify(save.vestsOwned), vestDur: JSON.stringify(save.vestDur || {}),
+          credits: save.credits, giftVests: save.giftVests, vestsOwned: JSON.stringify(save.vestsOwned), vestDur: JSON.stringify(save.vestDur || {}),
           vestSemTroca: (save.vestSemTroca || []).slice(), clothesOwned: JSON.stringify(save.clothesOwned || {}),
           reserve: JSON.stringify(player.reserve), foodQ: JSON.stringify(player.foodQ), food: player.food,
           water: player.water, med: player.med, anti: player.anti
@@ -216,7 +242,7 @@ const fmGifts = (() => {
           game.money = old.money; save.bank = old.bank; save.gm = old.gm; save.vipUntil = old.vipUntil; save.run = old.run;
           save.receivedGifts = old.gifts; save.inbox = old.inbox;
           player.slots = old.slots; player.pack = old.pack; player.bag = old.bag; save.credits = old.credits;
-          save.vestsOwned = JSON.parse(old.vestsOwned); save.vestDur = JSON.parse(old.vestDur); save.vestSemTroca = old.vestSemTroca;
+          save.giftVests = old.giftVests; save.vestsOwned = JSON.parse(old.vestsOwned); save.vestDur = JSON.parse(old.vestDur); save.vestSemTroca = old.vestSemTroca;
           save.clothesOwned = JSON.parse(old.clothesOwned); player.reserve = JSON.parse(old.reserve); player.foodQ = JSON.parse(old.foodQ);
           player.food = old.food; player.water = old.water; player.med = old.med; player.anti = old.anti;
           throw err;
@@ -237,5 +263,56 @@ const fmGifts = (() => {
     timer = setInterval(poll, 12000);
   }
   function stop() { if (timer) clearInterval(timer); timer = null; }
-  return { send, start, stop, poll, history, reclaim, itemNome, descrever, SUPRIMENTOS };
+  const activating = new Set();
+  function ready(item, retry) {
+    if (!item?.validadeDias) return true;
+    if (item.expiraEm) return item.expiraEm > fmWorld.nowMs();
+    if (activating.has(item.presente)) return false;
+    activating.add(item.presente);
+    const account = uid();
+    (async () => {
+      try {
+        const { data, error } = await db().rpc("fm_ativar_presente", { p_presente: item.presente });
+        if (error) throw error;
+        const deadline = Date.parse(data);
+        if (!Number.isFinite(deadline)) throw new Error("Prazo inválido.");
+        if (uid() !== account) return;
+        item.expiraEm = deadline;
+        for (const copy of [...player.pack, ...player.slots, ...player.bag, ...save.installed, ...save.vault, ...Object.values(save.giftVests)]) {
+          if (copy?.presente === item.presente) copy.expiraEm = deadline;
+        }
+        if (deadline > fmWorld.nowMs()) retry();
+        checkpoint("ativou presente");
+      } catch (err) { toast("Não foi possível ativar o presente: " + err.message); }
+      finally { activating.delete(item.presente); }
+    })();
+    return false;
+  }
+  let nextCheck = 0;
+  function expire(now) {
+    if (now < nextCheck) return;
+    nextCheck = now + 250;
+    const expired = it => it && it.validadeDias && it.expiraEm && it.expiraEm <= fmWorld.nowMs();
+    let changed = false;
+    for (const list of [player.pack, player.bag, player.slots, save.installed, save.vault]) {
+      for (let i = list.length - 1; i >= 0; --i) {
+        if (!expired(list[i])) continue;
+        if (list === player.slots) {
+          list[i] = null;
+          if (i === player.cur) { player.cur = Math.max(0, list.findIndex(Boolean)); player.reloading = 0; }
+        } else list.splice(i, 1);
+        changed = true;
+      }
+    }
+    for (const vest of Object.values(save.giftVests)) {
+      if (!expired(vest)) continue;
+      if (save.vest === vest.i) save.vest = -1;
+      delete save.vestDur[vest.i];
+      delete save.vestUpgrades[vest.i];
+      delete save.giftVests[vest.i];
+      changed = true;
+    }
+    if (changed) { recalcImplants(); checkpoint("presente vencido"); }
+  }
+  return { ready, expire, permitePrazo, send, start, stop, poll, history, reclaim, itemNome, descrever, SUPRIMENTOS };
 })();

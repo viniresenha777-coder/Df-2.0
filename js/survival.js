@@ -127,21 +127,21 @@ function wearVest(dmg) {
   const before = vestDur();
   const after = Math.max(0, before - dmg * 0.12 * (1 + profVal("vestWear")) * 100 / vestMaxDur(save.vest));
   save.vestDur[save.vest] = after;
-  if (before > 25 && after <= 25) toast(`${VESTS[save.vest].name} está quebrando (${Math.round(after)}%) · conserte na oficina`);
-  if (before > 0 && after <= 0) { toast(`${VESTS[save.vest].name} quebrou! Não protege mais`); recalcImplants(); }
+  if (before > 25 && after <= 25) toast(`${vestDefinition(save.vest).name} está quebrando (${Math.round(after)}%) · conserte na oficina`);
+  if (before > 0 && after <= 0) { toast(`${vestDefinition(save.vest).name} quebrou! Não protege mais`); recalcImplants(); }
 }
 // base do conserto: preço em dinheiro; coletes de créditos usam o preço de melhoria (ou 500 por crédito)
 function repairBase(v) { return v.price || v.upCost || (v.credits || 0) * 50; }
-function repairCost() { if (save.vest < 0) return 0; return Math.round((100 - vestDur()) / 100 * repairBase(VESTS[save.vest]) * 0.3 * (1 - profVal("repair")) + 0.4); }
+function repairCost() { if (save.vest < 0) return 0; return Math.round((100 - vestDur()) / 100 * repairBase(vestDefinition(save.vest)) * 0.3 * (1 - profVal("repair")) + 0.4); }
 function repairVest() {
   if (save.vest < 0) { toast("Você não está usando colete"); return; }
   if (vestDur() >= 100) { toast("O colete já está inteiro"); return; }
-  const need = VESTS[save.vest].repairLevel;
-  if (need && player.level < need) { toast(`Só sobreviventes de nível ${need}+ conseguem consertar o ${VESTS[save.vest].name}`); return; }
+  const need = vestDefinition(save.vest).repairLevel;
+  if (need && player.level < need) { toast(`Só sobreviventes de nível ${need}+ conseguem consertar o ${vestDefinition(save.vest).name}`); return; }
   const c = Math.max(1, repairCost());
   if (game.money < c) { toast(`O conserto custa $${c} (dinheiro da mochila)`); return; }
   game.money -= c; logMoney("Conserto", "colete", -c); save.vestDur[save.vest] = 100; persist(); recalcImplants(); sfx.buy();
-  toast(`${VESTS[save.vest].name} consertado por $${c}`);
+  toast(`${vestDefinition(save.vest).name} consertado por $${c}`);
 }
 
 // ---------- Missões de resgate ----------

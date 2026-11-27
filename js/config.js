@@ -133,12 +133,15 @@ const VESTS = [
     wear: "cl_colete_natal" }   // wear = camada 3D vestida no personagem (img/gear/<wear>_<pose>.png e img/portrait_<wear>.png)
 ];
 // camada 3D do colete equipado, se ele tiver uma e o jogador quiser mostrar vestido (só o Natalino tem)
+function vestDefinition(i) {
+  return VESTS[i] || VESTS[save.giftVests[i]?.id];
+}
 function vestWearLayer() {
-  const v = save.vest >= 0 ? VESTS[save.vest] : null;
+  const v = save.vest >= 0 ? vestDefinition(save.vest) : null;
   return v && v.wear && save.vestShow !== false ? v.wear : null;
 }
 // quantos pontos de durabilidade o colete tem (100 nos antigos)
-function vestMaxDur(i) { return (VESTS[i] && VESTS[i].dur) || 100; }
+function vestMaxDur(i) { return (vestDefinition(i) && vestDefinition(i).dur) || 100; }
 // preço em créditos (VIP paga o preço de membro quando existe)
 function vestCredits(v) { return v.creditsVip && typeof vipActive === "function" && vipActive() ? v.creditsVip : v.credits; }
 

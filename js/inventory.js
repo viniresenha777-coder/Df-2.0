@@ -102,7 +102,7 @@ function gainVest(idx, mcArmor = 0) {
     save.vestUpgrades[idx] = up;
   }
   save.vestsOwned[idx] = true;
-  if (save.vest < 0 || VESTS[idx].armor > VESTS[save.vest].armor) { save.vest = idx; recalcImplants(); toast(`${VESTS[idx].name} equipado`); }
+  if (save.vest < 0 || VESTS[idx].armor > vestDefinition(save.vest).armor) { save.vest = idx; recalcImplants(); toast(`${VESTS[idx].name} equipado`); }
   else toast(had ? `Você já tem ${VESTS[idx].name}` : `${VESTS[idx].name} guardado (troque na mochila com V)`);
   persist();
 }
@@ -112,7 +112,7 @@ function cycleVest() {
   const pos = owned.indexOf(save.vest);
   save.vest = pos < 0 ? owned[0] : pos + 1 < owned.length ? owned[pos + 1] : -1;
   recalcImplants(); persist();
-  toast(save.vest >= 0 ? `Colete: ${VESTS[save.vest].name}` : "Sem colete");
+  toast(save.vest >= 0 ? `Colete: ${vestDefinition(save.vest).name}` : "Sem colete");
 }
 function acceptFound() {
   const e = game.found[0];
@@ -526,6 +526,7 @@ function packMove(dx, dy) {
 function equipTo(slot) {
   const inv = packSel(), it = selItem(inv.sel);
   if (!it || it.kind !== "weapon") return;
+  if (!fmGifts.ready(it, () => { if (selItem(packSel().sel) === it) equipTo(slot); })) return;
   if (inv.sel < SLOT_N) { // troca a ordem dos slots
     const t = player.slots[slot]; player.slots[slot] = it; player.slots[inv.sel] = t; inv.sel = slot;
   } else {
@@ -546,8 +547,8 @@ function packAct() {
   } else if (it.kind === "weapon") {
     const e = player.slots.indexOf(null);
     equipTo(e >= 0 ? e : player.cur);
-  } else if (it.id === "trindade_eterna") INV.confirm = { trindade: true, name: "Trindade · 100 anos" };
-  else if (it.id === "token_loja") INV.confirm = { token: true, name: "Token da Loja" };
+  } else if (it.id === "trindade_eterna") INV.confirm = { trindade: it, name: "Trindade · 100 anos" };
+  else if (it.id === "token_loja") INV.confirm = { token: it, name: "Token da Loja" };
   else if (it.id === "reset_stats") toast("Arraste o cartão até o personagem para resetar os atributos.");
   else toast(MATS[it.id].cashProtection ? safeDescription(it.id) + " Basta carregar na mochila." : "Materiais ficam na mochila até você usar na oficina");
 }
@@ -635,7 +636,7 @@ function drawPack() {
   // colete equipado (V troca entre os que você tem)
   const nv = save.vestsOwned.filter(Boolean).length;
   ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(590, 508, 340, 42, 6); ctx.fill();
-  if (save.vest >= 0) { drawVestIcon(save.vest, 614, 529, 0.62); txt(`${VESTS[save.vest].name} · ${Math.round(vestDur())}%`, 640, 525, 13, vestDur() <= 25 ? "#e05a4a" : RARITY[VESTS[save.vest].rar].color, "left", true, 220); txt(vestText(VESTS[save.vest]), 640, 542, 10, "#a9a58f", "left", false, 280); }
+  if (save.vest >= 0) { drawVestIcon(save.vest, 614, 529, 0.62); txt(`${vestDefinition(save.vest).name} · ${Math.round(vestDur())}%`, 640, 525, 13, vestDur() <= 25 ? "#e05a4a" : RARITY[vestDefinition(save.vest).rar].color, "left", true, 220); txt(vestText(vestDefinition(save.vest)), 640, 542, 10, "#a9a58f", "left", false, 280); }
   else txt("Sem colete", 604, 534, 13, "#6d6a58", "left", true);
   txt(`V: trocar (${nv})`, 922, 524, 10, "#ffd96a", "right", true);
   regClick(590, 508, 340, 42, cycleVest);
@@ -665,18 +666,10 @@ function fmStashItemEquipped(entry) {
   return entry.type === "clothing" && save.clothing?.[entry.item.kind] === entry.item.id;
 }
 function fmStashEntries() {
-  const out = invPackEntries().filter((entry) => entry?.item);
-  for (const item of fmBackpacks) {
-    if (!out.some((entry) => entry.type === "clothing" && entry.item.id === item.id))
-      out.push({ area: "clothes-list", type: "clothing", item });
-  }
+  const out = invPackEntries().filter(entry => entry?.item && !(entry.type === "supply" && entry.item.id === "food"));
   for (const id of ["fresca", "comum", "podre"]) {
     const qty = Math.floor(Number(player.foodQ?.[id]) || 0);
     if (qty > 0) out.push({ area: "food", type: "food", item: { id, qty } });
-  }
-  for (const id of ["water", "med", "anti"]) {
-    const n = Math.floor(Number(player[id]) || 0);
-    if (n > 0) out.push({ area: "supply", type: "supply", item: { id, n } });
   }
   return out.filter(
     (entry) => !fmStashItemEquipped(entry) && !(entry.type === "clothing" && fmStashStoredClothing(entry.item.id)),
@@ -704,7 +697,7 @@ function fmStashSourceTitle(z) {
   if (z.type === "mat") return fmStashItemTitle(z.item);
   if (z.type === "ammo") return "Munição " + z.item.t + " ×" + z.item.n;
   if (z.type === "implant") return IMP[z.item.id]?.name || "Implante";
-  if (z.type === "vest") return VESTS[z.item.i]?.name || "Colete";
+  if (z.type === "vest") return vestDefinition(z.item.i)?.name || "Colete";
   if (z.type === "clothing") return z.item.name || "Roupa";
   if (z.type === "food") return fmStashItemTitle({ kind: "food", ...z.item });
   if (z.type === "supply") return fmStashItemTitle({ kind: z.item.id, qty: z.item.n });
@@ -730,7 +723,7 @@ function fmStashStore(at) {
         (v) =>
           v &&
           v.kind === "mat" &&
-          v.id === obj.id &&
+          v.id === obj.id && !obj.validadeDias && !v.validadeDias &&
           !!v.loot === !!obj.loot &&
           !!v.tokenBound === !!obj.tokenBound,
       );
@@ -743,8 +736,9 @@ function fmStashStore(at) {
     obj = { ...z.item, kind: "implant" };
   } else if (z.type === "vest") {
     const id = z.item.i;
-    if (!save.vestsOwned[id]) return;
-    obj = { kind: "vest", id, dur: vestDur(id) };
+    const gift = save.giftVests[id];
+    if (!save.vestsOwned[id] && !gift) return;
+    obj = gift ? { ...gift, kind: "vest", dur: vestDur(id) } : { kind: "vest", id, dur: vestDur(id) };
   } else if (z.type === "clothing") {
     const item = z.item;
     if (fmStashStoredClothing(item.id)) {
@@ -782,7 +776,12 @@ function fmStashStore(at) {
     if (index < 0) return;
     player.bag.splice(index, 1);
   } else if (z.type === "vest") {
-    save.vestsOwned[obj.id] = false;
+    if (obj.validadeDias) {
+      obj.upgrades = vestUpgrade(obj.i);
+      delete save.giftVests[obj.i];
+      delete save.vestDur[obj.i];
+      delete save.vestUpgrades[obj.i];
+    } else save.vestsOwned[obj.id] = false;
   } else if (z.type === "food") {
     player.foodQ[obj.id] = Math.max(0, (player.foodQ[obj.id] || 0) - obj.qty);
     player.food = Math.max(0, (player.food || 0) - obj.qty);
@@ -811,7 +810,7 @@ function fmStashWithdraw(index) {
     player.pack.find(
       (item) =>
         item.kind === "mat" &&
-        item.id === obj.id &&
+        item.id === obj.id && !obj.validadeDias && !item.validadeDias &&
         !!item.loot === !!obj.loot &&
         !!item.tokenBound === !!obj.tokenBound,
     );
@@ -821,7 +820,7 @@ function fmStashWithdraw(index) {
     addedSlots = Math.ceil((held + obj.qty) / AMMO_STACK) - Math.ceil(held / AMMO_STACK);
   } else if (
     materialStack ||
-    (obj.kind === "vest" && save.vestsOwned[obj.id]) ||
+    (obj.kind === "vest" && !obj.validadeDias && save.vestsOwned[obj.id]) ||
     (obj.kind === "food" && player.foodQ[obj.id] > 0) ||
     (["water", "med", "anti"].includes(obj.kind) && player[obj.kind] > 0)
   ) {
@@ -832,7 +831,8 @@ function fmStashWithdraw(index) {
     return;
   }
   if (obj.kind === "weapon") {
-    if (!addWeapon(obj)) {
+    if (obj.validadeDias && packUsed() < packCapacity()) player.pack.push(obj);
+    else if (obj.validadeDias || !addWeapon(obj)) {
       toast("Inventário cheio.");
       return;
     }
@@ -862,11 +862,19 @@ function fmStashWithdraw(index) {
     player.bag.push(im);
   } else if (obj.kind === "vest") {
     if (!VESTS[obj.id]) return;
-    save.vestsOwned[obj.id] = true;
+    if (obj.validadeDias) {
+      const key = Math.max(10000, ...Object.keys(save.giftVests).map(Number)) + 1;
+      save.giftVests[key] = { ...obj, i: key };
+      save.vestDur[key] = obj.dur ?? 100;
+      save.vestUpgrades[key] = cleanVestUpgrade(obj.upgrades);
+    } else {
+      save.vestsOwned[obj.id] = true;
+      if (Number.isFinite(obj.dur)) save.vestDur[obj.id] = obj.dur;
+    }
     save.vestDur = save.vestDur || {};
-    if (Number.isFinite(obj.dur)) save.vestDur[obj.id] = obj.dur;
   } else if (obj.kind === "clothing") {
     if (!CLOTHING_BY_ID[obj.id]) return;
+    if (CLOTHING_BY_ID[obj.id].kind === "pack") save.clothesOwned[obj.id] = true;
   } else if (obj.kind === "food") {
     if (!["fresca", "comum", "podre"].includes(obj.id)) return;
     player.foodQ[obj.id] = (player.foodQ[obj.id] || 0) + obj.qty;
@@ -1326,10 +1334,10 @@ function craftKey(k) {
 // o implante Artesão dá desconto no dinheiro da oficina
 function craftMoney(m) { return Math.round(m * (1 - Math.min(0.5, player.fx.craftDisc / 100))); }
 // implantes pedidos pela receita (X e Err X): contam só os da mochila de implantes, fora do Token
-function impHave(id) { return player.bag.filter((im) => im.id === id && !im.tokenBound).length; }
+function impHave(id) { return player.bag.filter((im) => im.id === id && !im.tokenBound && !im.validadeDias).length; }
 function hasImps(need) { return !need || Object.keys(need).every((id) => impHave(id) >= need[id]); }
 function takeImps(need) {
-  for (const id in need || {}) for (let n = need[id]; n > 0; n--) { const i = player.bag.findIndex((im) => im.id === id && !im.tokenBound); if (i >= 0) player.bag.splice(i, 1); }
+  for (const id in need || {}) for (let n = need[id]; n > 0; n--) { const i = player.bag.findIndex((im) => im.id === id && !im.tokenBound && !im.validadeDias); if (i >= 0) player.bag.splice(i, 1); }
 }
 function recipeName(r) { return r.implant ? IMP[r.implant].name : r.vest != null ? VESTS[r.vest].name : WDEF[r.id].name; }
 function craftRecipe() {
@@ -1399,7 +1407,7 @@ function upgradeVest() {
   save.vestUpgrades = save.vestUpgrades || {};
   const up = save.vestUpgrades[i] = rollUpgrades(VEST_UP_STATS, VEST_UP_MAX);
   recalcImplants();
-  finishUpgrade(`${VESTS[i].name}: Armadura ${up.armor} · Velocidade ${up.speed}`);
+  finishUpgrade(`${vestDefinition(i).name}: Armadura ${up.armor} · Velocidade ${up.speed}`);
 }
 function matsLine(mats, x, y) {
   let xx = x;
@@ -1488,7 +1496,7 @@ function drawCraft() {
     });
     const it = list[game.ccur];
     if (it != null) {
-      const d = isVest ? VESTS[it] : WDEF[it.id], up = isVest ? vestUpgrade(it) : it.up;
+      const d = isVest ? vestDefinition(it) : WDEF[it.id], up = isVest ? vestUpgrade(it) : it.up;
       ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(px, 130, pw, 90, 8); ctx.fill();
       if (isVest) drawVestIcon(it, px + pw / 2, 175, 1);
       else drawWeaponSide(d, px + pw / 2, 175, Math.min(1.6, (pw - 30) / 125));

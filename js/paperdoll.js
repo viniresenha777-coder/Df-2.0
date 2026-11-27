@@ -219,13 +219,20 @@ function invPackEntries() {
     if (save.vestsOwned[i] && i !== save.vest)
       entries.push({ area: "vests", type: "vest", item: { i } });
   });
+  for (const item of Object.values(save.giftVests)) {
+    if (item.i !== save.vest) entries.push({ area: "vests", type: "vest", item });
+  }
   CLOTHING_ITEMS.forEach(item => {
     const equipped = save.clothing[item.kind] === item.id;
     // mochilas ficam no slot próprio e no Baú da Base; roupas guardadas no baú também saem daqui
-    if (item.kind !== "pack" && !equipped && clothingOwned(item.id) && !save.vault.some((v) => v && v.kind === "clothing" && v.id === item.id))
+    if (!equipped && clothingOwned(item.id) && !save.vault.some((v) => v && v.kind === "clothing" && v.id === item.id))
       entries.push({ area: "clothes-list", kind: item.kind, type: "clothing", item });
   });
   player.bag.forEach((im, i) => entries.push({ area: "bag", i, type: "implant", item: im }));
+  for (const id of ["food", "water", "med", "anti"]) {
+    const n = Math.floor(Number(player[id]) || 0);
+    if (n > 0) entries.push({ area: "supply", type: "supply", item: { id, n } });
+  }
   return fmInvArrange(entries);
 }
 // página 1: 30 espaços + os espaços extras da mochila (painel ao lado); depois, páginas de 30
@@ -252,7 +259,7 @@ function invItemName(z) {
   if (!z || !z.item) return "";
   if (z.type === "weapon") return instName(z.item);
   if (z.type === "mat") return MATS[z.item.id].name;
-  if (z.type === "vest") return VESTS[z.item.i].name;
+  if (z.type === "vest") return vestDefinition(z.item.i).name;
   if (z.type === "ammo") return "Munição: " + z.item.t;
   if (z.type === "clothing") return z.item.name;
   if (z.type === "implant") return implantName(z.item);
@@ -335,12 +342,14 @@ function equippedClothingSlot(x, y, kind) {
   }
 }
 function equipVest(i) {
-  if (!save.vestsOwned[i]) return;
-  save.vest = i; recalcImplants(); persist(); toast(`${VESTS[i].name} equipado`);
+  const gift = save.giftVests[i];
+  if (!save.vestsOwned[i] && !gift) return;
+  if (gift && !fmGifts.ready(gift, () => { if (save.giftVests[i] === gift) equipVest(i); })) return;
+  save.vest = i; recalcImplants(); persist(); toast(`${vestDefinition(i).name} equipado`);
 }
 function unequipVest() {
   if (save.vest < 0) return;
-  toast(`${VESTS[save.vest].name} guardado`);
+  toast(`${vestDefinition(save.vest).name} guardado`);
   save.vest = -1; recalcImplants(); persist();
 }
 function moveImplant(im, to) {
@@ -349,6 +358,7 @@ function moveImplant(im, to) {
     if (save.installed.includes(im)) return;
     const why = installBlock(im);
     if (why) { toast(why); return; }
+    if (!player.bag.includes(im) || !fmGifts.ready(im, () => moveImplant(im, to))) return;
     player.bag.splice(player.bag.indexOf(im), 1); save.installed.push(im);
     toast(`Instalou ${implantName(im)}`);
   } else {
@@ -369,8 +379,8 @@ function invDrop(src, dst) {
     if (src.sel == null) { toast("Isso não dá para descartar aqui"); return; }
     inv.sel = src.sel; INV.confirm = { name: invItemName(src) }; return;
   }
-  if (src.type === "mat" && src.item.id === "trindade_eterna" && dst.area === "doll") { INV.confirm = { trindade: true, name: "Trindade · 100 anos" }; return; }
-  if (src.type === "mat" && src.item.id === "token_loja" && dst.area === "doll") { INV.confirm = { token: true, name: "Token da Loja" }; return; }
+  if (src.type === "mat" && src.item.id === "trindade_eterna" && dst.area === "doll") { INV.confirm = { trindade: src.item, name: "Trindade · 100 anos" }; return; }
+  if (src.type === "mat" && src.item.id === "token_loja" && dst.area === "doll") { INV.confirm = { token: src.item, name: "Token da Loja" }; return; }
   if (src.type === "mat" && src.item.id === "reset_stats" && dst.area === "doll") {
     INV.confirm = { resetStats: true, name: "Cartão Reset de Stats" };
     return;
@@ -454,7 +464,7 @@ function invIcon(z, x, y, w, h) {
     return;
   }
   if (z.type === "vest") {
-    const v = VESTS[z.item.i];
+    const v = vestDefinition(z.item.i);
     drawVestIcon(z.item.i, x + w / 2, y + h / 2 - 2, Math.min(w, h) / 70);
     if (v.rar) { ctx.strokeStyle = RARITY[v.rar].color; ctx.globalAlpha = 0.6; ctx.lineWidth = 1.5; rr(x + 2, y + 2, w - 4, h - 4, 4); ctx.stroke(); ctx.globalAlpha = 1; }
     return;
@@ -626,7 +636,7 @@ function drawInventory() {
   if (clothingGet("mask")) equippedClothingSlot(606, 104, "mask"); else outfitSlot(606, 104, 58, 58, hp.mask ? hp.mask.name : "Máscara", hp.mask);
   slotBox(606, 186, 58, 58, "Colete", { area: "vestslot", type: "vest", item: save.vest >= 0 ? { i: save.vest } : null });
   // só coletes com modelo vestido (Natalino): escolher se aparece no personagem
-  if (save.vest >= 0 && VESTS[save.vest].wear) {
+  if (save.vest >= 0 && vestDefinition(save.vest).wear) {
     const on = save.vestShow !== false;
     txt(on ? "◉ Vestido" : "○ Oculto", 635, 258, 10, on ? "#ffd96a" : "#8f8a72", "center", true);
     regClick(606, 246, 58, 18, () => { save.vestShow = !on; persist(); toast(on ? "Colete escondido no personagem" : "Colete aparecendo no personagem"); });
@@ -720,15 +730,16 @@ function drawInventory() {
   if (INV.confirm) {
     ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "#1a1913"; rr(W / 2 - 200, H / 2 - 60, 400, 120, 10); ctx.fill(); ctx.strokeStyle = "#e05a4a"; ctx.lineWidth = 2; ctx.stroke();
-    txt(INV.confirm.token ? "Ativar o Token da Loja?" : INV.confirm.trindade ? "Consumir Trindade por 100 anos?" : INV.confirm.resetStats ? "Resetar atributos e proficiências?" : `Descartar ${INV.confirm.name}?`, W / 2, H / 2 - 22, 16, "#f2eedc", "center", true, 370);
-    txt(INV.confirm.token ? "A Loja da base fica de graça por 1 dia. Consome o token." : INV.confirm.trindade ? "+35% dano, corrida e armadura. Consome 1 item." : INV.confirm.resetStats ? "Todos os pontos investidos voltam. O cartão será consumido." : "Some para sempre.", W / 2, H / 2, 12, "#a9a58f", "center");
-    btn(W / 2 - 150, H / 2 + 16, 140, 30, INV.confirm.token ? "Ativar" : INV.confirm.trindade ? "Consumir" : INV.confirm.resetStats ? "Resetar" : "Descartar", () => { const reset = INV.confirm.resetStats, trindade = INV.confirm.trindade, token = INV.confirm.token; INV.confirm = null; if (token) useTokenLoja(); else if (trindade) useTrindadeItem(); else if (reset) useResetStatsCard(); else packDiscard(); }, true);
+    txt((INV.confirm.token || INV.confirm.trindade)?.validadeDias ? "Ativar por " + (INV.confirm.token || INV.confirm.trindade).validadeDias + " dia(s)?" : INV.confirm.token ? "Ativar o Token da Loja?" : INV.confirm.trindade ? "Consumir Trindade por 100 anos?" : INV.confirm.resetStats ? "Resetar atributos e proficiências?" : `Descartar ${INV.confirm.name}?`, W / 2, H / 2 - 22, 16, "#f2eedc", "center", true, 370);
+    txt(INV.confirm.token ? "A Loja da base fica de graça pelo prazo do token. Consome 1 item." : INV.confirm.trindade ? "+35% dano, corrida e armadura. Consome 1 item." : INV.confirm.resetStats ? "Todos os pontos investidos voltam. O cartão será consumido." : "Some para sempre.", W / 2, H / 2, 12, "#a9a58f", "center");
+    btn(W / 2 - 150, H / 2 + 16, 140, 30, INV.confirm.token ? "Ativar" : INV.confirm.trindade ? "Consumir" : INV.confirm.resetStats ? "Resetar" : "Descartar", () => { const reset = INV.confirm.resetStats, trindade = INV.confirm.trindade, token = INV.confirm.token; INV.confirm = null; if (token) useTokenLoja(token); else if (trindade) useTrindadeItem(trindade); else if (reset) useResetStatsCard(); else packDiscard(); }, true);
     btn(W / 2 + 10, H / 2 + 16, 140, 30, "Cancelar", () => { INV.confirm = null; });
   }
   drawAllocPanel();
 }
 // linha "Ferro Velho: $X" do balão de detalhes (o mesmo valor que o Ferro Velho paga)
 function fmScrapLine(kind, obj) {
+  if (obj.validadeDias || (kind === "vest" && save.giftVests[obj.i])) return "Vinculado · venda bloqueada";
   const $ = (v) => "$" + Math.max(0, Math.round(v)).toLocaleString("pt-BR");
   const each = (unit, n) => n > 1 ? `Ferro Velho: ${$(unit)} cada · ${$(unit * n)} tudo` : `Ferro Velho: ${$(unit)}`;
   if (kind === "weapon") return obj.tokenBound ? "Ferro Velho: não vende" : "Ferro Velho: " + $(weaponSellPrice(obj));
@@ -752,6 +763,8 @@ function fmBalãoDetalhes(it) {
   const add = (v, color = "#e4dfd1") => rows.push([String(v), color]);
   let title = "Item";
   try {
+    const gift = kind === "vest" ? save.giftVests[obj.i] : obj;
+    if (gift?.validadeDias) add(gift.expiraEm ? "Vence em " + new Date(gift.expiraEm).toLocaleString("pt-BR") : "Após o primeiro uso: " + gift.validadeDias + " dia(s)", "#ffd96a");
     title = invItemName(it) || "Item";
     if (kind === "weapon") {
       const base = WDEF[obj.id],
@@ -775,7 +788,7 @@ function fmBalãoDetalhes(it) {
       add("Calibre: " + obj.t, "#8bc9f5");
       add("Quantidade: " + obj.n, "#f4c44d");
     } else if (kind === "vest") {
-      const vest = VESTS[obj.i];
+      const vest = vestDefinition(obj.i);
       add("Tipo: colete", "#8bc9f5");
       if ((save.vestSemTroca || []).includes(obj.i)) add("(Não transferível)", "#ff9a7a");
       add("Proteção: " + (vest.armor || 0), "#8bed92");
