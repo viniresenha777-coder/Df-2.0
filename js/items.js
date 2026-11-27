@@ -15,7 +15,8 @@ const AMMO = {
   "cartucho":    { box: 8,  price: 26 },
   "combustível": { box: 60, price: 45 },
   "virote":      { box: 6,  price: 30 },
-  "granada":     { box: 4,  price: 120 }
+  "granada":     { box: 4,  price: 120 },
+  "Célula de Energia": { box: 8, price: 45 }
 };
 // ---------- Raridade ----------
 const RARITY = [
@@ -77,7 +78,7 @@ const WLIST = [
   { id: "serra",    name: "Serra elétrica", short: "Serra", cat: "melee", look: "chainsaw", dmg: 8, delay: 116.67, range: 52, arc: 0.55, price: 0, req: [30, 60], len: 34, color: "#d08a2a", sound: [0.6, 0.8], special: true },
   { id: "lancachamas", name: "Lança-chamas", short: "Lança-ch.", cat: "machinegun", look: "flamer", dmg: 2, delay: 33.33, mag: 120, reload: 2600, ammo: "combustível", price: 0, req: [35, 70], len: 30, color: "#a33b32", pellets: 3, spread: 0.22, life: 300, speed: 7, pierce: true, fire: true, sound: [0.5, 0.6], special: true },
   { id: "lamina",   name: "Lâmina Sombria", short: "Lâmina S.", cat: "melee", look: "katana", dmg: 90, delay: 1000, range: 74, arc: 1.05, price: 0, req: [60, 120], len: 40, color: "#8a5ae0", lifesteal: 0.08, special: true },
-  { id: "trovao",   name: "Rifle Trovão",  short: "Trovão", cat: "rifles", look: "rifle", dmg: 160, delay: 1000, mag: 4, reload: 2800, ammo: ".50", price: 0, req: [70, 120], len: 40, color: "#3a5a8a", pierce: true, thunder: true, sound: [1, 1], special: true },
+  { id: "trovao",   name: "Rifle Trovão",  short: "Trovão", cat: "rifles", look: "rifle", dmg: 1000, delay: 4000 / 3, mag: 2, reload: 3250, ammo: "Célula de Energia", price: 0, req: [70, 120], minLevel: 75, len: 40, color: "#3a5a8a", pierce: true, thunder: true, alwaysCrit: true, damageType: "energy", spread: 4.8 * Math.PI / 180, sound: [1, 1], special: true },
   // novas armas com efeitos (bleed = chance de sangramento · burn = dano de fogo por segundo · stun = chance de atordoar · crit = +% de crítico)
   { id: "silenciada", name: "Pistola silenciada", short: "Silenciada", cat: "pistols", look: "pistol", dmg: 7, delay: 500, mag: 15, reload: 1100, ammo: "9mm", price: 550, req: [10, 30], len: 18, color: "#2a2a2a", sound: [0.02, 0.05] },
   { id: "incendiaria", name: "Escopeta Incendiária", short: "Incendiária", cat: "shotguns", look: "shotgun", dmg: 10, delay: 666.67, mag: 8, reload: 2400, ammo: "cartucho", price: 0, req: [40, 100], len: 28, color: "#c0502a", wood: true, pellets: 8, spread: 0.3, life: 380, burn: 18 },
@@ -173,7 +174,7 @@ const RECIPES = [
   { id: "serra",       mats: { sucata: 6, pecas: 3, eletronicos: 3 },     money: 20000, level: 10 },
   { id: "lancachamas", mats: { sucata: 8, pecas: 5, eletronicos: 3 },     money: 35000, level: 15 },
   { id: "lamina",      mats: { sucata: 10, pecas: 4, nucleo: 1 },         money: 60000, level: 25 },
-  { id: "trovao",      mats: { pecas: 15, eletronicos: 7, nucleo: 10 },   money: 120000, level: 40 },
+  { id: "trovao",      mats: { pecas: 15, eletronicos: 7, nucleo: 10 },   money: 120000, level: 75 },
   { id: "minigun_inf", mats: { pecas: 14, eletronicos: 10, nucleo: 4 },   money: 250000, level: 60 },
   // colete nº 10: craft difícil (precisa ter o nº 9, que é consumido)
   { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 500000, level: 100, needVest: 8 },
@@ -246,10 +247,20 @@ function wStat(inst) {
     dmg: d.dmg * (1 + 0.06 * u.dmg),
     spread: (d.spread || 0.03) * (1 - 0.09 * u.acc),
     // Rifles: recarga 15% mais lenta, mantendo upgrades e atributos ativos.
-    reload: (d.reload || 0) * (1 - 0.06 * u.rel) * (d.cat === "rifles" ? 1.15 : 1),
+    reload: (d.reload || 0) * (1 - 0.06 * u.rel) * (d.cat === "rifles" && !d.thunder ? 1.15 : 1),
     delay: d.melee ? d.delay * (1 - 0.04 * u.rel) : d.delay,
     range: d.melee ? d.range * (1 + 0.04 * u.acc) : 0
   };
+}
+// Trovão: limites adaptados ao cap de 100 pontos dos atributos gerais.
+function thunderReloadTime(st) {
+  const progress = Math.max(0, Math.min(1, A("reload") / 100));
+  const base = 280 + (st.reload - 280) * (1 - progress);
+  return Math.max(280, base * (1 - Math.max(-0.5, Math.min(0.6, player.fx.reload / 100))));
+}
+function thunderSpread(st) {
+  const progress = Math.max(0, Math.min(1, A("acc") / 49));
+  return st.spread * (1 - progress) * (1 - Math.max(0, Math.min(0.6, player.fx.accImp / 100)));
 }
 function curInst() { return player.slots[player.cur]; }
 function curW() { const i = curInst(); return WDEF[i ? i.id : "punhos"]; }

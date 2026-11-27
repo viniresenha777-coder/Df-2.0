@@ -155,16 +155,16 @@ const ZTYPES = {
   dog:     { name: "Cão infectado", plural: "cães infectados", hp: 0.55, spd: 2.5, dmg: 0.7, r: 11, from: 3, weight: 2, xp: 1.4, pack: [2, 4], hitDelay: 1000, group: "Especial" },
   spitter: { name: "Cuspidor",    plural: "cuspidores",  hp: 0.8, spd: 0.8,  dmg: 0.7, r: 13, from: 6,  weight: 2,  xp: 1.5, group: "Especial" },
   creeper: { name: "Rastejante",  plural: "rastejantes", hp: 1.2, spd: 0.6, dmg: 0, r: 14, from: 6, weight: 0.3, xp: 2, screams: true, group: "Especial" },
-  hazmat:  { name: "Contaminado", plural: "contaminados", hp: 1.4, spd: 0.85, dmg: 0.9, r: 14, from: 7, weight: 1.5, xp: 1.8, gas: true, group: "Especial" },
+  hazmat:  { name: "Contaminado", plural: "contaminados", hp: 1.4, spd: 0.85, dmg: 0.9, r: 14, from: 7, weight: 1.5, xp: 1.8, gas: true, energyResistance: 15, group: "Especial" },
   infected: { name: "Infectado",  plural: "infectados",  hp: 1.1, spd: 1.35, dmg: 1.1, r: 13, from: 8, weight: 2, xp: 1.6, pack: [2, 3], dodge: true, group: "Infectado" },
   brute:   { name: "Brutamontes", plural: "brutamontes", hp: 3,   spd: 0.62, dmg: 1.9, r: 19, from: 9, weight: 2,  xp: 3, group: "Especial" },
   // tóxicos
-  toxic:   { name: "Tóxico",      plural: "tóxicos",     hp: 1.6, spd: 0.9,  dmg: 1.2, r: 14, from: 12, weight: 1.5, xp: 2.2, puddle: true, acidDeath: true, group: "Tóxico" },
+  toxic:   { name: "Tóxico",      plural: "tóxicos",     hp: 1.6, spd: 0.9,  dmg: 1.2, r: 14, from: 12, weight: 1.5, xp: 2.2, puddle: true, acidDeath: true, energyResistance: 20, group: "Tóxico" },
   // mutantes
   mutant:  { name: "Mutante",     plural: "mutantes",    hp: 5,   spd: 1.05, dmg: 2.4, r: 22, from: 13, weight: 1.5, xp: 5, charge: true, group: "Mutante" },
   // demônios
   demon:   { name: "Demônio",     plural: "demônios",    hp: 3.2, spd: 1.6,  dmg: 2.2, r: 17, from: 15, weight: 1.2, xp: 5, leap: true, group: "Demônio" },
-  abomination: { name: "Abominação", plural: "abominações", hp: 9, spd: 0.75, dmg: 3.4, r: 27, from: 18, weight: 1, xp: 9, slam: true, group: "Mutante" },
+  abomination: { name: "Abominação", plural: "abominações", hp: 9, spd: 0.75, dmg: 3.4, r: 27, from: 18, weight: 1, xp: 9, slam: true, energyResistance: 20, group: "Mutante" },
   // Companheiro do Papai Noel: não pode nascer como zumbi aleatório.
   alce_natal: { name: "Alce Zumbi", plural: "alces zumbis", hp: 3, spd: 1.65, dmg: 1.5, r: 24, from: 999, weight: 0, xp: 4, group: "Evento Natalino" }
 };

@@ -151,7 +151,7 @@ function startReload() {
   if (game.over || w.melee || !it || player.reloading > 0 || it.ammo >= w.mag) return;
   if (w.id === "glock") player.glockBurstLeft = 0;
   if (!w.infinite && player.reserve[w.ammo] <= 0) { toast("Sem munição de reserva"); sfx.empty(); return; }
-  const reloadTime = wStat(it).reload *
+  const reloadTime = w.thunder ? thunderReloadTime(wStat(it)) : wStat(it).reload *
     (1 - Math.max(-0.5, Math.min(0.6, player.fx.reload / 100))) /
     (1 + (A("reload") - 10) * 0.012);
   player.reloadRound = w.id === "caca";
@@ -204,7 +204,15 @@ function explode(x, y, r, dmg) {
 function hurt(z, dmg, ang, quiet, fx) {
   let d = dmg * (1 + player.fx.firepower / 100) * adm.dmg * (trindadeActive() ? 1.35 : 1), crit = false;
   if (player.fx.rage && player.hp / player.maxHp < 0.4) d *= 1 + player.fx.rage / 100;
-  if ((fx?.shotCrit ?? (!(fx && fx.noCrit) && Math.random() * 100 < Math.min(85, A("crit") * 0.5 + player.fx.crit + (fx && fx.crit ? fx.crit : 0))))) { d *= 2 + player.fx.critDmg / 100; crit = true; }
+  if (fx?.alwaysCrit || (fx?.shotCrit ?? (!(fx && fx.noCrit) && Math.random() * 100 < Math.min(85, A("crit") * 0.5 + player.fx.crit + (fx && fx.crit ? fx.crit : 0))))) {
+    // O dano do Trovão já inclui o crítico base; não duplicar os 1000.
+    d *= fx?.alwaysCrit ? 1 + player.fx.critDmg / 200 : 2 + player.fx.critDmg / 100;
+    crit = true;
+  }
+  if (fx?.damageType === "energy") {
+    const resistance = z.energyResistance ?? (z.boss ? BOSSES[z.bossId]?.energyResistance : ZTYPES[z.type]?.energyResistance) ?? 0;
+    d *= 1 - Math.max(0, Math.min(100, resistance)) / 100;
+  }
   // o Capataz bloqueia de frente: atire pelas costas ou pelos lados
   if (z.bossId === "capataz" && ang != null && Math.cos(angDiff(z.angle, ang + Math.PI)) > 0.35) {
     d *= 0.25;
@@ -270,7 +278,7 @@ function fireThunder(x, y, angle, damage, weapon) {
   }
   hits.sort((a, b) => a.forward - b.forward);
   if (weapon) {
-    const shotCrit = Math.random() * 100 < Math.min(85, A("crit") * 0.5 + player.fx.crit + (weapon.crit || 0));
+    const shotCrit = !!weapon.alwaysCrit || Math.random() * 100 < Math.min(85, A("crit") * 0.5 + player.fx.crit + (weapon.crit || 0));
     const effect = { ...weapon, shotCrit };
     hits.forEach(({ zombie }, i) => hurt(zombie, damage * (i === 0 ? 1 : i === 1 ? 0.4 : 0.2), angle, false, effect));
     if (trace.obstacle?.kind === "car") carHit(trace.obstacle, damage);
@@ -309,7 +317,12 @@ function attack() {
   if (mz) { mx = mz.x; my = mz.y; }
   player.shotAng = aim;
   const n = w.pellets || 1;
-  if (w.thunder) fireThunder(mx, my, aim, st.dmg * dmgMult(w), w);
+  if (w.thunder) {
+    // Cone total de 9,6 graus; a proficiência é requisito, não multiplica novamente o dano base.
+    const shotAngle = aim + (Math.random() * 2 - 1) * thunderSpread(st);
+    fireThunder(mx, my, shotAngle, st.dmg, w);
+    player.shotAng = shotAngle;
+  }
   else for (let i = 0; i < n; i++) {
     const a = aim + (Math.random() - 0.5) * 2 * st.spread * Math.max(0.15, 10 / A("acc")) * (1 - Math.min(0.6, player.fx.accImp / 100));
     const sp = (w.speed || 12) * (w.fire ? rand(0.8, 1.2) : 1);
@@ -317,7 +330,7 @@ function attack() {
       dmg: st.dmg * dmgMult(w), pierce: !!w.pierce, hit: [], big: w.cat === "rifles" || w.rar >= 3, fire: !!w.fire, explode: w.explode || 0, bolt: w.look === "crossbow",
       grenade: !!w.grenade, fx: w, knock: !!w.knock, color: w.rar >= 3 ? RARITY[w.rar].color : null });
   }
-  if (typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(mx, my, aim, w.id, n);   // os outros veem o tiro
+  if (typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(mx, my, w.thunder ? player.shotAng : aim, w.id, n);   // os outros veem o tiro
   if (!w.fire) {
     player.flashT = 60;
     player.thunderFlash = !!w.thunder;

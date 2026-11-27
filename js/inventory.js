@@ -39,11 +39,18 @@ function weaponDetail(d, inst, x, y, w) {
   drawWeaponSide(d, x + w / 2, y + 48, Math.min(1.6, (w - 30) / 125));
   txt(inst ? instName(inst) : d.name, x, y + 122, 18, rarColor(d), "left", true, w);
   txt(`${RARITY[d.rar].name} · ${CAT_LABEL[d.cat]}${d.craftOnly ? " · feita na oficina" : ""}`, x, y + 141, 12, rarColor(d), "left", false, w);
-  const st = wStat(inst || null), rows = [];
-  if (!inst) { st.dmg = d.dmg; st.delay = d.delay; st.reload = (d.reload || 0) * (d.cat === "rifles" ? 1.15 : 1); st.range = d.range || 0; st.spread = d.spread || 0.03; }
+  const st = wStat(inst || newInst(d.id)), rows = [];
   rows.push(["Dano", d.pellets ? `${Math.round(st.dmg)} x${d.pellets}` : `${Math.round(st.dmg)}`]);
-  rows.push([d.melee ? "Golpes/s" : "Tiros/s", (1000 / st.delay).toFixed(1)]);
+  rows.push([d.melee ? "Golpes/s" : "Tiros/s", (1000 / st.delay).toFixed(d.thunder ? 2 : 1)]);
   if (d.melee) rows.push(["Alcance", `${Math.round(st.range)}`]);
+  else if (d.thunder) {
+    rows.push(["Carregador", `${d.mag} · ${d.ammo}`]);
+    rows.push(["Recarga", `${(thunderReloadTime(st) / 1000).toFixed(2)} s`]);
+    rows.push(["Cone de mira", `${(thunderSpread(st) * 360 / Math.PI).toFixed(2)}°`]);
+    rows.push(["Crítico", "sempre (100%)"]);
+    rows.push(["Tipo de dano", "Energia"]);
+    rows.push(["DPS sem recarga", `${Math.round(st.dmg * 1000 / st.delay)}`]);
+  }
   else if (d.infinite) { rows.push(["Munição", "infinita · pente de 600"]); rows.push(["Recarga", `${(st.reload / 1000).toFixed(2)} s`]); rows.push(["Crítico", "nunca"]); rows.push(["Precisão", `${Math.round(100 - st.spread * 250)}%`]); }
   else {
     rows.push(["Carregador", `${d.mag} · ${d.ammo}`]);
@@ -1195,7 +1202,7 @@ const SHOP_TABS = ["Munição"];
 const AMMO_PACK_SIZE = 999;
 // preço do pacote de 999 balas, por calibre (dinheiro da mochila)
 const AMMO_PACK_PRICES = { "9mm": 6000, ".45": 8000, "cartucho": 9000, "5.56": 12000, "7.62": 14000, ".50": 18000,
-  "combustível": 10000, "virote": 16000, "granada": 60000 };
+  "combustível": 10000, "virote": 16000, "granada": 60000, "Célula de Energia": 14000 };
 function ammoPackPrice(type) { return AMMO_PACK_PRICES[type] || 14000; }
 const AMMO_PACK_PRICE = 14000;   // legado (valor de referência)
 const CAT_ORDER = { pistols: 0, machinegun: 1, shotguns: 2, rifles: 3, melee: 4 };
