@@ -179,7 +179,7 @@ window.addEventListener("keydown", (e) => {
   keys[k] = true;
   if (["tab", " ", "arrowup", "arrowdown", "arrowleft", "arrowright", "backspace", "f2"].includes(k)) e.preventDefault();
   if (e.repeat && !game.menu) return;
-  if (game.marketBusy) return;
+  if (game.marketBusy || game.trans || game.updateSaving) return;
   if (k === "f2") { toggleAdmin(); return; }
   if (game.over) { if (k === "enter") respawnPlayer(); return; }
   if (game.quitting) return;
@@ -235,7 +235,7 @@ canvas.addEventListener("mousemove", (e) => {
 });
 canvas.addEventListener("mousedown", (e) => {
   audioStart();
-  if (e.button !== 0) return;
+  if (e.button !== 0 || game.trans || game.updateSaving) return;
   const r = canvas.getBoundingClientRect();
   mouse.x = (e.clientX - r.left) * (W / r.width); mouse.y = (e.clientY - r.top) * (H / r.height);
   // boneco 3D (inventário ou painel da base): arrastar gira; clique simples resolvido ao soltar
@@ -299,12 +299,13 @@ function update(dt) {
   if (game.over || game.trans || game.hub) game.openWait = null;
   if (game.quitting) return;
   if (game.over || game.shop || game.menu || game.found || game.paused || game.trans || game.hub) player.glockBurstLeft = 0;
+  if (game.updateSaving) return;
+  if (game.trans) { transTick(dt); return; }
   if (game.over || game.shop || game.menu || game.found) return;
   if (game.paused) {
     if (!game.trans && !game.hub && !fmWorld.isFollower()) wanderDuringPause(dt);
     return;
   }
-  if (game.trans) { transTick(dt); return; } // trocando de área (tela escura)
   const k = dt / 16.67, sec = dt / 1000;
   game.time += dt;
   if (game.openWait && (game.openWait.t -= dt) <= 0) { const kind = game.openWait.kind; game.openWait = null; openWaitDone(kind); }

@@ -697,28 +697,39 @@ function edgeCheck(dx, dy) {
   }
   const x = sx > 0 ? m + 24 : sx < 0 ? WORLD_W - m - 24 : player.x;
   const y = sy > 0 ? m + 24 : sy < 0 ? WORLD_H - m - 24 : player.y;
-  game.trans = { t: 0, out: true, cell: n, x, y };
+  startLocationLoad(n.code + " · " + n.name, () => gotoCell(n, { x, y }));
+}
+function startLocationLoad(label, load) {
+  if (game.trans) return;
+  game.trans = { label, load, phase: "out", t: 0, painted: false };
   mouse.down = false;
+  game.openWait = null;
 }
 function transTick(dt) {
   const tr = game.trans;
   if (!tr) return;
   tr.t += dt;
-  if (tr.out && tr.t >= 280) { gotoCell(tr.cell, { x: tr.x, y: tr.y }); tr.out = false; tr.t = 0; }
-  else if (!tr.out && tr.t >= 380) game.trans = null;
+  if (tr.phase === "out" && tr.t >= 140) {
+    tr.phase = "loading"; tr.painted = false;
+  } else if (tr.phase === "loading" && tr.painted) {
+    // O quadro anterior já apresentou a tela opaca. Só agora monte o destino.
+    tr.load();
+    tr.phase = "ready"; tr.painted = false;
+  } else if (tr.phase === "ready" && tr.painted) {
+    tr.phase = "in"; tr.t = 0;
+  } else if (tr.phase === "in" && tr.t >= 230) game.trans = null;
 }
 function drawTransition() {
   const tr = game.trans;
   if (!tr) return;
-  const a = tr.out ? tr.t / 280 : 1 - tr.t / 380;
-  ctx.fillStyle = `rgba(4,5,4,${clamp(a, 0, 1)})`; ctx.fillRect(0, 0, W, H);
-  if (a > 0.5) {
-    ctx.globalAlpha = (a - 0.5) * 2;
-    const c = tr.cell, RG = REGIONS[c.tier];
-    txt(`${c.code} · ${c.name}`, W / 2, H / 2 - 4, 26, "#e5e0c8", "center", true);
-    txt(`Área ${RG.name} · ${RG.diff}`, W / 2, H / 2 + 22, 15, RG.color === "#2a2a2e" ? "#9a9aa0" : RG.color, "center", true);
-    ctx.globalAlpha = 1;
-  }
+  const alpha = tr.phase === "out" ? tr.t / 140 : tr.phase === "in" ? 1 - tr.t / 230 : 1;
+  ctx.save();
+  ctx.globalAlpha = clamp(alpha, 0, 1);
+  ctx.fillStyle = "#060706"; ctx.fillRect(0, 0, W, H);
+  txt("Carregando…", W / 2, H / 2 - 4, 25, "#e5e0c8", "center", true);
+  txt(tr.label, W / 2, H / 2 + 24, 15, "#b8b39d", "center");
+  ctx.restore();
+  tr.painted = true;
 }
 
 function locationName(x, y) {

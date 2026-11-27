@@ -99,7 +99,7 @@ const fmSocial = (() => {
       skin: save.skin | 0, clothing: clothingClean(save.clothing), location: location(), inside: !!(game.inside || game.hub),
       // aba minimizada ou em segundo plano: o navegador quase para o jogo, então não pode coordenar os zumbis
       // aparência de combate: arma na mão, tronco girado, pernas, mira, camadas (capa/máscara/colete) e lanterna
-      w: curW().id, ts: TW.suf || "", sr: player.sRow | 0, ga: Math.round((Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle || 0) * 100) / 100,
+      w: curW().id, ts: weaponPose(curW()) === TW.pose ? TW.suf : "", sr: player.sRow | 0, ga: Math.round((Number.isFinite(player.gunAngle) ? player.gunAngle : player.angle || 0) * 100) / 100,
       g: typeof playerGear === "function" ? playerGear().slice(0, 8) : [], fl: !!(typeof flashlightActive === "function" && flashlightActive()),
       moving: !!player.moving, active: !(document.hidden || game.paused || game.menu || game.shop || game.over || game.found || game.hub), since: sectorSince, sent: (lastStateSent = Math.max(Date.now(), lastStateSent + 1))
     };

@@ -2008,20 +2008,24 @@ function admTeleportCell(cx, cy) {
   const c = cellAt(cx, cy);
   if (!c) { toast("Essa área não tem passagem"); return; }
   game.menu = null;
-  if (game.inside) leaveHouse();
-  gotoCell(c, { x: MID_X, y: MID_Y });
-  toast(`Teletransportado para ${c.code}`);
+  startLocationLoad(c.name, () => {
+    if (game.inside) leaveHouseNow();
+    gotoCell(c, { x: MID_X, y: MID_Y });
+    toast(`Teletransportado para ${c.code}`);
+  });
 }
 function admTeleportPlayer(p) {
   if (!canUseAdmin()) return;
   const c = cellAt(p.cx, p.cy);
   if (!c) { toast("Não foi possível achar a área do jogador"); return; }
   game.menu = null;
-  if (game.inside) leaveHouse();
-  const m = /^house:(-?[\d.]+):(-?[\d.]+)/.exec(p.location || "");
-  gotoCell(c, m ? (wd) => { const b = wd.buildings.find((b) => b.x === +m[1] && b.y === +m[2]); return b && b.door ? doorFront(b) : { x: MID_X, y: MID_Y }; }
-                : { x: p.x, y: p.y + 30 });
-  toast(m ? `${p.name} está dentro de um prédio: você ficou na porta` : `Teletransportado até ${p.name}`);
+  startLocationLoad(c.name, () => {
+    if (game.inside) leaveHouseNow();
+    const m = /^house:(-?[\d.]+):(-?[\d.]+)/.exec(p.location || "");
+    gotoCell(c, m ? (wd) => { const b = wd.buildings.find((b) => b.x === +m[1] && b.y === +m[2]); return b && b.door ? doorFront(b) : { x: MID_X, y: MID_Y }; }
+                  : { x: p.x, y: p.y + 30 });
+    toast(m ? `${p.name} está dentro de um prédio: você ficou na porta` : `Teletransportado até ${p.name}`);
+  });
 }
 async function admBan(p, days, label) {
   if (!canUseAdmin()) return;

@@ -246,7 +246,7 @@ function rollLootFull(table, zone) {
 function interact() {
   const s = nearSpot();
   if (!s) return;
-  if (s.kind === "door") { enterHouse(s.house); return; }
+  if (s.kind === "door") { startLocationLoad(s.house.name, () => { enterHouse(s.house); checkpoint("entrada no prédio"); }); return; }
   if (s.kind === "exit") { leaveHouse(); return; }
   if (s.kind === "stairs") { changeFloor(s.dir); return; }
   if (s.kind === "survivor") { pickupSurvivor(s); return; }
@@ -688,6 +688,9 @@ function enterHouse(h) {
   else toast(`Você entrou: ${h.name}${fl > 1 ? ` · ${fl} ${h.def.under ? "níveis" : "andares"}` : ""}`);
 }
 function leaveHouse() {
+  startLocationLoad(world.cell.name, () => { leaveHouseNow(); checkpoint("saída do prédio"); });
+}
+function leaveHouseNow() {
   game.floorPursuers = []; // perseguições pendentes não atravessam prédios.
   game.search = null; game.hub = false; game.menu = null; game.shop = false;
   const h = game.inside;
@@ -711,19 +714,24 @@ function travelTo(id) {
   if (game.inside && game.inside.outpost === id) { toast("Você já está aqui"); return; }
   const cost = travelCost(id);
   if (game.money < cost) { toast(`A viagem custa $${cost} (dinheiro da mochila)`); return; }
-  game.money -= cost; logMoney("Viagem", "posto " + id, -cost); game.menu = null; stat("travels");
-  game.inside = null;
-  gotoCell(cell, (wd) => doorFront(wd.outposts[id]));
-  const b = world.outposts[id];
-  enterHouse(b);
-  toast(`Viagem até ${b.name} · -$${cost}`);
+  game.menu = null;
+  startLocationLoad(cell.name, () => {
+    game.money -= cost; logMoney("Viagem", "posto " + id, -cost); stat("travels");
+    game.inside = null;
+    gotoCell(cell, (wd) => doorFront(wd.outposts[id]));
+    const b = world.outposts[id];
+    enterHouse(b);
+    toast(`Viagem até ${b.name} · -$${cost}`);
+  });
 }
 // admin: vai para a primeira área com esse nível de perigo
 function teleportZone(r) {
   r = clamp(r, 0, MAX_ZONE);
-  if (game.inside) leaveHouse();
   const list = allCells().sort((a, b) => Math.abs(a.zone - r) - Math.abs(b.zone - r));
-  gotoCell(list[0], { x: MID_X, y: MID_Y });
+  startLocationLoad(list[0].name, () => {
+    if (game.inside) leaveHouseNow();
+    gotoCell(list[0], { x: MID_X, y: MID_Y });
+  });
 }
 
 // Estado do saque dentro das casas de uma área, para o checkpoint: { índice do prédio: ["0101...", ...por andar] }
