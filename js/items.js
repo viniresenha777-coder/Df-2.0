@@ -651,6 +651,7 @@ const TRINDADE_ICON = new Image();
 TRINDADE_ICON.src = "img/trindade_icon.webp?v=20261116-highres1";
 // foto de alguns materiais (img/mats/<id>.png, 160x120); sem a imagem carregada, usa o desenho em código
 const MAT_ART = {};
+for (const id of Object.keys(MATS)) if (MATS[id].blueprint) { const im=new Image(); im.src="img/mats/"+id+".webp?v=1"; MAT_ART[id]=im; }
 for (const id of ["sucata", "pecas"]) { const im = new Image(); im.src = `img/mats/${id}.png?v=20261120-mats03`; MAT_ART[id] = im; }
 { const im = new Image(); im.src = "img/token_loja.webp?v=20261121-token01"; MAT_ART.token_loja = im; }
 { const im = new Image(); im.src = "img/mats/gorro_natal.webp?v=20261123-natal1"; MAT_ART.gorro_natal = im; }
@@ -661,6 +662,15 @@ function shopFree() { return (Number(save.shopFreeUntil) || 0) > fmWorld.nowMs()
 function drawMatIcon(id, cx, cy, s) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
   if (MATS[id]?.blueprint) {
+    const im = MAT_ART[id];
+    if (im && im.complete && im.naturalWidth && im.naturalHeight) {
+      const sc = Math.min(60 / im.naturalWidth, 44 / im.naturalHeight);
+      const w = im.naturalWidth * sc, h = im.naturalHeight * sc;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(im, -w/2, -h/2, w, h);
+      ctx.strokeStyle="#e6bd55"; ctx.lineWidth=1.2; ctx.strokeRect(-w/2,-h/2,w,h);
+      ctx.restore(); return;
+    }
     ctx.fillStyle="#16416b"; ctx.fillRect(-29,-21,58,42);
     ctx.strokeStyle="#e6bd55"; ctx.lineWidth=1.5; ctx.strokeRect(-29,-21,58,42);
     ctx.strokeStyle="#5380a3"; ctx.lineWidth=.5;
