@@ -1042,7 +1042,7 @@ function travelKey(k) {
 
 // ---------- Painel de administrador (F2) ----------
 const adm = { god: false, infAmmo: false, noReq: false, infStamina: false, freeze: false, dmg: 1, direct: false, shopAnywhere: false };
-const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Presentes", "Implantes", "Armas", "Banidos", "Bugs", "Dinheiro retido"];
+const ADM_TABS = ["Geral", "Personagem", "Dinheiro e itens", "Presentes", "Implantes", "Armas", "Banidos", "Bugs", "Dinheiro retido", "Recargas"];
 function canUseAdmin() {
   return typeof fmCloud !== "undefined" && fmCloud.isActive() && fmCloud.isAdmin();
 }
@@ -1053,6 +1053,7 @@ function toggleAdmin() {
   }
   if (game.menu === "admin") { game.menu = null; game.input = null; return; }
   if (game.over) return;
+  game.admRecargas = null;
   game.shop = false; game.input = null; game.menu = "admin";
   game.at = game.at || 0; game.ac = game.ac || 0;
   game.admGift = game.admGift || { name: "", type: "dinheiro", qty: 1000, itemIndex: 0, busy: false };
@@ -1162,6 +1163,21 @@ function admReset() {
   save.vestUpgrades = {}; save.vestDur = {}; save.vest = -1; save.vestsOwned = VESTS.map(() => false); save.outposts = OUTPOSTS.map((o, i) => i === 0);
   save.char = { level: 1, xp: 0, points: 0, wpoints: 0, attrs: defaultAttrs() };
   persist(); resetGame(); toast("Progresso apagado");
+}
+async function admLoadRecargas(cursores = [null]) {
+  if (!canUseAdmin()) return;
+  const st = { cursores, lista: [], carregando: true };
+  game.admRecargas = st;
+  const cursor = cursores[cursores.length - 1];
+  try {
+    const { data, error } = await fmCloud.socialClient().rpc("fm_admin_recargas", {
+      p_antes: cursor?.criado_em || null, p_id: cursor?.id || null
+    });
+    if (error) throw error;
+    st.lista = data.slice(0, 10);
+    st.mais = data.length > 10;
+  } catch (err) { st.erro = err.message || "Falha ao consultar recargas."; }
+  finally { st.carregando = false; }
 }
 function admRows() {
   if (!canUseAdmin()) return [];
@@ -1322,6 +1338,23 @@ function admRows() {
       rows.push({ label: `${r.nome || "?"} · ${r.login || "?"} · ${q} · $${Math.round(r.valor).toLocaleString("pt-BR")}`,
         val: () => r.status === "retido" ? "Enter analisa" : r.status, act: (d, how) => { if (how === "enter") fmRetido.abrir(r); } });
     });
+  } else if (tab === 9) {
+    if (!game.admRecargas) admLoadRecargas();
+    const st = game.admRecargas;
+    B(st.carregando ? "Consultando recargas…" : "Atualizar recargas", () => { if (!st.carregando) admLoadRecargas(); });
+    const info = (label, valor = "") => rows.push({ label, val: () => valor, act: () => {} });
+    if (st.erro) info(st.erro);
+    else if (!st.carregando && !st.lista.length) info("Nenhuma recarga encontrada.");
+    const situacao = { pago: "Pago", resgatado: "Créditos entregues", pendente: "Pendente", cancelado: "Cancelado", estornado: "Estornado" };
+    for (const compra of st.lista) {
+      const data = new Date(compra.pago_em || compra.criado_em).toLocaleString("pt-BR", {
+        timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short"
+      });
+      const valor = Number(compra.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      info(compra.nome + " · " + data + " · " + valor, compra.creditos.toLocaleString("pt-BR") + " créditos · " + (situacao[compra.status] || compra.status));
+    }
+    if (st.cursores.length > 1) B("Página anterior", () => { game.ac = 0; admLoadRecargas(st.cursores.slice(0, -1)); });
+    if (st.mais) B("Próxima página", () => { game.ac = 0; admLoadRecargas([...st.cursores, st.lista[9]]); });
   }
   return rows;
 }
@@ -2021,7 +2054,7 @@ function drawAdmin() {
     const w = Math.floor(888 / ADM_TABS.length), x = 36 + i * w;
     ctx.fillStyle = game.at === i ? "rgba(212,175,55,0.16)" : "rgba(0,0,0,0)";
     ctx.fillRect(x, 55, w, 34);
-    txt(t, x + w / 2, 78, 14, game.at === i ? "#ffd96a" : "#a9a58f", "center", true);
+    txt(t, x + w / 2, 78, 14, game.at === i ? "#ffd96a" : "#a9a58f", "center", true, w - 5);
     regClick(x, 55, w, 34, () => { game.at = i; game.ac = 0; game.input = null; });
   });
   ctx.fillStyle = "#3d3b30"; ctx.fillRect(40, 90, 880, 1);
