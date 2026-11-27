@@ -3,13 +3,14 @@
 //  Checkpoint: salva TODO o progresso (personagem, mochila, armas,
 //  dinheiro, área e posição) por cima do save antigo:
 //   · a cada troca de área
-//   · a cada 1 minuto de jogo
+//   · a cada 5 segundos de tempo real
 //  e avisa no registro de mensagens. No .exe para Windows o save vai
 //  para um arquivo no computador; no navegador, para o armazenamento local.
 // =====================================================================
 const NATIVE = typeof window !== "undefined" && !!window.__FM_NATIVE__;
 const CP_EVERY = 5000;
 let fmCheckpointBusy = false;
+let fmCheckpointAttempt = performance.now();
 
 function storeGet() {
   if (typeof fmCloud !== "undefined" && fmCloud.isActive()) return fmCloud.read();
@@ -188,8 +189,9 @@ function restoreRun() {
 }
 function checkpointTick(dt) {
   if (!game || game.over) return;
-  game.cpT = (game.cpT || 0) + dt;
-  if (game.cpT >= CP_EVERY && !fmCheckpointBusy) {
+  const now = performance.now();
+  if (now - Math.max(fmCheckpointAttempt, game.lastSave || 0) >= CP_EVERY && !fmCheckpointBusy) {
+    fmCheckpointAttempt = now;
     fmCheckpointBusy = true;
     checkpoint("automático").finally(() => { fmCheckpointBusy = false; });
   }
