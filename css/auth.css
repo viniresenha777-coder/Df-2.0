@@ -339,3 +339,12 @@ body:has(#login:not([hidden]))::before {
 @media (max-width: 620px) {
   #login:not([hidden]) .fm-updates-ad { flex: 0 1 100%; width: 100%; max-width: 390px; }
 }
+
+/* Miniaturas reais dos itens do jogo, sem animação ou brilho do token. */
+#login .fm-updates-list .fm-update-item { gap: 7px; min-height: 42px; }
+#login .fm-updates-list .fm-update-thumb {
+  flex: 0 0 64px; width: 64px; height: 42px; object-fit: contain;
+  margin: 0; animation: none; filter: none;
+}
+#login .fm-updates-list .fm-update-thumb.fm-update-mp5 { filter: grayscale(.6) brightness(.9); }
+#login .fm-updates-list .fm-update-item strong { font-size: 12px; }
