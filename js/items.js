@@ -343,7 +343,7 @@ function rollRarity(zone, boost) {
 function randomWeaponDrop(zone, boost) {
   let rar = rollRarity(zone, boost || 0);
   for (; rar >= 0; rar--) {
-    const list = WLIST.filter((d) => d.rar === rar && !d.craftOnly && !d.eventOnly && !d.fists && d.id !== "pistola");
+    const list = WLIST.filter((d) => d.rar === rar && !d.craftOnly && !d.eventOnly && !d.fists && d.id !== "pistola" && (d.rar !== 4 || ["espadaserra", "ak_ouro", "pistolalamina"].includes(d.id)));
     if (list.length) return pick(list).id;
   }
   return "colt";

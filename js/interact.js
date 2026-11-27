@@ -150,7 +150,7 @@ function natalAlceLoot(zone) {
 
 // ---------- Saque dos chefes ----------
 function weaponBetween(minR, maxR) {
-  const list = WLIST.filter((d) => d.rar >= minR && d.rar <= maxR && !d.craftOnly && !d.fists && d.id !== "pistola");
+  const list = WLIST.filter((d) => d.rar >= minR && d.rar <= maxR && !d.craftOnly && !d.fists && d.id !== "pistola" && (d.rar !== 4 || ["espadaserra", "ak_ouro", "pistolalamina"].includes(d.id)));
   return pick(list).id;
 }
 function bossVest(a, b) { return { type: "vest", idx: a + Math.floor(Math.random() * (b - a + 1)), mcArmor: player.flags.mc ? 6 : 0 }; }
@@ -186,12 +186,12 @@ function bossLoot(id, zone) {
   return out;
 }
 
-// Caixa de Natal (evento): sempre uma arma, de comum até lendária; 1% de ser a Pistola Natalina.
+// Caixa de Natal (evento): sempre uma arma, de comum até lendária, respeitando a lista de drops.
 // 5% de vir um Gorro de Natal (10 Gorros + $2.000.000 fazem o Implante Natalino na Oficina).
-const NATAL_PISTOL_CHANCE = 0.01, NATAL_GORRO_CHANCE = 0.05;
+const NATAL_GORRO_CHANCE = 0.05;
 function natalBoxLoot(zone) {
   const out = [];
-  const id = Math.random() < NATAL_PISTOL_CHANCE ? "pistola_natal" : randomWeaponDrop(zone, vipActive() ? 1 : 0);
+  const id = randomWeaponDrop(zone, vipActive() ? 1 : 0);
   out.push({ type: "weapon", inst: newInst(id) });
   if (Math.random() < NATAL_GORRO_CHANCE) out.push({ type: "mat", id: "gorro_natal", amt: 1 });
   return out;
