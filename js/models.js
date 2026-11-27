@@ -92,13 +92,50 @@ function carStackImg(key) {
   if (!im) { im = CAR_STACK_IMG[key] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/props/${key}_fatias.webp?v=2`; }
   return im.complete && !im.bad && im.naturalWidth ? im : null;
 }
+// Cache por veículo: a perspectiva só muda alguns pixels quando a câmera se move.
+// WeakMap permite liberar os carros quando suas áreas deixam de existir.
+const CAR_STACK_CACHE = new WeakMap();
+function carStackComposite(c, key, m, im, ex, ey, lean, ang, L) {
+  const WU = L / m.fw, wpp = L / (m.fw * m.ppm);
+  const sn = lean / Math.sqrt(1 + lean * lean), cs = Math.sqrt(1 - sn * sn);
+  const sub = sn > 0.55 ? 2 : 1, ratio = Math.max(1, Math.min(2, typeof DPR === "number" ? DPR : 1));
+  let cached = CAR_STACK_CACHE.get(c);
+  if (cached && cached.key === key && cached.im === im && cached.ang === ang &&
+      cached.L === L && cached.ratio === ratio && cached.sub === sub &&
+      Math.abs(cached.ex - ex) <= 24 && Math.abs(cached.ey - ey) <= 24 &&
+      Math.abs(cached.lean - lean) <= 0.025) return cached;
+  // Calcula a extensão de todas as fatias para não cortar teto nem laterais.
+  const hmax = m.n * m.dz * WU, kmax = projK(hmax);
+  const rad = Math.ceil(Math.hypot(Math.max(m.cx, m.w - m.cx), Math.max(m.cy, m.h - m.cy)) * wpp * kmax) + 3;
+  const dx = ex * (kmax - 1), dy = ey * (kmax - 1) - hmax * sn;
+  const left = Math.floor(Math.min(0, dx) - rad), top = Math.floor(Math.min(0, dy) - rad);
+  const width = Math.ceil(Math.max(0, dx) + rad - left), height = Math.ceil(Math.max(0, dy) + rad - top);
+  const canvas = cached?.canvas || document.createElement("canvas");
+  const pw = Math.ceil(width * ratio), ph = Math.ceil(height * ratio);
+  if (canvas.width !== pw) canvas.width = pw;
+  if (canvas.height !== ph) canvas.height = ph;
+  const g = canvas.getContext("2d");
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, pw, ph);
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = "high";
+  for (let i = 0; i < m.n; i++) for (let j = sub - 1; j >= 0; j--) {
+    const hgt = (i + 1 - j / sub) * m.dz * WU, k = projK(hgt), scale = wpp * k;
+    const x = ex * (k - 1), y = ey * (k - 1) - hgt * sn;
+    g.setTransform(ratio, 0, 0, ratio, (x - left) * ratio, (y - top) * ratio);
+    g.scale(1, cs); g.rotate(ang); g.scale(scale, scale);
+    g.drawImage(im, 0, i * m.h, m.w, m.h, -m.cx, -m.cy, m.w, m.h);
+  }
+  cached = { key, im, ang, L, ratio, sub, ex, ey, lean, canvas, left, top,
+    width: pw / ratio, height: ph / ratio, topX: dx, topY: dy };
+  CAR_STACK_CACHE.set(c, cached);
+  return cached;
+}
 function drawCarStack(c, key) {
   const m = CAR_STACK[key], im = carStackImg(key);
   if (!im) return false;
   const cx = c.x + c.w / 2, cy = c.y + c.h / 2, e = eye(), active = lootSpotActive(c);
-  const L = Math.max(c.w, c.h), WU = L / m.fw, wpp = L / (m.fw * m.ppm);   // mundo por metro / mundo por pixel da fatia
-  const ang = -carYaw(c) * Math.PI / 180 + (c.rot || 0);
-  ctx.fillStyle = "rgba(0,0,0,0.32)";                                      // sombra no chão
+  const L = Math.max(c.w, c.h), ang = -carYaw(c) * Math.PI / 180 + (c.rot || 0);
+  const cached = carStackComposite(c, key, m, im, cx - e.x, cy - e.y, LEAN, ang, L);
+  ctx.fillStyle = "rgba(0,0,0,0.32)";
   ellipse(cx + 4, cy + 5, c.w * 0.58, c.h * 0.58);
   if (active) {
     const glow = ctx.createRadialGradient(cx, cy, 5, cx, cy, L * 0.75);
@@ -107,25 +144,12 @@ function drawCarStack(c, key) {
   }
   ctx.save();
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  // Filtro uma vez no carro composto, não em até 84 fatias.
   if (active) ctx.filter = "brightness(1.12) contrast(1.06)";
-  else if (c.burnt) ctx.filter = "brightness(.55) saturate(.4) contrast(1.1)";   // queimado
-  const base = ctx.getTransform();
-  // câmera inclinada de verdade (30°): o carro encurta na vertical da tela (cos) enquanto a lateral sobe (sen).
-  // Sem isso (lateral somada ao carro inteiro visto de cima) o carro parecia esticado.
-  const sn = LEAN / Math.sqrt(1 + LEAN * LEAN), cs = Math.sqrt(1 - sn * sn);   // inclinação equivalente à câmera (tan = LEAN)
-  let top = null;
-  // com câmera mais inclinada cada fatia sobe mais de 1 px na tela: desenha cada uma em meia altura também
-  // (senão aparecem listras na lateral)
-  const sub = sn > 0.55 ? 2 : 1;
-  for (let i = 0; i < m.n; i++) for (let j = sub - 1; j >= 0; j--) {
-    const hgt = (i + 1 - j / sub) * m.dz * WU, p = proj(cx, cy, hgt, e), s = wpp * projK(hgt);
-    p.y += hgt * (LEAN - sn);                           // a fatia sobe pela inclinação (sen), não pelo LEAN cheio
-    ctx.setTransform(base); ctx.translate(p.x, p.y); ctx.scale(1, cs); ctx.rotate(ang); ctx.scale(s, s);
-    ctx.drawImage(im, 0, i * m.h, m.w, m.h, -m.cx, -m.cy, m.w, m.h);
-    top = p;
-  }
+  else if (c.burnt) ctx.filter = "brightness(.55) saturate(.4) contrast(1.1)";
+  ctx.drawImage(cached.canvas, cx + cached.left, cy + cached.top, cached.width, cached.height);
   ctx.restore();
-  if (active) drawLootQuestion(c, top.x, top.y - Math.min(c.w, c.h) * 0.5 - 12);
+  if (active) drawLootQuestion(c, cx + cached.topX, cy + cached.topY - Math.min(c.w, c.h) * 0.5 - 12);
   return true;
 }
 function drawCarModel(c) {
