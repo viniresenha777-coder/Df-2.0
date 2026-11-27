@@ -123,6 +123,7 @@ const fmCloud = (() => {
     saleTotal = Number(data?.progresso?.saleTotal) || 0;
     pending = Promise.resolve();
     retainedWallet = retainedBank = 0;
+    await saveJournal.recover(user.id, revision, writeRemote);
   }
   async function resume() {
     const db = requireClient();
@@ -179,7 +180,7 @@ const fmCloud = (() => {
     const seq = ++saveSequence;
     saveCount++;
     saveIndicator("pending");
-    return Promise.resolve().then(() => writeRemote(str)).then(value => {
+    return writeRemote(str).then(value => {
       if (seq === saveSequence) saveFailed = false;
       return value;
     }, error => {
@@ -204,7 +205,55 @@ const fmCloud = (() => {
       throw new Error("Falha ao renovar a sessão. Mantenha o jogo aberto para tentar salvar novamente.");
     return send();
   }
-  function writeRemote(str) {
+  function createSaveJournal() {
+    const pageId = crypto.randomUUID();
+    function key(owner) { return "fm-save-pending:" + owner + ":" + pageId; }
+    function read(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+    function put(k, entry) {
+      try { localStorage.setItem(k, JSON.stringify(entry)); return true; }
+      catch { return false; }
+    }
+    function stage(owner, base, payload) {
+      const k = key(owner), previous = read(k), id = crypto.randomUUID();
+      if (!put(k, { id, base, payload, at: Date.now(), flight: previous?.flight || null }))
+        console.warn("Não foi possível criar a cópia local do save.");
+      return { k, id };
+    }
+    function sending(ticket, base, next) {
+      const entry = read(ticket.k);
+      if (entry) put(ticket.k, { ...entry, base, flight: { id: ticket.id, next } });
+    }
+    function acknowledge(ticket, next) {
+      const entry = read(ticket.k);
+      if (!entry) return;
+      if (entry.id === ticket.id) localStorage.removeItem(ticket.k);
+      else put(ticket.k, { ...entry, base: next, flight: null });
+    }
+    async function recover(owner, revision, write) {
+      const prefix = "fm-save-pending:" + owner + ":";
+      let keys;
+      try { keys = Object.keys(localStorage).filter(k => k.startsWith(prefix)); } catch { return; }
+      const matches = [];
+      for (const k of keys) {
+        const e = read(k);
+        if (!e) continue;
+        if (e.flight?.next === revision && e.id === e.flight.id) {
+          localStorage.removeItem(k);
+        } else if (e.base === revision || (e.flight && e.flight.next === revision)) matches.push({k,e});
+      }
+      if (matches.length !== 1) {
+        if (keys.some(k => read(k))) window.alert("Há uma cópia pendente neste navegador com outra revisão. Ela foi preservada para recuperação. A partida será aberta com o save do servidor.");
+        return;
+      }
+      const {k,e} = matches[0];
+      await write(e.payload, { k, id: e.id });
+      if (read(k)?.id === e.id) localStorage.removeItem(k);
+    }
+    return { stage, sending, acknowledge, recover };
+  }
+  const saveJournal = createSaveJournal();
+  let confirmedTime=null;
+  function writeRemote(str, recoveryTicket) {
     if (!user) return Promise.reject(new Error("Entre na sua conta para salvar."));
     let progress;
     try { progress = JSON.parse(str); } catch (error) { return Promise.reject(error); }
@@ -213,10 +262,12 @@ const fmCloud = (() => {
     // trava: nunca gravar a partida de outro personagem nesta conta (duas contas no mesmo navegador)
     if (ownerName && progress.name && progress.name !== ownerName)
       return Promise.reject(new Error(`Esta aba está com a partida de "${progress.name}", mas a conta logada é de "${ownerName}". Nada foi salvo: recarregue a página.`));
+    const ticket = recoveryTicket || saveJournal.stage(userId, revision, str);
     const operation = pending.then(async () => {
       if (!user || user.id !== userId) throw new Error("A conta mudou durante o salvamento.");
       const db = requireClient();
       const nextRevision = crypto.randomUUID();
+      saveJournal.sending(ticket, revision, nextRevision);
       if (progress.run?.g) progress.run.g.money = Math.max(0, (Number(progress.run.g.money) || 0) - (retainedWallet - walletAtCapture));
       progress.bank = Math.max(0, (Number(progress.bank) || 0) - (retainedBank - bankAtCapture));
       let result;
@@ -227,13 +278,13 @@ const fmCloud = (() => {
           progress.saleTotal = saleTotal;
           return db.from("fm_partidas")
           .update({ progresso: progress, revisao: nextRevision })
-          .eq("jogador", userId).eq("revisao", revision).select("revisao,progresso");
+          .eq("jogador", userId).eq("revisao", revision).select("revisao,progresso,atualizado_em");
         };
         result = await writeWithSession(db, userId, saveCurrent);
         if (!result.error && !result.data?.length && await syncSales()) result = await saveCurrent();
       } else {
         result = await writeWithSession(db, userId, () => db.from("fm_partidas")
-          .insert({ jogador: userId, progresso: progress, revisao: nextRevision }).select("revisao,progresso"));
+          .insert({ jogador: userId, progresso: progress, revisao: nextRevision }).select("revisao,progresso,atualizado_em"));
       }
       if (result.error) throw friendly(result.error);
       if (!result.data || result.data.length !== 1 || result.data[0].revisao !== nextRevision)
@@ -258,6 +309,8 @@ const fmCloud = (() => {
           " em vez de " + requestedLevel +
           ". Seu dinheiro e itens podem ter sido salvos. Avise a administração antes de sair.");
       }
+      confirmedTime = result.data[0].atualizado_em;
+      saveJournal.acknowledge(ticket, nextRevision);
     });
     pending = operation.catch(() => {});
     return operation;
@@ -353,7 +406,7 @@ const fmCloud = (() => {
       throw friendly(error);
     }
   }
-  return { resume, login, logout, resend, ping,
+  return { lastConfirmedAt: () => confirmedTime, resume, login, logout, resend, ping,
     sendPasswordRecovery, observeAuth, recoverySession, changeRecoveredPassword,
     write, saleMail, marketAction, read: () => snapshot, isActive: () => !!user, isAdmin: () => !!user && userIsAdmin, hasOnlineSave: () => revision !== null,
     userId: () => user ? user.id : null, socialClient: () => client,

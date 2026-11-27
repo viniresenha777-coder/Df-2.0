@@ -57,6 +57,7 @@ function checkpoint(reason) {
   let payload;
   try {
     save.run = runSnapshot();
+    save.checkpointReason = String(reason || 'ação');
     payload = JSON.stringify(save);
   } catch (error) {
     console.error("Erro ao preparar checkpoint:", error);
@@ -77,7 +78,9 @@ function checkpoint(reason) {
 // O jogador permanece pausado enquanto o save remoto é confirmado.
 function manualSave() {
   if (!game || game.savingExit) return;
-  checkpoint("manual");
+  checkpoint("manual").then(ok => {
+    if (ok) toast("Progresso salvo às " + new Date((typeof fmCloud !== "undefined" && fmCloud.lastConfirmedAt?.()) || Date.now()).toLocaleTimeString("pt-BR"));
+  });
 }
 async function saveAndQuit() {
   if (!game || game.quitting || game.savingExit) return;
@@ -196,3 +199,6 @@ function checkpointTick(dt) {
     checkpoint("automático").finally(() => { fmCheckpointBusy = false; });
   }
 }
+
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") checkpoint("aba oculta"); });
+window.addEventListener("pagehide", () => checkpoint("saída da página"));
