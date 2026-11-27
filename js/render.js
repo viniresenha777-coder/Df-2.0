@@ -2105,7 +2105,7 @@ function drawHUD() {
       ? (inst.ammo + (1 - player.reloading / (player.reloadMax || 1))) / w.mag
       : (1 - player.reloading / (player.reloadMax || 1));
     ctx.fillStyle = "#ffd96a"; ctx.fillRect(122, H - 38, 90 * Math.max(0, Math.min(1, progress)), 4);
-  } else if (w.infinite && player.spin > 0) { ctx.fillStyle = "#e0c341"; ctx.fillRect(122, H - 38, 90 * player.spin, 4); }
+  } else if ((w.infinite || w.spinup) && player.spin > 0) { ctx.fillStyle = "#e0c341"; ctx.fillRect(122, H - 38, 90 * player.spin, 4); }
 
   // ---- baixo esquerdo (acima das armas): últimas mensagens ----
   const log = (game.log || []).filter((m) => game.time - m.at < 7000 || performance.now() - m.real < 7000).slice(-5);
