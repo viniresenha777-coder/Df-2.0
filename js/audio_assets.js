@@ -150,7 +150,44 @@ const FM_EXTRA_FILES = {
   amb_bunker: "audio/amb_bunker.ogg", amb_hospital: "audio/amb_hospital.ogg"
 };
 const FM_EXTRA = { buf: {}, loading: false, lastShell: 0, steps: null, amb: null };
+const FM_NEW_SHOT_CUES = {flecha:[0,.32],minigun:[.36,.08],doze:[.48,.37],m249:[.89,.112],barrett:[1.042,.84]};
+const FM_NEW_SHOTS = {buffer:null,loading:false,voices:0};
+function fmNewShotLoad() {
+  const ac = SND.ac;
+  if (!ac || FM_NEW_SHOTS.loading || FM_NEW_SHOTS.buffer) return;
+  FM_NEW_SHOTS.loading = true;
+  fetch("audio/fm_novos_disparos.ogg?v=20261127-v1")
+    .then(r=>{if(!r.ok)throw Error("novos disparos");return r.arrayBuffer();})
+    .then(b=>ac.decodeAudioData(b)).then(b=>{FM_NEW_SHOTS.buffer=b;})
+    .catch(e=>console.warn("Sons de disparo indisponíveis; usando os anteriores",e));
+}
+function fmNewShotKey(w) {
+  if (!w || !w.id) return null;
+  if (w.id === "besta") return "flecha";
+  if (w.id === "minigun" || w.id === "minigun_inf") return "minigun";
+  if (w.id === "m249") return "m249";
+  if (w.id === "barrett" || w.id === "choque" || w.id === "vingador") return "barrett";
+  if (w.cat === "shotguns") return "doze";
+  return null;
+}
+function fmPlayNewShot(w) {
+  const key = fmNewShotKey(w), ac = SND.ac;
+  if (!key || !ac) return false;
+  if (SND.muted) return true;
+  fmNewShotLoad();
+  if (!FM_NEW_SHOTS.buffer) return false;
+  if (FM_NEW_SHOTS.voices >= 22) return true;
+  const spec = FM_NEW_SHOT_CUES[key], src = ac.createBufferSource(), gain = ac.createGain();
+  src.buffer = FM_NEW_SHOTS.buffer;
+  src.playbackRate.value = key === "m249" ? 1.35 : 1;
+  gain.gain.value = key === "minigun" || key === "m249" ? .55 : .8;
+  src.connect(gain); gain.connect(SND.master);
+  FM_NEW_SHOTS.voices++;
+  src.onended=()=>{FM_NEW_SHOTS.voices=Math.max(0,FM_NEW_SHOTS.voices-1);src.disconnect();gain.disconnect();};
+  src.start(0,spec[0],spec[1]); return true;
+}
 function fmExtraLoad() {
+  fmNewShotLoad();
   if (!SND.ac || FM_EXTRA.loading) return;
   FM_EXTRA.loading = true;
   for (const [k, url] of Object.entries(FM_EXTRA_FILES)) {
@@ -184,6 +221,7 @@ function fmIsGrenadeLauncher(w) { return !!w && w.ammo === "granada"; }
   const prevShot = sfx.shot, prevReload = sfx.reload;
   sfx.shot = function (w) {
     w = w || {};
+    if (fmPlayNewShot(w)) { fmShellDrop(w); return; }
     if (fmIsGrenadeLauncher(w) && fmPlayExtra("granada_tiro", { volume: .75 })) return;
     if (FM_RIFLE_LOOKS.has(w.look) && fmPlayExtra("fuzil_tiro", { volume: .72, rate: .96 + Math.random() * .08 })) { fmShellDrop(w); return; }
     if (w.melee && FM_BLADE_LOOKS.has(w.look) && fmPlayExtra("faca", { volume: .55, rate: .94 + Math.random() * .12 })) return;

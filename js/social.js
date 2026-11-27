@@ -284,19 +284,19 @@ const fmSocial = (() => {
   }
   // ----- tiros dos outros jogadores: só o visual e o som (o dano no zumbi já vem pelo canal dos zumbis) -----
   let lastShotSent = 0;
-  function sendShot(x, y, a, wid, n, silence = 0) {
+  function sendShot(x, y, a, wid, n, silence = 0, alt = false) {
     if (!moveReady || !moveChannel || !userId || !connected) return;
     const now = Date.now();
     if (now - lastShotSent < 80) return;                        // no máximo ~12 por segundo
     lastShotSent = now;
-    moveChannel.send({ type: "broadcast", event: "shot", payload: { uid: userId, x: Math.round(x), y: Math.round(y), a: Math.round(a * 1000) / 1000, w: wid, n: Math.min(8, n | 0), silence: Math.max(0, Math.min(90, Number(silence) || 0)) } }).catch(() => {});
+    moveChannel.send({ type: "broadcast", event: "shot", payload: { uid: userId, x: Math.round(x), y: Math.round(y), a: Math.round(a * 1000) / 1000, w: wid, n: Math.min(8, n | 0), silence: Math.max(0, Math.min(90, Number(silence) || 0)), alt: !!alt } }).catch(() => {});
   }
   function receiveShot(event) {
     const p = event && event.payload, prev = p && peers.get(p.uid);
     if (!prev || !sameLocation(prev) || !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.a) || !WDEF[p.w]) return;
     if (Math.hypot(p.x - prev.x, p.y - prev.y) > 260) return;    // tiro longe de onde o jogador está: ignora
     const weapon = WDEF[p.w];
-    if (!weapon.melee) netShot(p.x, p.y, p.a, weapon, Math.max(1, Math.min(8, p.n | 0)));
+    if (!weapon.melee) netShot(p.x, p.y, p.a, weapon.vindicator ? { ...weapon, pierce: !p.alt } : weapon, Math.max(1, Math.min(8, p.n | 0)));
     weaponNoise(weapon, prev.x, prev.y, p.silence);
     prev.flashAt = performance.now();
   }
@@ -425,6 +425,7 @@ function drawOnlinePlayer(p) {
   if (!w3 && pose !== base && !w.thunder) { w3 = weapon3dImg(w, base); w3Base = !!w3; }
   const drawGun = () => {
     if (w.fists) return;
+    if (w.vindicator) { const mp = THUNDER_MUZZLES[pose]?.[row]?.[col]; if (mp && drawVindicatorGrip(w, pt("a"), { x: o.x + mp[0] * k, y: o.y + mp[1] * k })) return; }
     const d = WEAPON_3D[w.id];
     if (w3) {
       ctx.save();
@@ -489,9 +490,9 @@ function netShot(x, y, a, w, n) {
   // usa as mesmas balas do jogo (chamas, virotes, granadas, rastros), marcadas como "ghost": sem dano
   if (w.thunder) fireThunder(x, y, a);
   else for (let i = 0; i < n; i++) {
-    const aa = a + (Math.random() - 0.5) * 2 * (w.spread || 0.05) * (n > 1 ? 1 : 0.5);
+    const aa = w.vindicator ? a : a + (Math.random() - 0.5) * 2 * (w.spread || 0.05) * (n > 1 ? 1 : 0.5);
     const sp = (w.speed || 12) * (w.fire ? rand(0.8, 1.2) : 1);
-    bullets.push({ x, y, px: x, py: y, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, life: w.life || 900, max: w.life || 900, ghost: true,
+    bullets.push({ x, y, px: x, py: y, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, life: w.life || 900, max: w.life || 900, ghost: true, maxTargets: w.vindicator ? (w.pierce ? 3 : 1) : 0,
       dmg: 0, pierce: !!w.pierce, hit: [], big: w.cat === "rifles" || w.rar >= 3, fire: !!w.fire, explode: w.explode || 0, bolt: w.look === "crossbow",
       grenade: !!w.grenade, fx: w, knock: false, color: w.rar >= 3 ? RARITY[w.rar].color : null });
   }

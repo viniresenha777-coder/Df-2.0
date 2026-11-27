@@ -319,7 +319,7 @@ const WEAPON_3D = {
   pistolalamina: { m: "w_fm_presa", grip: 0.15, heldView: true }, escopeta: { m: "w_fm_escopeta", grip: 0.29, heldView: true },
   incendiaria: { m: "w_fm_incendiaria_hd", grip: 0.23, heldView: true },
   spas: { m: "w_spas" }, aa12: { m: "w_aa12" },
-  caca: { m: "w_caca" }, sniper: { m: "w_sniper" }, vingador: { m: "w_sniper" }, barrett: { m: "w_barrett" },
+  caca: { m: "w_caca" }, sniper: { m: "w_sniper" }, vingador: { m: "w_fm_vingador", grip: 0.3, heldView: true, poseLayer: true }, barrett: { m: "w_barrett" },
   pistola: { m: "w_fm_pistola", grip: 0.24, heldView: true, poseLayer: true }, glock: { m: "w_fm_glock", grip: 0.24, heldView: true },
   silenciada: { m: "w_fm_vp9", grip: 0.23, heldView: true }, colt: { m: "w_fm_colt", grip: 0.23, heldView: true, poseLayer: true }, deagle: { m: "w_deagle" },
   revolver: { m: "w_peacemaker" }, revolver_orn: { m: "w_peacemaker", f: "sepia(0.8) saturate(2.2) brightness(1.1)" },
@@ -341,7 +341,7 @@ function weaponIcon(d, heldView = false) {
   if (!im) { im = WEAPON_ICON[key] = new Image(); im.onerror = () => { im.bad = true; }; im.src = `img/weapons/${key}.png`; }
   return im.bad || !im.complete || !im.naturalWidth ? null : im;
 }
-function weapon3dImg(w, pose) { const d = w && WEAPON_3D[w.id]; return d && (d.poseLayer || d.grip == null) ? gearImg(d.m, pose) : null; }
+function weapon3dImg(w, pose) { const d = w && WEAPON_3D[w.id]; return d && !w.vindicator && (d.poseLayer || d.grip == null) ? gearImg(d.m, pose) : null; }
 function hexRgb(h) { const n = parseInt((h || "#808080").slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
 // pinta a roupa cinza com as cores do personagem escolhido (uma vez por troca de personagem)
 function tintedSheet(pose) {
@@ -467,7 +467,7 @@ function dualTwistTick(pose = "punhos") {
       if (!SPRITE_POSES[pose + suf]) continue;         // ângulo ainda não renderizado
       ensureTwistSheet(pose + suf); if (!dualReady(pose + suf)) continue;
       if (torsoLayerMissing(pose + suf, fixedGrip)) continue;
-      if (fixedGrip && !weapon3dImg(w, pose + suf)) continue;
+      if (fixedGrip && !w.vindicator && !weapon3dImg(w, pose + suf)) continue;
     }
     const a = twistBaseAngle(pose + suf, p.legRow, col);
     const e = a == null ? Infinity : Math.abs(angDelta(a, aim));
@@ -497,7 +497,7 @@ function twistReady(key, w) {
   if (!(im && im.complete && im.naturalWidth && mk && mk.complete && mk.naturalWidth) || !SPRITE_POSES[key]) return false;
   for (const id of playerGear()) if (!gearImg(id, key)) return false;
   const d = w && WEAPON_3D[w.id];
-  return !(d && !gearImg(d.m, key));
+  return !(d && !w.vindicator && !gearImg(d.m, key));
 }
 function pickTwistSuffix(pose) {
   const p = player, row = p.sRow | 0, col = spriteFrame(), aim = p.angle, w = curW();
@@ -566,10 +566,10 @@ function drawHeldGlow(d, pose, col, row, cell, x, y, size, flash) {
 function muzzlePoint(recoil = player.flashT > 0 ? 2 : 0) {
   if (!useSpriteChar()) return null;
   const w = curW(); if (w.melee || w.fists) return null;
-  if (w.thunder) {
+  if (w.thunder || w.vindicator) {
     const pose = weaponPose(w) + TW.suf;
     const muzzle = THUNDER_MUZZLES[pose]?.[player.sRow | 0]?.[spriteFrame()];
-    if (muzzle && weapon3dImg(w, pose)) {
+    if (muzzle && (w.vindicator || weapon3dImg(w, pose))) {
       const origin = spriteOrigin(), scale = PSHEET.size / PSHEET.cell;
       return { x: origin.x + muzzle[0] * scale - Math.cos(player.angle) * recoil,
         y: origin.y + muzzle[1] * scale - Math.sin(player.angle) * recoil };
@@ -590,7 +590,24 @@ function muzzlePoint(recoil = player.flashT > 0 ? 2 : 0) {
 function chestPoint() { return useSpriteChar() ? posePt("c") : { x: player.x, y: player.y }; }
 
 // desenha a arma em uso nas mãos, seguindo o eixo da pose naquele quadro
+// Sprite renderizado do modelo enviado: pivô e ponto de cano da pose longa do Trovão.
+function drawVindicatorGrip(w, A, M) {
+  const im = weaponIcon(w, true);
+  if (!im || !M) return false;
+  const dx = M.x - A.x, dy = M.y - A.y, len = Math.hypot(dx, dy);
+  if (len < 1) return false;
+  const width = len / 0.7;
+  ctx.save(); ctx.translate(A.x, A.y); ctx.rotate(Math.atan2(dy, dx));
+  ctx.drawImage(im, -width * 0.3, -width * 0.25, width, width * 0.5);
+  ctx.restore(); return true;
+}
 function drawHeldWeapon(w, pose) {
+  if (w.vindicator) {
+    const pt = THUNDER_MUZZLES[pose]?.[player.sRow | 0]?.[spriteFrame()];
+    if (pt) { const o = spriteOrigin(), k = PSHEET.size / PSHEET.cell;
+      if (drawVindicatorGrip(w, posePt("a", pose), { x: o.x + pt[0] * k, y: o.y + pt[1] * k })) return;
+    }
+  }
   if (w.fists) return;
   if (w.dual) {
     const ang = dualTwist(pose).base;            // presa ao corpo: o giro vem do corpo todo

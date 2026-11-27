@@ -337,7 +337,7 @@ function attack() {
       dmg: st.dmg * dmgMult(w), pierce: !!w.pierce, hit: [], big: w.cat === "rifles" || w.rar >= 3, fire: !!w.fire, explode: w.explode || 0, bolt: w.look === "crossbow",
       grenade: !!w.grenade, fx: w, knock: !!w.knock, color: w.rar >= 3 ? RARITY[w.rar].color : null });
   }
-  if (typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(mx, my, (w.thunder || w.vindicator) ? player.shotAng : aim, w.id, n, player.fx.silence);   // os outros veem o tiro
+  if (typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(mx, my, (w.thunder || w.vindicator) ? player.shotAng : aim, w.id, n, player.fx.silence, w.vindicator && player.vindicatorAlt);   // os outros veem o tiro
   if (!w.fire) {
     player.flashT = 60;
     player.thunderFlash = !!w.thunder;
@@ -637,7 +637,7 @@ function ghostBullet(b, list, dt, k) {
   for (let s = 0; s < 2 && b.life > 0; s++) {
     b.x += (b.vx * k) / 2; b.y += (b.vy * k) / 2;
     let stop = !!hitObstacle(b.x, b.y);
-    if (!stop && !b.fire) for (const z of list) if (z.hp > 0 && zDist(z, b.x, b.y) < z.r + 3) { stop = !b.pierce; break; }
+    if (!stop && !b.fire) for (const z of list) if (z.hp > 0 && !b.hit.includes(z) && zDist(z, b.x, b.y) < z.r + 3) { if (b.maxTargets) { b.hit.push(z); stop = b.hit.length >= b.maxTargets; } else stop = !b.pierce; if (stop) break; }
     if (stop) {
       b.life = 0;
       if (b.explode) {
