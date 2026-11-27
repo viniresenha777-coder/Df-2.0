@@ -351,3 +351,38 @@ body:has(#login:not([hidden]))::before {
 }
 #login .fm-updates-list .fm-update-thumb.fm-update-mp5 { filter: grayscale(.6); }
 #login .fm-updates-list .fm-update-item strong { font-size: 12px; }
+
+/* Brilho natalino localizado: cordões, cerca, torre e árvore luminosa.
+   As posições são relativas à tela; os halos largos toleram o recorte do cover. */
+@media (prefers-reduced-motion: no-preference) {
+  body:has(#login:not([hidden]))::before {
+    background:
+      radial-gradient(ellipse 5% 7% at 12% 6%, rgba(255,194,85,.62), transparent 82%),
+      radial-gradient(ellipse 5% 7% at 23% 12%, rgba(255,184,65,.54), transparent 82%),
+      radial-gradient(ellipse 5% 6% at 5% 31%, rgba(255,166,45,.55), transparent 82%),
+      radial-gradient(ellipse 9% 9% at 10% 56%, rgba(255,172,52,.60), transparent 80%),
+      radial-gradient(ellipse 11% 6% at 86% 23%, rgba(255,175,55,.62), transparent 83%),
+      radial-gradient(ellipse 8% 10% at 92% 61%, rgba(255,170,45,.66), transparent 82%);
+    animation: fm-natal-cordao-a 3.8s ease-in-out infinite;
+  }
+  #login:not([hidden])::before {
+    background:
+      radial-gradient(ellipse 5% 7% at 18% 8%, rgba(255,193,78,.58), transparent 82%),
+      radial-gradient(ellipse 6% 7% at 8% 23%, rgba(255,177,50,.62), transparent 82%),
+      radial-gradient(ellipse 9% 7% at 15% 66%, rgba(255,166,45,.58), transparent 82%),
+      radial-gradient(ellipse 9% 5% at 91% 27%, rgba(255,188,72,.60), transparent 82%),
+      radial-gradient(ellipse 10% 7% at 88% 47%, rgba(255,177,48,.60), transparent 82%),
+      radial-gradient(ellipse 6% 7% at 91% 56%, rgba(255,209,100,.70), transparent 82%);
+    animation: fm-natal-cordao-b 4.6s ease-in-out infinite;
+  }
+}
+@keyframes fm-natal-cordao-a {
+  0%, 100% { opacity: .15; }
+  30%, 55% { opacity: .95; }
+  75% { opacity: .35; }
+}
+@keyframes fm-natal-cordao-b {
+  0%, 100% { opacity: .88; }
+  35%, 55% { opacity: .14; }
+  80% { opacity: .70; }
+}
