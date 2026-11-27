@@ -70,3 +70,8 @@ canvas {
 #fm-chat.open .fm-chat-log { background: rgba(8,9,7,.62); border-radius: 4px; padding: 6px 8px; }
 #fm-chat.open .fm-chat-input { display: block; }
 #fm-chat.open .fm-chat-input:focus { border-color: #d4af37; }
+
+/* Rolagem do histórico apenas enquanto o chat estiver aberto. */
+#fm-chat.open .fm-chat-log { overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#b99a52 rgba(8,9,7,.65); }
+#fm-chat.open .fm-chat-line { flex-shrink:0; }
+#fm-chat.open .fm-chat-log:focus { outline:none; }
