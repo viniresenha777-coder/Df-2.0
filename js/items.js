@@ -536,7 +536,14 @@ function drawWeaponEnergy(g, id, x, y, width, equipped, flash = 0) {
   }
   g.restore();
 }
+function drawVingadorMenuArt(d, x, y, width) {
+  if (d.id !== "vingador" || !FM_VINGADOR_CREDIT_ART.complete || !FM_VINGADOR_CREDIT_ART.naturalWidth) return false;
+  const height = width * FM_VINGADOR_CREDIT_ART.naturalHeight / FM_VINGADOR_CREDIT_ART.naturalWidth;
+  ctx.drawImage(FM_VINGADOR_CREDIT_ART, x - width / 2, y - height / 2, width, height);
+  return true;
+}
 function drawWeaponSide(d, cx, cy, s) {
+  if (game.menu === 'craft' && drawVingadorMenuArt(d, cx, cy, 128 * s)) return;
   if (d.id === "besta" && CB_ZHNETS.complete && CB_ZHNETS.naturalWidth) {
     ctx.save();
     ctx.translate(cx, cy);

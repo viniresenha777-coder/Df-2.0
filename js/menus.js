@@ -678,7 +678,7 @@ function creditShopArt(row, x, y, scale) {
       drawClothingIcon(row.item, x - 28 * scale, y - 28 * scale, 56 * scale, 56 * scale);
       break;
     case "weapon":
-      drawWeaponSide(row.item, x, y, scale);
+      if (!drawVingadorMenuArt(row.item, x, y, 128 * scale)) drawWeaponSide(row.item, x, y, scale);
       break;
   }
 }
@@ -873,7 +873,7 @@ function creditShopDescription(row) {
   }
 }
 const FM_VINGADOR_CREDIT_ART = new Image();
-FM_VINGADOR_CREDIT_ART.src = "img/weapons/w_fm_vingador_creditos.webp?v=1";
+FM_VINGADOR_CREDIT_ART.src = "img/weapons/w_fm_vingador_creditos.webp?v=2";
 function drawCreditShopCatalog(section) {
   const rows = creditShopRows(section);
   creditShopPanel(246, 254, 357, 268, "rgba(20,17,15,.97)", "#635046");
@@ -930,9 +930,7 @@ function drawCreditShopCatalog(section) {
     "center",
   );
   txt(selected.title, 631, 282, 18, "#f5e7d5", "left", true, 282);
-  if (selected.kind === "weapon" && selected.item.id === "vingador" && FM_VINGADOR_CREDIT_ART.complete && FM_VINGADOR_CREDIT_ART.naturalWidth) {
-    ctx.drawImage(FM_VINGADOR_CREDIT_ART, 634, 311, 280, 280 * FM_VINGADOR_CREDIT_ART.naturalHeight / FM_VINGADOR_CREDIT_ART.naturalWidth);
-  } else creditShopArt(selected, 774, 350, selected.kind === "weapon" ? 1.44 : 1.5);
+  if (selected.kind !== "weapon" || !drawVingadorMenuArt(selected.item, 774, 350, 280)) creditShopArt(selected, 774, 350, selected.kind === "weapon" ? 1.44 : 1.5);
   txtWrap(creditShopDescription(selected), 631, 417, 12, "#e3d3c3", 282, 15, 4);
   if (creditShopCanBuy(selected)) {
     creditShopButton(
