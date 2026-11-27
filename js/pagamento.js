@@ -8,10 +8,10 @@ const fmPagamento = (() => {
   const uid = () => fmCloud.userId();
   const PACOTES = [
     // promoção de inauguração (40% off): "de" = preço cheio · valor = o que o servidor cobra (fm-pagamento-criar)
-    { id: "p200", cr: 200, de: 9.9, valor: 5.9, bonus: "" },
-    { id: "p550", cr: 550, de: 24.9, valor: 14.9, bonus: "+10% de bônus" },
-    { id: "p1200", cr: 1200, de: 49.9, valor: 29.9, bonus: "+20% de bônus", tag: "MAIS VENDIDO" },
-    { id: "p2600", cr: 2600, de: 99.9, valor: 59.9, bonus: "+30% de bônus", tag: "MELHOR VALOR" },
+    { id: "p200", cr: 500, de: 9.9, valor: 5.9, bonus: "" },
+    { id: "p550", cr: 1400, de: 24.9, valor: 14.9, bonus: "+12% de bônus" },
+    { id: "p1200", cr: 3000, de: 49.9, valor: 29.9, bonus: "+20% de bônus", tag: "MAIS VENDIDO" },
+    { id: "p2600", cr: 6500, de: 99.9, valor: 59.9, bonus: "+30% de bônus", tag: "MELHOR VALOR" },
   ];
   const KEY = "fm-compras-abertas";
   let box = null, busy = false, timer = null, lastVerif = 0;
@@ -96,7 +96,7 @@ const fmPagamento = (() => {
       }
       guardar([...abertas(), { id: data.compra, t: Date.now() }]);
       if (aba) aba.location.href = data.url; else window.location.href = data.url;
-      status(`Pagamento de ${brl(p.valor)} aberto em outra aba${data.teste ? " (MODO DE TESTE)" : ""}. Os ${p.cr.toLocaleString("pt-BR")} créditos entram aqui sozinhos quando for aprovado.`);
+      status(`Pagamento de ${brl(p.valor)} aberto em outra aba${data.teste ? " (MODO DE TESTE)" : ""}. Os ${(data.creditos || p.cr).toLocaleString("pt-BR")} créditos entram aqui sozinhos quando for aprovado.`);
       start(4000);
     } catch (e) {
       if (aba) aba.close();

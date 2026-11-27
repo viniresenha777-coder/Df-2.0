@@ -6,10 +6,10 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const PACOTES: Record<string, { creditos: number; valor: number; nome: string }> = {
   // promoção de inauguração: 40% de desconto (preço cheio: 9,90 · 24,90 · 49,90 · 99,90)
-  p200: { creditos: 200, valor: 5.9, nome: "200 créditos" },
-  p550: { creditos: 550, valor: 14.9, nome: "550 créditos (+10%)" },
-  p1200: { creditos: 1200, valor: 29.9, nome: "1.200 créditos (+20%)" },
-  p2600: { creditos: 2600, valor: 59.9, nome: "2.600 créditos (+30%)" },
+  p200: { creditos: 500, valor: 5.9, nome: "500 créditos" },
+  p550: { creditos: 1400, valor: 14.9, nome: "1.400 créditos (+12%)" },
+  p1200: { creditos: 3000, valor: 29.9, nome: "3.000 créditos (+20%)" },
+  p2600: { creditos: 6500, valor: 59.9, nome: "6.500 créditos (+30%)" },
 };
 const SITE = "https://fronteiramorta.pages.dev/";
 const cors = {
@@ -96,5 +96,5 @@ Deno.serve(async (req) => {
   const d = await r.json();
   await admin.from("fm_compras").update({ mp_preferencia: d.id }).eq("id", compra.id);
   const teste = token.startsWith("TEST-");
-  return json({ compra: compra.id, url: teste ? d.sandbox_init_point || d.init_point : d.init_point, teste });
+  return json({ compra: compra.id, creditos: p.creditos, url: teste ? d.sandbox_init_point || d.init_point : d.init_point, teste });
 });
