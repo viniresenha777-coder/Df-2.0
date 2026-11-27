@@ -17,15 +17,28 @@ const fmAtualizacao = (() => {
     game.updateSaving = true;
     mouse.down = false;
     if (botao) botao.disabled = true;
+    const pausaAnterior = game.paused;
+    game.paused = true;
+    const tela = document.createElement("div");
+    tela.setAttribute("role", "status");
+    tela.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.94);color:#fff;display:flex;align-items:center;justify-content:center;font: bold 24px sans-serif;text-align:center";
+    tela.textContent = "Salvando o jogo...";
+    document.body.appendChild(tela);
     let confirmado = false;
     try {
       confirmado = await checkpoint("atualização");
-      if (confirmado) window.location.reload();
+      if (confirmado) {
+        tela.textContent = "Progresso salvo. Atualizando o jogo...";
+        await new Promise(resolve => setTimeout(resolve, 400));
+        window.location.reload();
+      }
     } catch (erro) {
       confirmado = false;
       console.error("Falha ao salvar antes de atualizar:", erro);
     } finally {
       if (!confirmado) {
+        tela.remove();
+        game.paused = pausaAnterior;
         game.updateSaving = false;
         if (botao) botao.disabled = false;
         avisar("O salvamento não foi confirmado. Tente atualizar novamente.");
