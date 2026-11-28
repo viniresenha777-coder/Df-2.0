@@ -1003,12 +1003,12 @@ function fmVaultBuy() {
   persist();
   toast("Fileira liberada: +8 espaços no Baú da Base!");
 }
-function fmStashMetal(x, y, w, h, selected, locked) {
-  ctx.fillStyle = locked ? "#090b0a" : "#171a18";
+function fmStashMetal(x, y, w, h, selected, locked, dropTarget) {
+  ctx.fillStyle = locked ? "#090b0a" : dropTarget ? "#243523" : "#171a18";
   rr(x, y, w, h, 3);
   ctx.fill();
-  ctx.strokeStyle = selected ? "#ffdc86" : locked ? "#282820" : "#806443";
-  ctx.lineWidth = selected ? 2 : 1.6;
+  ctx.strokeStyle = dropTarget ? "#91df74" : selected ? "#ffdc86" : locked ? "#282820" : "#806443";
+  ctx.lineWidth = selected || dropTarget ? 2 : 1.6;
   ctx.stroke();
   ctx.fillStyle = locked ? "rgba(35,35,31,.35)" : "rgba(154,150,129,.10)";
   for (let iy = y + 7; iy < y + h - 5; iy += 5) ctx.fillRect(x + 5, iy, w - 10, 1);
@@ -1040,6 +1040,62 @@ function fmStashStoredEntry(it) {
   if (it.kind === "vest") return { area: "vault", type: "vest", item: { ...it, i: it.id } };
   if (it.kind === "clothing") return { type: "clothing", item: CLOTHING_BY_ID[it.id] };
   if (["food", "water", "med", "anti"].includes(it.kind)) return { type: "supply", item: { id: it.kind, n: it.qty } };
+}
+function fmStashCellAt(x, y) {
+  return game.fmStashCells?.find(cell => (cell.side === 0 || cell.page === game.vpage) &&
+    x >= cell.x && x < cell.x + cell.w && y >= cell.y && y < cell.y + cell.h);
+}
+function fmStashMouseDown(x, y) {
+  const source = fmStashCellAt(x, y);
+  if (!source?.entry?.item) return false;
+  game.fmStashDrag = { source, x0: x, y0: y, moved: false };
+  return true;
+}
+function fmStashMouseMove(x, y) {
+  const drag = game.fmStashDrag;
+  if (drag && !drag.moved && Math.hypot(x - drag.x0, y - drag.y0) > 5) drag.moved = true;
+}
+function fmStashDropAllowed(source, side, index) {
+  return source.side !== side || (side === 1 && source.index !== index);
+}
+function fmStashMouseUp(x, y) {
+  fmStashMouseMove(x, y);
+  const drag = game.fmStashDrag;
+  game.fmStashDrag = null;
+  if (!drag) return;
+  const { source } = drag;
+  if (source.side === 1) {
+    if (fmVaultLayout()[source.index] !== source.stored) return;
+  } else {
+    const current = fmStashEntries()[source.index], previous = source.entry;
+    if (!current || current.type !== previous.type) return;
+    if (["ammo", "vest", "food", "supply"].includes(current.type)) {
+      const a = current.item, b = previous.item;
+      if (a.id !== b.id || a.t !== b.t || a.i !== b.i || a.n !== b.n || a.qty !== b.qty) return;
+    } else if (current.item !== previous.item) return;
+  }
+  if (!drag.moved) {
+    fmStashSelect(source.side, source.index);
+    return;
+  }
+  const destination = fmStashCellAt(x, y);
+  if (!destination || !fmStashDropAllowed(source, destination.side, destination.index)) return;
+  game.vside = source.side;
+  game.fmVaultSelection = { side: source.side, idx: source.index };
+  fmStashSelect(destination.side, destination.index);
+}
+function fmDrawStashDrag({ entry, w, h }) {
+  const x = mouse.x - w / 2, y = mouse.y - h / 2;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.9)";
+  ctx.shadowBlur = 13;
+  ctx.shadowOffsetY = 5;
+  ctx.fillStyle = "rgba(13,18,12,.9)";
+  rr(x + 3, y + 3, w - 6, h - 6, 5);
+  ctx.fill();
+  ctx.shadowOffsetY = 2;
+  fmStashIcon(entry, x, y, w, h);
+  ctx.restore();
 }
 function fmStashSelect(side, index) {
   const cur = game.fmVaultSelection;
@@ -1103,9 +1159,11 @@ function drawStash() {
     rows = fmVaultRows(),
     list = fmStashEntries();
   game.vpage = Math.max(0, Math.min(9, game.vpage || 0));
+  game.fmStashCells = [];
+  const dragged = game.fmStashDrag?.moved ? game.fmStashDrag.source : null;
   const inventoryCapacity = fmStashInventoryCapacity();
   const excess = Math.max(0, list.length - inventoryCapacity);
-  menuFrame("BAÚ DA BASE", "Clique no item e depois no destino para mover, trocar ou transferir");
+  menuFrame("BAÚ DA BASE", "Arraste para mover, trocar ou transferir · Clique para selecionar");
   ctx.fillStyle = "rgba(10,11,9,.72)";
   rr(99, 110, 766, 307, 6);
   ctx.fill();
@@ -1137,11 +1195,16 @@ function drawStash() {
         h = 53;
       const entry = !disabled ? vault[index] : null,
         itemEntry = entry ? fmStashStoredEntry(entry) : null,
+        hover = mouse.x >= x && mouse.x < x + w && mouse.y >= y && mouse.y < y + h,
         selected =
           !!game.fmVaultSelection && game.fmVaultSelection.side === 1 && game.fmVaultSelection.idx === index;
-      fmStashMetal(x, y, w, h, selected, disabled);
+      const dropTarget = !disabled && hover && dragged && fmStashDropAllowed(dragged, 1, index);
+      fmStashMetal(x, y, w, h, selected, disabled, dropTarget);
+      if (dragged?.stored && dragged.stored === entry) ctx.globalAlpha = 0.35;
       if (itemEntry?.item) fmStashIcon(itemEntry, x, y, w, h);
+      ctx.globalAlpha = 1;
       if (disabled) continue;
+      game.fmStashCells.push({ side: 1, page: game.vpage, index, entry: itemEntry, stored: entry, x, y, w, h });
       rowClick(
         x,
         y,
@@ -1151,7 +1214,7 @@ function drawStash() {
         () => fmStashSelect(1, index),
         () => fmStashSelect(1, index),
       );
-      if (entry && mouse.x >= x && mouse.x < x + w && mouse.y >= y && mouse.y < y + h) {
+      if (entry && hover) {
         tooltip = fmStashItemTitle(entry);
         hoveredEntry = itemEntry;
       }
@@ -1197,13 +1260,18 @@ function drawStash() {
         h = 39;
       const locked = index >= inventoryCapacity;
       const entry = locked ? null : list[index];
+      const hover = mouse.x >= x && mouse.x < x + w && mouse.y >= y && mouse.y < y + h;
       const selected = !locked && game.fmVaultSelection?.side === 0 && game.fmVaultSelection.idx === index;
-      fmStashMetal(x, y, w, h, selected, locked);
+      const dropTarget = !locked && hover && dragged && fmStashDropAllowed(dragged, 0, index);
+      fmStashMetal(x, y, w, h, selected, locked, dropTarget);
       if (locked) {
         txt("NV " + packSlotUnlockLevel(index), x + 27.5, y + 23, 10, "#777164", "center", true);
         continue;
       }
+      if (dragged?.side === 0 && dragged.index === index) ctx.globalAlpha = 0.35;
       if (entry) fmStashIcon(entry, x, y, w, h);
+      ctx.globalAlpha = 1;
+      game.fmStashCells.push({ side: 0, index, entry, x, y, w, h });
       rowClick(
         x,
         y,
@@ -1213,7 +1281,7 @@ function drawStash() {
         () => fmStashSelect(0, index),
         () => fmStashSelect(0, index),
       );
-      if (entry && mouse.x >= x && mouse.x < x + w && mouse.y >= y && mouse.y < y + h) {
+      if (entry && hover) {
         tooltip = fmStashSourceTitle(entry);
         hoveredEntry = entry;
       }
@@ -1254,7 +1322,8 @@ function drawStash() {
     true,
   );
   txt("Desequipe os itens antes de guardá-los.", 40, 570, 11, "#bdb19b", "left");
-  if (["weapon", "implant", "vest"].includes(hoveredEntry?.type)) fmBalãoDetalhes(hoveredEntry);
+  if (dragged) fmDrawStashDrag(dragged);
+  else if (["weapon", "implant", "vest"].includes(hoveredEntry?.type)) fmBalãoDetalhes(hoveredEntry);
   else drawItemTooltip(tooltip);
 }
 // =====================================================================

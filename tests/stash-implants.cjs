@@ -105,3 +105,30 @@ test('o inventário conta pilhas de 1.200 munições por calibre', () => {
   assert.equal(context.ammoSlots(), 3);
   assert.equal(context.ammoRoom('9mm'), 0);
 });
+
+test('arrastar no baú só muda a posição ao soltar em um espaço liberado', () => {
+  const { context, save, stored, lastSaved } = stash();
+  const other = { kind: 'mat', id: 'sucata', qty: 3 };
+  save.vault.push(other);
+  context.game.vpage = 0;
+  context.game.fmStashCells = [stored, other, null].map((item, index) => ({
+    side: 1, page: 0, index, stored: item,
+    entry: item ? context.fmStashStoredEntry(item) : null,
+    x: index * 100, y: 0, w: 90, h: 50,
+  }));
+  assert.equal(context.fmStashMouseDown(10, 10), true);
+  context.fmStashMouseMove(210, 10);
+  assert.equal(context.fmVaultLayout()[0], stored);
+  assert.equal(lastSaved(), undefined);
+  context.fmStashMouseUp(210, 10);
+  assert.equal(context.fmVaultLayout()[0], null);
+  assert.equal(context.fmVaultLayout()[2], stored);
+  assert.equal(context.game.fmStashDrag, null);
+
+  context.game.fmStashCells[2].stored = stored;
+  context.game.fmStashCells[2].entry = context.fmStashStoredEntry(stored);
+  assert.equal(context.fmStashMouseDown(210, 10), true);
+  context.fmStashMouseUp(1500, 400);
+  assert.equal(context.fmVaultLayout()[2], stored);
+  assert.equal(context.game.fmStashDrag, null);
+});

@@ -34,7 +34,11 @@ function menuKey(k) {
   if (game.menu === "creditshop") { creditShopKey(k); return; }
   if (game.menu === "library") { libraryKey(k); return; }
   if (game.menu === "map" && game.mapAsk) { if (k === "escape" || k === "e" || k === "n") game.mapAsk = null; return; }   // janela do admin por cima do mapa
-  if (k === "escape" || k === "e" || k === "b" || (k === "c" && game.menu === "stats") || (k === "m" && game.menu === "sector") || (k === "n" && game.menu === "map") || (k === "o" && game.menu === "obj")) { game.menu = null; return; }
+  if (k === "escape" || k === "e" || k === "b" || (k === "c" && game.menu === "stats") || (k === "m" && game.menu === "sector") || (k === "n" && game.menu === "map") || (k === "o" && game.menu === "obj")) {
+    game.fmStashDrag = null;
+    game.menu = null;
+    return;
+  }
   if (game.menu === "bank") {
     if (k === "d") game.input = { mode: "deposit", text: "" };
     else if (k === "s") game.input = { mode: "withdraw", text: "" };

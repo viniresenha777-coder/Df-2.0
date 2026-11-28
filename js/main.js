@@ -224,12 +224,20 @@ window.addEventListener("keydown", (e) => {
   else if (n >= 1 && n <= SLOT_N) selectWeapon(n - 1);
 });
 window.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
-window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; mouse.down = false; });
+window.addEventListener("blur", () => {
+  for (const k in keys) keys[k] = false;
+  mouse.down = false;
+  game.fmStashDrag = null;
+});
 canvas.addEventListener("mousemove", (e) => {
   const r = canvas.getBoundingClientRect();
   mouse.x = (e.clientX - r.left) * (W / r.width);
   mouse.y = (e.clientY - r.top) * (H / r.height);
   if (game.menu === "pack") invMouseMove(mouse.x, mouse.y);
+  if (game.menu === "stash" && game.fmStashDrag) {
+    if (e.buttons & 1) fmStashMouseMove(mouse.x, mouse.y);
+    else game.fmStashDrag = null;
+  }
   if (game.paused && game.settingsOpen && game.settingsDrag) pauseSettingsDrag(mouse.x);
   portraitMouseMove(mouse.x);
 });
@@ -244,6 +252,7 @@ canvas.addEventListener("mousedown", (e) => {
   if (spinOk && portraitMouseDown(mouse.x, mouse.y)) return;
   // inventário: começa a arrastar um item (o clique simples é resolvido ao soltar)
   if (game.menu === "pack" && !INV.confirm && !allocOpen() && invMouseDown(mouse.x, mouse.y)) return;
+  if (game.menu === "stash" && fmStashMouseDown(mouse.x, mouse.y)) return;
   if (game.found || game.menu || game.shop || game.paused || game.over || game.hub || game.quitting) { handleClick(mouse.x, mouse.y); return; }
   mouse.down = true;
   // Cada clique da Glock inicia uma única sequência; segurar não dispara automaticamente.
@@ -252,11 +261,17 @@ canvas.addEventListener("mousedown", (e) => {
     player.glockBurstInst = curInst();
   }
 });
-window.addEventListener("mouseup", () => {
+window.addEventListener("mouseup", (e) => {
   mouse.down = false;
   game.settingsDrag = null;
   portraitMouseUp();
   if (INV.drag) { if (game.menu === "pack") invMouseUp(mouse.x, mouse.y); else INV.drag = null; }
+  if (e.button === 0 && game.fmStashDrag) {
+    if (game.menu === "stash" && !game.trans && !game.updateSaving) {
+      const r = canvas.getBoundingClientRect();
+      fmStashMouseUp((e.clientX - r.left) * (W / r.width), (e.clientY - r.top) * (H / r.height));
+    } else game.fmStashDrag = null;
+  }
 });
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 canvas.addEventListener("wheel", (e) => {
@@ -272,6 +287,10 @@ canvas.addEventListener("wheel", (e) => {
   }
   if (game.menu === "pack" && !INV.confirm && !allocOpen()) {
     invPackChangePage(e.deltaY > 0 ? 1 : -1);
+    return;
+  }
+  if (game.menu === "stash") {
+    if (e.deltaY) stashKey(e.deltaY > 0 ? "arrowright" : "arrowleft");
     return;
   }
   if (game.menu === "map") {                                     // rola a lista de jogadores online

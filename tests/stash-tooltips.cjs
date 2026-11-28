@@ -10,7 +10,7 @@ function section(file, start, end) {
 }
 
 test('o baú mostra a ficha de implantes, armas e coletes sob o mouse', () => {
-  const lines = [];
+  const lines = [], icons = [], dropTargets = [];
   const mouse = { x: 120, y: 125 };
   const vault = [
     { kind: 'implant', id: 'olho' },
@@ -27,7 +27,10 @@ test('o baú mostra a ficha de implantes, armas e coletes sob o mouse', () => {
     ctx: { fill() {}, stroke() {}, fillRect() {}, strokeRect() {}, save() {}, restore() {},
       measureText: value => ({ width: value.length * 6 }) },
     fmVaultRows: () => 5, fmVaultCapacity: () => 40, fmStashInventoryCapacity: () => 30,
-    fmStashEntries: () => inventory, fmStashIcon() {}, fmStashMetal() {}, fmVaultBuy() {}, menuFrame() {}, rr() {},
+    fmStashEntries: () => inventory,
+    fmStashIcon: (entry, x, y, w, h) => icons.push({ entry, x, y, w, h, shadow: ctx.ctx.shadowBlur }),
+    fmStashMetal: (x, y, w, h, selected, locked, target) => { if (target) dropTargets.push({ x, y }); },
+    fmVaultBuy() {}, menuFrame() {}, rr() {},
     btn() {}, rowClick() {}, txt: text => lines.push(text),
     VESTS: [vest], vestDefinition: () => vest, vestDur: () => 90,
     vestUpgrade: () => ({ armor: 2, speed: 0 }), SCRAP_RATE: 0.3,
@@ -53,6 +56,8 @@ test('o baú mostra a ficha de implantes, armas e coletes sob o mouse', () => {
     mouse.x = x;
     mouse.y = y;
     lines.length = 0;
+    icons.length = 0;
+    dropTargets.length = 0;
     ctx.drawStash();
     return lines.join('\n');
   }
@@ -65,4 +70,16 @@ test('o baú mostra a ficha de implantes, armas e coletes sob o mouse', () => {
   assert.match(hover(399), /Após o primeiro uso: 7 dia\(s\)[\s\S]*Durabilidade atual: 25%[\s\S]*venda bloqueada/);
   assert.match(hover(492), /Sucata ×2/);
   assert.match(hover(42, 460), /\+25% chance de achar armas/);
+
+  hover(130);
+  assert.equal(ctx.fmStashMouseDown(130, 125), true);
+  ctx.fmStashMouseMove(220, 145);
+  const duringDrag = hover(220, 145);
+  assert.doesNotMatch(duringDrag, /DPS teórico/);
+  assert.deepEqual(dropTargets, [{ x: 205, y: 119 }]);
+  const moving = icons.at(-1);
+  assert.equal(moving.entry.item, vault[0]);
+  assert.equal(moving.x + moving.w / 2, 220);
+  assert.equal(moving.y + moving.h / 2, 145);
+  assert.ok(moving.shadow > 0);
 });
