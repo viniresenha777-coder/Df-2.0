@@ -40,6 +40,7 @@ test('o baú mostra a ficha de implantes, armas e coletes sob o mouse', () => {
   });
   vm.runInContext([
     section('inventory', 'function fmStashItemTitle(', 'function fmStashSave('),
+    section('inventory', 'function fmVaultLayout(', 'function fmVaultPin('),
     section('inventory', 'function fmStashStoredEntry(', 'function fmStashSelect('),
     section('inventory', 'function drawItemTooltip(', 'const AMMO_PACK_SIZE'),
     section('inventory', 'function vestText(', 'function buyVest('),

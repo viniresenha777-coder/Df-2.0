@@ -104,8 +104,8 @@ function eat() {
   sfx.pickup(); stat("foodEaten");
 }
 
-// ---------- Munição ocupa a mochila: até 500 por espaço, por tipo ----------
-const AMMO_STACK = 500;
+// ---------- Pilhas de munição por calibre ----------
+const AMMO_STACK = 1200;
 function ammoSlots() { let n = 0; for (const t in player.reserve) n += Math.ceil(Math.max(0, player.reserve[t]) / AMMO_STACK); return n; }
 function packUsed() { return player.pack.length + ammoSlots(); }
 function ammoRoom(t) {

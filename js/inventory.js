@@ -149,7 +149,7 @@ function acceptFound() {
   else if (e.type === "med") player.med += e.amt;
   else if (e.type === "ammo") {
     const got = addAmmo(e.ammo, e.amt);
-    if (got < e.amt) { e.amt -= got; if (got > 0) checkpoint("munição coletada"); toast(got ? `Pegou ${got} balas · a mochila encheu (500 balas por espaço)` : "Mochila cheia: munição ocupa 1 espaço a cada 500 balas"); sfx.empty(); return false; }
+    if (got < e.amt) { e.amt -= got; if (got > 0) checkpoint("munição coletada"); toast(got ? `Pegou ${got} balas · a mochila encheu (${AMMO_STACK.toLocaleString("pt-BR")} por espaço)` : `Mochila cheia: munição ocupa 1 espaço a cada ${AMMO_STACK.toLocaleString("pt-BR")} balas`); sfx.empty(); return false; }
   }
   else if (e.type === "weapon") {
     e.inst.loot = true;
@@ -630,7 +630,7 @@ function drawPack() {
     rowClick(x, y, 174, 92, inv.sel === i, () => { inv.sel = i; }, packAct);
   }
   txt("Mochila", 40, 204, 13, "#e5e0c8", "left", true);
-  txt(`munição: 1 espaço a cada ${AMMO_STACK} balas`, 580, 204, 10, "#a9a58f", "right");
+  txt(`munição: 1 espaço a cada ${AMMO_STACK.toLocaleString("pt-BR")} balas`, 580, 204, 10, "#a9a58f", "right");
   const stacks = [];
   for (const t of Object.keys(AMMO)) { let r = player.reserve[t] || 0; while (r > 0) { stacks.push({ t, n: Math.min(AMMO_STACK, r) }); r -= AMMO_STACK; } }
   for (let i = 0; i < PACK_MAX; i++) {
@@ -732,6 +732,26 @@ function fmStashSave() {
   save.run = runSnapshot();
   persist();
 }
+function fmVaultLayout() {
+  // Mantém o array de itens compacto para os saves e as operações do Mercado Negro.
+  const slots = Array(fmVaultCapacity()).fill(null), pending = [];
+  for (const item of save.vault) {
+    if (!item) continue;
+    const slot = item.fmVaultSlot;
+    if (Number.isInteger(slot) && slot >= 0 && slot < slots.length && !slots[slot]) slots[slot] = item;
+    else pending.push(item);
+  }
+  let next = 0;
+  for (const item of pending) {
+    while (next < slots.length && slots[next]) next++;
+    if (next === slots.length) break;
+    slots[next++] = item;
+  }
+  return slots;
+}
+function fmVaultPin(slots) {
+  slots.forEach((item, index) => { if (item) item.fmVaultSlot = index; });
+}
 function fmStashStore(at) {
   const sourceIndex = game.vcur | 0;
   const z = sourceIndex < fmStashInventoryCapacity() ? fmStashEntries()[sourceIndex] : null;
@@ -785,7 +805,9 @@ function fmStashStore(at) {
     toast("Item não reconhecido no inventário.");
     return;
   }
-  if (!merge && save.vault.length >= fmVaultCapacity()) {
+  const slots = merge ? null : fmVaultLayout();
+  const place = slots ? (Number.isInteger(at) && slots[at] === null ? at : slots.indexOf(null)) : -1;
+  if (slots && place < 0) {
     toast("Baú cheio. Libere mais uma fileira.");
     return;
   }
@@ -815,8 +837,9 @@ function fmStashStore(at) {
   }
   if (merge) merge.qty += obj.qty;
   else {
-    const place = Math.max(0, Math.min(save.vault.length, Number.isInteger(at) ? at : save.vault.length));
-    save.vault.splice(place, 0, obj);
+    slots[place] = obj;
+    fmVaultPin(slots);
+    save.vault.push(obj);
   }
   game.vside = 0;
   game.vcur = Math.min(game.vcur, Math.max(0, fmStashEntries().length - 1));
@@ -825,11 +848,13 @@ function fmStashStore(at) {
 }
 function fmStashWithdraw(index) {
   index = Number.isInteger(index) ? index : game.vcur | 0;
-  const obj = save.vault[index];
-  if (!obj) {
+  const slots = fmVaultLayout(), stored = slots[index];
+  if (!stored) {
     toast("Selecione um item do baú.");
     return;
   }
+  const obj = { ...stored };
+  delete obj.fmVaultSlot;
   const materialStack =
     obj.kind === "mat" &&
     player.pack.find(
@@ -907,9 +932,11 @@ function fmStashWithdraw(index) {
     return;
   }
   const name = fmStashItemTitle(obj);
-  save.vault.splice(index, 1);
+  slots[index] = null;
+  fmVaultPin(slots);
+  save.vault.splice(save.vault.indexOf(stored), 1);
   game.vside = 1;
-  game.vcur = Math.max(0, Math.min(index, save.vault.length - 1));
+  game.vcur = index;
   fmStashSave();
   toast("Retirado: " + name);
 }
@@ -930,10 +957,20 @@ function stashKey(key) {
     game.vside = game.vside === 0 ? 1 : 0;
     return;
   }
+  if (game.vside === 1 && ["w", "arrowup", "s", "arrowdown"].includes(key)) {
+    const slots = fmVaultLayout();
+    const direction = key === "w" || key === "arrowup" ? -1 : 1;
+    for (let i = (game.vcur || 0) + direction; i >= 0 && i < slots.length; i += direction) {
+      if (!slots[i]) continue;
+      game.vcur = i;
+      game.vpage = Math.floor(i / 40);
+      break;
+    }
+    return;
+  }
   if (key === "w" || key === "arrowup") game.vcur = Math.max(0, (game.vcur || 0) - 1);
   else if (key === "s" || key === "arrowdown") {
-    const limit =
-      game.vside === 1 ? save.vault.length : Math.min(fmStashEntries().length, fmStashInventoryCapacity());
+    const limit = Math.min(fmStashEntries().length, fmStashInventoryCapacity());
     game.vcur = Math.max(0, Math.min(limit - 1, (game.vcur || 0) + 1));
   } else if (key === "enter") vaultMove();
 }
@@ -1011,7 +1048,16 @@ function fmStashSelect(side, index) {
     return;
   }
   if (side === 0 && index >= fmStashInventoryCapacity()) return;
-  const valid = side === 0 ? fmStashEntries()[index] : save.vault[index];
+  const slots = side === 1 ? fmVaultLayout() : null;
+  const valid = side === 0 ? fmStashEntries()[index] : slots[index];
+  if (cur?.side === 1 && side === 1 && cur.idx !== index && slots[cur.idx]) {
+    [slots[cur.idx], slots[index]] = [slots[index], slots[cur.idx]];
+    fmVaultPin(slots);
+    game.vcur = index;
+    game.fmVaultSelection = null;
+    fmStashSave();
+    return;
+  }
   if (cur && cur.side !== side) {
     if (cur.side === 0) {
       game.vside = 0;
@@ -1052,14 +1098,14 @@ function drawItemTooltip(title) {
   txt(title, x + 9, y + 20, 12, "#f7d98b", "left", true, w - 18);
 }
 function drawStash() {
-  const vault = save.vault,
+  const vault = fmVaultLayout(),
     cap = fmVaultCapacity(),
     rows = fmVaultRows(),
     list = fmStashEntries();
   game.vpage = Math.max(0, Math.min(9, game.vpage || 0));
   const inventoryCapacity = fmStashInventoryCapacity();
   const excess = Math.max(0, list.length - inventoryCapacity);
-  menuFrame("BAÚ DA BASE", "Armazenamento seguro · clique no item e depois no destino para transferir");
+  menuFrame("BAÚ DA BASE", "Clique no item e depois no destino para mover, trocar ou transferir");
   ctx.fillStyle = "rgba(10,11,9,.72)";
   rr(99, 110, 766, 307, 6);
   ctx.fill();
@@ -1071,7 +1117,7 @@ function drawStash() {
   const price = rows < 25 ? 10000 : 50000;
   if (rows < 50) btn(385, 82, 260, 26, "Liberar +8 slots · $" + price.toLocaleString("pt-BR"), fmVaultBuy, true);
   else txt("400 espaços liberados", 468, 99, 13, "#9fe6a1", "center", true);
-  txt("Ocupação " + vault.length + "/" + cap, 120, 103, 11, "#c6bca7", "left", true);
+  txt("Ocupação " + save.vault.length + "/" + cap, 120, 103, 11, "#c6bca7", "left", true);
   btn(38, 250, 44, 38, "◀", () => {
     game.vpage = Math.max(0, game.vpage - 1);
   });

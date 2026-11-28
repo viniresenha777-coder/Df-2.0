@@ -63,3 +63,45 @@ test('a retirada mantém o implante no baú quando o inventário inferior está 
   assert.equal(lastSaved(), undefined);
   assert.match(notices[0], /Inventário inferior cheio/);
 });
+
+test('o baú mantém posições livres e troca itens entre páginas sem compactar a grade', () => {
+  const { context, save, stored, notices } = stash();
+  const other = { kind: 'mat', id: 'sucata', qty: 3 };
+  save.vault.push(other);
+  save.vaultRows = 6;
+  context.fmStashSelect(1, 0);
+  context.fmStashSelect(1, 42);
+  let layout = context.fmVaultLayout();
+  assert.equal(layout[0], null);
+  assert.equal(layout[1], other);
+  assert.equal(layout[42], stored);
+  assert.equal(save.vault.length, 2);
+
+  context.fmStashSelect(1, 42);
+  context.fmStashSelect(1, 48);
+  assert.match(notices.at(-1), /fileira ainda está bloqueada/);
+  context.fmStashSelect(1, 1);
+  layout = context.fmVaultLayout();
+  assert.equal(layout[1], stored);
+  assert.equal(layout[42], other);
+
+  save.vault = JSON.parse(JSON.stringify(save.vault));
+  assert.equal(context.fmVaultLayout()[42].id, 'sucata');
+  context.fmStashWithdraw(1);
+  assert.equal(context.fmVaultLayout()[1], null);
+  assert.equal(context.fmVaultLayout()[42].id, 'sucata');
+});
+
+test('o inventário conta pilhas de 1.200 munições por calibre', () => {
+  const { context, player } = stash();
+  context.packCapacity = () => 3;
+  player.reserve = { '9mm': 1200, '.50': 1199 };
+  vm.runInContext(source('survival', 'const AMMO_STACK =', '// ---------- Durabilidade dos coletes'), context);
+  assert.equal(context.ammoSlots(), 2);
+  assert.equal(context.ammoRoom('9mm'), 1200);
+  assert.equal(context.ammoRoom('.50'), 1201);
+  assert.equal(context.addAmmo('.50', 1202), 1201);
+  assert.equal(player.reserve['.50'], 2400);
+  assert.equal(context.ammoSlots(), 3);
+  assert.equal(context.ammoRoom('9mm'), 0);
+});

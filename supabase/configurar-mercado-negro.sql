@@ -175,13 +175,13 @@ begin
       partida := jsonb_set(partida, '{run,g,money}', to_jsonb(saldo - oferta.price));
     end if;
     if tipo in ('weapon', 'mat', 'ammo') then
-      select coalesce(sum(ceil(greatest(value::numeric, 0) / 500)), 0)::int
+      select coalesce(sum(ceil(greatest(value::numeric, 0) / 1200)), 0)::int
         into espacos from jsonb_each_text(coalesce(partida #> '{run,p,reserve}', '{}'::jsonb));
       if tipo = 'ammo' then
         quantidade := (objeto->>'qty')::int;
         path := array['run','p','reserve',chave];
         reserva := coalesce((partida #>> path)::int, 0);
-        espacos := espacos - ceil(reserva / 500.0)::int + ceil((reserva::numeric + quantidade) / 500)::int;
+        espacos := espacos - ceil(reserva / 1200.0)::int + ceil((reserva::numeric + quantidade) / 1200)::int;
         if jsonb_array_length(mochila) + espacos > 20 then raise exception 'Mochila cheia para essa munição.'; end if;
         partida := jsonb_set(partida, path, to_jsonb(reserva + quantidade));
       else

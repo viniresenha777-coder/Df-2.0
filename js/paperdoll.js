@@ -642,7 +642,7 @@ function fmEquipVaultBackpack(bag) {
     return false;
   }
 
-  if (previous && !fmStashStoredClothing(previous)) save.vault[index] = { kind: "clothing", id: previous };
+  if (previous && !fmStashStoredClothing(previous)) save.vault[index] = { kind: "clothing", id: previous, fmVaultSlot: save.vault[index].fmVaultSlot };
   else save.vault.splice(index, 1);
   save.clothing.pack = bag.id;
   fmStashSave();
