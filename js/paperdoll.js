@@ -369,16 +369,48 @@ function moveImplant(im, to) {
   persist(); recalcImplants();
 }
 
-function fmDiscardAmmo(ammo) {
-  if (!ammo || !Object.prototype.hasOwnProperty.call(AMMO, ammo.t)) return;
-  const held = Math.max(0, Math.floor(player.reserve[ammo.t] || 0));
-  const qty = Math.min(held, Math.max(0, Math.floor(ammo.n || 0)));
-  if (!qty) return;
-  player.reserve[ammo.t] = held - qty;
-  player.tokenAmmo = player.tokenAmmo || {};
-  player.tokenAmmo[ammo.t] = Math.max(0, (player.tokenAmmo[ammo.t] || 0) - qty);
-  fmStashSave();
-  toast("Descartou " + qty + "x munição " + ammo.t);
+function inventoryDiscardable(entry) {
+  const { type, item } = entry;
+  if (!item || fmStashItemEquipped(entry)) return false;
+  if (type === "weapon" || type === "mat") return player.pack.includes(item);
+  if (type === "implant") return player.bag.includes(item);
+  if (type === "vest") return save.giftVests[item.i] ? save.giftVests[item.i] === item : !!save.vestsOwned[item.i];
+  if (type === "clothing") return clothingOwned(item.id) && !fmStashStoredClothing(item.id);
+  if (!Number.isInteger(item.n) || item.n <= 0) return false;
+  if (type === "ammo") return Object.hasOwn(AMMO, item.t) && player.reserve[item.t] >= item.n;
+  return type === "supply" && Object.hasOwn(SUPPLY, item.id) && player[item.id] === item.n;
+}
+
+function requestInventoryDiscard(entry) {
+  if (INV.confirm || !entry.item) return;
+  if (!inventoryDiscardable(entry)) {
+    if (fmStashItemEquipped(entry)) toast("Desequipe o item antes de descartá-lo.");
+    return;
+  }
+  INV.confirm = { discard: { ...entry, qty: entry.item.qty }, name: fmStashSourceTitle(entry) };
+}
+
+function confirmInventoryDiscard(entry) {
+  if (!inventoryDiscardable(entry) || entry.qty !== entry.item.qty) { toast("O item selecionado mudou. Confira o inventário."); return; }
+  const { type, item } = entry;
+  const name = fmStashSourceTitle(entry);
+  if (type === "weapon" || type === "mat") player.pack.splice(player.pack.indexOf(item), 1);
+  else if (type === "implant") player.bag.splice(player.bag.indexOf(item), 1);
+  else if (type === "vest") {
+    if (save.giftVests[item.i]) delete save.giftVests[item.i];
+    else save.vestsOwned[item.i] = false;
+    delete save.vestDur[item.i];
+    delete save.vestUpgrades[item.i];
+  } else if (type === "clothing") {
+    save.clothesOwned[item.id] = false;
+  } else if (type === "ammo") {
+    spendAmmo(item.t, item.n);
+  } else if (type === "supply") {
+    player[item.id] -= item.n;
+    if (item.id === "food") for (const quality of Object.keys(player.foodQ)) player.foodQ[quality] = 0;
+  }
+  checkpoint("descarte de item");
+  toast(`Descartou ${name} sem receber dinheiro.`);
 }
 
 function invDrop(src, dst) {
@@ -388,12 +420,8 @@ function invDrop(src, dst) {
   const inv = packSel();
   // descartar (pede confirmação)
   if (dst.area === "discard") {
-    if (src.type === "ammo") {
-      INV.confirm = { ammo: { t: src.item.t, n: src.item.n }, name: src.item.n + "x " + invItemName(src) };
-      return;
-    }
-    if (src.sel == null) { toast("Isso não dá para descartar aqui"); return; }
-    inv.sel = src.sel; INV.confirm = { name: invItemName(src) }; return;
+    requestInventoryDiscard(src);
+    return;
   }
   if (src.type === "mat" && src.item.id === "trindade_eterna" && dst.area === "doll") { INV.confirm = { trindade: src.item, name: "Trindade · 100 anos" }; return; }
   if (src.type === "mat" && src.item.id === "token_loja" && dst.area === "doll") { INV.confirm = { token: src.item, name: "Token da Loja" }; return; }
@@ -729,8 +757,7 @@ function drawInventory() {
   // detalhes do item: balão junto do mouse (desenhado por último, sobre tudo)
   const fmItemHover = INV.hover && INV.hover.item ? INV.hover : null;
 
-  // Lixeira permanece no inventário. Roupas e coletes não podem ser
-  // descartados acidentalmente por esta ação de armas/materiais.
+  // A lixeira recebe itens do inventário. Itens equipados são recusados.
   const dz = invZone({ area: "discard", x: 712, y: 380, w: 220, h: 42 });
   const dh = invCell(dz.x, dz.y, dz.w, dz.h, {});
   txt("Descartar (arraste aqui)", dz.x + dz.w / 2, dz.y + 26, 12,
@@ -744,11 +771,20 @@ function drawInventory() {
   fmBalãoDetalhes(fmItemHover);
   // confirmação de descarte
   if (INV.confirm) {
+    game.clicks = [];
     ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = "#1a1913"; rr(W / 2 - 200, H / 2 - 60, 400, 120, 10); ctx.fill(); ctx.strokeStyle = "#e05a4a"; ctx.lineWidth = 2; ctx.stroke();
-    txt((INV.confirm.token || INV.confirm.trindade)?.validadeDias ? "Ativar por " + (INV.confirm.token || INV.confirm.trindade).validadeDias + " dia(s)?" : INV.confirm.token ? "Ativar o Token da Loja?" : INV.confirm.trindade ? "Consumir Trindade por 100 anos?" : INV.confirm.resetStats ? "Resetar atributos e proficiências?" : INV.confirm.ammo ? `Deseja descartar ${INV.confirm.ammo.n.toLocaleString("pt-BR")} munições?` : `Descartar ${INV.confirm.name}?`, W / 2, H / 2 - 22, 16, "#f2eedc", "center", true, 370);
+    txt((INV.confirm.token || INV.confirm.trindade)?.validadeDias ? "Ativar por " + (INV.confirm.token || INV.confirm.trindade).validadeDias + " dia(s)?" : INV.confirm.token ? "Ativar o Token da Loja?" : INV.confirm.trindade ? "Consumir Trindade por 100 anos?" : INV.confirm.resetStats ? "Resetar atributos e proficiências?" : `Descartar ${INV.confirm.name}?`, W / 2, H / 2 - 22, 16, "#f2eedc", "center", true, 370);
     txt(INV.confirm.token ? "A Loja da base fica de graça pelo prazo do token. Consome 1 item." : INV.confirm.trindade ? "+35% dano, corrida e armadura. Consome 1 item." : INV.confirm.resetStats ? "Todos os pontos investidos voltam. O cartão será consumido." : "Some para sempre.", W / 2, H / 2, 12, "#a9a58f", "center");
-    btn(W / 2 - 150, H / 2 + 16, 140, 30, INV.confirm.token ? "Ativar" : INV.confirm.trindade ? "Consumir" : INV.confirm.resetStats ? "Resetar" : "Descartar", () => { const reset = INV.confirm.resetStats, trindade = INV.confirm.trindade, token = INV.confirm.token, ammo = INV.confirm.ammo; INV.confirm = null; if (ammo) fmDiscardAmmo(ammo); else if (token) useTokenLoja(token); else if (trindade) useTrindadeItem(trindade); else if (reset) useResetStatsCard(); else packDiscard(); }, true);
+    btn(W / 2 - 150, H / 2 + 16, 140, 30, INV.confirm.token ? "Ativar" : INV.confirm.trindade ? "Consumir" : INV.confirm.resetStats ? "Resetar" : "Descartar", () => {
+      const confirmed = INV.confirm;
+      if (!confirmed) return;
+      INV.confirm = null;
+      if (confirmed.discard) confirmInventoryDiscard(confirmed.discard);
+      else if (confirmed.token) useTokenLoja(confirmed.token);
+      else if (confirmed.trindade) useTrindadeItem(confirmed.trindade);
+      else if (confirmed.resetStats) useResetStatsCard();
+    }, true);
     btn(W / 2 + 10, H / 2 + 16, 140, 30, "Cancelar", () => { INV.confirm = null; });
   }
   drawAllocPanel();

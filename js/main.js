@@ -176,10 +176,11 @@ window.addEventListener("keydown", (e) => {
   if (typeof fmChat !== "undefined" && fmChat.typing()) return;   // digitando no chat: o jogo não recebe as teclas
   if (typeof fmBugs !== "undefined" && fmBugs.isOpen()) return;  // escrevendo um relatório de bug
   if (typeof fmPagamento !== "undefined" && fmPagamento.isOpen()) return;  // tela de compra de créditos aberta
-  keys[k] = true;
   if (["tab", " ", "arrowup", "arrowdown", "arrowleft", "arrowright", "backspace", "f2"].includes(k)) e.preventDefault();
+  if (game.trans) return;
+  keys[k] = true;
   if (e.repeat && !game.menu) return;
-  if (game.marketBusy || game.trans || game.updateSaving) return;
+  if (game.marketBusy || game.updateSaving) return;
   if (k === "f2") { toggleAdmin(); return; }
   if (game.over) { if (k === "enter") respawnPlayer(); return; }
   if (game.quitting) return;
@@ -389,7 +390,6 @@ function update(dt) {
     player.x = clamp(player.x, player.r, WORLD_W - player.r); player.y = clamp(player.y, player.r, WORLD_H - player.r);
   }
   pushOut(player, player.r);
-  if (!game.inside && moving) edgeCheck(dx, dy);
   // Atualiza a câmera ANTES de calcular o ângulo e disparar; isso elimina
   // o frame de atraso entre ponteiro, cano da arma e projétil.
   updateCam(dt);
@@ -611,7 +611,7 @@ function loop(now) {
   groundDropsTick(now); // o prazo dos itens continua correndo mesmo com menus abertos
   fmGifts.expire(now);
   update(dt);
-  checkpointTick(dt);
+  if (!game.trans) checkpointTick(dt);
   draw();
   
 

@@ -244,9 +244,11 @@ function rollLootFull(table, zone) {
   return out;
 }
 function interact() {
+  const exit = nearbyAreaExit();
+  if (exit) { useAreaExit(exit); return; }
   const s = nearSpot();
   if (!s) return;
-  if (s.kind === "door") { startLocationLoad(s.house.name, () => { enterHouse(s.house); checkpoint("entrada no prédio"); }); return; }
+  if (s.kind === "door") { startLocationLoad(s.house.name, () => enterHouse(s.house), "entrada no prédio"); return; }
   if (s.kind === "exit") { leaveHouse(); return; }
   if (s.kind === "stairs") { changeFloor(s.dir); return; }
   if (s.kind === "survivor") { pickupSurvivor(s); return; }
@@ -677,7 +679,8 @@ function enterHouse(h) {
   if (h.safe && game.escort) deliverSurvivor();
   sfx.door();
   if (h.safe && h.outpost != null && !save.outposts[h.outpost]) {
-    save.outposts[h.outpost] = true; persist();
+    save.outposts[h.outpost] = true;
+    if (!game.trans) persist();
     game.banner = { text: `${h.name} descoberto!`, sub: "Viagem rápida liberada no rádio dos postos", t: 3000, gold: true };
   }
   game.hub = !!h.safe; // posto seguro: abre a tela da base
@@ -688,7 +691,7 @@ function enterHouse(h) {
   else toast(`Você entrou: ${h.name}${fl > 1 ? ` · ${fl} ${h.def.under ? "níveis" : "andares"}` : ""}`);
 }
 function leaveHouse() {
-  startLocationLoad(world.cell.name, () => { leaveHouseNow(); checkpoint("saída do prédio"); });
+  startLocationLoad(world.cell.name, leaveHouseNow, "saída do prédio");
 }
 function leaveHouseNow() {
   game.floorPursuers = []; // perseguições pendentes não atravessam prédios.
@@ -722,7 +725,7 @@ function travelTo(id) {
     const b = world.outposts[id];
     enterHouse(b);
     toast(`Viagem até ${b.name} · -$${cost}`);
-  });
+  }, "viagem entre bases");
 }
 // admin: vai para a primeira área com esse nível de perigo
 function teleportZone(r) {

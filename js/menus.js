@@ -7,6 +7,10 @@
 // ---------- Teclas dentro dos menus ----------
 function menuKey(k) {
   if (game.menu === "market" && game.marketBusy) return;
+  if (game.menu === "pack" && INV.confirm) {
+    if (k === "escape") INV.confirm = null;
+    return;
+  }
   if (game.input) { inputKey(k); return; }
   // Modais personalizados de esquemas capturam teclado antes do menu,
   // inclusive letras E/B que normalmente fechariam a Clínica.

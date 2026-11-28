@@ -572,9 +572,7 @@ function packAct() {
 function packDiscard() {
   const inv = packSel(), it = selItem(inv.sel);
   if (!it) return;
-  if (inv.sel < SLOT_N) player.slots[inv.sel] = null; else player.pack.splice(inv.sel - SLOT_N, 1);
-  player.reloading = 0;
-  toast(`Descartou ${it.kind === "weapon" ? instName(it) : `${it.qty}x ${MATS[it.id].name}`}`);
+  requestInventoryDiscard({ type: it.kind === "weapon" ? "weapon" : "mat", item: it });
 }
 function packKey(k) {
   if (k === "pageup") { invPackChangePage(-1); return; }

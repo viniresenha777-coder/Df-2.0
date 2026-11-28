@@ -40,10 +40,24 @@ function vestSellPrice(i) {
 }
 function ammoSellPrice(t) { return Math.max(0.5, ammoPackPrice(t) / AMMO_PACK_SIZE * SCRAP_RATE); }
 
+function junkEquipmentAvailable(e) {
+  if (e.kind === "weapon") return player.pack.includes(e.it) && !fmStashItemEquipped({ type: "weapon", item: e.it });
+  if (e.kind === "implant") return player.bag.includes(e.im) && !fmStashItemEquipped({ type: "implant", item: e.im });
+  if (e.kind === "vest") return !!save.vestsOwned[e.idx] && !fmStashItemEquipped({ type: "vest", item: { i: e.idx } });
+  return true;
+}
+function junkEntryAvailable(e) {
+  if (!e || e.it?.validadeDias || e.im?.validadeDias || e.it?.tokenBound || e.im?.tokenBound) return false;
+  return junkEquipmentAvailable(e) && (e.kind !== "mat" || player.pack.includes(e.it));
+}
+function junkLegendary(e) {
+  const definition = e.kind === "weapon" ? WDEF[e.it.id] : e.kind === "vest" ? VESTS[e.idx] :
+    e.kind === "mat" ? MATS[e.it.id] : e.kind === "implant" ? IMP[e.im.id] : null;
+  return definition?.rar === 4 || definition?.legendary === true;
+}
 // tudo o que você pode vender, numa lista só
 function junkItems() {
   const L = [];
-  player.slots.forEach((it, i) => { if (it) L.push({ kind: "weapon", it, where: "slot", i, name: instName(it), unit: weaponSellPrice(it), qty: 1, rare: WDEF[it.id].rar >= 2, sub: `slot ${i + 1}${player.cur === i ? " · na mão" : ""}` }); });
   player.pack.forEach((it) => {
     if (it.kind === "mat" && it.id === "reset_stats") return; // cartão consumível não é revendido
     if (it.kind === "weapon") L.push({ kind: "weapon", it, where: "pack", name: instName(it), unit: weaponSellPrice(it), qty: 1, rare: WDEF[it.id].rar >= 2, sub: "mochila" });
@@ -60,26 +74,26 @@ function junkItems() {
   });
   const vestScrap = vestSellPrice;
   VESTS.forEach((v, i) => { if (save.vestsOwned[i] && i !== save.vest) L.push({ kind: "vest", idx: i, name: v.name, unit: vestScrap(i), qty: 1, rare: v.rar >= 2, sub: `colete guardado · ${Math.round(vestDur(i))}%` }); });
-  return L.filter(e => !e.it?.validadeDias && !e.im?.validadeDias);
+  return L.filter(junkEntryAvailable);
 }
 function sellableAmmo(t) { return Math.max(0, player.reserve[t] - (player.tokenAmmo[t] || 0)); }
-function sellEntry(e, n) {
-  if (e.it?.validadeDias || e.im?.validadeDias) return;
-  if (e.kind === "implant" && (e.im.tokenBound || !player.bag.includes(e.im))) {
-    toast("Implante não disponível para venda.");
+function sellEntry(e, n, confirmation) {
+  if (!atBase() || !junkEntryAvailable(e)) {
+    toast("Item indisponível para venda. Desequipe-o se estiver em uso.");
     return;
   }
+  if (junkLegendary(e) && (!confirmation || confirmation !== game.jconfirm ||
+      confirmation.entry !== e || confirmation.quantity !== n || confirmation.code !== "132")) return;
   if (e.kind === "ammo") {
     n = Math.min(n, sellableAmmo(e.t));
     if (n <= 0) return;
   }
   n = Math.max(1, Math.min(n, e.qty));
+  if (e.kind === "mat" && e.it.qty < n) { toast("A quantidade mudou. Confira o item e tente novamente."); return; }
+  if (confirmation) game.jconfirm = null;
   const total = Math.max(1, Math.round(e.unit * n));
   switch (e.kind) {
-    case "weapon":
-      if (e.where === "slot") { player.slots[e.i] = null; if (player.cur === e.i) { const j = player.slots.findIndex(Boolean); player.cur = j >= 0 ? j : 0; } player.reloading = 0; }
-      else player.pack.splice(player.pack.indexOf(e.it), 1);
-      break;
+    case "weapon": player.pack.splice(player.pack.indexOf(e.it), 1); break;
     case "mat": e.it.qty -= n; if (e.it.qty <= 0) player.pack.splice(player.pack.indexOf(e.it), 1); break;
     case "ammo": player.reserve[e.t] -= n; break;
     case "food": player.foodQ[e.q] -= n; player.food -= n; break;
@@ -90,29 +104,40 @@ function sellEntry(e, n) {
     case "vest": save.vestsOwned[e.idx] = false; if (save.vestDur) delete save.vestDur[e.idx];
       if (Array.isArray(save.vestSemTroca) && save.vestSemTroca.includes(e.idx)) save.vestSemTroca.splice(save.vestSemTroca.indexOf(e.idx), 1); break;
   }
-  game.money += total; logMoney("Ferro Velho", (n > 1 ? n + "x " : "") + e.name, total); sfx.buy(); persist();
+  game.money += total; logMoney("Ferro Velho", (n > 1 ? n + "x " : "") + e.name, total); sfx.buy(); checkpoint("venda no Ferro Velho");
   toast(`Vendeu ${n > 1 ? `${n}x ` : ""}${e.name} por $${total}`);
   game.jcur = Math.max(0, Math.min(game.jcur, junkItems().length - 1));
 }
 function dismantle(e) {
-  if (e.it?.validadeDias) return;
+  if (!atBase() || e?.kind !== "weapon" || !junkEntryAvailable(e)) return;
   const p = weaponParts(e.it);
-  if (e.where === "slot") { player.slots[e.i] = null; if (player.cur === e.i) { const j = player.slots.findIndex(Boolean); player.cur = j >= 0 ? j : 0; } player.reloading = 0; }
-  else player.pack.splice(player.pack.indexOf(e.it), 1);
+  player.pack.splice(player.pack.indexOf(e.it), 1);
   let toVault = false;
   for (const k in p) if (!addMat(k, p[k])) { addMat(k, p[k], save.vault, VAULT_MAX); toVault = true; }
-  sfx.reload(); persist();
+  sfx.reload(); checkpoint("desmontagem no Ferro Velho");
   toast(`Desmontou ${e.name}: ${partsText(p)}${toVault ? " (parte foi para o baú)" : ""}`);
   game.jcur = Math.max(0, Math.min(game.jcur, junkItems().length - 1));
 }
 // itens raros pedem confirmação
 function askSell(e, n) {
-  if (!e) return;
-  if (e.rare) game.jconfirm = { text: `Vender ${e.name}${n > 1 ? ` (${n}x)` : ""} por $${Math.round(e.unit * Math.min(n, e.qty))}?`, sub: "Item raro: depois de vendido não volta.", fn: () => sellEntry(e, n) };
+  if (!e || !junkEntryAvailable(e)) return;
+  if (junkLegendary(e)) game.jconfirm = { entry: e, quantity: Math.max(1, Math.min(n, e.qty)), code: "" };
+  else if (e.rare) game.jconfirm = { text: `Vender ${e.name}${n > 1 ? ` (${n}x)` : ""} por $${Math.round(e.unit * Math.min(n, e.qty))}?`, sub: "Item raro: depois de vendido não volta.", fn: () => sellEntry(e, n) };
   else sellEntry(e, n);
 }
+
+function confirmJunkAction() {
+  const pending = game.jconfirm;
+  if (!pending) return;
+  if (pending.entry) {
+    if (pending.code === "132") sellEntry(pending.entry, pending.quantity, pending);
+    return;
+  }
+  game.jconfirm = null;
+  pending.fn();
+}
 function askDismantle(e) {
-  if (!e || e.kind !== "weapon") return;
+  if (!e || e.kind !== "weapon" || !junkEntryAvailable(e)) return;
   const fn = () => dismantle(e);
   if (e.rare) game.jconfirm = { text: `Desmontar ${e.name}?`, sub: `Você recebe ${partsText(weaponParts(e.it))}. A arma some.`, fn };
   else fn();
@@ -139,7 +164,15 @@ function confirmBuyResetStats() {
 function junkKey(k) {
   const items = junkItems(), e = items[game.jcur | 0];
   if (game.jconfirm) {
-    if (k === "enter" || k === "y" || k === "s") { const f = game.jconfirm.fn; game.jconfirm = null; f(); }
+    const pending = game.jconfirm;
+    if (pending.entry) {
+      if (/^[0-9]$/.test(k) && pending.code.length < 3) pending.code += k;
+      else if (k === "backspace") pending.code = pending.code.slice(0, -1);
+      else if (k === "enter") confirmJunkAction();
+      else if (k === "escape") game.jconfirm = null;
+      return;
+    }
+    if (k === "enter" || k === "y" || k === "s") confirmJunkAction();
     else if (k === "n" || k === "escape") game.jconfirm = null;
     return;
   }
@@ -151,9 +184,35 @@ function junkKey(k) {
   else if (k === "t") askSell(e, e ? e.qty : 1);
   else if (k === "d") askDismantle(e);
 }
+function drawJunkItemIcon(e, x, y, scale) {
+  if (e.kind === "weapon") drawWeaponSide(WDEF[e.it.id], x, y, scale);
+  else if (e.kind === "mat") drawMatIcon(e.it.id, x, y, scale);
+  else if (e.kind === "vest") drawVestIcon(e.idx, x, y, scale);
+  else if (e.kind === "implant") drawEntryIcon({ type: "implant", im: e.im }, x, y, scale);
+  else if (e.kind === "ammo") drawEntryIcon({ type: "ammo", ammo: e.t }, x, y, scale);
+  else drawEntryIcon({ type: e.kind, spr: e.kind === "food" ? "beans" : e.kind === "water" ? "soda" : e.kind === "anti" ? "pills" : "medkit" }, x, y, scale);
+}
+function drawLegendarySale(pending) {
+  const e = pending.entry;
+  const cx = W / 2, top = H / 2 - 156;
+  const total = Math.max(1, Math.round(e.unit * pending.quantity));
+  ctx.fillStyle = "#281e10"; rr(cx - 235, top, 470, 312, 10); ctx.fill();
+  ctx.strokeStyle = "#ffd96a"; ctx.lineWidth = 2; ctx.stroke();
+  txt("Venda de item lendário", cx, top + 34, 20, "#ffd96a", "center", true);
+  drawJunkItemIcon(e, cx, top + 77, 1.25);
+  txt(`${e.name}${pending.quantity > 1 ? ` ×${pending.quantity}` : ""}`, cx, top + 121, 17, "#f2eedc", "center", true, 420);
+  txt(`Valor da venda: $${total.toLocaleString("pt-BR")}`, cx, top + 147, 15, "#8fd08a", "center", true);
+  txt("A venda é irreversível.", cx, top + 174, 13, "#f2b185", "center");
+  txt("Digite o código 132 para confirmar", cx, top + 202, 13, "#f2eedc", "center");
+  ctx.fillStyle = "#14110d"; rr(cx - 68, top + 213, 136, 32, 5); ctx.fill();
+  ctx.strokeStyle = pending.code === "132" ? "#8fd08a" : "#ac8b57"; ctx.stroke();
+  txt(pending.code || "—", cx, top + 235, 17, "#f2eedc", "center", true);
+  btn(cx - 169, top + 261, 154, 35, "Confirmar", confirmJunkAction, true, pending.code !== "132");
+  btn(cx + 15, top + 261, 154, 35, "Cancelar", () => { game.jconfirm = null; });
+}
 function drawJunk() {
   game.jcur = game.jcur | 0;
-  menuFrame("Ferro Velho", `Dinheiro: $${game.money}  ·  venda o que achou ou desmonte armas em peças e sucata`);
+  menuFrame("Ferro Velho", `Dinheiro: $${game.money}  ·  Desequipe os itens antes de vender ou desmontar.`);
   const items = junkItems();
   if (game.jcur >= items.length) game.jcur = Math.max(0, items.length - 1);
   // lista (com rolagem)
@@ -174,15 +233,11 @@ function drawJunk() {
   const e = items[game.jcur], px = 540, pw = 380;
   ctx.fillStyle = "rgba(0,0,0,0.3)"; rr(px - 10, 92, pw + 20, 458, 8); ctx.fill();
   if (e) {
-    if (e.kind === "weapon") drawWeaponSide(WDEF[e.it.id], px + pw / 2, 160, 1.5);
-    else if (e.kind === "mat") drawMatIcon(e.it.id, px + pw / 2, 160, 1.5);
-    else if (e.kind === "vest") drawVestIcon(e.idx, px + pw / 2, 160, 1.4);
-    else if (e.kind === "implant") drawEntryIcon({ type: "implant", im: e.im }, px + pw / 2, 160, 1.4);
-    else if (e.kind === "ammo") drawEntryIcon({ type: "ammo", ammo: e.t }, px + pw / 2, 160, 1.4);
-    else drawEntryIcon({ type: e.kind === "food" ? "food" : e.kind, spr: e.kind === "food" ? "beans" : e.kind === "water" ? "soda" : e.kind === "anti" ? "pills" : "medkit" }, px + pw / 2, 160, 1.4);
+    drawJunkItemIcon(e, px + pw / 2, 160, 1.5);
     txt(e.name, px, 240, 18, "#f2eedc", "left", true, pw);
     txt(e.qty > 1 ? `Você tem ${e.qty} · $${Math.round(e.unit * 100) / 100} cada · tudo por $${Math.round(e.unit * e.qty)}` : `Vende por $${Math.round(e.unit)}`, px, 262, 13, "#8fd08a", "left", true, pw);
-    if (e.rare) txt("★ Item raro: pede confirmação antes de vender", px, 282, 12, "#ffd96a", "left", true);
+    if (junkLegendary(e)) txt("★ Item lendário: venda protegida por código", px, 282, 12, "#ffd96a", "left", true);
+    else if (e.rare) txt("★ Item raro: pede confirmação antes de vender", px, 282, 12, "#ffd96a", "left", true);
     let by = 300;
     btn(px, by, 180, 36, e.qty > 1 ? "Vender 1 (Enter)" : "Vender (Enter)", () => askSell(e, 1), true);
     if (e.qty > 1) btn(px + 196, by, 180, 36, `Vender tudo (T)`, () => askSell(e, e.qty));
@@ -213,12 +268,13 @@ function drawJunk() {
     const c = game.jconfirm;
     ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, W, H);
     regClick(0, 0, W, H, () => {}); // bloqueia cliques atrás da confirmação
+    if (c.entry) { drawLegendarySale(c); return; }
     ctx.fillStyle = "rgba(40,30,16,0.97)"; rr(W / 2 - 230, 200, 460, 190, 10); ctx.fill();
     ctx.strokeStyle = "#ffd96a"; ctx.lineWidth = 2; ctx.stroke();
     txt("CONFIRMAR", W / 2, 232, 13, "#ffd96a", "center", true);
     txt(c.text, W / 2, 268, 17, "#f2eedc", "center", true, 430);
     txt(c.sub, W / 2, 292, 12, "#c9c4ad", "center", false, 430);
-    btn(W / 2 - 170, 320, 150, 42, "SIM (Enter)", () => { game.jconfirm = null; c.fn(); }, true);
+    btn(W / 2 - 170, 320, 150, 42, "SIM (Enter)", confirmJunkAction, true);
     btn(W / 2 + 20, 320, 150, 42, "NÃO (Esc)", () => { game.jconfirm = null; });
   }
 }

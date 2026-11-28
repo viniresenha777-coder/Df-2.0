@@ -2134,6 +2134,10 @@ function drawHUD() {
   }
 
   // o que dá para fazer aqui: texto no centro de baixo
+  if (!game.paused && !game.menu && !game.shop && !game.found && !game.quitting && nearbyAreaExit()) {
+    hudT("Pressione [E] para mudar de área.", W / 2, H - 30, 12, "#e5e0c8", "center", true);
+    return;
+  }
   const s = nearSpot();
   if (s && !game.over) {
     const label = spotPrompt(s).toUpperCase().replace("SEGURE E: ", "SEGURE E PARA ").replace(/^E: /, "E PARA ");

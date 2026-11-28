@@ -672,52 +672,99 @@ function gotoCell(cell, pos) {
   game.banner = { text: `${cell.code} · ${cell.name}`, sub: `Área ${RG.name} · ${RG.diff}${cell.op != null ? " · posto seguro" : ""}`, t: 2600, color: RG.color };
   activateArea();
   if (!game.restoring && cell.op == null) spawnNatalBoxes();   // evento de Natal
-  if (!game.restoring) checkpoint("troca de zona");
+  if (!game.restoring && !game.trans) checkpoint("troca de zona");
 }
 // chegou na borda: tenta passar para a área vizinha
 function streetExit(sx, sy) {
   const lanes = sx ? H_STREETS : V_STREETS, v = sx ? player.y : player.x;
   return lanes.some(([a, b]) => v >= a && v <= b);
 }
-function edgeCheck(dx, dy) {
-  if (game.trans || game.inside) return;
-  const m = player.r + 3;
-  let sx = 0, sy = 0;
-  if (dx < 0 && player.x <= m) sx = -1; else if (dx > 0 && player.x >= WORLD_W - m) sx = 1;
-  else if (dy < 0 && player.y <= m) sy = -1; else if (dy > 0 && player.y >= WORLD_H - m) sy = 1;
-  if (!sx && !sy) return;
-  // só muda de área nas pontas das ruas (cantos e meio de cada borda)
-  if (!streetExit(sx, sy)) return;
-  const c = world.cell, n = cellAt(c.cx + sx, c.cy + sy);
-  game.edgeT = game.edgeT || 0;
-  if (!n) { if (game.time - game.edgeT > 2500) { toast("Sem passagem: escombros bloqueiam o caminho"); game.edgeT = game.time; } return; }
-  if (n.tier === 8 && player.level < GRAY_LEVEL && !adm.noReq) {
-    if (game.time - game.edgeT > 2500) { toast(`Zona Cinza: só a partir do nível ${GRAY_LEVEL}`); game.edgeT = game.time; }
-    return;
+function nearbyAreaExit() {
+  if (game.trans || game.inside || game.over) return null;
+  const reach = player.r + 23;
+  const sides = [[player.x, -1, 0], [WORLD_W - player.x, 1, 0],
+    [player.y, 0, -1], [WORLD_H - player.y, 0, 1]];
+  const c = world.cell;
+  let exit = null;
+  for (const [distance, sx, sy] of sides) {
+    if (distance > reach || (exit && distance >= exit.distance) || !streetExit(sx, sy)) continue;
+    const cell = cellAt(c.cx + sx, c.cy + sy);
+    if (!cell || (cell.tier === 8 && player.level < GRAY_LEVEL && !adm.noReq)) continue;
+    exit = { cell, sx, sy, distance };
   }
+  return exit;
+}
+function useAreaExit(exit) {
+  const { cell, sx, sy } = exit;
+  const m = player.r + 3;
   const x = sx > 0 ? m + 24 : sx < 0 ? WORLD_W - m - 24 : player.x;
   const y = sy > 0 ? m + 24 : sy < 0 ? WORLD_H - m - 24 : player.y;
-  startLocationLoad(n.code + " · " + n.name, () => gotoCell(n, { x, y }));
+  startLocationLoad(cell.code + " · " + cell.name, () => gotoCell(cell, { x, y }));
 }
-function startLocationLoad(label, load) {
+function startLocationLoad(label, load, saveReason = "troca de zona") {
   if (game.trans) return;
-  game.trans = { label, load, phase: "out", t: 0, painted: false };
+  game.trans = { label, load, saveReason, phase: "out", t: 0, painted: false, visibleSince: null };
+  for (const k in keys) keys[k] = false;
   mouse.down = false;
   game.openWait = null;
+}
+function locationTexturesReady() {
+  // A primeira renderização do destino inicia os carregadores sob demanda.
+  // Também inicia as artes dos objetos e estruturas que estão fora da câmera.
+  if (!game.inside) {
+    for (const structure of world.estruturas || []) estrutImg(structure.id);
+    for (const model of world.models || []) modelImg(model.id);
+  }
+  const images = [
+    ...Object.values(PSHEET.sheets), ...Object.values(PSHEET.masks), ...Object.values(ZSHEET.sheets),
+    ...Object.values(MODEL_IMG), ...Object.values(ESTRUT_IMG), ...Object.values(CAR_STACK_IMG),
+    ...Object.values(GEAR_IMG), ...Object.values(ZDEATH), ...Object.values(ZATTACK),
+  ];
+  if (game.hub) images.push(FM_BASE_INTERIOR_BG, HUB_ART, HUB_NATAL);
+  // As artes com erro seguem os desenhos de reserva do jogo.
+  return Promise.allSettled(images.filter(image => image.src).map(image => image.decode()));
 }
 function transTick(dt) {
   const tr = game.trans;
   if (!tr) return;
   tr.t += dt;
-  if (tr.phase === "out" && tr.t >= 140) {
-    tr.phase = "loading"; tr.painted = false;
-  } else if (tr.phase === "loading" && tr.painted) {
-    // O quadro anterior já apresentou a tela opaca. Só agora monte o destino.
-    tr.load();
-    tr.phase = "ready"; tr.painted = false;
-  } else if (tr.phase === "ready" && tr.painted) {
+  if (tr.phase === "out" && tr.t >= 140) tr.phase = "loading";
+  if (tr.phase === "loading" && tr.visibleSince !== null) {
+    tr.phase = "saving";
+    checkpoint("antes da transição").then(ok => {
+      if (game.trans !== tr) return;
+      if (!ok) {
+        tr.error = "Não foi possível salvar. Você continua no local atual.";
+        tr.phase = "ready";
+        return;
+      }
+      tr.load();
+      updateCam(0);
+      tr.painted = false;
+      tr.phase = "preparing";
+    }).catch(error => locationLoadFailed(tr, error));
+  }
+  if (tr.phase === "preparing" && tr.painted) {
+    tr.phase = "finishing";
+    (async () => {
+      await locationTexturesReady();
+      if (game.trans !== tr) return;
+      if (!await checkpoint(tr.saveReason)) tr.error = "A nova posição ainda não foi confirmada. Tente salvar o progresso novamente.";
+      if (game.trans === tr) tr.phase = "ready";
+    })().catch(error => locationLoadFailed(tr, error));
+  }
+  if (tr.phase === "ready" && performance.now() - tr.visibleSince >= 3000) {
     tr.phase = "in"; tr.t = 0;
-  } else if (tr.phase === "in" && tr.t >= 230) game.trans = null;
+  } else if (tr.phase === "in" && tr.t >= 230) {
+    game.trans = null;
+    if (tr.error) toast(tr.error);
+  }
+}
+function locationLoadFailed(tr, error) {
+  if (game.trans !== tr) return;
+  console.error("Falha na transição:", error);
+  tr.error = "Não foi possível concluir o carregamento. Seu último checkpoint foi preservado.";
+  tr.phase = "ready";
 }
 function drawTransition() {
   const tr = game.trans;
@@ -730,6 +777,7 @@ function drawTransition() {
   txt(tr.label, W / 2, H / 2 + 24, 15, "#b8b39d", "center");
   ctx.restore();
   tr.painted = true;
+  if (tr.phase === "loading" && tr.visibleSince === null) tr.visibleSince = performance.now();
 }
 
 function locationName(x, y) {

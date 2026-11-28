@@ -108,8 +108,10 @@ function loadSave() {
     save.roupaInicial = true;
     // capa e máscaras compradas; save antigo: quem já estava usando uma fica com ela
     save.clothesOwned = {};
-    for (const id in CREDIT_CLOTHING) {
-      if (s.clothesOwned ? s.clothesOwned[id] === true : Object.values(save.clothing).includes(id)) save.clothesOwned[id] = true;
+    for (const id in CLOTHING_BY_ID) {
+      if (s.clothesOwned?.[id] === false) save.clothesOwned[id] = false;
+      else if (s.clothesOwned?.[id] === true || (!s.clothesOwned && CREDIT_CLOTHING[id] && Object.values(save.clothing).includes(id)))
+        save.clothesOwned[id] = true;
     }
     for (const kind of CLOTHING_KINDS) if (save.clothing[kind] && !clothingOwned(save.clothing[kind])) save.clothing[kind] = null;
     save.fmInventoryOrder = Array.isArray(s.fmInventoryOrder) ? s.fmInventoryOrder.filter((k) => k === null || typeof k === "string").slice(0, 150) : [];
