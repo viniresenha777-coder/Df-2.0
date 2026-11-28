@@ -270,9 +270,9 @@ function attrEffect(id, v) {
     default: return `+${Math.round((v - 10) * 0.5)}% de dano com ${CATNAME[id]}`;
   }
 }
-function syncChar() {
+function syncChar(writeImmediately = true) {
   save.char.level = player.level; save.char.xp = player.xp; save.char.points = player.points; save.char.wpoints = player.wpoints; save.char.skillCurve = WEAPON_CURVE;
-  persist();
+  if (writeImmediately) persist();
 }
 function gainXp(n) {
   if (player.level >= MAX_LEVEL) return;
@@ -290,7 +290,7 @@ function gainXp(n) {
     // embora aceitasse o dinheiro e os itens do jogador.
     if (up % 3 === 0 && player.level < MAX_LEVEL &&
         player.xp >= xpNeed(player.level)) {
-      syncChar();
+      syncChar(false);
       if (typeof checkpoint === "function") checkpoint("progresso de nível");
     }
   }
@@ -300,7 +300,7 @@ function gainXp(n) {
     sfx.level();
     game.banner = { text: `Nível ${player.level}!`, sub: "Distribua seus pontos em Atributos, na base", t: 2600, gold: true };
   }
-  syncChar();
+  syncChar(false);
   // cada subida de nível grava o save completo na hora (o servidor só aceita poucos níveis por salvamento)
   if (up && typeof checkpoint === "function") checkpoint("subiu de nível");
 }

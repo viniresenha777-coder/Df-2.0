@@ -158,6 +158,7 @@ function acceptFound() {
   if (e.type === "weapon") { registerWeapon(e.inst.id); if (WDEF[e.inst.id].rar >= 4) stat("legendaries"); }
   game.found.shift();
   if (!game.found.length) finishFound();
+  checkpoint("saque coletado");
   return true;
 }
 // comida, água, kit e antibiótico podem ser usados na hora (gasta 1; o resto continua oferecido)
