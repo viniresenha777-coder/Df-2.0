@@ -139,7 +139,7 @@ function acceptFound() {
   else if (e.type === "med") player.med += e.amt;
   else if (e.type === "ammo") {
     const got = addAmmo(e.ammo, e.amt);
-    if (got < e.amt) { e.amt -= got; toast(got ? `Pegou ${got} balas · a mochila encheu (500 balas por espaço)` : "Mochila cheia: munição ocupa 1 espaço a cada 500 balas"); sfx.empty(); return false; }
+    if (got < e.amt) { e.amt -= got; if (got > 0) checkpoint("munição coletada"); toast(got ? `Pegou ${got} balas · a mochila encheu (500 balas por espaço)` : "Mochila cheia: munição ocupa 1 espaço a cada 500 balas"); sfx.empty(); return false; }
   }
   else if (e.type === "weapon") {
     e.inst.loot = true;
@@ -187,6 +187,7 @@ function useFound() {
   sfx.pickup(); stat("itemsTaken");
   e.amt--;
   if (e.amt <= 0) { game.found.shift(); if (!game.found.length) finishFound(); }
+  checkpoint("saque consumido");
 }
 // Loot recusado permanece como o mesmo item no chão por 10 segundos reais.
 const GROUND_LOOT_LIFETIME = 10000;
