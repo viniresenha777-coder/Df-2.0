@@ -31,7 +31,7 @@ function weaponAmmoName(d) {
   if (d.melee) return "Não utiliza munição";
   if (d.infinite) return "Munição infinita";
   if (d.ammo === "virote") return "Flechas";
-  return Object.hasOwn(AMMO, d.ammo) ? d.ammo : "—";
+  return Object.hasOwn(AMMO, d.ammo) ? (AMMO[d.ammo].name || d.ammo) : "—";
 }
 function weaponInfoRows(d, inst) {
   const item = inst || newInst(d.id), st = wStat(item);
@@ -107,7 +107,7 @@ function entryName(e) {
     case "anti": return `${e.amt} antibiótico${e.amt > 1 ? "s" : ""}`;
     case "water": return `${e.amt} garrafa${e.amt > 1 ? "s" : ""} de água`;
     case "med": return `${e.amt} kit${e.amt > 1 ? "s" : ""} médico${e.amt > 1 ? "s" : ""}`;
-    case "ammo": return `${e.amt} balas ${e.ammo}`;
+    case "ammo": return AMMO[e.ammo]?.name ? `${e.amt} × ${AMMO[e.ammo].name}` : `${e.amt} balas ${e.ammo}`;
     case "weapon": return instName(e.inst);
     case "mat": return `${e.amt}x ${MATS[e.id].name}`;
     case "implant": return `implante ${implantName(e.im)}`;
@@ -1047,7 +1047,7 @@ function fmStashSelect(side, index) {
   game.vside = side;
   game.vcur = index;
 }
-function fmStashDrawTooltip(title) {
+function drawItemTooltip(title) {
   if (!title) return;
   const max = 290,
     w = Math.min(max, Math.max(140, 20 + title.length * 6.4)),
@@ -1211,12 +1211,11 @@ function drawStash() {
     true,
   );
   txt("Desequipe os itens antes de guardá-los.", 40, 570, 11, "#bdb19b", "left");
-  fmStashDrawTooltip(tooltip);
+  drawItemTooltip(tooltip);
 }
 // =====================================================================
 //  Loja dos postos
 // =====================================================================
-const SHOP_TABS = ["Munição"];
 const AMMO_PACK_SIZE = 999;
 // preço do pacote de 999 balas, por calibre (dinheiro da mochila)
 const AMMO_PACK_PRICES = { "9mm": 6000, ".45": 8000, "cartucho": 9000, "5.56": 12000, "7.62": 14000, ".50": 18000,
@@ -1225,14 +1224,15 @@ function ammoPackPrice(type) { return AMMO_PACK_PRICES[type] || 14000; }
 const AMMO_PACK_PRICE = 14000;   // legado (valor de referência)
 const CAT_ORDER = { pistols: 0, machinegun: 1, shotguns: 2, rifles: 3, melee: 4 };
 const SHOP_WEAPONS = WLIST.filter((d) => d.rar <= 3 && !d.craftOnly && !d.fists && d.price > 0).sort((a, b) => CAT_ORDER[a.cat] - CAT_ORDER[b.cat] || a.price - b.price);
-function shopList() { return Object.keys(AMMO); }
 function openShop() {
-  if (!inSafe() && !adm.shopAnywhere) { toast("A loja de munições fica na base."); return; }
-  game.shop = true; game.shopTab = 0; game.shopCur = 0;
+  if (!atBase() && !adm.shopAnywhere) { toast("A Loja fica na base."); return; }
+  game.shop = true;
+  game.input = null;
+  game.creditConfirm = null;
+  creditShopSelectSection("ammo");
 }
-function shopBuy() {
-  const type = shopList()[game.shopCur | 0];
-  if (!type) return;
+function buyAmmoPack(type) {
+  if (!Object.hasOwn(AMMO, type)) return;
   const free = shopFree();
   const cost = ammoPackPrice(type);
   if (!free && game.money < cost) { toast("Você precisa de $" + cost.toLocaleString("pt-BR") + " para comprar essa munição."); return; }
@@ -1242,7 +1242,7 @@ function shopBuy() {
   player.reserve[type] = (player.reserve[type] || 0) + AMMO_PACK_SIZE;
   sfx.buy();
   checkpoint("compra de pacote de munição");
-  toast("Comprou 999 munições " + type + (free ? " de graça (Token da Loja)" : " por $" + cost.toLocaleString("pt-BR")));
+  toast("Comprou 999 munições · " + (AMMO[type].name || type) + (free ? " de graça (Token da Loja)" : " por $" + cost.toLocaleString("pt-BR")));
 }
 function vestText(v) {
   const up = vestUpgrade(VESTS.indexOf(v));
@@ -1262,44 +1262,6 @@ function buyVest(i) {
   }
   sfx.buy(); gainVest(i); save.vest = i; recalcImplants(); persist();
 }
-function shopKey(k) {
-  if (k === "b" || k === "escape" || k === "e") { game.shop = false; return; }
-  const len = shopList().length;
-  if (k === "w" || k === "arrowup") game.shopCur = Math.max(0, game.shopCur - 1);
-  else if (k === "s" || k === "arrowdown") game.shopCur = Math.min(len - 1, game.shopCur + 1);
-  else if (k === "enter") shopBuy();
-}
-function drawShop() {
-  const free = shopFree();
-  menuFrame("Loja de Munições", free ? "TOKEN DA LOJA ATIVO · tudo de graça até " + new Date(save.shopFreeUntil).toLocaleString("pt-BR")
-    : "Dinheiro: $" + game.money.toLocaleString("pt-BR") + " · Cada pacote: 999 munições");
-  const list = shopList();
-  const selected = Math.min(list.length - 1, Math.max(0, game.shopCur | 0));
-  game.shopCur = selected;
-  list.forEach((type, i) => {
-    const y = 110 + i * 42;
-    if (y > 480) return;
-    rowBox(40, y, 520, 38, selected === i);
-    drawEntryIcon({ type: "ammo", ammo: type }, 76, y + 20, 0.5);
-    txt(type + " · 999 unidades", 124, y + 18, 15, "#f2eedc", "left", true);
-    txt("Você tem: " + (player.reserve[type] || 0), 124, y + 33, 11, "#a9a58f");
-    txt(free ? "GRÁTIS" : "$" + ammoPackPrice(type).toLocaleString("pt-BR"), 544, y + 25, 14, free ? "#ffd96a" : game.money >= ammoPackPrice(type) ? "#6fae4f" : "#e05a4a", "right", true);
-    rowClick(40, y, 520, 38, selected === i, () => { game.shopCur = i; }, shopBuy);
-  });
-  const type = list[selected], px = 600;
-  ctx.fillStyle = "rgba(0,0,0,.35)"; rr(px - 10, 100, 326, 380, 8); ctx.fill();
-  if (type) {
-    drawEntryIcon({ type: "ammo", ammo: type }, 760, 188, 1.6);
-    txt("Munição " + type, px, 286, 20, "#f2eedc", "left", true);
-    txt("Pacote com 999 unidades", px, 316, 15, "#ffd96a");
-    txt(free ? "Preço: GRÁTIS (Token da Loja)" : "Preço: $" + ammoPackPrice(type).toLocaleString("pt-BR"), px, 344, 15, free ? "#ffd96a" : "#6fae4f", "left", true);
-    txt("Espaço necessário na mochila", px, 369, 12, "#a9a58f");
-    btn(px + 60, 422, 200, 42, "Comprar (Enter)", shopBuy, true);
-  }
-  hint("W/S escolhe calibre · Enter compra · B, E ou Esc fecha");
-  menuToast();
-}
-
 // =====================================================================
 //  Personagem (aba do menu C): escolher a aparência
 // =====================================================================
@@ -1365,19 +1327,29 @@ function takeImps(need) {
   for (const id in need || {}) for (let n = need[id]; n > 0; n--) { const i = player.bag.findIndex((im) => im.id === id && !im.tokenBound && !im.validadeDias); if (i >= 0) player.bag.splice(i, 1); }
 }
 function recipeName(r) { return r.implant ? IMP[r.implant].name : r.vest != null ? VESTS[r.vest].name : WDEF[r.id].name; }
-function craftRecipe() {
-  const r = RECIPES[game.ccur], cost = craftMoney(r.money);
+function craftRecipe(currency = "money") {
+  const r = RECIPES[game.ccur], withCredits = currency === "credits";
+  if (!r || (withCredits && !r.credits)) return;
+  const cost = withCredits ? r.credits : craftMoney(r.money);
   if (player.level < r.level) { toast(`Precisa do nível ${r.level}`); return; }
   if (r.needVest != null && !save.vestsOwned[r.needVest]) { toast(`Precisa ter a ${VESTS[r.needVest].name} (ela é usada como base)`); return; }
   if (r.vest != null && save.vestsOwned[r.vest]) { toast("Você já tem esse colete"); return; }
-  if (game.money < cost) { toast(`Precisa de $${cost} na mochila`); return; }
+  if (withCredits ? save.credits < cost : game.money < cost) {
+    toast(withCredits ? `Precisa de ${cost} créditos` : `Precisa de ${bankMoney(cost)} na mochila`);
+    return;
+  }
   if (!hasMats(r.mats)) { toast("Faltam materiais"); return; }
   if (!hasImps(r.needImp)) { const id = Object.keys(r.needImp)[0]; toast(`Precisa de ${r.needImp[id]}× ${IMP[id].name} na mochila de implantes (não instalados)`); return; }
   if (r.implant && player.bag.length - Object.values(r.needImp || {}).reduce((a, b) => a + b, 0) >= BAG_MAX) { toast("Mochila de implantes cheia"); return; }
   if (!r.implant && r.vest == null && player.slots.indexOf(null) < 0 && packUsed() >= packCapacity()) { toast("Mochila cheia"); return; }
   for (const m in r.mats) takeMat(m, r.mats[m]);
   takeImps(r.needImp);
-  game.money -= cost; logMoney("Oficina", "craft " + (r.name || r.id || ""), -cost); stat("crafts");
+  if (withCredits) save.credits -= cost;
+  else {
+    game.money -= cost;
+    logMoney("Oficina", "craft " + (r.name || r.id || ""), -cost);
+  }
+  stat("crafts");
   if (r.vest != null) {
     save.vestsOwned[r.needVest] = false;
     if (save.vestUpgrades) delete save.vestUpgrades[r.needVest];
@@ -1385,7 +1357,9 @@ function craftRecipe() {
     gainVest(r.vest); save.vest = r.vest; recalcImplants();
   } else if (r.implant) player.bag.push(newImplant(r.implant));
   else { addWeapon(newInst(r.id)); registerWeapon(r.id); }
-  persist(); sfx.level();
+  if (r.implant || r.credits) checkpoint(r.implant ? "fabricação de implante" : "fabricação de arma");
+  else persist();
+  sfx.level();
   game.banner = { text: `${recipeName(r)} criado!`, sub: r.vest != null ? "Colete equipado" : r.implant ? "Instale na Clínica ou na mochila (B)" : "Abra a mochila (B) para equipar", t: 2600, gold: true };
 }
 function payUpgrade(c) {
@@ -1435,17 +1409,24 @@ function upgradeVest() {
   finishUpgrade(`${vestDefinition(i).name}: Armadura ${up.armor} · Velocidade ${up.speed}`);
 }
 function matsLine(mats, x, y) {
-  let xx = x;
+  let xx = x, hoveredMaterial = null;
   for (const m in mats) {
     if (!mats[m]) continue;
     const have = matCount(m), ok = have >= mats[m];
     drawMatIcon(m, xx + 10, y - 4, 0.28);
     const t = `${have}/${mats[m]}`;
     txt(t, xx + 24, y, 13, ok ? "#6fae4f" : "#e05a4a", "left", true);
-    ctx.font = `bold 13px ${FONT}`; xx += 34 + ctx.measureText(t).width;
+    ctx.font = `bold 13px ${FONT}`;
+    const width = ctx.measureText(t).width;
+    if (mouse.x >= xx - 2 && mouse.x <= xx + 26 + width && mouse.y >= y - 14 && mouse.y <= y + 5) {
+      hoveredMaterial = MATS[m]?.name || m;
+    }
+    xx += 34 + width;
   }
+  return hoveredMaterial;
 }
 function drawCraft() {
+  let materialTooltip = null;
   game.ctab = game.ctab || 0; game.ccur = game.ccur || 0; game.cstat = game.cstat || 0;
   menuFrame("Oficina", `Dinheiro: $${game.money}  ·  Nível ${player.level}  ·  materiais da mochila e do baú contam aqui`, "oficina_bg");
   if (save.vest >= 0) {
@@ -1466,15 +1447,17 @@ function drawCraft() {
     RECIPES.forEach((r, i) => {
       if (i < roff || i >= roff + RV) return;
       const y = 120 + (i - roff) * 56, sel = game.ccur === i, cost = craftMoney(r.money);
-      const ok = player.level >= r.level && game.money >= cost && hasMats(r.mats) && hasImps(r.needImp) && (r.needVest == null || save.vestsOwned[r.needVest]);
+      const canPay = game.money >= cost || (r.credits && save.credits >= r.credits);
+      const ok = player.level >= r.level && canPay && hasMats(r.mats) && hasImps(r.needImp) && (r.needVest == null || save.vestsOwned[r.needVest]);
       rowBox(40, y, 520, 52, sel, ok ? "#6fae4f" : null);
       rowClick(40, y, 520, 52, sel, () => { game.ccur = i; }, craftRecipe);
       itemSpot(96, y + 26, 56, 24);
       if (r.implant) drawEntryIcon({ type: "implant", im: { id: r.implant } }, 96, y + 26, 0.62);
       else if (r.vest != null) drawVestIcon(r.vest, 96, y + 26, 0.7); else drawWeaponSide(WDEF[r.id], 96, y + 26, 0.36);
       txt(recipeName(r), 160, y + 19, 14, r.implant ? "#ff8a6a" : r.vest != null ? RARITY[VESTS[r.vest].rar].color : rarColor(WDEF[r.id]), "left", true, 280);
-      matsLine(r.mats, 160, y + 41);
-      txt(`$${cost}`, 548, y + 19, 13, game.money >= cost ? "#6fae4f" : "#e05a4a", "right", true);
+      materialTooltip = matsLine(r.mats, 160, y + 41) || materialTooltip;
+      const moneyLabel = cost ? bankMoney(cost) : "Só materiais";
+      txt(r.credits ? `${moneyLabel} ou ${r.credits} cr` : moneyLabel, 548, y + 19, 13, canPay ? "#6fae4f" : "#e05a4a", "right", true);
       txt(`nível ${r.level}`, 548, y + 40, 11, player.level >= r.level ? "#6fae4f" : "#e05a4a", "right", true);
     });
     const r = RECIPES[game.ccur];
@@ -1482,13 +1465,19 @@ function drawCraft() {
       const d = IMP[r.implant];
       itemSpot(px + pw / 2, 210, 150, 90);
       drawEntryIcon({ type: "implant", im: { id: r.implant } }, px + pw / 2, 210, 1.9);
-      txt(d.name, px, 300, 17, "#ff8a6a", "left", true, pw);
-      Object.keys(d.fx).forEach((k, i) => txt(sgn(d.fx[k]) + "% " + (FX_LABEL[k] || k), px, 324 + i * 18, 13, d.fx[k] < 0 ? "#ff8383" : "#8bed92", "left", true, pw));
+      txt(d.name, px, 290, 17, "#ff8a6a", "left", true, pw);
+      Object.keys(d.fx).forEach((k, i) => txt(sgn(d.fx[k]) + "% " + (FX_LABEL[k] || k), px, 310 + i * 14, 12, d.fx[k] < 0 ? "#ff8383" : "#8bed92", "left", true, pw));
       if (r.needImp) {
         const id = Object.keys(r.needImp)[0], have = impHave(id);
-        txt(`Implante: ${have}/${r.needImp[id]}× ${IMP[id].name}`, px, 414, 12, have >= r.needImp[id] ? "#6fae4f" : "#e05a4a", "left", true, pw);
-        txt("Na mochila de implantes (não instalados) · são consumidos", px, 430, 11, "#a9a58f", "left", false, pw);
-        txt("Componentes: região Vermelha+ · Coração do Demônio: chefes", px, 446, 11, "#ffd96a", "left", false, pw);
+        txt(`${have}/${r.needImp[id]}× ${IMP[id].name} (na mochila)`, px, 392, 12, have >= r.needImp[id] ? "#6fae4f" : "#e05a4a", "left", true, pw);
+        Object.entries(r.mats).forEach(([mat, count], i) => {
+          const available = matCount(mat);
+          txt(`${available}/${count}× ${MATS[mat].name}`, px + (i % 2) * 160, 407 + Math.floor(i / 2) * 15,
+            11, available >= count ? "#6fae4f" : "#e05a4a", "left", true, 154);
+        });
+        txt("O implante e os materiais são consumidos", px, 459, 11, "#a9a58f", "left", false, pw);
+        txt(r.mats.coracao_demonio ? "Componentes: região Vermelha+ · Coração do Demônio: chefes" : "Componentes: região Vermelha+",
+          px, 533, 11, "#ffd96a", "left", false, pw);
       } else {
         txt(`Gorros de Natal: ${matCount("gorro_natal")}/${r.mats.gorro_natal}`, px, 390, 12, hasMats(r.mats) ? "#6fae4f" : "#e05a4a", "left", true, pw);
         txt("Os Gorros caem nas Caixas de Natal espalhadas pela cidade", px, 410, 11, "#ffd96a", "left", false, pw);
@@ -1503,7 +1492,11 @@ function drawCraft() {
       txt("(ela é consumida no craft)", px, 356, 11, "#a9a58f");
       txt("Placa de blindagem: só cai dos chefes de áreas pretas, roxas e cinzas", px, 382, 11, "#ffd96a", "left", false, pw);
     } else weaponDetail(WDEF[r.id], null, px, 130, pw);
-    btn(px + 70, 470, 180, 40, "Criar (Enter)", craftRecipe, true);
+    if (r.credits) {
+      txt(`Créditos disponíveis · ${save.credits.toLocaleString("pt-BR")}`, px + pw / 2, 463, 12, "#e6b37b", "center");
+      btn(px, 470, 156, 40, `Criar · ${bankMoney(craftMoney(r.money))}`, craftRecipe, true);
+      btn(px + 164, 470, 156, 40, `Criar · ${r.credits} créditos`, () => craftRecipe("credits"), true);
+    } else btn(px + 70, 470, 180, 40, "Criar (Enter)", craftRecipe, true);
     hint("W/S escolhe · Enter cria · Tab troca de aba · clique 2x para criar · E ou Esc fecha");
   } else {
     const isVest = game.ctab === 2, list = isVest ? craftVests() : craftWeapons();
@@ -1537,7 +1530,7 @@ function drawCraft() {
       txt("Substitui os valores atuais; pode diminuir.", px, 438, 11, "#a9a58f", "left", false, pw);
       const c = isVest ? vestUpgradeCost(it) : upgradeCost(it), cost = craftMoney(c.money);
       txt(`Sorteio: $${cost}`, px, 459, 13, game.money >= cost ? "#6fae4f" : "#e05a4a", "left", true);
-      matsLine(c.mats, px + 180, 459);
+      materialTooltip = matsLine(c.mats, px + 180, 459);
       btn(px + 70, 474, 180, 36, "Melhorar (Enter)", isVest ? upgradeVest : upgradeWeapon, true, !isVest && !!it.gc);
       if (!isVest) {
         const isGC = !!it.gc && it.up.acc === 8 && it.up.dmg === 8 && it.up.rel === 8;
@@ -1549,4 +1542,5 @@ function drawCraft() {
     hint(game.ctab === 1 ? "W/S escolhe · Enter melhora · G: Craft Perfeito 8/8/8 ($100.000) · Esc fecha" : "W/S escolhe · Enter melhora · Tab troca de aba · E ou Esc fecha");
   }
   menuToast();
+  drawItemTooltip(materialTooltip);
 }

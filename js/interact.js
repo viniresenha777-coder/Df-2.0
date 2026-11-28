@@ -77,17 +77,19 @@ function lootVest(zone) {
   return { type: "vest", idx: ids[Math.floor(Math.random() * (max + 1))], mcArmor: player.flags.mc ? 6 : 0 };
 }
 function vestChance(t) { return (t.weapon || 0) * 0.3 * (1 + player.fx.armorFind / 100) * (vipActive() ? 1.6 : 1); }
+function lootAmmo(boxes, zone) {
+  const ammo = randomAmmoDrop(zone);
+  return { type: "ammo", ammo, amt: Math.round(boxes * AMMO[ammo].box * (vipActive() ? 2 : 1) * ammoMult()) };
+}
 function lootEntry(cat, t, table, zone) {
   if (cat === "weapon") {
     const up = {};
     if (zone >= 4 && Math.random() < upChance()) for (let i = 0; i < 1 + Math.floor(zone / 5) + upBonus(); i++) { const s = pick(UP_STATS).id; up[s] = Math.min(UP_MAX, (up[s] || 0) + 1); }
-    return { type: "weapon", inst: newInst(randomWeaponDrop(zone, vipActive() ? 1 : 0), up) };
+    const minRegion = table === "alce_natal" ? NATAL_LEGENDARY_REGION : REGULAR_LEGENDARY_REGION;
+    return { type: "weapon", inst: newInst(randomWeaponDrop(zone, vipActive() ? 1 : 0, minRegion), up) };
   }
   if (cat === "cash") return { type: "cash", amt: lootCash(lootAmt(t.cash), zone) };
-  if (cat === "ammo") {
-    const types = usedAmmoTypes(), ammo = types.length ? pick(types) : "9mm";
-    return { type: "ammo", ammo, amt: Math.round(lootAmt(t.ammo) * AMMO[ammo].box * (vipActive() ? 2 : 1) * ammoMult()) };
-  }
+  if (cat === "ammo") return lootAmmo(lootAmt(t.ammo), zone);
   if (cat === "mat") {
     const r = Math.random(), id = table === "chest" && r < 0.06 ? "nucleo" : r < 0.5 ? "sucata" : r < 0.78 ? "pecas" : "eletronicos";
     return { type: "mat", id, amt: id === "nucleo" ? 1 : 1 + Math.floor(Math.random() * 2) };
@@ -110,9 +112,10 @@ function lootImplantDrop(t, zone, k, boost) {
 // Componentes dos implantes X/Err X: só da região Vermelha (4) para cima.
 // Lugares com arma: 1,5% · airdrop: 25% · chefe: 40% de um componente e 30% de Coração do Demônio.
 const IMP_PARTS = ["placa_circuito", "interface_implante", "bateria_implante", "sucata_rara"];
+function miscLootMult() { return 1 + (player.fx.miscFind + (player.fx.miscBlueprintFind || 0)) / 100; }
 function implantPartsDrop(table, t, zone) {
   if (regionOf(zone) < 4) return [];
-  const out = [], f = 1 + player.fx.miscFind / 100;
+  const out = [], f = miscLootMult();
   const pc = table === "boss" ? 0.4 : table === "airdrop" ? 0.25 : t.weapon ? 0.015 : 0;
   if (pc && Math.random() < pc * f) out.push({ type: "mat", id: pick(IMP_PARTS), amt: 1 });
   if (table === "boss" && Math.random() < 0.3 * f) out.push({ type: "mat", id: "coracao_demonio", amt: 1 });
@@ -120,11 +123,11 @@ function implantPartsDrop(table, t, zone) {
 }
 function blueprintDrop(table, zone) {
   if (regionOf(zone) < 4 || ["boss","airdrop","natal"].includes(table)) return [];
-  const roll = Math.random();
+  const roll = Math.random(), multiplier = 1 + (player.fx.miscBlueprintFind || 0) / 100;
   let threshold = 0;
   for (const id of Object.keys(MATS)) {
     if (!MATS[id].blueprint) continue;
-    threshold += MATS[id].chance;
+    threshold += MATS[id].chance * multiplier;
     if (roll < threshold) return [{type:"mat",id,amt:1}];
   }
   return [];
@@ -140,7 +143,7 @@ function rollLoot(table, zone) {
   const t = TABLES[table] || {}, sc = 1 + player.fx.scavenger / 100, vip = vipActive() ? 1.6 : 1, pool = [];
   for (const k of ["cash", "food", "water", "med", "ammo", "anti"]) if (t[k]) pool.push([k, t[k][0] * (k === "cash" ? 1 : sc) * vip]);
   const mc = MAT_CHANCE[table] != null ? MAT_CHANCE[table] : 0.06;
-  if (mc && table !== "body") pool.push(["mat", mc * sc * (1 + player.fx.miscFind / 100)]);
+  if (mc && table !== "body") pool.push(["mat", mc * sc * miscLootMult()]);
   // arma e implante têm chance própria (antes, móveis com poucos tipos de item davam implante demais)
   const special = [];
   if (t.weapon && Math.random() < 2 * t.weapon * (1 + player.fx.hunter / 100) * vip * (1 + diffOf(zone) * 0.3)) special.push(lootEntry("weapon", t, table, zone));
@@ -168,7 +171,7 @@ function rollLoot(table, zone) {
 function natalAlceLoot(zone) {
   const tier = regionOf(zone);
   const weaponChance = tier < 3 ? 27 / 39 : tier < 6 ? 38 / 58 : 43 / 68;
-  return [Math.random() < weaponChance ? lootEntry("weapon", TABLES.boss, "boss", zone) : lootVest(zone)];
+  return [Math.random() < weaponChance ? lootEntry("weapon", TABLES.boss, "alce_natal", zone) : lootVest(zone)];
 }
 
 // ---------- Saque dos chefes ----------
@@ -196,7 +199,7 @@ function bossLoot(id, zone) {
       // Usar a mesma tabela de raridade da cor (REGIONS[tier].loot), sem
       // entregar lendárias nas regiões iniciais ou itens épicos garantidos.
       const tier = regionOf(zone);
-      const natalWeapon = () => ({ type: "weapon", inst: newInst(randomWeaponDrop(zone, tier >= 6 ? 1 : 0)) });
+      const natalWeapon = () => ({ type: "weapon", inst: newInst(randomWeaponDrop(zone, tier >= 6 ? 1 : 0, NATAL_LEGENDARY_REGION)) });
       out = [natalWeapon()];
       if (tier >= 2) out.push(tier >= 5 && Math.random() < .30 ? Wp(2, 4, upgrades(1 + upBonus())) : lootVest(zone));
       if (tier >= 4) out.push(natalWeapon());
@@ -214,7 +217,7 @@ function bossLoot(id, zone) {
 const NATAL_GORRO_CHANCE = 0.05;
 function natalBoxLoot(zone) {
   const out = [];
-  const id = randomWeaponDrop(zone, vipActive() ? 1 : 0);
+  const id = randomWeaponDrop(zone, vipActive() ? 1 : 0, NATAL_LEGENDARY_REGION);
   out.push({ type: "weapon", inst: newInst(id) });
   if (Math.random() < NATAL_GORRO_CHANCE) out.push({ type: "mat", id: "gorro_natal", amt: 1 });
   return out;
@@ -236,14 +239,12 @@ function rollLootFull(table, zone) {
     if (!e || Math.random() >= e[0] * (vipActive() ? 1.6 : 1) * (k === "cash" ? 1 : 1 + player.fx.scavenger / 100)) continue;
     let amt = e[1] + Math.floor(Math.random() * (e[2] - e[1] + 1));
     if (k === "cash") out.push({ type: "cash", amt: lootCash(amt, zone) });
-    else if (k === "ammo") {
-      const types = usedAmmoTypes(), ammo = types.length ? pick(types) : "9mm";
-      out.push({ type: "ammo", ammo, amt: Math.round(amt * AMMO[ammo].box * (vipActive() ? 2 : 1) * ammoMult()) });
-    } else if (k === "food") out.push({ type: "food", amt, q: table === "airdrop" ? (Math.random() < 0.6 ? "fresca" : "comum") : rollFoodQ(zone), spr: pick(FOOD_SPR) });
+    else if (k === "ammo") out.push(lootAmmo(amt, zone));
+    else if (k === "food") out.push({ type: "food", amt, q: table === "airdrop" ? (Math.random() < 0.6 ? "fresca" : "comum") : rollFoodQ(zone), spr: pick(FOOD_SPR) });
     else if (k === "anti") out.push({ type: "anti", amt, spr: "pills" });
     else out.push({ type: k, amt, spr: k === "med" ? pick(MED_SPR) : Math.random() < 0.5 ? "soda" : null });
   }
-  if (Math.random() < (MAT_CHANCE[table] != null ? MAT_CHANCE[table] : 0.06) * (1 + player.fx.scavenger / 100) * (1 + player.fx.miscFind / 100)) {
+  if (Math.random() < (MAT_CHANCE[table] != null ? MAT_CHANCE[table] : 0.06) * (1 + player.fx.scavenger / 100) * miscLootMult()) {
     const r = Math.random(), id = table === "boss" ? "nucleo" : table === "chest" && r < 0.06 ? "nucleo" : r < 0.5 ? "sucata" : r < 0.78 ? "pecas" : "eletronicos";
     out.push({ type: "mat", id, amt: id === "nucleo" ? 1 : 1 + Math.floor(Math.random() * (table === "boss" ? 1 : 3)) });
     if (table === "boss") out.push({ type: "mat", id: pick(["pecas", "eletronicos"]), amt: 3 + Math.floor(Math.random() * 4) });

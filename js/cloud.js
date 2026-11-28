@@ -356,10 +356,16 @@ const fmCloud = (() => {
     const operation = pending.then(async () => {
       if (!userId || user?.id !== userId || !revision) throw new Error("Salve a partida antes de negociar.");
       const nextRevision = crypto.randomUUID();
-      const { data: result, error } = await requireClient().rpc("fm_mercado_operar", {
-        ...args, versao: revision, nova_versao: nextRevision
-      });
+      const { data: result, error } = args.unidades == null
+        ? await requireClient().rpc("fm_mercado_operar", { ...args, versao: revision, nova_versao: nextRevision })
+        : await requireClient().rpc("fm_mercado_anunciar_quantidade", {
+            local_item: args.local_item, posicao: args.posicao, preco: args.preco,
+            versao: revision, nova_versao: nextRevision, unidades: args.unidades
+          });
       if (error) throw new Error(error.message || "O servidor recusou a negociação.");
+      if (!result?.run?.p || !Number.isFinite(result.run.g?.money)) {
+        throw new Error("O Mercado Negro não confirmou a negociação. Atualize a lista antes de tentar novamente.");
+      }
       revision = nextRevision;
       snapshot = JSON.stringify(result);
       return result;

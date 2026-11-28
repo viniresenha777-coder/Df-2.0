@@ -1,6 +1,7 @@
 "use strict";
 
 const market = { vendaveis: 0, rows: [], tab: "comprar", page: 0, filter: "all", filterOpen: false, filterOffset: 0, error: "", loading: false, confirm: null };
+const MARKET_MAX_PRICE = 999999999;
 
 const MARKET_FILTERS = [
   ["all", "Todos"], ["credits", "Créditos"], ["ammo", "Munição"], ["vest", "Coletes"], ["machinegun", "Metralhadoras"],
@@ -192,26 +193,48 @@ function marketPriceWarnings(item, price) {
   if (R.shop && price < R.shop) w.push(`Abaixo do preço da Loja (${bankMoney(R.shop)}${R.shopTxt ? " = " + R.shopTxt : ""}).`);
   return w;
 }
-function marketAskPrice(row) {
+function marketAskQuantity(row) {
   if (row.item.kind === "credits") { marketAskCredits(row); return; }
+  row = { ...row, item: structuredClone(row.item) };
+  const max = row.item.qty;
+  if (!Number.isInteger(max) || max <= 1) { marketAskPrice(row); return; }
   game.input = {
-    mode: "market", text: "", label: marketItemName(row.item), ref: marketRefText(row.item), refItem: row.item,
+    mode: "market", unit: "", text: "", label: `Quantas unidades anunciar? (1 a ${max})`,
+    fn(qty) {
+      if (!Number.isInteger(qty) || qty < 1 || qty > max) {
+        toast(`Escolha uma quantidade de 1 a ${max}.`);
+        marketAskQuantity(row);
+        return;
+      }
+      marketAskPrice(row, qty);
+    }
+  };
+}
+function marketListOffer(row, price, qty) {
+  const current = marketInventory().find(item => item.local === row.local && item.index === row.index);
+  if (!current || JSON.stringify(current.item) !== JSON.stringify(row.item)) {
+    toast("O item mudou. Selecione-o novamente.");
+    return;
+  }
+  const args = { local_item: row.local, posicao: row.index, preco: price };
+  if (qty != null) args.unidades = qty;
+  marketTrade("listar", args);
+}
+function marketAskPrice(row, qty) {
+  const item = qty == null ? row.item : { ...row.item, qty };
+  game.input = {
+    mode: "market", text: "", label: marketItemName(item), ref: marketRefText(item), refItem: item,
     fn(price) {
-      if (!Number.isInteger(price) || price < 1 || price > 1000000) {
-        toast("Digite um preço entre $1 e $1.000.000.");
+      if (!Number.isInteger(price) || price < 1 || price > MARKET_MAX_PRICE) {
+        toast(`Digite um preço entre $1 e ${bankMoney(MARKET_MAX_PRICE)}.`);
         return;
       }
-      const current = marketInventory().find(item => item.local === row.local && item.index === row.index);
-      if (!current || JSON.stringify(current.item) !== JSON.stringify(row.item)) {
-        toast("O item mudou. Selecione-o novamente.");
-        return;
-      }
-      const avisos = marketPriceWarnings(row.item, price);
+      const avisos = marketPriceWarnings(item, price);
       if (avisos.length) {
-        setTimeout(() => { market.aviso = { row, price, avisos }; }, 0);
+        market.aviso = { row, item, price, qty, avisos };
         return;
       }
-      marketTrade("listar", { local_item: row.local, posicao: row.index, preco: price });
+      marketListOffer(row, price, qty);
     }
   };
 }
@@ -253,7 +276,7 @@ function drawMarket() {
     const action = market.tab === "vender" ? "" : !row.meu ? "comprar" : row.state === "sold" ? "receber" : "cancelar";
     const label = { comprar: "Comprar", receber: "Receber", cancelar: "Cancelar" }[action] || "Definir preço";
     btn(W - 194, y + 5, 122, 30, label, () => {
-      if (!action) marketAskPrice(row);
+      if (!action) marketAskQuantity(row);
       else market.confirm = { action, label, row };
     }, true, locked || !!status);
   });
@@ -269,17 +292,17 @@ function drawMarket() {
   if (!game.input && !market.confirm && !market.aviso) return;
   ctx.fillStyle = "rgba(7,7,5,0.9)";
   if (market.aviso && !game.input) {
-    const { row, price, avisos } = market.aviso;
+    const { row, item, price, qty, avisos } = market.aviso;
     const by = 258 + avisos.length * 22 + 10;
     ctx.fillRect(W / 2 - 250, 176, 500, by + 33 + 18 - 176);
     txt("Atenção: preço baixo", W / 2, 204, 18, "#ff8a5a", "center", true);
-    txt(`${marketItemName(row.item)} · ${bankMoney(price)}`, W / 2, 230, 15, "#f2eedc", "center", true, 460);
+    txt(`${marketItemName(item)} · ${bankMoney(price)}`, W / 2, 230, 15, "#f2eedc", "center", true, 460);
     avisos.forEach((a, i) => txt(a, W / 2, 258 + i * 22, 14, i === 0 ? "#ffb08a" : "#e5d9a8", "center", false, 470));
-    btn(W / 2 - 235, by, 140, 33, "Mudar preço", () => { market.aviso = null; marketAskPrice(row); });
+    btn(W / 2 - 235, by, 140, 33, "Mudar preço", () => { market.aviso = null; marketAskPrice(row, qty); });
     btn(W / 2 - 85, by, 110, 33, "Voltar", () => { market.aviso = null; });
     btn(W / 2 + 35, by, 200, 33, "Anunciar mesmo assim", () => {
       market.aviso = null;
-      marketTrade("listar", { local_item: row.local, posicao: row.index, preco: price });
+      marketListOffer(row, price, qty);
     }, true);
     return;
   }
@@ -292,7 +315,7 @@ function drawMarket() {
       txt(game.input.ref, W / 2, 372, 12, baixo ? "#ff8a5a" : "#9c977f", "center", false, 400);
     }
     btn(W / 2 - 155, 310, 140, 33, "Voltar", () => { game.input = null; });
-    btn(W / 2 + 15, 310, 140, 33, "Anunciar (Enter)", () => inputKey("enter"), true);
+    btn(W / 2 + 15, 310, 140, 33, game.input.unit === "" ? "Continuar (Enter)" : "Anunciar (Enter)", () => inputKey("enter"), true);
   } else {
     const { action, label, row } = market.confirm;
     txt(`${label} · ${marketItemName(row.item)}`, W / 2, 235, 16, "#f2eedc", "center", true, 375);

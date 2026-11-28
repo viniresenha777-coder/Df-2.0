@@ -67,7 +67,7 @@ function resetGame() {
     spawnTimer: 5000, rowTimer: 0, msg: "", msgT: 0, slash: 0, slashT: 0, slashR: 60, slashA: 0.9,
     time: 0, clock: 8 * 60, shake: 0, hurtT: 0, banner: null, at: 0, ac: 0, snapCam: true,
     flashes: [], clicks: [], found: null, foundSrc: "", paused: false, inv: { sel: 0 },
-    shopTab: 0, shopCur: 0, vside: 0, vcur: 0, ctab: 0, ccur: 0, cstat: 0,
+    vside: 0, vcur: 0, ctab: 0, ccur: 0, cstat: 0,
     airdrops: [], horde: null, evAir: 150000, evHorde: 240000, objT: 0, lastHour: null, otab: 0, oscroll: 0, objDirty: false,
     search: null, hub: false, escort: null, pcur: 0, hazards: [], smoke: [], fuses: [], killSrc: null, trans: null, edgeT: 0, mapSel: null
   };
@@ -187,7 +187,7 @@ window.addEventListener("keydown", (e) => {
   if (game.menu === "pack" && game.found) { menuKey(k); return; } // mochila sobre loot: preserva a oferta
   if (game.found) { foundKey(k); return; }
   if (game.menu) { menuKey(k); return; }
-  if (game.shop) { shopKey(k); return; }
+  if (game.shop) { creditShopKey(k); return; }
   if (k === "enter" && !game.paused && typeof fmChat !== "undefined") { fmChat.open(); return; }   // chat global
   if (game.hub && (k === "escape" || k === "e")) { leaveHouse(); return; }
   // Atalhos do jogo: só andar, correr, mirar, trocar arma, recarregar, usar (E), mochila (B), mapa (M), cidade (N),
@@ -266,7 +266,7 @@ canvas.addEventListener("wheel", (e) => {
     return;
   }
   e.preventDefault();
-  if (game.menu === "creditshop") {
+  if (game.shop || game.menu === "creditshop") {
     if (!game.input && !game.creditConfirm && e.deltaY) creditShopKey(e.deltaY > 0 ? "arrowdown" : "arrowup");
     return;
   }
@@ -489,7 +489,7 @@ function draw() {
     ctx = mainCtx; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     drawHub();
     if (game.shop || game.menu || game.found) game.clicks = [];   // com um menu aberto, a base atrás não recebe clique
-    if (game.shop) drawShop();
+    if (game.shop) { drawCreditShop(); menuToast(); }
     if (game.menu) drawMenu();
     if (game.found && game.menu !== "pack") drawFound();
     if (game.banner && !game.menu && !game.shop) { const a = Math.min(1, game.banner.t / 500); ctx.globalAlpha = a; ctx.fillStyle = "rgba(8,9,7,0.82)"; rr(566 - 190, 57, 380, 28, 6); ctx.fill(); txt(game.banner.text, 566, 77, 18, game.banner.gold ? "#ffd96a" : "#e5e0c8", "center", true); ctx.globalAlpha = 1; }
@@ -562,7 +562,7 @@ function drawUiLayer() {
   drawObjTracker();
   drawEventHud();
   if (game.sectorMap && !game.over && !game.menu && !game.shop && !game.found && !game.paused) drawSectorOverlay();
-  if (game.shop && !game.over) drawShop();
+  if (game.shop && !game.over) { drawCreditShop(); menuToast(); }
   if (game.menu && !game.over) drawMenu();
   if (game.found && !game.over && game.menu !== "pack") drawFound();
   if (game.paused && !game.over && !game.menu && !game.shop) drawPause();

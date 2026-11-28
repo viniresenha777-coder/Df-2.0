@@ -130,7 +130,7 @@ const VESTS = [
   // Colete de Natal (modelo 3D próprio). dur = durabilidade em pontos (os outros têm 100) ·
   // creditsVip = preço para VIP (Membros Gold) · repairLevel = nível mínimo para consertar ·
   // scrap/scrapMC = valor fixo no Ferro Velho (MC = melhorias no máximo) · upCost = preço de cada melhoria
-  { name: "Colete Tático Natalino",         armor: 75, credits: 2000, creditsVip: 1500, color: "#8a1f1f", rar: 4,
+  { name: "Colete Tático Natalino",         armor: 75, credits: 3500, color: "#8a1f1f", rar: 4,
     dur: 350, scrap: 128250, scrapMC: 256500, upCost: 67000,
     wear: "cl_colete_natal" }   // wear = camada 3D vestida no personagem (img/gear/<wear>_<pose>.png e img/portrait_<wear>.png)
 ];
@@ -349,7 +349,7 @@ const IMPLANT_RARITY = 0.1;      // (antigo) não é mais usado: implante no saq
 const BOSS_IMPLANT = 0.15;       // chefes que davam implante garantido: agora só às vezes
 const STAT_KEYS = ["exp", "hunter", "scavenger", "crit", "reload", "endurance", "metabolism", "vigor", "regen", "silence", "firepower", "thick", "greed", "agility", "saver", "implantLoot",
   "rage", "killHeal", "lootSense", "luck", "accImp", "stealthImp", "craftDisc", "critDmg", "leech", "adren",
-  "armorFind", "ammoLoot", "searchSpeed", "miscFind", "lootSpots", "atkSpeed", "deathDefy", "bossRare", "mcChance", "pvpPoints"];
+  "armorFind", "ammoLoot", "searchSpeed", "miscFind", "miscBlueprintFind", "lootSpots", "atkSpeed", "deathDefy", "bossRare", "mcChance", "pvpPoints"];
 // Evento global: ativo para TODOS os jogadores, sem depender de VIP ou inventário.
 // Alterar ativo para false encerra o evento sem mudar saves ou implantes.
 // Os nomes das propriedades são os atributos oficiais do jogo (FX_LABEL).
@@ -362,7 +362,7 @@ const EVENTO_NATAL = Object.freeze({
 const FX_LABEL = {
   exp: "experiência", firepower: "dano causado", agility: "velocidade", thick: "redução do dano recebido",
   hunter: "chance de achar armas", armorFind: "chance de achar coletes", ammoLoot: "munição achada", greed: "dinheiro achado",
-  searchSpeed: "velocidade de busca", miscFind: "chance de achar materiais", luck: "chance de itens raros",
+  searchSpeed: "velocidade de busca", miscFind: "chance de achar materiais", miscBlueprintFind: "chance de achar materiais e blueprints", luck: "chance de itens raros",
   lootSpots: "lugares com saque", scavenger: "chance de achar suprimentos", deathDefy: "chance de sobreviver a um golpe fatal",
   bossRare: "chance de itens raros nos chefes", implantLoot: "chance de achar implantes",
   mcChance: "chance de arma com melhorias", atkSpeed: "velocidade de ataque", pvpPoints: "pontos PvP"
@@ -371,7 +371,7 @@ const IMP = {
   "implante_01": {"name":"Urso de Ferro","price":2500,"vipPrice":2000,"scrap":375000,"kind":0,"fx":{"thick":10},"flag":"jugger","text":"Força Imparável: imune a atordoamento, agarrões e lentidão; massa +500%; derruba infectados comuns ao correr; redução total limitada a 80%."},
   "implante_02": {"name":"Macaco Cibernético","price":7500,"scrap":29000,"kind":2,"mimic":true},
   "implante_03": {"name":"Lobo Fantasma","price":1600,"vipPrice":1300,"scrap":240000,"kind":0,"fx":{"firepower":5,"agility":7}},
-  "implante_04": {"name":"Aracnídeo Mortal","price":1500,"vipPrice":1500,"scrap":37500,"kind":0,"fx":{"implantLoot":200},"flag":"hook","text":"Acesso remoto à configuração dos implantes seguindo regras de instalação e remoção."},
+  "implante_04": {"name":"Aracnídeo Mortal","price":3000,"scrap":37500,"kind":0,"fx":{"implantLoot":200},"flag":"hook","text":"Acesso remoto à configuração dos implantes seguindo regras de instalação e remoção."},
   "implante_05": {"name":"Águia Sombria","price":3350,"vipPrice":2700,"scrap":502500,"kind":0,"fx":{"firepower":8,"hunter":25,"searchSpeed":15}},
   "implante_06": {"name":"Cobra Venenosa","price":2250,"vipPrice":1800,"scrap":337500,"kind":0,"fx":{"firepower":5,"agility":5,"atkSpeed":5}},
   "implante_07": {"name":"Colmeia Mecânica","price":3900,"vipPrice":3100,"scrap":585000,"kind":2,"fx":{},"alloc":{"points":20,"opts":[{"key":"hunter","per":5},{"key":"armorFind","per":5},{"key":"ammoLoot","per":5},{"key":"greed","per":5},{"key":"searchSpeed","per":2},{"key":"miscFind","per":2}]}},
@@ -379,10 +379,10 @@ const IMP = {
   "implante_09": {"name":"Olho do Predador","price":4200,"vipPrice":3350,"scrap":630000,"kind":0,"fx":{"firepower":5,"ammoLoot":30,"greed":30,"armorFind":20,"searchSpeed":15}},
   "implante_10": {"name":"Coluna de Titânio","price":2300,"vipPrice":1850,"scrap":345000,"kind":0,"fx":{"exp":5,"firepower":7,"agility":4}},
   "implante_11": {"name":"Coração de Ferro","price":2550,"vipPrice":2050,"scrap":382500,"kind":0,"fx":{"exp":5,"pvpPoints":5,"agility":5,"deathDefy":25},"flag":"lastStand","text":"Última Resistência: ao atingir vida crítica, ignora penalidades de atributos do implante. Bônus PvP reservado para o sistema PvP."},
-  "implante_12": {"name":"Garras do Carniceiro","price":2550,"vipPrice":2050,"scrap":382500,"kind":2,"fx":{"bossRare":50,"searchSpeed":10},"alloc":{"points":10,"opts":[{"key":"firepower","per":1},{"key":"agility","per":1}]}},
+  "implante_12": {"name":"Garras do Carniceiro","price":2700,"scrap":382500,"kind":2,"fx":{"bossRare":50,"searchSpeed":10},"alloc":{"points":10,"opts":[{"key":"firepower","per":1},{"key":"agility","per":1}]}},
   "implante_13": {"name":"DNA Mutante","price":3400,"vipPrice":2700,"scrap":510000,"kind":2,"fx":{},"alloc":{"points":20,"opts":[{"key":"exp","per":1},{"key":"firepower","per":1},{"key":"agility","per":1},{"key":"thick","per":1}]}},
   "implante_14": {"name":"Radar Fantasma","price":2350,"vipPrice":1900,"scrap":352500,"kind":0,"fx":{"luck":25,"lootSpots":7,"searchSpeed":7,"scavenger":7}},
-  "implante_15": {"name":"Processador de Guerra","price":1500,"vipPrice":1500,"scrap":97500,"kind":0,"fx":{"mcChance":100},"flag":"mc","text":"Obra-Prima: chance-base de armas melhoradas ×2; +2 melhorias nas armas e +6 em coletes Mastercraft, incluindo chefes."},
+  "implante_15": {"name":"Processador de Guerra","price":2000,"scrap":97500,"kind":0,"fx":{"mcChance":100},"flag":"mc","text":"Obra-Prima: chance-base de armas melhoradas ×2; +2 melhorias nas armas e +6 em coletes Mastercraft, incluindo chefes."},
   "implante_16": {"name":"Costelas de Aço","price":1450,"vipPrice":1150,"scrap":217500,"kind":0,"fx":{"exp":11,"firepower":1,"thick":1,"agility":1}},
   "implante_17": {"name":"Fungo Parasita","price":1600,"vipPrice":1300,"scrap":240000,"kind":1,"fx":{"thick":-5,"atkSpeed":15}},
   "implante_18": {"name":"Núcleo Tóxico","price":1750,"vipPrice":1400,"scrap":262500,"kind":0,"fx":{"firepower":11}},
@@ -434,9 +434,18 @@ const IMP = {
   },
   // Mimic: só vem no Kit Mimic da Loja de Créditos (não cai nem aparece na clínica).
   implante_mimic: {
-    name: "Mimic", price: 1500, vipPrice: 1200,   // ≈ R$ 75
+    name: "Mimic", price: 7500,
     scrap: 0, kind: 2, mimic: true, kitOnly: true, noTrade: true,
     text: "Copia os atributos do implante à esquerda. Penalidades copiadas valem em dobro. Equipamento único e intransferível.",
+  },
+  eye_of_god: {
+    name: "Eye of God", price: 7500, kind: 1, noClinicSale: true, art: "img/eye_of_god.png",
+    fx: { ammoLoot: 25, greed: 75, hunter: 25, armorFind: 25, miscBlueprintFind: 10, firepower: -5 },
+  },
+  eye_of_zeus: {
+    name: "Eye of Zeus", price: 2500, kind: 1, noClinicSale: true, art: "img/eye_of_zeus.png",
+    fx: { ammoLoot: 10, greed: 5, hunter: 13, armorFind: 13, miscBlueprintFind: 4, firepower: -2 },
+    text: "Também pode ser fabricado na Oficina.",
   },
 };
 const IMP_IDS = Object.keys(IMP);

@@ -7,7 +7,7 @@ create table if not exists fm_market.listings (
   id uuid primary key default gen_random_uuid(),
   seller uuid not null references auth.users(id) on delete cascade,
   item jsonb not null,
-  price integer not null check (price between 1 and 1000000),
+  price integer not null check (price between 1 and 999999999),
   state text not null default 'open' check (state in ('open', 'sold', 'closed')),
   created_at timestamptz not null default now()
 );
@@ -38,7 +38,7 @@ $$;
 
 create or replace function fm_market.operar(
   acao text, anuncio uuid, local_item text, posicao integer,
-  preco integer, versao uuid, nova_versao uuid
+  preco integer, versao uuid, nova_versao uuid, unidades integer
 ) returns jsonb language plpgsql security definer set search_path = '' as $$
 declare
   uid uuid := auth.uid();
@@ -80,7 +80,7 @@ begin
   saldo := coalesce((partida #>> '{run,g,money}')::numeric, 0);
 
   if acao = 'listar' then
-    if local_item is null or posicao is null or posicao < 0 or preco is null or preco not between 1 and 1000000 then
+    if local_item is null or posicao is null or posicao < 0 or preco is null or preco not between 1 and 999999999 then
       raise exception 'Item ou preço inválido.';
     end if;
     if (select count(*) from fm_market.listings where seller = uid and state <> 'closed') >= 20 then
@@ -98,7 +98,16 @@ begin
         raise exception 'Esse item não pode ser anunciado.';
       end if;
       if local_item = 'bag' then objeto := objeto || '{"kind":"implant"}'::jsonb; end if;
-      if local_item = 'slots' then
+      if unidades is not null and (local_item not in ('pack', 'vault')
+         or objeto->>'kind' not in ('mat', 'ammo', 'food', 'water', 'med', 'anti')
+         or unidades < 1 or unidades > coalesce((objeto->>'qty')::integer, 0)) then
+        raise exception 'Quantidade indisponível para anúncio.';
+      end if;
+      if unidades is not null and unidades < (objeto->>'qty')::integer then
+        partida := jsonb_set(partida, path || array[posicao::text, 'qty'],
+          to_jsonb((objeto->>'qty')::integer - unidades));
+        objeto := jsonb_set(objeto, '{qty}', to_jsonb(unidades));
+      elsif local_item = 'slots' then
         partida := jsonb_set(partida, path || posicao::text, 'null');
       else
         partida := jsonb_set(partida, path, inventario - posicao);
@@ -133,6 +142,12 @@ begin
         end;
       end if;
       quantidade := atuais - vinculada;
+      if unidades is not null then
+        if unidades < 1 or unidades > quantidade then
+          raise exception 'Quantidade indisponível para anúncio.';
+        end if;
+        quantidade := unidades;
+      end if;
       if quantidade <= 0 then raise exception 'Nenhuma unidade disponível para revenda.'; end if;
       objeto := jsonb_build_object('kind', tipo, 'id', chave, 'qty', quantidade);
       partida := jsonb_set(partida, path, to_jsonb(atuais - quantidade));
@@ -215,16 +230,26 @@ create or replace function public.fm_mercado_operar(
   acao text, anuncio uuid, local_item text, posicao integer,
   preco integer, versao uuid, nova_versao uuid
 ) returns jsonb language sql security invoker set search_path = '' as $$
-  select fm_market.operar(acao, anuncio, local_item, posicao, preco, versao, nova_versao);
+  select fm_market.operar(acao, anuncio, local_item, posicao, preco, versao, nova_versao, null);
+$$;
+create or replace function public.fm_mercado_anunciar_quantidade(
+  local_item text, posicao integer, preco integer, versao uuid, nova_versao uuid, unidades integer
+) returns jsonb language plpgsql security invoker set search_path = '' as $$
+begin
+  if unidades is null or unidades < 1 then raise exception 'Quantidade inválida.'; end if;
+  return fm_market.operar('listar', null, local_item, posicao, preco, versao, nova_versao, unidades);
+end;
 $$;
 
 revoke all on function fm_market.listar(), public.fm_mercado_listar() from public, anon;
-revoke all on function fm_market.operar(text, uuid, text, integer, integer, uuid, uuid),
-  public.fm_mercado_operar(text, uuid, text, integer, integer, uuid, uuid) from public, anon;
+revoke all on function fm_market.operar(text, uuid, text, integer, integer, uuid, uuid, integer),
+  public.fm_mercado_operar(text, uuid, text, integer, integer, uuid, uuid),
+  public.fm_mercado_anunciar_quantidade(text, integer, integer, uuid, uuid, integer) from public, anon;
 grant usage on schema fm_market to authenticated;
 grant execute on function fm_market.listar(), public.fm_mercado_listar() to authenticated;
-grant execute on function fm_market.operar(text, uuid, text, integer, integer, uuid, uuid),
-  public.fm_mercado_operar(text, uuid, text, integer, integer, uuid, uuid) to authenticated;
+grant execute on function fm_market.operar(text, uuid, text, integer, integer, uuid, uuid, integer),
+  public.fm_mercado_operar(text, uuid, text, integer, integer, uuid, uuid),
+  public.fm_mercado_anunciar_quantidade(text, integer, integer, uuid, uuid, integer) to authenticated;
 
 -- A compra, o depósito e o recibo são confirmados na mesma transação.
 alter table fm_market.listings add column if not exists sold_at timestamptz;

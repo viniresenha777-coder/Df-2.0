@@ -15,7 +15,7 @@ const AMMO = {
   "cartucho":    { box: 8,  price: 26 },
   "combustível": { box: 60, price: 45 },
   "virote":      { box: 6,  price: 30 },
-  "granada":     { box: 4,  price: 120 },
+  "granada":     { box: 4,  price: 120, name: "Explosivo Granada" },
   "Célula de Energia": { box: 8, price: 45 },
   "12.7mm Rifle": { box: 8, price: 22 }
 };
@@ -114,7 +114,7 @@ const WLIST = [
   // cai só nas Caixas de Natal (1%), intransferível
   { id: "pistola_natal", name: "Pistola Natalina", short: "P. Natalina", cat: "pistols", look: "pistol", dmg: 100, delay: 666.67, mag: 18, reload: 1750, ammo: ".50", price: 0, req: [0, 0], len: 18, color: "#b02a2a", noCrit: true, cryo: 0.5, cryoMs: 1000, scrap: 100, scrapMC: 100, upCost: 81000, eventOnly: true, noTrade: true },
   // só na Loja de Créditos (300 créditos). Modelo: "Candy Shotgun" por Yogensia (sketchfab.com/yogensia), CC-BY-NC-SA-4.0
-  { id: "dose", name: "Shotgun Sweet", short: "Sweet", cat: "shotguns", look: "shotgun", dmg: 12, pellets: 20, delay: 500, mag: 35, reload: 3250, ammo: "cartucho", price: 0, req: [50, 0], minLevel: 25, len: 27, color: "#c8323c", spread: 0.33, life: 380, noCrit: true, cryo: 0.2, cryoMs: 1000, scrap: 57650, scrapMC: 115300, upCost: 126830, credits: 300, eventOnly: true, dual: true },
+  { id: "dose", name: "Shotgun Sweet", short: "Sweet", cat: "shotguns", look: "shotgun", dmg: 12, pellets: 20, delay: 500, mag: 35, reload: 3250, ammo: "cartucho", price: 0, req: [50, 0], minLevel: 25, len: 27, color: "#c8323c", spread: 0.33, life: 380, noCrit: true, cryo: 0.2, cryoMs: 1000, scrap: 57650, scrapMC: 115300, upCost: 126830, credits: 750, eventOnly: true, dual: true },
   // sem arma na mão
   { id: "punhos",   name: "Punhos",        cat: "melee", look: "fists",   dmg: 8,   delay: 400,  range: 34, arc: 0.7,  price: 0,    req: [0, 0],   len: 8,  color: "#d2b48c", fists: true }
 ];
@@ -165,10 +165,10 @@ const OLD_IDS = ["pistola", "ak47", "deagle", "katana", "uzi", "escopeta", "snip
 
 // ---------- Materiais e receitas ----------
 const MATS = {
-  blueprint_pistola: {"name":"Blueprint de Pistola","price":0,"credits":500,"chance":0.001,"rar":4,"blueprint":true,"short":"PISTOLA"},
+  blueprint_pistola: {"name":"Blueprint de Pistola","price":0,"credits":1300,"chance":0.001,"rar":4,"blueprint":true,"short":"PISTOLA"},
   blueprint_escopeta: {"name":"Blueprint de Escopeta","price":0,"credits":750,"chance":0.001,"rar":4,"blueprint":true,"short":"ESCOPETA"},
-  blueprint_fuzil: {"name":"Blueprint de Fuzil","price":0,"credits":1000,"chance":0.001,"rar":4,"blueprint":true,"short":"FUZIL"},
-  blueprint_sniper: {"name":"Blueprint de Sniper","price":0,"credits":1500,"chance":0.0005,"rar":4,"blueprint":true,"short":"SNIPER"},
+  blueprint_fuzil: {"name":"Blueprint de Fuzil","price":0,"credits":4000,"chance":0.001,"rar":4,"blueprint":true,"short":"FUZIL"},
+  blueprint_sniper: {"name":"Blueprint de Sniper","price":0,"credits":4000,"chance":0.0005,"rar":4,"blueprint":true,"short":"SNIPER"},
   reset_stats: { name: "Cartão Reset de Stats", price: 5000 },
   trindade_eterna: { name: "Trindade · 100 anos", price: 20000000 },
   token_loja: { name: "Token da Loja", price: 0 },
@@ -196,12 +196,12 @@ function cashProtection(pack = player.pack) {
 }
 function safeDescription(id) { return `Protege até $${MATS[id].cashProtection.toLocaleString("pt-BR")} ao morrer.`; }
 const RECIPES = [
-  { id: "besta",       mats: { pecas: 12, eletronicos: 6, nucleo: 5 },    money: 120000, level: 40 },   // Lendária
   { id: "serra",       mats: { sucata: 6, pecas: 3, eletronicos: 3 },     money: 20000, level: 10 },
   { id: "lancachamas", mats: { sucata: 8, pecas: 5, eletronicos: 3 },     money: 35000, level: 15 },
   { id: "lamina",      mats: { sucata: 10, pecas: 4, nucleo: 1 },         money: 60000, level: 25 },
-  { id: "trovao",      mats: { pecas: 15, eletronicos: 7, nucleo: 10, blueprint_sniper: 1 },   money: 2500000, level: 75 },
-  { id: "vingador", mats: { pecas: 14, eletronicos: 8, nucleo: 8, blueprint_sniper: 1 }, money: 2400000, level: 75 },
+  { id: "trovao", mats: { pecas: 30, coracao_demonio: 2 }, money: 10000000, credits: 250, level: 75 },
+  { id: "besta", mats: { pecas: 12, eletronicos: 6, nucleo: 5, blueprint_sniper: 1 }, money: 2000000, level: 40 },
+  { id: "vingador", mats: { pecas: 28, coracao_demonio: 2 }, money: 9000000, credits: 230, level: 75 },
   { id: "minigun_inf_oficina", mats: { pecas: 14, eletronicos: 10, nucleo: 4, blueprint_fuzil: 1 },   money: 250000, level: 60 },
   // colete nº 10: craft difícil (precisa ter o nº 9, que é consumido)
   { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 500000, level: 100, needVest: 8 },
@@ -211,7 +211,8 @@ const RECIPES = [
     { implant: "errx_" + n, needImp: { ["x_" + n]: 2 }, mats: { placa_circuito: 1, interface_implante: 1, bateria_implante: 1, sucata_rara: 1 }, money: 1000000, level: 50 }
   ]),
   // evento de Natal: Gorros caem nas Caixas de Natal
-  { implant: "implante_natal", mats: { gorro_natal: 10 }, money: 2000000, level: 1 }
+  { implant: "implante_natal", mats: { gorro_natal: 10 }, money: 2000000, level: 1 },
+  { implant: "eye_of_zeus", needImp: { errx_ironskin: 1 }, mats: { interface_implante: 4, bateria_implante: 2, sucata_rara: 2, placa_circuito: 1 }, money: 7000000, level: 1 }
 ];
 // chance de achar material em cada lugar
 const MAT_CHANCE = { airdrop: 1, corpse: 0.08, boss: 1, chest: 0.4, trash: 0.12, dumpster: 0.3, crate: 0.4, car: 0.35, "Bancada": 0.6, "Armário de armas": 0.3, "Vitrine": 0.2, "Mesa": 0.08, "Arquivo": 0.06 };
@@ -332,22 +333,52 @@ function takeMat(id, n) {
 }
 function hasMats(mats) { return Object.keys(mats).every((k) => matCount(k) >= mats[k]); }
 function allMyWeapons() { return [...player.slots.filter(Boolean), ...player.pack.filter((it) => it.kind === "weapon")]; }
-function usedAmmoTypes() {
-  const set = new Set();
-  for (const it of allMyWeapons()) { const d = WDEF[it.id]; if (!d.melee && d.ammo) set.add(d.ammo); }
-  return [...set];
+// Cada grupo entra no sorteio na região mínima e segue os pesos de raridade da região.
+const AMMO_LOOT_TIERS = [
+  { minRegion: 0, types: ["9mm", "cartucho"] },
+  { minRegion: 0, types: [".45", "5.56"] },
+  { minRegion: 2, types: [".50", "7.62", "combustível"] },
+  { minRegion: 4, types: ["virote", "granada"] },
+  { minRegion: 7, types: ["Célula de Energia", "12.7mm Rifle"] },
+];
+function randomAmmoDrop(zone) {
+  const region = regionOf(zone);
+  // Munições já liberadas ainda podem cair nas regiões seguintes, mesmo com peso regional zero.
+  const weights = REGIONS[region].loot.map((weight, tier) =>
+    region >= AMMO_LOOT_TIERS[tier].minRegion ? Math.max(1, weight) : 0
+  );
+  let roll = Math.random() * weights.reduce((sum, weight) => sum + weight, 0);
+  const tier = weights.findIndex(weight => (roll -= weight) < 0);
+  return pick(AMMO_LOOT_TIERS[tier].types);
 }
 // sorteia a raridade pela região (VIP puxa para raridades maiores) e depois uma arma dessa raridade
-function rollRarity(zone, boost) {
-  let w = REGIONS[regionOf(zone)].loot.slice();
+const REGULAR_LEGENDARY_REGION = 4; // Vermelha
+const NATAL_LEGENDARY_REGION = 3;   // Laranja
+function rollRarity(zone, boost, minLegendaryRegion = null) {
+  const region = regionOf(zone);
+  const weaponDrop = minLegendaryRegion !== null;
+  const earlyVip = weaponDrop && region < 2 && vipActive();
+  let w = REGIONS[region].loot.slice();
+  if (earlyVip) boost = Math.max(1, boost);
   if (player && player.fx && Math.random() * 100 < player.fx.luck) boost++;
   for (let b = 0; b < boost; b++) w = w.map((v, i) => v * 0.65 + (i > 0 ? w[i - 1] * 0.35 : 0));
+  if (earlyVip) {
+    // Na Azul, o VIP tem como referência metade do primeiro bônus de lendária da Verde.
+    // Nas duas áreas, metade da chance de lendária vira chance de épica.
+    const legendaryWeight = region === 0 ? Math.max(w[4], REGIONS[1].loot[3] * 0.35 * 0.5) : w[4];
+    const allowedWeight = legendaryWeight * 0.5;
+    w[3] += w[4] - allowedWeight;
+    w[4] = allowedWeight;
+  } else if (weaponDrop && region < minLegendaryRegion) {
+    w[3] += w[4];
+    w[4] = 0;
+  }
   let r = Math.random() * w.reduce((a, b) => a + b, 0);
   for (let i = 0; i < w.length; i++) { r -= w[i]; if (r <= 0) return i; }
   return 0;
 }
-function randomWeaponDrop(zone, boost) {
-  let rar = rollRarity(zone, boost || 0);
+function randomWeaponDrop(zone, boost, minLegendaryRegion = REGULAR_LEGENDARY_REGION) {
+  let rar = rollRarity(zone, boost || 0, minLegendaryRegion);
   for (; rar >= 0; rar--) {
     const list = WLIST.filter((d) => d.rar === rar && !d.craftOnly && !d.eventOnly && !d.fists && d.id !== "pistola" && (d.rar !== 4 || ["espadaserra", "ak_ouro", "pistolalamina"].includes(d.id)));
     if (list.length) return pick(list).id;

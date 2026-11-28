@@ -5,6 +5,8 @@ const vm = require('node:vm');
 const { test } = require('node:test');
 
 const source = fs.readFileSync(path.join(__dirname, '../js/interact.js'), 'utf8');
+const items = fs.readFileSync(path.join(__dirname, '../js/items.js'), 'utf8');
+function section(text, start, end) { return text.slice(text.indexOf(start), text.indexOf(end)); }
 function fixture() {
   let seed = 123456;
   const events = [];
@@ -19,7 +21,8 @@ function fixture() {
   mouse: {}, rowAt: () => 0, deadZoneDrop: () => null, TOKEN_LOJA_CHANCE: 0,
   checkpoint: reason => events.push(reason), toast: message => events.push(message), missionProgress() {},
   stat: id => events.push(id), sfx: { pickup() {}, empty() {} } });
-  vm.runInContext(source.slice(0, source.indexOf('function makeInterior(')), context);
+  vm.runInContext(section(items, 'const REGULAR_LEGENDARY_REGION', 'function rollRarity(') +
+    source.slice(0, source.indexOf('function makeInterior(')), context);
   return { context, events, game };
 }
 
@@ -64,4 +67,48 @@ test('um spot não pode ser aberto de novo e Natal mantém a recompensa própria
   ctx.openSpot(natal);
   ctx.openSpot(natal);
   assert.deepEqual(Array.from(game.found, item => item.type), ['weapon', 'mat']);
+});
+
+test('armas lendárias respeitam a área mínima de cada fonte e a exceção VIP', () => {
+  const { context: ctx } = fixture();
+  const config = fs.readFileSync(path.join(__dirname, '../js/config.js'), 'utf8');
+  ctx.GRAY_LEVEL = 100;
+  ctx.TABLES.airdrop = { weapon: 1 };
+  ctx.TABLES.boss = {};
+  vm.runInContext([
+    section(config, 'const REGIONS =', 'function rowAt('),
+    section(items, 'const AMMO =', 'const SLOT_N ='),
+    section(items, 'function newInst(', 'function wStat('),
+    section(items, 'function rollRarity(', 'const FOOD_SPR'),
+  ].join('\n'), ctx);
+  const isLegendary = inst => ['ak_ouro', 'espadaserra', 'pistolalamina'].includes(inst.id);
+  const highRoll = () => 0.99999;
+  for (const vip of [false, true]) {
+    ctx.vipActive = () => vip;
+    for (let region = 0; region < 9; region++) {
+      const zone = region * 3;
+      const earlyException = vip && region < 2;
+      const regular = earlyException || region >= 4;
+      const natal = earlyException || region >= 3;
+      ctx.Math.random = highRoll;
+      assert.equal(isLegendary(ctx.lootEntry('weapon', {}, 'chest', zone).inst), regular);
+      assert.equal(isLegendary(ctx.rollLootFull('airdrop', zone)[0].inst), regular);
+      assert.equal(isLegendary(ctx.natalBoxLoot(zone)[0].inst), natal);
+      assert.equal(isLegendary(ctx.bossLoot('santa_natal', zone)[0].inst), natal);
+      let first = true;
+      ctx.Math.random = () => {
+        if (!first) return highRoll();
+        first = false;
+        return 0;
+      };
+      assert.equal(isLegendary(ctx.natalAlceLoot(zone)[0].inst), natal);
+    }
+  }
+  // Limiares da exceção VIP, por arma sorteada com um bônus de raridade.
+  for (const [zone, chance] of [[0, 0.000875], [3, 0.00175]]) {
+    ctx.Math.random = () => 1 - chance - 1e-8;
+    assert.notEqual(ctx.rollRarity(zone, 1, 4), 4);
+    ctx.Math.random = () => 1 - chance + 1e-8;
+    assert.equal(ctx.rollRarity(zone, 1, 4), 4);
+  }
 });

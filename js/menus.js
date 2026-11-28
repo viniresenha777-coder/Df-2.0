@@ -9,6 +9,12 @@ function menuKey(k) {
   if (game.menu === "market" && game.marketBusy) return;
   if (game.menu === "pack" && INV.confirm) {
     if (k === "escape") INV.confirm = null;
+    else if (INV.confirm.discard?.max > 1) {
+      if (k === "backspace") INV.confirm.amountText = INV.confirm.amountText.slice(0, -1);
+      else if (/^[0-9]$/.test(k) && INV.confirm.amountText.length < String(INV.confirm.discard.max).length) {
+        INV.confirm.amountText = (INV.confirm.amountText + k).replace(/^0+(?=\d)/, "");
+      }
+    }
     return;
   }
   if (game.input) { inputKey(k); return; }
@@ -409,7 +415,6 @@ function buyShopWeapon(id) {
 // armas vendidas por créditos (Shotgun Sweet, evento de Natal)
 function buyCreditWeapon(id) {
   const d = WDEF[id];
-  if (d && !d.credits && d.shop) { buyShopWeapon(id); return; }
   if (!d || !d.credits) return;
   if (!atBase()) { toast("Use a Loja de Créditos na base."); return; }
   if (save.credits < d.credits) { toast(`Precisa de ${d.credits.toLocaleString("pt-BR")} créditos (compre em $ Compre Créditos)`); return; }
@@ -478,8 +483,7 @@ function buyCreditImplant(id) {
   );
 }
 function creditShopBuy(id) {
-  if (id === "trindade_eterna") buyTrindade();
-  else if (MATS[id]?.blueprint) {
+  if (MATS[id]?.blueprint && MATS[id].credits > 0) {
     if (!atBase()) return;
     const cost = MATS[id].credits;
     if (save.credits < cost) { toast("Créditos insuficientes"); return; }
@@ -491,11 +495,11 @@ const CREDIT_SHOP_SCENE = new Image();
 CREDIT_SHOP_SCENE.src = "img/fm_loja_creditos.webp";
 const CREDIT_SHOP_SECTIONS = [
   ["special", "Serviços"],
+  ["supplies", "Consumíveis"],
   ["implant", "Implantes"],
   ["vest", "Coletes"],
   ["clothing", "Vestuário"],
   ["ammo", "Munição"],
-  ["explosive", "Explosivos"],
   ["melee", "Corpo a corpo"],
   ["pistols", "Pistolas"],
   ["rifles", "Rifles"],
@@ -505,6 +509,7 @@ const CREDIT_SHOP_SECTIONS = [
 ];
 const CREDIT_SHOP_PAGE_SIZE = 5;
 function openCreditShop() {
+  game.shop = false;
   game.menu = "creditshop";
   game.input = null;
   game.cur = 0;
@@ -515,61 +520,57 @@ function creditShopSelectSection(section) {
   game.creditSection = section;
   game.creditCur = 0;
 }
+function shopSections() {
+  return CREDIT_SHOP_SECTIONS.filter(([id]) => id === "special" ? !game.shop : creditShopRows(id).length > 0);
+}
 function creditShopRows(section) {
-  if (section === "blueprints") return Object.keys(MATS).filter(id => MATS[id].blueprint).map(id => ({kind:"mat",id,title:MATS[id].name,price:MATS[id].credits,currency:"credits"}));
-  if (section === "implant")
-    // do mais fraco (mais barato) para o mais forte; o Kit Mimic fica no fim
-    return IMP_IDS.filter((id) => !IMP[id].craftOnly && (IMP[id].price > 0 || IMP[id].kitOnly))
-      .sort((a, b) => !!IMP[a].kitOnly - !!IMP[b].kitOnly || IMP[a].price - IMP[b].price).map((id) => ({
-      kind: "implant",
-      id,
-      title: id === FM_MIMIC_ID ? "Kit Mimic" : IMP[id].name,
-      owned: !IMP[id].tier && fmOwnsCreditImplant(id),   // tier 2 pode comprar vários (3 fazem um X na Oficina)
-      price: fmCreditImplantPrice(id),
-      currency: "credits",
-    }));
-  if (section === "vest")
-    return VESTS.map((vest, id) => ({
-      kind: "vest",
-      id,
-      title: vest.name,
-      owned: !!save.vestsOwned[id],
-      price: vest.craft ? null : vestCredits(vest) || vest.price,
-      currency: vest.credits ? "credits" : "money",
-    }));
-  if (section === "ammo")
-    return Object.keys(AMMO).map((id, index) => ({
-      kind: "ammo",
-      id,
-      index,
-      title: id === "virote" ? "Flechas" : id,
-      price: shopFree() ? 0 : ammoPackPrice(id),
-      currency: "money",
-    }));
-  if (section === "clothing")
-    // capa e máscaras (à venda) primeiro; as outras roupas o personagem já tem
-    return CLOTHING_ITEMS.slice()
-      .sort((a, b) => !!CREDIT_CLOTHING[b.id] - !!CREDIT_CLOTHING[a.id])
-      .map((item) => CREDIT_CLOTHING[item.id]
-        ? { kind: "clothing", item, title: item.name, owned: clothingOwned(item.id), equipped: save.clothing[item.kind] === item.id, price: CREDIT_CLOTHING[item.id], currency: "credits" }
-        : { kind: "clothing", item, title: item.name, owned: save.clothing[item.kind] === item.id });
-  return WLIST.filter(
-    (item) => !item.fists && (section === "explosive" ? item.grenade : item.cat === section && !item.grenade),
-  ).map((item) => (item.credits
-    ? { kind: "weapon", item, title: item.name, price: item.credits, currency: "credits" }
-    : item.shop
-    ? { kind: "weapon", item, title: item.name, price: item.shop, currency: "money" }
-    : { kind: "weapon", item, title: item.name }));
+  const currency = game.shop ? "money" : "credits";
+  if (section === "supplies") {
+    return game.shop ? [{ kind: "trindade", id: "trindade_eterna", title: "Trindade", price: TRINDADE_PRICE, currency }] : [];
+  }
+  if (section === "blueprints") {
+    return game.shop ? [] : Object.keys(MATS).filter(id => MATS[id].blueprint && MATS[id].credits > 0)
+      .map(id => ({ kind: "mat", id, title: MATS[id].name, price: MATS[id].credits, currency }));
+  }
+  if (section === "implant") {
+    return game.shop ? [] : IMP_IDS.filter(id => !IMP[id].craftOnly && (IMP[id].price > 0 || IMP[id].kitOnly))
+      .sort((a, b) => !!IMP[a].kitOnly - !!IMP[b].kitOnly || IMP[a].price - IMP[b].price)
+      .map(id => ({
+        kind: "implant",
+        id,
+        title: id === FM_MIMIC_ID ? "Kit Mimic" : IMP[id].name,
+        owned: !IMP[id].tier && fmOwnsCreditImplant(id),
+        price: fmCreditImplantPrice(id),
+        currency,
+      }));
+  }
+  if (section === "vest") {
+    return VESTS.flatMap((vest, id) => {
+      const price = game.shop ? (!vest.credits && vest.price) : vestCredits(vest);
+      return !vest.craft && price > 0
+        ? [{ kind: "vest", id, title: vest.name, owned: !!save.vestsOwned[id], price, currency }]
+        : [];
+    });
+  }
+  if (section === "clothing") {
+    return game.shop ? [] : CLOTHING_ITEMS.filter(item => CREDIT_CLOTHING[item.id] > 0)
+      .map(item => ({
+        kind: "clothing", item, title: item.name, owned: clothingOwned(item.id),
+        equipped: save.clothing[item.kind] === item.id, price: CREDIT_CLOTHING[item.id], currency,
+      }));
+  }
+  const weapons = WLIST.filter(item => !item.fists && item.cat === section).flatMap(item => {
+    const price = game.shop ? (!item.credits && item.shop) : item.credits;
+    return price > 0 ? [{ kind: "weapon", item, title: item.name, price, currency }] : [];
+  });
+  if (!game.shop || section !== "ammo") return weapons;
+  return Object.keys(AMMO).map(id => ({
+    kind: "ammo", id, title: id === "virote" ? "Flechas" : (AMMO[id].name || id),
+    price: shopFree() ? 0 : ammoPackPrice(id), currency,
+  }));
 }
 function creditShopCost(row) {
-  if (row.kind === "vest" && row.owned) return "Já possui";
-  if (row.kind === "implant" && row.owned) return "Já possui";
-  if (row.kind === "clothing" && row.price) return row.owned ? (row.equipped ? "Em uso" : "Já possui") : row.price.toLocaleString("pt-BR") + " cr";
-  if (row.kind === "clothing") return row.owned ? "Em uso" : "Vestuário";
-  if (row.kind === "weapon" && row.price && row.currency === "money") return "$" + row.price.toLocaleString("pt-BR");
-  if (row.kind === "weapon" && row.price) return row.price.toLocaleString("pt-BR") + " cr";
-  if (row.kind === "weapon") return RARITY[row.item.rar].name;
-  if (row.kind === "vest" && row.price == null) return "Oficina";
+  if (row.owned) return row.equipped ? "Em uso" : "Já possui";
   if (row.price === 0) return "Grátis";
   return row.currency === "credits" ? row.price.toLocaleString("pt-BR") + " cr" : bankMoney(row.price);
 }
@@ -579,9 +580,9 @@ function creditShopCanBuy(row) {
 function creditShopConfirm() {
   const row = game.creditConfirm;
   game.creditConfirm = null;
-  if (!row) return;
-  if (!atBase()) {
-    toast("Use a Loja de Créditos na base.");
+  if (!row || row.currency !== (game.shop ? "money" : "credits")) return;
+  if (!atBase() && !(game.shop && row.kind === "ammo" && adm.shopAnywhere)) {
+    toast(game.shop ? "Use a Loja na base." : "Use a Loja de Créditos na base.");
     return;
   }
   switch (row.kind) {
@@ -599,7 +600,8 @@ function creditShopConfirm() {
       buyCreditClothing(row.item.id);
       break;
     case "weapon":
-      buyCreditWeapon(row.item.id);
+      if (game.shop) buyShopWeapon(row.item.id);
+      else buyCreditWeapon(row.item.id);
       break;
     case "vest":
       if (save.vestsOwned[row.id]) return;
@@ -607,12 +609,10 @@ function creditShopConfirm() {
       if (save.vestsOwned[row.id]) checkpoint("compra de colete");
       break;
     case "ammo":
-      if (!inSafe()) {
-        toast("A loja de munições fica na base.");
-        return;
-      }
-      game.shopCur = row.index;
-      shopBuy();
+      buyAmmoPack(row.id);
+      break;
+    case "trindade":
+      buyTrindade();
       break;
   }
 }
@@ -623,15 +623,16 @@ function creditShopKey(key) {
     return;
   }
   if (key === "escape" || key === "e" || key === "b") {
-    game.menu = null;
+    closeShopCatalog();
     return;
   }
-  const section = game.creditSection || "special";
-  const active = CREDIT_SHOP_SECTIONS.findIndex(([id]) => id === section);
+  const section = game.creditSection;
+  const sections = shopSections();
+  const active = sections.findIndex(([id]) => id === section);
   if (key === "tab" || key === "arrowright" || key === "d" || key === "arrowleft" || key === "a") {
     const direction = key === "arrowleft" || key === "a" ? -1 : 1;
-    const next = (active + direction + CREDIT_SHOP_SECTIONS.length) % CREDIT_SHOP_SECTIONS.length;
-    creditShopSelectSection(CREDIT_SHOP_SECTIONS[next][0]);
+    const next = (active + direction + sections.length) % sections.length;
+    creditShopSelectSection(sections[next][0]);
     return;
   }
   if (section === "special") return;
@@ -650,6 +651,11 @@ function creditShopKey(key) {
     pagedown: CREDIT_SHOP_PAGE_SIZE,
   };
   if (movement[key]) game.creditCur = Math.max(0, Math.min(rows.length - 1, game.creditCur + movement[key]));
+}
+function closeShopCatalog() {
+  game.shop = false;
+  game.menu = null;
+  game.creditConfirm = null;
 }
 function creditShopPanel(x, y, w, h, fill, border) {
   ctx.fillStyle = fill;
@@ -675,6 +681,7 @@ function creditShopButton(x, y, w, h, title, action, active = false, disabled = 
 function creditShopArt(row, x, y, scale) {
   switch (row.kind) {
     case "mat":
+    case "trindade":
       drawMatIcon(row.id, x, y, scale);
       break;
     case "implant":
@@ -742,26 +749,11 @@ function drawCreditShopSidebar() {
   });
   ctx.fillStyle = "#4e3a31";
   ctx.fillRect(42, 370, 170, 1);
-  txt("SALDO NO BANCO", 42, 395, 11, "#bdab9a", "left", true);
-  txt(bankMoney(save.bank), 42, 421, 21, "#f5e7d5", "left", true);
   txt("VIP", 42, 459, 11, "#bdab9a", "left", true);
   txt(vipStatus(), 42, 480, 13, "#e6b37b", "left", false, 170);
 }
-function creditShopSample(section) {
-  if (section === "blueprints") return {kind:"mat",id:"blueprint_sniper"};
-  if (section === "special") return { kind: "mat", id: "reset_stats" };
-  if (section === "implant") return { kind: "implant", id: FM_MIMIC_ID };
-  if (section === "vest") return { kind: "vest", id: 1 };
-  if (section === "clothing") return { kind: "clothing", item: CLOTHING_ITEMS[0] };
-  if (section === "ammo") return { kind: "ammo", id: "5.56" };
-  const item = WLIST.find(
-    (weapon) =>
-      !weapon.fists && (section === "explosive" ? weapon.grenade : weapon.cat === section && !weapon.grenade),
-  );
-  return item ? { kind: "weapon", item } : null;
-}
-function drawCreditShopSections(section) {
-  CREDIT_SHOP_SECTIONS.forEach(([id, title], index) => {
+function drawCreditShopSections(section, sections) {
+  sections.forEach(([id, title], index) => {
     const row = Math.floor(index / 6);
     const x = 246 + (index % 6) * 115,
       y = 112 + row * 63;
@@ -777,8 +769,9 @@ function drawCreditShopSections(section) {
       selected ? "#41251f" : hover ? "#332722" : "rgba(25,22,20,.93)",
       selected ? "#cd715f" : hover ? "#a97563" : "#57473e",
     );
-    const sample = creditShopSample(id);
-    if (sample) creditShopArt(sample, x + w / 2, y + 20, sample.kind === "weapon" ? 0.61 : 0.52);
+    const sample = id === "special" ? { kind: "mat", id: "reset_stats" } : creditShopRows(id)[0];
+    if (id === "ammo") drawEntryIcon({ type: "ammo" }, x + w / 2, y + 20, 0.52);
+    else if (sample) creditShopArt(sample, x + w / 2, y + 20, sample.kind === "weapon" ? 0.61 : 0.52);
     txt(title, x + w / 2, y + 46, 12, selected ? "#ffe1cd" : "#e9d9c6", "center", true, w - 8);
     if (selected) {
       ctx.fillStyle = "#c86a57";
@@ -821,41 +814,12 @@ function drawCreditShopServices() {
     },
     true,
   );
-
-  creditShopPanel(616, 254, 313, 268, "rgba(20,17,15,.95)", "#635046");
-  txt("Trindade", 632, 282, 19, "#f5e7d5", "left", true);
-  creditShopArt({ kind: "mat", id: "trindade_eterna" }, 773, 355, 2.0);
-  txtWrap(
-    "+35% de dano, velocidade de corrida e proteção proporcional aos atributos. Dura 100 anos após o uso.",
-    632,
-    422,
-    12,
-    "#decebc",
-    281,
-    16,
-    3,
-  );
-  creditShopButton(
-    632,
-    481,
-    281,
-    29,
-    "Comprar · " + bankMoney(TRINDADE_PRICE),
-    () => {
-      game.creditConfirm = {
-        kind: "mat",
-        id: "trindade_eterna",
-        title: "Trindade",
-        price: TRINDADE_PRICE,
-        currency: "money",
-      };
-    },
-    true,
-  );
 }
 function creditShopDescription(row) {
   if (row.kind === "mat" && MATS[row.id]?.blueprint) return "Lendário · Consumido na Oficina. Drop comum a partir da região vermelha. Negociável no Mercado Negro.";
   switch (row.kind) {
+    case "trindade":
+      return "+35% de dano, velocidade de corrida e proteção proporcional aos atributos. Dura 100 anos após o uso.";
     case "implant": {
       const description = implantDesc({ id: row.id, alloc: {} });
       return row.id === FM_MIMIC_ID ? description + " O kit inclui 2 Caixas Avançadas de Implante." : description;
@@ -864,6 +828,7 @@ function creditShopDescription(row) {
       return vestText(VESTS[row.id]) + (VESTS[row.id].craft ? " · Fabricação na Oficina." : ".");
     case "ammo":
       return (
+        (row.id === WDEF.lancador.ammo ? `Munição do ${WDEF.lancador.name}. ` : "") +
         "Pacote com " +
         AMMO_PACK_SIZE +
         " unidades. Você tem " +
@@ -952,6 +917,9 @@ function drawCreditShopCatalog(section) {
       txt(value, 913, y, 11, "#f5e7d5", "right", true);
     });
     txt(`Requisitos: ${reqText(selected.item)}`, 631, 462, 11, "#e3d3c3", "left", false, 282);
+  } else if (selected.kind === "implant") {
+    creditShopArt(selected, 774, 334, 1.4);
+    txtWrap(creditShopDescription(selected), 631, 390, 12, "#e3d3c3", 282, 15, 6);
   } else {
     creditShopArt(selected, 774, 350, 1.5);
     txtWrap(creditShopDescription(selected), 631, 417, 12, "#e3d3c3", 282, 15, 4);
@@ -988,7 +956,8 @@ function drawCreditShopDialog(title, detail, submit, cancel, amountLabel = "") {
   creditShopButton(494, 358, 196, 34, "Cancelar", cancel);
 }
 function drawCreditShop() {
-  const section = game.creditSection || "special";
+  const sections = shopSections();
+  const section = game.creditSection;
   ctx.fillStyle = "#14110f";
   ctx.fillRect(0, 0, W, H);
   if (CREDIT_SHOP_SCENE.complete && CREDIT_SHOP_SCENE.naturalWidth) {
@@ -1006,16 +975,20 @@ function drawCreditShop() {
   ctx.fillStyle = "#ae5341";
   ctx.fillRect(24, 91, 905, 2);
   txt("FRONTEIRA MORTA  /  SUPRIMENTOS", 25, 33, 11, "#e7ad91", "left", true);
-  txt("Loja de Créditos", 24, 75, 37, "#f4e4ce", "left", true);
-  txt("CRÉDITOS", 790, 40, 11, "#bca79a", "right", true);
-  txt(save.credits.toLocaleString("pt-BR"), 791, 69, 24, "#efb484", "right", true);
-  creditShopButton(809, 32, 120, 35, "Voltar", () => {
-    game.menu = null;
-  });
-  drawCreditShopSidebar();
-  drawCreditShopSections(section);
+  txt(game.shop ? "Loja" : "Loja de Créditos", 24, 75, 37, "#f4e4ce", "left", true);
+  txt(game.shop ? "DINHEIRO NA MOCHILA" : "CRÉDITOS", 790, 40, 11, "#bca79a", "right", true);
+  txt(game.shop ? bankMoney(game.money) : save.credits.toLocaleString("pt-BR"), 791, 69, 24, "#efb484", "right", true);
+  creditShopButton(809, 32, 120, 35, "Voltar", closeShopCatalog);
+  if (game.shop) {
+    if (shopFree()) {
+      creditShopPanel(24, 112, 206, 80, "rgba(14,14,13,.94)", "#57473e");
+      txt("TOKEN DA LOJA ATIVO", 42, 144, 14, "#e6b37b", "left", true);
+      txt("Pacotes de munição grátis", 42, 170, 12, "#f5e7d5");
+    }
+  } else drawCreditShopSidebar();
+  drawCreditShopSections(section, sections);
   txt(
-    (CREDIT_SHOP_SECTIONS.find(([id]) => id === section) || CREDIT_SHOP_SECTIONS[0])[1].toUpperCase(),
+    (sections.find(([id]) => id === section)?.[1] || "").toUpperCase(),
     247,
     242,
     13,

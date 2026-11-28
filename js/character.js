@@ -136,7 +136,7 @@ function lastStandTick() {
   }
   player.fx = player.flags.lastStand && player.hp / player.maxHp < 0.25 ? player.fxSafe : player.fxAll;
 }
-function makeStock() { return IMP_IDS.filter((id) => !IMP[id].kitOnly && !IMP[id].craftOnly && IMP[id].price > 0).sort((a, b) => IMP[a].price - IMP[b].price).map((id) => ({ id, price: IMP[id].price })); }
+function makeStock() { return IMP_IDS.filter((id) => !IMP[id].kitOnly && !IMP[id].craftOnly && !IMP[id].noClinicSale && IMP[id].price > 0).sort((a, b) => IMP[a].price - IMP[b].price).map((id) => ({ id, price: IMP[id].price })); }
 
 
 // ---------- Esquemas de implantes (presets) ----------
