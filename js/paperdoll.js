@@ -820,13 +820,17 @@ function drawInventory() {
   drawAllocPanel();
 }
 // linha "Ferro Velho: $X" do balão de detalhes (o mesmo valor que o Ferro Velho paga)
-function fmScrapLine(kind, obj) {
-  if (obj.validadeDias || (kind === "vest" && save.giftVests[obj.i])) return "Vinculado · venda bloqueada";
+function fmScrapLine(kind, obj, area) {
+  const storedVest = kind === "vest" && area === "vault";
+  if (obj.validadeDias || (kind === "vest" && !storedVest && save.giftVests[obj.i])) return "Vinculado · venda bloqueada";
   const $ = (v) => "$" + Math.max(0, Math.round(v)).toLocaleString("pt-BR");
   const each = (unit, n) => n > 1 ? `Ferro Velho: ${$(unit)} cada · ${$(unit * n)} tudo` : `Ferro Velho: ${$(unit)}`;
   if (kind === "weapon") return obj.tokenBound ? "Ferro Velho: não vende" : "Ferro Velho: " + $(weaponSellPrice(obj));
   if (kind === "implant") { const v = obj.tokenBound ? 0 : implantSellPrice(obj); return v ? "Ferro Velho: " + $(v) : "Ferro Velho: não vende"; }
-  if (kind === "vest") return "Ferro Velho: " + $(vestSellPrice(obj.i)) + (obj.i === save.vest ? " (tire o colete para vender)" : "");
+  if (kind === "vest") {
+    const price = storedVest ? vestSellPrice(obj.i, obj.dur, obj.upgrades && cleanVestUpgrade(obj.upgrades)) : vestSellPrice(obj.i);
+    return "Ferro Velho: " + $(price) + (!storedVest && obj.i === save.vest ? " (tire o colete para vender)" : "");
+  }
   if (kind === "ammo") { const n = Math.min(obj.n || 0, sellableAmmo(obj.t)); return n > 0 ? `Ferro Velho: ${$(ammoSellPrice(obj.t) * n)} (${n.toLocaleString("pt-BR")} balas)` : "Ferro Velho: não vende"; }
   if (kind === "mat") return obj.id === "reset_stats" ? "Ferro Velho: não vende" : each(matSellPrice(obj.id), obj.qty || obj.n || 1);
   if (kind === "supply") {
@@ -845,7 +849,8 @@ function fmBalãoDetalhes(it) {
   const add = (v, color = "#e4dfd1") => rows.push([String(v), color]);
   let title = "Item";
   try {
-    const gift = kind === "vest" ? save.giftVests[obj.i] : obj;
+    const storedVest = kind === "vest" && it.area === "vault";
+    const gift = kind === "vest" && !storedVest ? save.giftVests[obj.i] : obj;
     if (gift?.validadeDias) add(gift.expiraEm ? "Vence em " + new Date(gift.expiraEm).toLocaleString("pt-BR") : "Após o primeiro uso: " + gift.validadeDias + " dia(s)", "#ffd96a");
     title = invItemName(it) || "Item";
     if (kind === "weapon") {
@@ -868,9 +873,12 @@ function fmBalãoDetalhes(it) {
       add("Quantidade: " + obj.n, "#f4c44d");
     } else if (kind === "vest") {
       const vest = vestDefinition(obj.i);
+      const up = storedVest && obj.upgrades ? cleanVestUpgrade(obj.upgrades) : vestUpgrade(obj.i);
+      const dur = storedVest ? obj.dur ?? vestDur(obj.i) : vestDur(obj.i);
       add("Tipo: colete", "#8bc9f5");
-      if ((save.vestSemTroca || []).includes(obj.i)) add("(Não transferível)", "#ff9a7a");
-      add("Proteção: " + (vest.armor || 0), "#8bed92");
+      if (obj.semTroca || gift?.transferivel === false || (save.vestSemTroca || []).includes(obj.i)) add("(Não transferível)", "#ff9a7a");
+      add("Proteção: " + vestText(vest, up), "#8bed92");
+      add(`Durabilidade atual: ${Math.round(dur)}%`, "#d6c58b");
     } else if (kind === "clothing") {
       add("Tipo: " + (obj.kind === "pack" ? "mochila" : "roupa"), "#8bc9f5");
       if (obj.kind === "pack") {
@@ -916,7 +924,7 @@ function fmBalãoDetalhes(it) {
       add("Quantidade: " + (obj.n || 1), "#f4c44d");
     } else add("Item do inventário", "#ddd8c8");
     // quanto o Ferro Velho paga pelo item
-    const scrap = kind === "weapon" ? null : fmScrapLine(kind, obj);
+    const scrap = kind === "weapon" ? null : fmScrapLine(kind, obj, it.area);
     if (scrap) add(scrap, "#f4c44d");
   } catch (err) {
     rows.length = 0;

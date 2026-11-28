@@ -997,17 +997,12 @@ function fmStashIcon(z, x, y, w, h) {
   }
   invIcon(z, x + 3, y + 3, w - 6, h - 6);
 }
-function fmStashStoredIcon(it, x, y, w, h) {
-  if (!it) return;
-  let z;
-  if (it.kind === "weapon" || it.kind === "mat") z = { type: it.kind, item: it };
-  else if (it.kind === "ammo") z = { type: "ammo", item: { t: it.id, n: it.qty } };
-  else if (it.kind === "implant") z = { type: "implant", item: it };
-  else if (it.kind === "vest") z = { type: "vest", item: { i: it.id } };
-  else if (it.kind === "clothing") z = { type: "clothing", item: CLOTHING_BY_ID[it.id] };
-  else if (it.kind === "food") z = { type: "supply", item: { id: "food", n: it.qty } };
-  else if (["water", "med", "anti"].includes(it.kind)) z = { type: "supply", item: { id: it.kind, n: it.qty } };
-  if (z && z.item) fmStashIcon(z, x, y, w, h);
+function fmStashStoredEntry(it) {
+  if (["weapon", "mat", "implant"].includes(it.kind)) return { type: it.kind, item: it };
+  if (it.kind === "ammo") return { type: "ammo", item: { t: it.id, n: it.qty } };
+  if (it.kind === "vest") return { area: "vault", type: "vest", item: { ...it, i: it.id } };
+  if (it.kind === "clothing") return { type: "clothing", item: CLOTHING_BY_ID[it.id] };
+  if (["food", "water", "med", "anti"].includes(it.kind)) return { type: "supply", item: { id: it.kind, n: it.qty } };
 }
 function fmStashSelect(side, index) {
   const cur = game.fmVaultSelection;
@@ -1084,6 +1079,7 @@ function drawStash() {
     game.vpage = Math.min(9, game.vpage + 1);
   });
   let tooltip = "";
+  let hoveredEntry;
   for (let row = 0; row < 5; row++) {
     const rowIndex = game.vpage * 5 + row,
       disabled = rowIndex >= rows,
@@ -1094,10 +1090,11 @@ function drawStash() {
         w = 88,
         h = 53;
       const entry = !disabled ? vault[index] : null,
+        itemEntry = entry ? fmStashStoredEntry(entry) : null,
         selected =
           !!game.fmVaultSelection && game.fmVaultSelection.side === 1 && game.fmVaultSelection.idx === index;
       fmStashMetal(x, y, w, h, selected, disabled);
-      if (entry) fmStashStoredIcon(entry, x, y, w, h);
+      if (itemEntry?.item) fmStashIcon(itemEntry, x, y, w, h);
       if (disabled) continue;
       rowClick(
         x,
@@ -1108,8 +1105,10 @@ function drawStash() {
         () => fmStashSelect(1, index),
         () => fmStashSelect(1, index),
       );
-      if (entry && mouse.x >= x && mouse.x < x + w && mouse.y >= y && mouse.y < y + h)
+      if (entry && mouse.x >= x && mouse.x < x + w && mouse.y >= y && mouse.y < y + h) {
         tooltip = fmStashItemTitle(entry);
+        hoveredEntry = itemEntry;
+      }
     }
     if (disabled) {
       txt(
@@ -1168,8 +1167,10 @@ function drawStash() {
         () => fmStashSelect(0, index),
         () => fmStashSelect(0, index),
       );
-      if (entry && mouse.x >= x && mouse.x < x + w && mouse.y >= y && mouse.y < y + h)
+      if (entry && mouse.x >= x && mouse.x < x + w && mouse.y >= y && mouse.y < y + h) {
         tooltip = fmStashSourceTitle(entry);
+        hoveredEntry = entry;
+      }
     }
   btn(
     710,
@@ -1207,7 +1208,8 @@ function drawStash() {
     true,
   );
   txt("Desequipe os itens antes de guardá-los.", 40, 570, 11, "#bdb19b", "left");
-  drawItemTooltip(tooltip);
+  if (["weapon", "implant", "vest"].includes(hoveredEntry?.type)) fmBalãoDetalhes(hoveredEntry);
+  else drawItemTooltip(tooltip);
 }
 // =====================================================================
 //  Loja dos postos
@@ -1240,8 +1242,7 @@ function buyAmmoPack(type) {
   checkpoint("compra de pacote de munição");
   toast("Comprou 999 munições · " + (AMMO[type].name || type) + (free ? " de graça (Token da Loja)" : " por $" + cost.toLocaleString("pt-BR")));
 }
-function vestText(v) {
-  const up = vestUpgrade(VESTS.indexOf(v));
+function vestText(v, up = vestUpgrade(VESTS.indexOf(v))) {
   return `-${Math.min(95, v.armor + up.armor)}% dano${up.speed ? ` · +${up.speed}% velocidade` : ""}${v.slow ? ` · -${v.slow}% velocidade` : ""}${v.hp ? ` · +${v.hp} vida` : ""}${v.acid ? ` · -${v.acid}% ácido` : ""}${v.stealth ? ` · +${v.stealth}% furtividade` : ""}${v.dur ? ` · ${v.dur} de durabilidade` : ""}${v.repairLevel ? ` · conserto: nível ${v.repairLevel}+` : ""}`;
 }
 function buyVest(i) {
