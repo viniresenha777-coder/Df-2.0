@@ -386,3 +386,10 @@ body:has(#login:not([hidden]))::before {
   35%, 55% { opacity: .14; }
   80% { opacity: .70; }
 }
+#maintenance:not([hidden]) + #login:not(.maintenance-sign-in) { display: none; }
+#maintenance:not([hidden]) + #login .fm-token-ad,
+#maintenance:not([hidden]) + #login #beta-invite-row,
+#maintenance:not([hidden]) + #login #import-row,
+#maintenance:not([hidden]) + #login button[value="register"],
+#maintenance:not([hidden]) + #login #forgot-password,
+#maintenance:not([hidden]) + #login #resend-confirmation { display: none; }

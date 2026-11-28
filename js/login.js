@@ -24,6 +24,11 @@ const importEl = document.getElementById("import-save");
 let starting = false;
 let loaded = false;
 
+document.getElementById('maintenance-login')?.addEventListener('click', () => {
+  loginForm.classList.toggle('maintenance-sign-in');
+  if (loginForm.classList.contains('maintenance-sign-in')) emailEl.focus();
+});
+
 function loginStatus(message, bad = false) {
   statusEl.textContent = message;
   statusEl.classList.toggle("error", bad);
@@ -47,17 +52,22 @@ async function startGame() {
   try {
     for (const scriptTag of document.getElementById("game-scripts").content.querySelectorAll("script")) {
       const script = document.createElement("script");
-      script.src = scriptTag.getAttribute("src");
-      await new Promise((resolve, reject) => {
-        script.onload = resolve;
-        script.onerror = () => reject(new Error("Erro ao carregar " + script.src));
-        document.body.appendChild(script);
-      });
+      script.src = await fmCloud.protectedGameScript(scriptTag.getAttribute("src"));
+      try {
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = () => reject(new Error("Erro ao carregar o jogo"));
+          document.body.appendChild(script);
+        });
+      } finally {
+        if (script.src.startsWith('blob:')) URL.revokeObjectURL(script.src);
+      }
       if (scriptError) throw scriptError;
     }
     passwordEl.value = "";
     confirmEl.value = "";
   } catch (error) {
+    loaded = false;
     stage.hidden = true;
     loginForm.hidden = false;
     loginStatus("Erro ao abrir o jogo: " + (error.message || String(error)) +

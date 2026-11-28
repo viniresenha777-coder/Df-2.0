@@ -43,6 +43,35 @@ const fmCloud = (() => {
   let revision = null;
   let pending = Promise.resolve();
   let retainedWallet = 0, retainedBank = 0;
+  let maintenanceToken = null;
+
+  async function checkMaintenance(session) {
+    const notice = document.getElementById('maintenance');
+    if (!notice || location.hostname === 'viniresenha777-coder.github.io') return;
+    maintenanceToken = null;
+    const token = session?.access_token;
+    const response = await fetch('/api/maintenance', {
+      cache: 'no-store', headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (response.status === 403) {
+      notice.hidden = false;
+      if (token) throw new Error('O servidor está em manutenção. Tente novamente em breve.');
+      return;
+    }
+    if (!response.ok || !['on', 'off'].includes(response.headers.get('X-FM-Maintenance')))
+      throw new Error('Não foi possível verificar a disponibilidade do jogo. Tente novamente.');
+    if (response.headers.get('X-FM-Maintenance') === 'on') maintenanceToken = token;
+    notice.hidden = true;
+  }
+
+  async function protectedGameScript(src) {
+    if (!maintenanceToken) return src;
+    const response = await fetch(src, {
+      cache: 'no-store', headers: { Authorization: `Bearer ${maintenanceToken}` },
+    });
+    if (!response.ok) throw new Error('O servidor não autorizou a abertura do jogo.');
+    return URL.createObjectURL(await response.blob());
+  }
 
   function requireClient() {
     if (!client) throw new Error("Não foi possível carregar o serviço de login. Verifique a conexão e atualize a página.");
@@ -129,6 +158,7 @@ const fmCloud = (() => {
     const db = requireClient();
     const { data, error } = await db.auth.getSession();
     if (error) throw friendly(error);
+    await checkMaintenance(data.session);
     if (!data.session || !data.session.user) { user = null; userIsAdmin = false; return false; }
     await openSession(data.session.user);
     return true;
@@ -141,6 +171,12 @@ const fmCloud = (() => {
       : await db.auth.signInWithPassword(credentials);
     if (error) throw friendly(error);
     if (!data.session) return false; // cadastro com confirmação de e-mail pendente
+    try {
+      await checkMaintenance(data.session);
+    } catch (error) {
+      await db.auth.signOut({ scope: 'local' }).catch(() => {});
+      throw error;
+    }
     await openSession(data.user);
     return true;
   }
@@ -406,7 +442,7 @@ const fmCloud = (() => {
       throw friendly(error);
     }
   }
-  return { lastConfirmedAt: () => confirmedTime, resume, login, logout, resend, ping,
+  return { lastConfirmedAt: () => confirmedTime, resume, login, logout, resend, ping, protectedGameScript,
     sendPasswordRecovery, observeAuth, recoverySession, changeRecoveredPassword,
     write, saleMail, marketAction, read: () => snapshot, isActive: () => !!user, isAdmin: () => !!user && userIsAdmin, hasOnlineSave: () => revision !== null,
     userId: () => user ? user.id : null, socialClient: () => client,

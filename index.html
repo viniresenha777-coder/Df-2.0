@@ -8,11 +8,20 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
   <title>Fronteira Morta</title>
   <link rel="stylesheet" href="css/style.css?v=20261127-chat01">
-  <link rel="stylesheet" href="css/auth.css?v=20261126-luzes04">
+  <link rel="stylesheet" href="css/auth.css?v=20261128-manutencao">
   <!-- Rebuild GitHub Pages default address; no custom domain configured. -->
   <!-- Re-publicação da versão 2.2.2 em 2026-11-16: sem alteração de mecânicas ou saves. -->
 </head>
 <body>
+  <section id="maintenance" class="fm-auth" hidden aria-labelledby="maintenance-title">
+    <div class="fm-auth-panel">
+      <p class="fm-auth-kicker">Fronteira Morta</p>
+      <h1 id="maintenance-title">Servidor em manutenção</h1>
+      <p class="fm-auth-sub">Estamos preparando melhorias. Seu progresso será preservado.</p>
+      <p>Em breve estaremos de volta.</p>
+      <button type="button" id="maintenance-login" class="secondary">Entrar com conta administrativa</button>
+    </div>
+  </section>
   <form id="login" class="fm-auth">
     <div class="fm-auth-panel">
       <p class="fm-auth-kicker">Sobreviva à fronteira</p>
@@ -110,6 +119,6 @@
     <script src="js/jogo.min.js?v=f2c525f2a8"></script>
   </template>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/conta.min.js?v=20261127-save-recovery2"></script>
+  <script src="js/conta.min.js?v=09eda9ce93"></script>
 </body>
 </html>
