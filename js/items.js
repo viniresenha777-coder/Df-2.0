@@ -691,7 +691,7 @@ for (const id of ["sucata", "pecas"]) { const im = new Image(); im.src = `img/ma
 { const im = new Image(); im.src = "img/mats/gorro_natal.webp?v=20261123-natal1"; MAT_ART.gorro_natal = im; }
 // Token da Loja: raríssimo em qualquer saque (chance fixa, nenhum bônus do jogo aumenta). Arrastado até o
 // personagem, deixa a Loja da base de graça por 1 dia.
-const TOKEN_LOJA_CHANCE = 0.0001, TOKEN_LOJA_MS = 24 * 3600 * 1000;
+const TOKEN_LOJA_CHANCE = 1 / 100000, TOKEN_LOJA_MS = 24 * 3600 * 1000;
 function shopFree() { return (Number(save.shopFreeUntil) || 0) > fmWorld.nowMs(); }
 function drawMatIcon(id, cx, cy, s) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);

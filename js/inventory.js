@@ -657,7 +657,7 @@ function drawPack() {
   } else txt("Espaço vazio", px + pw / 2, 280, 15, "#6d6a58", "center");
   const ammoTxt = Object.keys(AMMO).filter((t) => player.reserve[t] > 0).map((t) => `${t}: ${player.reserve[t]}`).join(" · ") || "sem munição de reserva";
   const Q = player.foodQ;
-  txt(`Comida ${player.food} (fresca ${Q.fresca} · comum ${Q.comum} · estragada ${Q.podre}) · Água ${player.water} · Kit ${player.med} · Antibiótico ${player.anti} · Implantes ${player.bag.length}/${BAG_MAX}`, 40, 518, 12, "#c9c4ad", "left", true, 540);
+  txt(`Comida ${player.food} (fresca ${Q.fresca} · comum ${Q.comum} · estragada ${Q.podre}) · Água ${player.water} · Kit ${player.med} · Antibiótico ${player.anti} · Implantes guardados ${player.bag.length}`, 40, 518, 12, "#c9c4ad", "left", true, 540);
   // colete equipado (V troca entre os que você tem)
   const nv = save.vestsOwned.filter(Boolean).length;
   ctx.fillStyle = "rgba(0,0,0,0.35)"; rr(590, 508, 340, 42, 6); ctx.fill();
@@ -878,10 +878,6 @@ function fmStashWithdraw(index) {
     player.reserve[obj.id] = (player.reserve[obj.id] || 0) + obj.qty;
     player.tokenAmmo[obj.id] = (player.tokenAmmo[obj.id] || 0) + Math.min(obj.qty, obj.tokenQty || 0);
   } else if (obj.kind === "implant") {
-    if (player.bag.length >= 8) {
-      toast("Não há espaço para implantes guardados.");
-      return;
-    }
     const im = { ...obj };
     delete im.kind;
     player.bag.push(im);

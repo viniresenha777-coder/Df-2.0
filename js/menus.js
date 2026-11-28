@@ -1600,7 +1600,7 @@ function drawImplantInfo(im) {
 function drawClinic() {
   const unlocked = implantUnlockedSlots(player.level);
   const editing = game.tab === 0;
-  menuFrame("Implantes", `Nível ${player.level} · ${unlocked} espaços liberados de 14 · 225–415 bloqueados · Mochila ${player.bag.length}/${BAG_MAX}`);
+  menuFrame("Implantes", `Nível ${player.level} · ${unlocked} espaços liberados de 14 · 225–415 bloqueados · Guardados na mochila: ${player.bag.length}`);
   btn(40, 85, 194, 32, editing ? "Minha mochila" : "Ver meus implantes", () => {
     game.tab = 0; game.cur = 0; game.implantDropdown = false;
   }, editing);
@@ -1622,11 +1622,20 @@ function drawClinic() {
     const pts = im => IMP[im.id].alloc
       ? `${allocUsed(im)}/${IMP[im.id].alloc.points} pts`
       : IMP[im.id].mimic ? "copia ←" : "";
-    player.bag.forEach((im, i) => {
-      const y = 148 + i * 34;
+    const pageSize = 8;
+    const selectedBag = Math.max(0, Math.min(game.cur, player.bag.length - 1));
+    const first = Math.floor(selectedBag / pageSize) * pageSize;
+    const end = Math.min(first + pageSize, player.bag.length);
+    for (let i = first; i < end; i++) {
+      const im = player.bag[i], y = 148 + (i - first) * 34;
       drawImplantRow(40, y, 442, im, game.cur === i, pts(im));
       regClick(40, y, 442, 28, () => { game.cur = i; });
-    });
+    }
+    if (player.bag.length > pageSize) {
+      btn(40, 395, 36, 23, "◀", () => { game.cur = first - pageSize; }, false, first === 0);
+      txt(`${first + 1}–${end} de ${player.bag.length}`, 122, 411, 11, "#aaa48b", "center");
+      btn(169, 395, 36, 23, "▶", () => { game.cur = end; }, false, end === player.bag.length);
+    }
     if (!player.bag.length)
       txt("Mochila vazia. Colete, compre ou remova implantes equipados.", 48, 177, 12, "#8e8a77");
     if (player.bag.length < BAG_MAX && save.installed.length > 0)

@@ -79,6 +79,18 @@ test('saques comuns podem estar vazios e respeitam o limite mesmo com bônus', (
   for (let i = 0; i < 10000; i++) assert.ok(ctx.rollLoot('furniture', 0).filter(item => item.type !== 'credit').length <= 1);
 });
 
+test('Token da Loja cai em uma de cem mil buscas elegíveis', () => {
+  const { context: ctx } = fixture();
+  delete ctx.TOKEN_LOJA_CHANCE;
+  vm.runInContext(items.match(/^const TOKEN_LOJA_CHANCE = [^;]+;/m)[0], ctx);
+  ctx.rollLoot = () => [];
+  for (const [roll, drops] of [[0.000009999, true], [0.00001, false]]) {
+    ctx.Math.random = () => roll;
+    const loot = ctx.spotLootPrepared({ table: 'furniture', zone: 0 });
+    assert.equal(loot.some(item => item.id === 'token_loja' && item.amt === 1), drops);
+  }
+});
+
 test('um spot não pode ser aberto de novo e Natal mantém a recompensa própria', () => {
   const { context: ctx, events, game } = fixture();
   ctx.Math.random = () => 0;

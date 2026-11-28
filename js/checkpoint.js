@@ -179,7 +179,7 @@ function restoreRun() {
       const bound = p.tokenAmmo ? p.tokenAmmo[t] | 0 : save.shopFreeUntil > 0 ? player.reserve[t] : 0;
       player.tokenAmmo[t] = clamp(bound, 0, player.reserve[t]);
     }
-    if (Array.isArray(p.bag)) player.bag = p.bag.map(cleanImplant).filter(Boolean).slice(0, BAG_MAX);
+    if (Array.isArray(p.bag)) player.bag = p.bag.map(cleanImplant).filter(Boolean);
     recalcImplants();
     player.hp = Math.max(1, Math.min(player.maxHp, p.hp || player.maxHp));
     game.money = r.g.money | 0; game.clock = r.g.clock || game.clock; game.kills = r.g.kills | 0; game.best = r.g.best | 0; if (Number.isFinite(r.g.time)) game.time = Math.max(0, r.g.time);
