@@ -9,10 +9,10 @@ function newImplant(id) {
   if (id === FM_MIMIC_ID) im.tokenBound = true;      // o Mimic do kit é intransferível
   return im;
 }
-// Só implantes marcados com drop: true caem no saque (os 29 atuais não caem: só loja/eventos).
+// O saque comum usa apenas implantes marcados com drop que não sejam exclusivos de kit ou Oficina.
 // A chance de cair é a mesma de uma arma Lendária naquele lugar (ver lootImplantDrop em interact.js).
 function dropImplantIds() { return IMP_IDS.filter((id) => IMP[id].drop && !IMP[id].kitOnly && !IMP[id].craftOnly); }
-// peso no sorteio: tier 1 é o mais comum, X e Err X os mais raros
+// O tier 1 tem peso maior que o tier 2.
 const IMPLANT_TIER_WEIGHT = { 1: 6, 2: 3, 3: 1 };
 function randomImplant() {
   const ids = dropImplantIds();

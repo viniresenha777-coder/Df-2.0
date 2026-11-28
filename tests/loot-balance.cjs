@@ -7,6 +7,7 @@ const { test } = require('node:test');
 const source = fs.readFileSync(path.join(__dirname, '../js/interact.js'), 'utf8');
 const items = fs.readFileSync(path.join(__dirname, '../js/items.js'), 'utf8');
 const config = fs.readFileSync(path.join(__dirname, '../js/config.js'), 'utf8');
+const character = fs.readFileSync(path.join(__dirname, '../js/character.js'), 'utf8');
 function section(text, start, end) { return text.slice(text.indexOf(start), text.indexOf(end)); }
 function fixture() {
   let seed = 123456;
@@ -27,6 +28,26 @@ function fixture() {
     source.slice(0, source.indexOf('function makeInterior(')), context);
   return { context, events, game };
 }
+
+test('implantes X e Err X têm receita na Oficina e ficam fora do saque', () => {
+  const { context: ctx } = fixture();
+  vm.runInContext([
+    section(config, 'const IMP =', 'const IMP_COLOR'),
+    section(character, 'function newImplant(', 'function impColor('),
+    section(items, 'const RECIPES =', 'const MAT_CHANCE'),
+  ].join('\n'), ctx);
+  const ids = vm.runInContext('IMP_IDS.filter(id => /^(x_|errx_)/.test(id))', ctx);
+  const pool = ctx.dropImplantIds();
+  assert.equal(ids.length, 10);
+  for (const id of ids) {
+    ctx.implantId = id;
+    assert.equal(vm.runInContext('IMP[implantId].craftOnly', ctx), true);
+    assert.equal(vm.runInContext('RECIPES.some(recipe => recipe.implant === implantId)', ctx), true);
+    assert.ok(!pool.includes(id));
+  }
+  assert.ok(pool.includes('t1_experience'));
+  assert.ok(pool.includes('t2_ironskin'));
+});
 
 test('reduções relativas de lendárias, épicas e coletes nas fronteiras de chance', () => {
   const { context: ctx } = fixture();

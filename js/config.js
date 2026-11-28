@@ -398,7 +398,7 @@ const IMP = {
   "implante_28": {"name":"Coelho Mutante","price":4100,"vipPrice":3300,"scrap":615000,"kind":0,"fx":{"ammoLoot":27,"greed":33,"armorFind":27,"hunter":33},"event":true},
   "implante_29": {"name":"Trindade Suprema","price":2100,"vipPrice":1700,"scrap":315000,"kind":0,"fx":{"exp":4,"firepower":6,"agility":5},"event":true},
   // ---------- Implantes por tier (24) · arte em img/implantes_t/ ----------
-  // todos os tiers caem no saque com raridade Lendária (drop: true) · tier 2 também na Loja de Créditos ·
+  // Tiers 1 e 2 caem no saque com raridade Lendária. Tier 2 também na Loja de Créditos.
   // X: Oficina com 3 do tier 2 correspondente · Err X: Oficina com 2 do X (mais forte, com penalidade)
   // Valor por tier (≈ 20 créditos por R$ 1): tier 1 = 100 cr (R$ 5) · tier 2 = 140 cr (R$ 7, à venda na Loja) · X e Err X = 200 cr (R$ 10)
   // Implantes antigos: preço pela força dos bônus (créditos ≈ 24 × pontos^1,5; VIP paga 80%)
@@ -417,16 +417,16 @@ const IMP = {
   t2_hyper: { name: "Hyper", tier: 2, drop: true, price: 140, vipPrice: 110, scrap: 21000, kind: 0, art: "img/implantes_t/t2_hyper.webp?v=20261125-t1", fx: { agility: 2.5 } },
   t2_ironskin: { name: "Ironskin", tier: 2, drop: true, price: 140, vipPrice: 110, scrap: 21000, kind: 0, art: "img/implantes_t/t2_ironskin.webp?v=20261125-t1", fx: { thick: 3 } },
   t2_salvage: { name: "Salvage", tier: 2, drop: true, price: 140, vipPrice: 110, scrap: 21000, kind: 0, art: "img/implantes_t/t2_salvage.webp?v=20261125-t1", fx: { ammoLoot: 5, greed: 5, hunter: 5, armorFind: 5 } },
-  x_perception: { name: "X-Perception", tier: 3, drop: true, price: 0, scrap: 30000, kind: 2, art: "img/implantes_t/x_perception.webp?v=20261125-t1", fx: { exp: 5 } },
-  x_violence: { name: "X-Violence", tier: 3, drop: true, price: 0, scrap: 30000, kind: 2, art: "img/implantes_t/x_violence.webp?v=20261125-t1", fx: { firepower: 5 } },
-  x_hyper: { name: "X-Hyper", tier: 3, drop: true, price: 0, scrap: 30000, kind: 2, art: "img/implantes_t/x_hyper.webp?v=20261125-t1", fx: { agility: 4 } },
-  x_ironskin: { name: "X-Ironskin", tier: 3, drop: true, price: 0, scrap: 30000, kind: 2, art: "img/implantes_t/x_ironskin.webp?v=20261125-t1", fx: { thick: 5 } },
-  x_salvage: { name: "X-Salvage", tier: 3, drop: true, price: 0, scrap: 30000, kind: 2, art: "img/implantes_t/x_salvage.webp?v=20261125-t1", fx: { ammoLoot: 10, greed: 10, hunter: 10, armorFind: 10 } },
-  errx_perception: { name: "Err X-Perception", tier: 3, drop: true, err: true, price: 0, scrap: 30000, kind: 1, art: "img/implantes_t/errx_perception.webp?v=20261125-t1", fx: { exp: 8, thick: -4 } },
-  errx_violence: { name: "Err X-Violence", tier: 3, drop: true, err: true, price: 0, scrap: 30000, kind: 1, art: "img/implantes_t/errx_violence.webp?v=20261125-t1", fx: { firepower: 8, thick: -4 } },
-  errx_hyper: { name: "Err X-Hyper", tier: 3, drop: true, err: true, price: 0, scrap: 30000, kind: 1, art: "img/implantes_t/errx_hyper.webp?v=20261125-t1", fx: { agility: 6, searchSpeed: -5 } },
-  errx_ironskin: { name: "Err X-Ironskin", tier: 3, drop: true, err: true, price: 0, scrap: 30000, kind: 1, art: "img/implantes_t/errx_ironskin.webp?v=20261125-t1", fx: { thick: 8, agility: -4 } },
-  errx_salvage: { name: "Err X-Salvage", tier: 3, drop: true, err: true, price: 0, scrap: 30000, kind: 1, art: "img/implantes_t/errx_salvage.webp?v=20261125-t1", fx: { ammoLoot: 20, greed: 20, hunter: 20, armorFind: 20, thick: -15 } },
+  x_perception: { name: "X-Perception", tier: 3, craftOnly: true, price: 0, scrap: 30000, kind: 2, art: "img/implantes_t/x_perception.webp?v=20261125-t1", fx: { exp: 5 } },
+  x_violence: { name: "X-Violence", tier: 3, craftOnly: true, price: 0, scrap: 30000, kind: 2, art: "img/implantes_t/x_violence.webp?v=20261125-t1", fx: { firepower: 5 } },
+  x_hyper: { name: "X-Hyper", tier: 3, craftOnly: true, price: 0, scrap: 30000, kind: 2, art: "img/implantes_t/x_hyper.webp?v=20261125-t1", fx: { agility: 4 } },
+  x_ironskin: { name: "X-Ironskin", tier: 3, craftOnly: true, price: 0, scrap: 30000, kind: 2, art: "img/implantes_t/x_ironskin.webp?v=20261125-t1", fx: { thick: 5 } },
+  x_salvage: { name: "X-Salvage", tier: 3, craftOnly: true, price: 0, scrap: 30000, kind: 2, art: "img/implantes_t/x_salvage.webp?v=20261125-t1", fx: { ammoLoot: 10, greed: 10, hunter: 10, armorFind: 10 } },
+  errx_perception: { name: "Err X-Perception", tier: 3, craftOnly: true, err: true, price: 0, scrap: 30000, kind: 1, art: "img/implantes_t/errx_perception.webp?v=20261125-t1", fx: { exp: 8, thick: -4 } },
+  errx_violence: { name: "Err X-Violence", tier: 3, craftOnly: true, err: true, price: 0, scrap: 30000, kind: 1, art: "img/implantes_t/errx_violence.webp?v=20261125-t1", fx: { firepower: 8, thick: -4 } },
+  errx_hyper: { name: "Err X-Hyper", tier: 3, craftOnly: true, err: true, price: 0, scrap: 30000, kind: 1, art: "img/implantes_t/errx_hyper.webp?v=20261125-t1", fx: { agility: 6, searchSpeed: -5 } },
+  errx_ironskin: { name: "Err X-Ironskin", tier: 3, craftOnly: true, err: true, price: 0, scrap: 30000, kind: 1, art: "img/implantes_t/errx_ironskin.webp?v=20261125-t1", fx: { thick: 8, agility: -4 } },
+  errx_salvage: { name: "Err X-Salvage", tier: 3, craftOnly: true, err: true, price: 0, scrap: 30000, kind: 1, art: "img/implantes_t/errx_salvage.webp?v=20261125-t1", fx: { ammoLoot: 20, greed: 20, hunter: 20, armorFind: 20, thick: -15 } },
   // Evento de Natal: feito na Oficina com 10 Gorros de Natal + $2.000.000 (não cai, não vende na clínica nem na Loja de Créditos)
   implante_natal: {
     name: "Implante Natalino", price: 0, scrap: 100, kind: 0, event: true, craftOnly: true, noTrade: true, art: "img/implante_natal.webp?v=20261123-natal1",
