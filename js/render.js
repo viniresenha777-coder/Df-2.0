@@ -2037,6 +2037,7 @@ function drawHUD() {
   const xpTxt = player.level >= MAX_LEVEL ? "MÁXIMO" : `${Math.floor(player.xp)} / ${xpNeed(player.level)} (${Math.floor((100 * player.xp) / xpNeed(player.level))}%)`;
   hudT(`NÍV ${player.level}: ${xpTxt}`, 12, ny, 11, "#e5e0c8", "left", true); ny += 15;
   hudT(`ENERGIA: ${Math.round(player.stamina)}%${player.exhausted ? " · EXAUSTO" : ""}`, 12, ny, 11, player.exhausted ? "#e05a4a" : "#e5e0c8", "left", true); ny += 15;
+  hudT(`DINHEIRO NA MOCHILA · ${bankMoney(game.money)}`, 12, ny, 11, "#aad279", "left", true); ny += 15;
   if (EVENTO_NATAL.ativo) {
     hudT("★ EVENTO DE NATAL · BÔNUS PARA TODOS", 12, ny, 11, "#ffdb78", "left", true); ny += 15;
   }
