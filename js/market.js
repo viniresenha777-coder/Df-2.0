@@ -269,9 +269,11 @@ function drawMarket() {
   }
   entries.slice(market.page * pageSize, (market.page + 1) * pageSize).forEach((row, i) => {
     const y = 212 + i * 44;
+    const published = market.tab !== "vender";
     ctx.fillStyle = UI_GLASS ? "rgba(20,19,14,0.78)" : "#27251e";
     ctx.fillRect(60, y, W - 120, 40);
-    txt(marketItemName(row.item), 78, y + 25, 15, "#f2eedc", "left", true, W - 390);
+    txt(marketItemName(row.item), 78, y + 25, 15, "#f2eedc", "left", true, published ? W / 2 - 160 : W - 390);
+    if (published) txt(row.vendedor || "—", W / 2 + 14, y + 25, 14, "#c6bda4", "center", true, 156);
     if (row.price) txt(bankMoney(row.price), W - 214, y + 25, 15, "#aad279", "right", true);
     const action = market.tab === "vender" ? "" : !row.meu ? "comprar" : row.state === "sold" ? "receber" : "cancelar";
     const label = { comprar: "Comprar", receber: "Receber", cancelar: "Cancelar" }[action] || "Definir preço";
@@ -319,6 +321,8 @@ function drawMarket() {
   } else {
     const { action, label, row } = market.confirm;
     txt(`${label} · ${marketItemName(row.item)}`, W / 2, 235, 16, "#f2eedc", "center", true, 375);
+    if (action === "comprar" && row.vendedor)
+      txt("Anunciado por " + row.vendedor, W / 2, 254, 12, "#c6bda4", "center", false, 375);
     txt(bankMoney(row.price), W / 2, 275, 21, "#ffd96a", "center");
     btn(W / 2 - 155, 310, 140, 33, "Voltar", () => { market.confirm = null; });
     btn(W / 2 + 15, 310, 140, 33, "Confirmar", () => marketTrade(action, { anuncio: row.id }), true);

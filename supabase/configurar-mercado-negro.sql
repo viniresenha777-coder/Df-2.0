@@ -26,10 +26,12 @@ begin
   return coalesce((
     select jsonb_agg(to_jsonb(l) order by l.meu desc, l.criado desc)
     from (
-      select id, item, price, state, seller = uid as meu, created_at as criado
-      from fm_market.listings
-      where state = 'open' or (state = 'sold' and seller = uid)
-      order by (seller = uid) desc, created_at desc, id
+      select a.id, a.item, a.price, a.state, a.seller = uid as meu, a.created_at as criado,
+             p.nome as vendedor
+      from fm_market.listings a
+      left join public.fm_perfis p on p.jogador = a.seller
+      where a.state = 'open' or (a.state = 'sold' and a.seller = uid)
+      order by (a.seller = uid) desc, a.created_at desc, a.id
       limit 100
     ) l
   ), '[]'::jsonb);
