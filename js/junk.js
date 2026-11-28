@@ -7,6 +7,38 @@
 const JUNK_RAR = [1000, 3000, 8000, 20000, 50000];  // piso de venda por raridade da arma
 const RESET_STATS_PRICE = MATS.reset_stats.price;
 const JUNK_CONS = { comum: 100, fresca: 200, podre: 20, water: 80, med: 400, anti: 600 };
+let junkCodeInput = null;
+
+function showJunkCodeInput(pending, x, y, w, h) {
+  if (!junkCodeInput) {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.inputMode = "numeric";
+    input.autocomplete = "off";
+    input.placeholder = "—";
+    input.setAttribute("aria-label", "Código de confirmação da venda");
+    input.style.cssText = "position:fixed;z-index:100;box-sizing:border-box;margin:0;padding:0;text-align:center;border:1px solid #ac8b57;border-radius:5px;background:#14110d;color:#f2eedc;font:bold 16px sans-serif";
+    input.addEventListener("input", () => {
+      if (game.jconfirm?.entry) game.jconfirm.code = input.value = input.value.replace(/[^0-9]/g, "").slice(0, 3);
+    });
+    input.addEventListener("keydown", event => {
+      event.stopPropagation();
+      if (event.key === "Enter") { event.preventDefault(); confirmJunkAction(); }
+      if (event.key === "Escape") { event.preventDefault(); game.jconfirm = null; }
+    });
+    input.hidden = true;
+    document.body.appendChild(input);
+    junkCodeInput = input;
+  }
+  const input = junkCodeInput;
+  const rect = canvas.getBoundingClientRect();
+  input.style.left = `${rect.left + x * rect.width / W}px`;
+  input.style.top = `${rect.top + y * rect.height / H}px`;
+  input.style.width = `${w * rect.width / W}px`;
+  input.style.height = `${h * rect.height / H}px`;
+  if (input.value !== pending.code) input.value = pending.code;
+  if (input.hidden) { input.hidden = false; input.focus({ preventScroll: true }); }
+}
 
 // Regra geral do Ferro Velho: devolve 30% do que o item custa na loja (pagou $50 → recebe $15).
 // Assim comprar e revender sempre dá prejuízo e 70% do dinheiro sai da economia.
@@ -204,9 +236,7 @@ function drawLegendarySale(pending) {
   txt(`Valor da venda: $${total.toLocaleString("pt-BR")}`, cx, top + 147, 15, "#8fd08a", "center", true);
   txt("A venda é irreversível.", cx, top + 174, 13, "#f2b185", "center");
   txt("Digite o código 132 para confirmar", cx, top + 202, 13, "#f2eedc", "center");
-  ctx.fillStyle = "#14110d"; rr(cx - 68, top + 213, 136, 32, 5); ctx.fill();
-  ctx.strokeStyle = pending.code === "132" ? "#8fd08a" : "#ac8b57"; ctx.stroke();
-  txt(pending.code || "—", cx, top + 235, 17, "#f2eedc", "center", true);
+  showJunkCodeInput(pending, cx - 68, top + 213, 136, 32);
   btn(cx - 169, top + 261, 154, 35, "Confirmar", confirmJunkAction, true, pending.code !== "132");
   btn(cx + 15, top + 261, 154, 35, "Cancelar", () => { game.jconfirm = null; });
 }

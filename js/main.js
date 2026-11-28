@@ -484,6 +484,7 @@ function updateCam(dt) {
 
 // ---------- Desenho ----------
 function draw() {
+  if (junkCodeInput && (game.menu !== "junk" || !game.jconfirm?.entry)) junkCodeInput.hidden = true;
   game.clicks = [];
   if (game.hub && !game.over) {
     ctx = mainCtx; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
