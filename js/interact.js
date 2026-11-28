@@ -30,7 +30,11 @@ function spots() {
 // e o objeto ficava amarelo mas o E abria a porta (ou o vizinho).
 function nearSpot() {
   const cand = [];
-  for (const s of spots()) { if (s.table && !spotHasRealLoot(s)) continue; const d = rectDist(player.x, player.y, s); if (d < 32) cand.push([s, d]); }
+  for (const s of spots()) {
+    if (s.table && !isRegularLoot(s.table) && !spotHasRealLoot(s)) continue;
+    const d = rectDist(player.x, player.y, s);
+    if (d < 32) cand.push([s, d]);
+  }
   if (!cand.length) return null;
   if (cand.length > 1 && typeof viewMouseX === "function") {
     const mx = cam.x + viewMouseX(), my = cam.y + viewMouseY();
@@ -52,12 +56,15 @@ function spotPrompt(s) {
   return `Segure E: vasculhar ${s.name.toLowerCase()}`;
 }
 
-// ---------- Quantos itens vêm por lugar ----------
-// lixeira: 1 (70%) ou 2 (30%) · corpo na rua: sempre 1 · resto: 1 (70%), 2 (20%), 3 (8%), 4 (2% e +1 crédito)
-function lootCount(table) {
-  if (table === "body") return 1;
-  const r = Math.random(), k = r < 0.7 ? 1 : r < 0.9 ? 2 : r < 0.98 ? 3 : 4;
-  return table === "trash" ? Math.min(2, k) : k;
+function isRegularLoot(table) {
+  return table !== "boss" && table !== "alce_natal" && table !== "natal";
+}
+function regularLootResult(item, bonusCredit) {
+  const rarity = item?.type === "weapon" ? WDEF[item.inst.id].rar : null;
+  const keep = rarity === 4 ? 0.65 : rarity === 3 ? 0.75 : item?.type === "vest" ? 0.80 : 1;
+  const result = item && (keep === 1 || Math.random() < keep) ? [item] : [];
+  if (bonusCredit) result.push({ type: "credit", amt: 1 });
+  return result;
 }
 function lootAmt(e) { return e[1] + Math.floor(Math.random() * (e[2] - e[1] + 1)); }
 // efeitos dos implantes no saque
@@ -111,7 +118,6 @@ function implantPartsDrop(table, t, zone) {
   if (table === "boss" && Math.random() < 0.3 * f) out.push({ type: "mat", id: "coracao_demonio", amt: 1 });
   return out;
 }
-// sorteia QUANTOS itens e depois QUAIS (tipos diferentes, pesados pelo que cada lugar costuma ter)
 function blueprintDrop(table, zone) {
   if (regionOf(zone) < 4 || ["boss","airdrop","natal"].includes(table)) return [];
   const roll = Math.random();
@@ -124,8 +130,11 @@ function blueprintDrop(table, zone) {
   return [];
 }
 function rollLoot(table, zone) {
-  if (table === "airdrop") return rollLootFull(table, zone);
   if (table === "natal") return natalBoxLoot(zone);
+  if (table === "airdrop") {
+    const candidates = rollLootFull(table, zone);
+    return regularLootResult(candidates.length ? pick(candidates) : null, false);
+  }
   const ec = EMPTY_CHANCE[table] != null ? EMPTY_CHANCE[table] : EMPTY_CHANCE.furniture;
   if (Math.random() < ec * (game.inside && game.inside.landmark ? 0.45 : 1) * Math.max(0, 1 - player.fx.lootSpots / 100)) return [];
   const t = TABLES[table] || {}, sc = 1 + player.fx.scavenger / 100, vip = vipActive() ? 1.6 : 1, pool = [];
@@ -138,17 +147,19 @@ function rollLoot(table, zone) {
   // implante: só os marcados como "drop", com a mesma chance de uma arma Lendária neste lugar
   const imd = lootImplantDrop(t, zone, 2, vipActive() ? 1 : 0);
   if (imd) special.push(imd);
-  if (t.weapon && special.length < 2 && Math.random() < vestChance(t)) special.push(lootVest(zone));
-  const want = lootCount(table), k = Math.min(special.length ? want - special.length : want, pool.length), out = special;
-  for (let i = 0; i < k; i++) {
-    let r = Math.random() * pool.reduce((s, p) => s + p[1], 0), idx = 0;
-    for (; idx < pool.length - 1; idx++) { r -= pool[idx][1]; if (r <= 0) break; }
-    out.push(lootEntry(pool.splice(idx, 1)[0][0], t, table, zone));
+  if (t.weapon && Math.random() < vestChance(t)) special.push(lootVest(zone));
+  const bonusCredit = table !== "body" && table !== "trash" && Math.random() >= 0.98;
+  // Componentes e blueprints conservam seus sorteios e ocupam o mesmo espaço do item principal.
+  const bonuses = [...implantPartsDrop(table, t, zone), ...blueprintDrop(table, zone)];
+  let item = null;
+  if (bonuses.length) item = pick(bonuses);
+  else if (special.length) item = pick(special);
+  else if (pool.length) {
+    let r = Math.random() * pool.reduce((sum, [, weight]) => sum + weight, 0);
+    const entry = pool.find(([, weight]) => (r -= weight) <= 0) || pool.at(-1);
+    item = lootEntry(entry[0], t, table, zone);
   }
-  out.push(...implantPartsDrop(table, t, zone));   // componentes de implante: fora da conta de itens
-  out.push(...blueprintDrop(table, zone));
-  if (want === 4) out.push({ type: "credit", amt: 1 });
-  return out;
+  return regularLootResult(item, bonusCredit);
 }
 
 // Saque individual dos quatro alces zumbis do evento.
@@ -297,8 +308,13 @@ function spotLootPrepared(spot) {
       spot.table === "boss" ? bossLoot(spot.bossId, zone) : rollLoot(spot.table, zone);
     if (!bossDrop) {
       const dz = deadZoneDrop(zone);
-      if (dz) found.push(dz);
-      if (Math.random() < TOKEN_LOJA_CHANCE) found.push({ type: "mat", id: "token_loja", amt: 1 });   // chance fixa, sem bônus
+      const token = Math.random() < TOKEN_LOJA_CHANCE ? { type: "mat", id: "token_loja", amt: 1 } : null;
+      if (isRegularLoot(spot.table) && (token || dz)) {
+        found.splice(0, found.length, token || dz, ...found.filter(item => item.type === "credit"));
+      } else {
+        if (dz) found.push(dz);
+        if (token) found.push(token);
+      }
     }
     spot.preparedLoot = found;
     spot.preparedAt = now;
@@ -307,6 +323,7 @@ function spotLootPrepared(spot) {
 }
 function spotHasRealLoot(spot) { return spotLootPrepared(spot).length > 0; }
 function openSpot(s) {
+  if (s.opened || game.found) return;
   const found = spotLootPrepared(s).slice();
   s.opened = true; s.openedAt = game.time;
   missionProgress("search", 1); stat("searches");
@@ -314,7 +331,7 @@ function openSpot(s) {
 
   if (found.some(item => item.dead && item.type === "implant"))
     game.banner = { text: "Implante da Zona Morta!", sub: "Recompensa rara", t: 3200, gold: true };
-  if (!found.length) { sfx.empty(); toast(`${s.name}: vazio`); return; }
+  if (!found.length) { sfx.empty(); toast(`${s.name}: vazio`); checkpoint("busca sem saque"); return; }
   game.found = found; game.foundSrc = s.name; game.foundSpot = s; game.foundDrop = null; mouse.down = false;
   sfx.pickup();
 }

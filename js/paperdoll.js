@@ -820,13 +820,9 @@ function fmBalãoDetalhes(it) {
     title = invItemName(it) || "Item";
     if (kind === "weapon") {
       const base = WDEF[obj.id],
-        stat = wStat(obj),
         up = obj.up || { acc: 0, dmg: 0, rel: 0 };
       add("Categoria: " + (CAT_LABEL[base.cat] || CATNAME[base.cat] || "Arma"), "#8bc9f5");
-      add("Dano: " + Math.round(stat.dmg), "#f2e9df");
-      add("Ataques por segundo: " + (1000 / stat.delay).toFixed(2), "#eee1d2");
-      add("Aggro: " + weaponAggroText(base), base.aggroHorde ? "#ffad78" : "#8bed92");
-      if (stat.reload) add("Recarga: " + (stat.reload / 1000).toFixed(2) + " s", "#eee1d2");
+      for (const [label, value] of weaponInfoRows(base, obj)) add(`${label}: ${value}`, label === "Ferro-Velho" ? "#f4c44d" : "#eee1d2");
       const sum = (up.acc || 0) + (up.dmg || 0) + (up.rel || 0);
       if (sum) {
         add("Aprimoramento total: +" + sum, "#f4c44d");
@@ -890,7 +886,7 @@ function fmBalãoDetalhes(it) {
       add("Quantidade: " + (obj.n || 1), "#f4c44d");
     } else add("Item do inventário", "#ddd8c8");
     // quanto o Ferro Velho paga pelo item
-    const scrap = fmScrapLine(kind, obj);
+    const scrap = kind === "weapon" ? null : fmScrapLine(kind, obj);
     if (scrap) add(scrap, "#f4c44d");
   } catch (err) {
     rows.length = 0;

@@ -37,7 +37,7 @@ function libEffects(d) {
   if (d.cryo) e.push(`❄ Cryo: deixa o zumbi ${Math.round(d.cryo * 100)}% mais lento por ${(d.cryoMs || 1000) / 1000}s`);
   if (d.noCrit) e.push("nunca dá crítico");
   if (d.noTrade) e.push("intransferível");
-  if (d.explode) e.push(`explode (raio ${d.explode})`);
+  if (d.explode) e.push("ataque explosivo");
   if (d.burn) e.push(`fogo ${d.burn}/s`);
   if (d.fire) e.push("lança fogo");
   if (d.bleed) e.push(`${Math.round(d.bleed * 100)}% de sangramento`);
@@ -47,7 +47,6 @@ function libEffects(d) {
   if (d.knock) e.push("empurra");
   if (d.infinite) e.push("munição infinita (superaquece)");
   if (d.slow) e.push(`-${d.slow}% de velocidade`);
-  if (d.sound && d.sound[0] <= 0.1) e.push("silenciosa");
   return e;
 }
 function libraryKey(k) {
@@ -119,10 +118,8 @@ function drawLibraryList() {
   txt(d.name, px + 20, 278, 22, rarColor(d), "left", true, pw - 40);
   txt(`${RARITY[d.rar].name} · ${CAT_LABEL[d.cat]}${WEAPON_3D[d.id] ? " · modelo 3D" : ""}`, px + 20, 300, 13, "#ffd96a");
   // tabela de atributos em duas colunas
-  const rows = d.melee || d.cat === "melee"
-    ? [["Dano", `${d.dmg}`], ["Golpes por segundo", (1000 / d.delay).toFixed(1)], ["Alcance", `${d.range}`], ["Abertura do golpe", `${Math.round((d.arc || 0) * 57)}°`]]
-    : [["Dano", `${d.dmg}${d.pellets ? ` x${d.pellets}` : ""}`], ["Tiros por segundo", (1000 / d.delay).toFixed(1)], ["Pente", `${d.mag}`],
-       ["Recarga", `${(d.reload / 1000).toFixed(1)} s`], ["Munição", d.ammo || "infinita"]];
+  const rows = weaponInfoRows(d);
+  if (d.melee) rows.push(["Alcance", `${d.range}`]);
   rows.forEach(([k, v], j) => {
     const x = px + 20 + (j % 2) * 270, y = 330 + Math.floor(j / 2) * 24;
     txt(k, x, y, 13, "#a9a58f");

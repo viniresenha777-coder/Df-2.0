@@ -27,6 +27,28 @@ function inSafe() { return !!(game.inside && game.inside.safe); }
 function atBase() { return !!game.hub || inSafe(); }
 
 // ---------- Detalhes de uma arma (usado em várias telas) ----------
+function weaponAmmoName(d) {
+  if (d.melee) return "Não utiliza munição";
+  if (d.infinite) return "Munição infinita";
+  if (d.ammo === "virote") return "Flechas";
+  return Object.hasOwn(AMMO, d.ammo) ? d.ammo : "—";
+}
+function weaponInfoRows(d, inst) {
+  const item = inst || newInst(d.id), st = wStat(item);
+  const format = value => value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+  const attacks = 1000 / st.delay, projectiles = d.pellets || 1;
+  const reload = inst && (d.thunder || d.vindicator) ? thunderReloadTime(st) : st.reload;
+  const unavailable = d.fists || item.tokenBound || item.validadeDias;
+  return [
+    ["Munição", weaponAmmoName(d)],
+    ["Dano", `${format(st.dmg)}${projectiles > 1 ? ` × ${projectiles}` : ""}`],
+    ["Ataques/s", format(attacks)],
+    ["DPS teórico", format(st.dmg * projectiles * attacks)],
+    ["Carregador", d.melee ? "—" : format(d.mag)],
+    ["Recarga", d.melee ? "—" : `${format(reload / (d.id === "caca" ? d.mag : 1) / 1000)} s${d.id === "caca" ? " por munição" : ""}`],
+    ["Ferro-Velho", unavailable ? "Venda indisponível" : `$${format(weaponSellPrice(item))}`],
+  ];
+}
 // luz atrás da arma no lugar da caixa preta: armas escuras (espadas, coronhas) não somem no fundo
 function itemSpot(cx, cy, rx, ry) {
   ctx.save(); ctx.translate(cx, cy); ctx.scale(1, ry / rx);
@@ -39,35 +61,23 @@ function weaponDetail(d, inst, x, y, w) {
   drawWeaponSide(d, x + w / 2, y + 48, Math.min(1.6, (w - 30) / 125));
   txt(inst ? instName(inst) : d.name, x, y + 122, 18, rarColor(d), "left", true, w);
   txt(`${RARITY[d.rar].name} · ${CAT_LABEL[d.cat]}${d.craftOnly ? " · feita na oficina" : ""}`, x, y + 141, 12, rarColor(d), "left", false, w);
-  const st = wStat(inst || newInst(d.id)), rows = [];
-  rows.push(["Dano", d.pellets ? `${Math.round(st.dmg)} x${d.pellets}` : `${Math.round(st.dmg)}`]);
-  rows.push([d.melee ? "Golpes/s" : "Tiros/s", (1000 / st.delay).toFixed(d.thunder ? 2 : 1)]);
+  const st = wStat(inst || newInst(d.id)), rows = weaponInfoRows(d, inst);
   if (d.melee) rows.push(["Alcance", `${Math.round(st.range)}`]);
   else if (d.vindicator) {
-    rows.push(["Carregador", `${d.mag} · ${d.ammo}`]);
-    rows.push(["Recarga", `${(thunderReloadTime(st) / 1000).toFixed(2)} s`]);
     rows.push(["Cone de mira", `${(thunderSpread(st) * 360 / Math.PI).toFixed(2)}°`]);
     rows.push(["Crítico", `${Math.round(vindicatorCritChance())}% · 5x`]);
     rows.push(["Modo (Q)", "60/20/20% ou alvo único"]);
     rows.push(["Penetração PvE", "100%"]);
   }
   else if (d.thunder) {
-    rows.push(["Carregador", `${d.mag} · ${d.ammo}`]);
-    rows.push(["Recarga", `${(thunderReloadTime(st) / 1000).toFixed(2)} s`]);
     rows.push(["Cone de mira", `${(thunderSpread(st) * 360 / Math.PI).toFixed(2)}°`]);
     rows.push(["Crítico", "sempre (100%)"]);
     rows.push(["Tipo de dano", "Energia"]);
-    rows.push(["DPS sem recarga", `${Math.round(st.dmg * 1000 / st.delay)}`]);
   }
-  else if (d.infinite) { rows.push(["Munição", "infinita · pente de 600"]); rows.push(["Recarga", `${(st.reload / 1000).toFixed(2)} s`]); rows.push(["Crítico", "nunca"]); rows.push(["Precisão", `${Math.round(100 - st.spread * 250)}%`]); }
+  else if (d.infinite) { rows.push(["Crítico", "nunca"]); rows.push(["Precisão", `${Math.round(100 - st.spread * 250)}%`]); }
   else {
-    rows.push(["Carregador", `${d.mag} · ${d.ammo}`]);
-    rows.push(["Recarga", d.id === "caca"
-      ? `${(st.reload / d.mag / 1000).toFixed(2)} s por munição`
-      : `${(st.reload / 1000).toFixed(1)} s`]);
     rows.push(["Precisão", `${Math.round(100 - st.spread * 250)}%`]);
   }
-  rows.push(["Aggro", weaponAggroText(d)]);
   if (d.slow) rows.push(["Peso", `-${d.slow}% velocidade`]);
   if (d.lifesteal) rows.push(["Especial", `cura ${d.lifesteal * 100}% do dano`]);
   if (d.explode) rows.push(["Especial", d.grenade ? "granada explosiva" : "tiro explosivo"]);
@@ -77,7 +87,7 @@ function weaponDetail(d, inst, x, y, w) {
   if (d.stun) rows.push(["Efeito", `${Math.round(d.stun * 100)}% de atordoar`]);
   if (d.crit) rows.push(["Efeito", `+${d.crit}% de crítico`]);
   if (d.knock) rows.push(["Efeito", "empurra os zumbis"]);
-  const rh = rows.length > 9 ? 14 : 17;
+  const rh = Math.min(15, Math.floor((inst ? 158 : 146) / rows.length));
   rows.forEach(([k, v], i) => { txt(k, x, y + 164 + i * rh, 12, "#a9a58f"); txt(v, x + w, y + 164 + i * rh, 12, k === "Efeito" || k === "Especial" ? "#ffb070" : "#e5e0c8", "right", true); });
   const ry = y + 168 + rows.length * rh;
   txt(`Exige: ${reqText(d)}`, x, ry, 12, canUse(d) ? "#6fae4f" : "#e05a4a", "left", true, w);
@@ -102,12 +112,12 @@ function entryName(e) {
     case "mat": return `${e.amt}x ${MATS[e.id].name}`;
     case "implant": return `implante ${implantName(e.im)}`;
     case "vest": return VESTS[e.idx].name;
-    case "credit": return `${e.amt} crédito (sorte: 4 itens!)`;
+    case "credit": return `${e.amt} crédito bônus`;
   }
   return "?";
 }
 // coletes: guarda os que você tem e equipa o melhor automaticamente
-function gainVest(idx, mcArmor = 0) {
+function gainVest(idx, mcArmor = 0, saveImmediately = true) {
   const had = save.vestsOwned[idx];
   if (!had) { save.vestUpgrades = save.vestUpgrades || {}; save.vestUpgrades[idx] = cleanVestUpgrade(null); }
   // Processador de Guerra: coletes Mastercraft encontrados já vêm com +6 de armadura.
@@ -119,7 +129,7 @@ function gainVest(idx, mcArmor = 0) {
   save.vestsOwned[idx] = true;
   if (save.vest < 0 || VESTS[idx].armor > vestDefinition(save.vest).armor) { save.vest = idx; recalcImplants(); toast(`${VESTS[idx].name} equipado`); }
   else toast(had ? `Você já tem ${VESTS[idx].name}` : `${VESTS[idx].name} guardado (troque na mochila com V)`);
-  persist();
+  if (saveImmediately) persist();
 }
 function cycleVest() {
   const owned = VESTS.map((v, i) => i).filter((i) => save.vestsOwned[i]);
@@ -130,7 +140,7 @@ function cycleVest() {
   toast(save.vest >= 0 ? `Colete: ${vestDefinition(save.vest).name}` : "Sem colete");
 }
 function acceptFound() {
-  const e = game.found[0];
+  const e = game.found?.[0];
   if (!e) return true;
   if (e.type === "cash") { game.money += e.amt; logMoney("Saque", e.src || "loot", e.amt); }
   else if (e.type === "food") addFood(e.q || "comum", e.amt);
@@ -151,8 +161,8 @@ function acceptFound() {
   } else if (e.type === "implant") {
     if (player.bag.length >= BAG_MAX) { toast("Mochila de implantes cheia"); sfx.empty(); return false; }
     player.bag.push(e.im);
-  } else if (e.type === "vest") gainVest(e.idx, e.mcArmor || 0);
-  else if (e.type === "credit") { save.credits += e.amt; persist(); sfx.level(); }
+  } else if (e.type === "vest") gainVest(e.idx, e.mcArmor || 0, false);
+  else if (e.type === "credit") { save.credits += e.amt; sfx.level(); }
   sfx.pickup();
   stat("itemsTaken");
   if (e.type === "weapon") { registerWeapon(e.inst.id); if (WDEF[e.inst.id].rar >= 4) stat("legendaries"); }
@@ -390,7 +400,7 @@ function drawFound() {
   if (wd) {
     info = RARITY[wd.rar].name + " · " + CAT_LABEL[wd.cat] + " · Dano " + wd.dmg +
       (wd.pellets ? " x" + wd.pellets : "") +
-      (wd.melee ? " · Sem munição" : " · " + wd.mag + " balas");
+      " · " + weaponAmmoName(wd);
   } else if (e.type === "mat") info = MATS[e.id]?.blueprint ? "Lendário · Blueprint de fabricação" : "Material de criação e melhoria";
   else if (e.type === "implant") info = implantDesc(e.im);
   else if (e.type === "food") info = "Alimento encontrado";

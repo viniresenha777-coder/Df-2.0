@@ -115,9 +115,10 @@ function makeArea(cell) {
   // decorativos. Índices antigos permanecem iguais; os novos são anexados.
   if (Array.isArray(cell._savedLoot)) {
     wd.lootList.forEach((loot, i) => {
-      if (cell._savedLoot[i]) {
+      const openedAt = cell._savedLoot[i];
+      if (openedAt === true || Number.isFinite(openedAt)) {
         loot.opened = true;
-        loot.openedAt = 0;
+        loot.openedAt = openedAt === true ? game.time : openedAt;
       }
     });
     cell._savedLoot = null;
@@ -558,7 +559,9 @@ function activateArea() {
   if (world.pop) return;
   world.pop = true;
   if (typeof fmWorld !== "undefined" && fmWorld.isFollower()) { fmWorld.requestSync(); return; }
-  for (const o of world.lootList) if (o.opened && game.time - o.openedAt > 300000) o.opened = false; // saques voltam depois de 5 min
+  for (const o of world.lootList) if (o.opened && game.time - o.openedAt > 300000) {
+    o.opened = false; o.preparedLoot = null;
+  } // saques voltam depois de 5 min
   const z = cell.zone, reg = regionOf(z), frac = clamp((game.time - cell.leftAt) / 90000, 0.25, 1);
   let n = Math.round(Math.min(18, z === 0 ? 5 : 7 + (z % REGION_ROWS) * 1.2 + reg * 1.1) * ZOMBIE_MULT * REGIONS[reg].spawn * frac * (isNight() ? 1.25 : 1));
   if (cell.op != null) n = Math.round(n * 0.6);

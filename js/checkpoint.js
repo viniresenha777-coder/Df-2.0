@@ -46,7 +46,7 @@ function runSnapshot() {
       cells: allCells().map((cell) => ({
         cx: cell.cx, cy: cell.cy, boss: cell.boss, bossHp: cell.bossHp,
         cleared: !!cell.cleared, leftAt: cell.leftAt, visited: !!cell.visited,
-        loot: cell.w ? cell.w.lootList.map((it) => !!it.opened) : cell._savedLoot || null,
+        loot: cell.w ? cell.w.lootList.map((it) => it.opened ? Math.max(1, Math.round(it.openedAt || 0)) : null) : cell._savedLoot || null,
         ins: cell.w ? insideLootState(cell.w) : cell._savedIn || null
       }))
     } : null

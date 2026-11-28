@@ -944,8 +944,18 @@ function drawCreditShopCatalog(section) {
     "center",
   );
   txt(selected.title, 631, 282, 18, "#f5e7d5", "left", true, 282);
-  if (selected.kind !== "weapon" || !drawVingadorMenuArt(selected.item, 774, 350, 280)) creditShopArt(selected, 774, 350, selected.kind === "weapon" ? 1.44 : 1.5);
-  txtWrap(creditShopDescription(selected), 631, 417, 12, "#e3d3c3", 282, 15, 4);
+  if (selected.kind === "weapon") {
+    if (!drawVingadorMenuArt(selected.item, 774, 326, 220)) creditShopArt(selected, 774, 326, 1.15);
+    weaponInfoRows(selected.item).forEach(([label, value], i) => {
+      const y = 365 + 13 * i;
+      txt(label, 631, y, 11, "#c4b5a4");
+      txt(value, 913, y, 11, "#f5e7d5", "right", true);
+    });
+    txt(`Requisitos: ${reqText(selected.item)}`, 631, 462, 11, "#e3d3c3", "left", false, 282);
+  } else {
+    creditShopArt(selected, 774, 350, 1.5);
+    txtWrap(creditShopDescription(selected), 631, 417, 12, "#e3d3c3", 282, 15, 4);
+  }
   if (creditShopCanBuy(selected)) {
     creditShopButton(
       631,
