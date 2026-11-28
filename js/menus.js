@@ -1890,6 +1890,10 @@ function drawMap() {
       const label = natal ? " · 4 alces · 1 Papai Noel" : ` · deixa: ${B.drop}`;
       txt(`☠ ${B.name}${label}`, lx, y, 13, natal ? "#68f18c" : "#e04a4a", "left", true, 380);
       y += 18;
+      if (B.demonHeartChance) {
+        txt(`Coração do Demônio · ${Math.round(B.demonHeartChance * 100)}% de chance`, lx, y, 12, "#e04a4a");
+        y += 18;
+      }
     }
     if (sel.tier === 8) { txt(`Só a partir do nível ${GRAY_LEVEL}${player.level >= GRAY_LEVEL ? " (liberada)" : ` · você está no ${player.level}`}`, lx, y, 12, player.level >= GRAY_LEVEL ? "#8fd08a" : "#ff8a6a", "left", true); y += 18; }
     const dist = Math.abs(sel.cx - here.cx) + Math.abs(sel.cy - here.cy);

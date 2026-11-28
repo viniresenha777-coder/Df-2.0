@@ -110,7 +110,7 @@ function lootImplantDrop(t, zone, k, boost) {
   return im ? { type: "implant", im } : null;
 }
 // Componentes dos implantes X/Err X: só da região Vermelha (4) para cima.
-// Lugares com arma: 1,5% · airdrop: 25% · chefe: 40% de um componente e 30% de Coração do Demônio.
+// Lugares com arma: 1,5% · airdrop: 25% · tabela cheia de chefe: 40% de um componente.
 const IMP_PARTS = ["placa_circuito", "interface_implante", "bateria_implante", "sucata_rara"];
 function miscLootMult() { return 1 + (player.fx.miscFind + (player.fx.miscBlueprintFind || 0)) / 100; }
 function implantPartsDrop(table, t, zone) {
@@ -118,7 +118,6 @@ function implantPartsDrop(table, t, zone) {
   const out = [], f = miscLootMult();
   const pc = table === "boss" ? 0.4 : table === "airdrop" ? 0.25 : t.weapon ? 0.015 : 0;
   if (pc && Math.random() < pc * f) out.push({ type: "mat", id: pick(IMP_PARTS), amt: 1 });
-  if (table === "boss" && Math.random() < 0.3 * f) out.push({ type: "mat", id: "coracao_demonio", amt: 1 });
   return out;
 }
 function blueprintDrop(table, zone) {
@@ -209,6 +208,8 @@ function bossLoot(id, zone) {
     }
     default:           out = [Wp(2, 3), bossVest(1, 4)];
   }
+  const heartChance = BOSSES[id]?.demonHeartChance;
+  if (heartChance && Math.random() < heartChance) out.push({ type: "mat", id: "coracao_demonio", amt: 1 });
   return out;
 }
 
@@ -299,8 +300,14 @@ function spotLootPrepared(spot) {
       spot.kind === "door" || spot.kind === "decor" || spot.kind === "exit") return [];
   const now = game.time || 0;
   const bossDrop = spot.table === "boss" || spot.table === "alce_natal";
-  const obsoleteDrop = bossDrop && spot.preparedLoot?.some(item => item.type !== "weapon" && item.type !== "vest");
-  if (obsoleteDrop || !spot.preparedLoot || (spot.table !== "alce_natal" && spot.preparedAt != null && now - spot.preparedAt >= 300000)) {
+  const heartBoss = spot.table === "boss" && !!BOSSES[spot.bossId]?.demonHeartChance;
+  const obsoleteDrop = bossDrop && spot.preparedLoot?.some(item =>
+    item.type !== "weapon" && item.type !== "vest" &&
+    !(heartBoss && item.type === "mat" && item.id === "coracao_demonio")
+  );
+  // O coração é sorteado uma única vez por corpo, inclusive quando o sorteio não dá item.
+  const expired = !heartBoss && spot.table !== "alce_natal" && spot.preparedAt != null && now - spot.preparedAt >= 300000;
+  if (obsoleteDrop || !spot.preparedLoot || expired) {
     // Bosses e alces usam a região exata do encontro, não a rua em que o
     // corpo caiu. Isso mantém as raridades proporcionais à cor do mapa.
     const zone = Number.isFinite(spot.zone) ? spot.zone :

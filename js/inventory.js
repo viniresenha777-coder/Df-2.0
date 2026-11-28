@@ -1476,7 +1476,7 @@ function drawCraft() {
             11, available >= count ? "#6fae4f" : "#e05a4a", "left", true, 154);
         });
         txt("O implante e os materiais são consumidos", px, 459, 11, "#a9a58f", "left", false, pw);
-        txt(r.mats.coracao_demonio ? "Componentes: região Vermelha+ · Coração do Demônio: chefes" : "Componentes: região Vermelha+",
+        txt(r.mats.coracao_demonio ? "Coração do Demônio: O Alfa e O Ceifador" : "Componentes: região Vermelha+",
           px, 533, 11, "#ffd96a", "left", false, pw);
       } else {
         txt(`Gorros de Natal: ${matCount("gorro_natal")}/${r.mats.gorro_natal}`, px, 390, 12, hasMats(r.mats) ? "#6fae4f" : "#e05a4a", "left", true, pw);

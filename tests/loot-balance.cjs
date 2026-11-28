@@ -6,6 +6,7 @@ const { test } = require('node:test');
 
 const source = fs.readFileSync(path.join(__dirname, '../js/interact.js'), 'utf8');
 const items = fs.readFileSync(path.join(__dirname, '../js/items.js'), 'utf8');
+const config = fs.readFileSync(path.join(__dirname, '../js/config.js'), 'utf8');
 function section(text, start, end) { return text.slice(text.indexOf(start), text.indexOf(end)); }
 function fixture() {
   let seed = 123456;
@@ -21,7 +22,8 @@ function fixture() {
   mouse: {}, rowAt: () => 0, deadZoneDrop: () => null, TOKEN_LOJA_CHANCE: 0,
   checkpoint: reason => events.push(reason), toast: message => events.push(message), missionProgress() {},
   stat: id => events.push(id), sfx: { pickup() {}, empty() {} } });
-  vm.runInContext(section(items, 'const REGULAR_LEGENDARY_REGION', 'function rollRarity(') +
+  vm.runInContext(section(config, 'const BOSSES =', 'const BOSS_SPEED =') +
+    section(items, 'const REGULAR_LEGENDARY_REGION', 'function rollRarity(') +
     source.slice(0, source.indexOf('function makeInterior(')), context);
   return { context, events, game };
 }
@@ -71,7 +73,6 @@ test('um spot não pode ser aberto de novo e Natal mantém a recompensa própria
 
 test('armas lendárias respeitam a área mínima de cada fonte e a exceção VIP', () => {
   const { context: ctx } = fixture();
-  const config = fs.readFileSync(path.join(__dirname, '../js/config.js'), 'utf8');
   ctx.GRAY_LEVEL = 100;
   ctx.TABLES.airdrop = { weapon: 1 };
   ctx.TABLES.boss = {};
@@ -111,4 +112,45 @@ test('armas lendárias respeitam a área mínima de cada fonte e a exceção VIP
     ctx.Math.random = () => 1 - chance + 1e-8;
     assert.equal(ctx.rollRarity(zone, 1, 4), 4);
   }
+});
+
+test('Apenas Alfa e Ceifador podem deixar um Coração do Demônio, com 15% por corpo', () => {
+  const { context: ctx, game } = fixture();
+  ctx.WLIST = [{ id: 'rare', rar: 2 }, { id: 'epic', rar: 3 }, { id: 'ak_ouro', rar: 4 }];
+  ctx.UP_STATS = [{ id: 'dmg' }];
+  ctx.UP_MAX = 8;
+  ctx.player.fx.miscBlueprintFind = 100;
+  ctx.vipActive = () => true;
+  const hearts = loot => Array.from(loot).filter(item => item.id === 'coracao_demonio');
+
+  for (const [bossId, zone] of [['alfa', 18], ['ceifador', 21]]) {
+    ctx.Math.random = () => 0.149999;
+    const hit = { table: 'boss', kind: 'corpse', bossId, zone };
+    const reward = ctx.spotLootPrepared(hit);
+    assert.equal(reward.length, 3);
+    assert.equal(hearts(reward)[0].amt, 1);
+
+    ctx.Math.random = () => 0.15;
+    const miss = { table: 'boss', kind: 'corpse', bossId, zone };
+    const ordinaryReward = ctx.spotLootPrepared(miss);
+    assert.equal(ordinaryReward.length, 2);
+    assert.equal(hearts(ordinaryReward).length, 0);
+
+    game.time += 300001;
+    assert.equal(ctx.spotLootPrepared(hit), reward);
+    ctx.Math.random = () => 0;
+    assert.equal(ctx.spotLootPrepared(miss), ordinaryReward);
+    ctx.openSpot(hit);
+    assert.equal(hearts(game.found).length, 1);
+    game.found = null;
+    ctx.openSpot(hit);
+    assert.equal(game.found, null);
+  }
+  ctx.Math.random = () => 0;
+  for (const id of ['acougueiro', 'matriarca', 'capataz', 'pestilento', 'carrasco', 'necromante', 'santa_natal']) {
+    assert.equal(hearts(ctx.bossLoot(id, 24)).length, 0, id);
+  }
+  ctx.regionOf = () => 7;
+  assert.equal(hearts(ctx.implantPartsDrop('boss', {}, 21)).length, 0);
+  assert.equal(hearts(ctx.implantPartsDrop('airdrop', {}, 21)).length, 0);
 });

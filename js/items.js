@@ -199,9 +199,9 @@ const RECIPES = [
   { id: "serra",       mats: { sucata: 6, pecas: 3, eletronicos: 3 },     money: 20000, level: 10 },
   { id: "lancachamas", mats: { sucata: 8, pecas: 5, eletronicos: 3 },     money: 35000, level: 15 },
   { id: "lamina",      mats: { sucata: 10, pecas: 4, nucleo: 1 },         money: 60000, level: 25 },
-  { id: "trovao", mats: { pecas: 30, coracao_demonio: 2 }, money: 10000000, credits: 250, level: 75 },
+  { id: "trovao", mats: { pecas: 30, sucata: 20, coracao_demonio: 2, nucleo: 50, blueprint_sniper: 1 }, money: 10000000, credits: 250, level: 75 },
   { id: "besta", mats: { pecas: 12, eletronicos: 6, nucleo: 5, blueprint_sniper: 1 }, money: 2000000, level: 40 },
-  { id: "vingador", mats: { pecas: 28, coracao_demonio: 2 }, money: 9000000, credits: 230, level: 75 },
+  { id: "vingador", mats: { pecas: 25, sucata: 17, coracao_demonio: 2, nucleo: 35, blueprint_sniper: 1 }, money: 9000000, credits: 230, level: 75 },
   { id: "minigun_inf_oficina", mats: { pecas: 14, eletronicos: 10, nucleo: 4, blueprint_fuzil: 1 },   money: 250000, level: 60 },
   // colete nº 10: craft difícil (precisa ter o nº 9, que é consumido)
   { vest: 9, mats: { sucata: 40, pecas: 30, eletronicos: 20, nucleo: 8, placa: 3 }, money: 500000, level: 100, needVest: 8 },

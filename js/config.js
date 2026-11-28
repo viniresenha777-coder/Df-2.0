@@ -178,8 +178,8 @@ const BOSSES = {
   pestilento: { name: "O Pestilento", tiers: [4, 5],       healthByTier: [20000, 30000],  spd: 0.9,  r: 28, skin: "#8a4a3a", cloth: "#4a2a20", drop: "Itens especiais" },
   carrasco:   { name: "O Carrasco",   tiers: [4, 5],       healthByTier: [30000, 100000],  spd: 0.95, r: 28, skin: "#a07060", cloth: "#1a1a1a", drop: "Arma única" },
   necromante: { name: "O Necromante", tiers: [5, 6],       healthByTier: [30000, 100000],    spd: 0.9,  r: 24, skin: "#5a6a4a", cloth: "#1e2a1e", drop: "Implantes raros" },
-  alfa:       { name: "O Alfa",       tiers: [6, 7],       healthByTier: [100000, 100000],  spd: 2.1,  r: 26, skin: "#7a4a3a", cloth: "#4a2a20", drop: "Equipamento premium" },
-  ceifador:   { name: "O Ceifador",   tiers: [7, 8],       healthByTier: [200000, 300000],  spd: 1.2,  r: 26, skin: "#3a3a3a", cloth: "#121214", drop: "Itens lendários" },
+  alfa:       { name: "O Alfa",       tiers: [6, 7],       healthByTier: [100000, 100000],  spd: 2.1,  r: 26, skin: "#7a4a3a", cloth: "#4a2a20", drop: "Equipamento premium", demonHeartChance: 0.15 },
+  ceifador:   { name: "O Ceifador",   tiers: [7, 8],       healthByTier: [200000, 300000],  spd: 1.2,  r: 26, skin: "#3a3a3a", cloth: "#121214", drop: "Itens lendários", demonHeartChance: 0.15 },
   santa_natal: { name: "Papai Noel Zumbi", tiers: [0,1,2,3,4,5,6,7,8], hp: 1.3, spd: 1.05, r: 37, skin: "#9b6c5c", cloth: "#a12226", drop: "Equipamento de Natal conforme a cor da área" }
 };
 const BOSS_SPEED = 1.2; // todos os chefes andam 20% mais rápido
