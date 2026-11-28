@@ -25,8 +25,22 @@ test('todas as armas do cadastro exibem estatísticas e munição consistentes',
     assert.equal(Object.keys(fields).length, 7, id);
     assert.ok(fields['DPS teórico'], id);
   }
-  assert.equal(info.pistolalamina.Dano, '14 × 4');
-  assert.equal(info.pistolalamina['DPS teórico'], '84');
+  assert.equal(info.pistolalamina.Dano, '45 × 4');
+  assert.equal(info.pistolalamina['DPS teórico'], '270');
+  const expectedDamage = {
+    pistola: 30, colt: 45, glock: 9, silenciada: 42, revolver: 65, deagle: 60,
+    pistola_natal: 100, uzi: 9, mp5: 13, p90: 18, vector: 26, ak47: 20,
+    m4: 24, fal: 28, scar: 34, ak_ouro: 30, lancachamas: 3, m249: 30,
+    minigun: 22, minigun_inf_oficina: 23, minigun_inf: 23, canoduplo: 6, escopeta: 7, spas: 15,
+    aa12: 15, incendiaria: 24, dose: 12, pistolalamina: 45, caca: 85, sniper: 130,
+    barrett: 280, choque: 110, lancador: 200, besta: 400, vingador: 600, trovao: 1000,
+    faca: 16, taco: 35, facao: 55, katana: 50, machado: 75, marreta: 140,
+    serra: 15, espada: 190, lamina: 250, katana_dragao: 350, espadafogo: 280, espadaserra: 50,
+    punhos: 8,
+  };
+  const weaponDamage = vm.runInContext('Object.fromEntries(WLIST.map(d => [d.id, wStat(newInst(d.id)).dmg]))', context);
+  assert.equal(Object.keys(weaponDamage).length, 49);
+  assert.deepEqual({ ...weaponDamage }, expectedDamage);
   assert.equal(info.minigun_inf['Munição'], 'Munição infinita');
   assert.equal(info.minigun_inf_oficina['Munição'], '5.56');
   assert.equal(info.besta['Munição'], 'Flechas');

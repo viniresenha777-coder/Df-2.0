@@ -210,7 +210,6 @@ window.addEventListener("keydown", (e) => {
     return;
   }
   if (k === "k" && !game.hub) { toggleFlashlight(); return; }
-  if (k === "q" && !game.hub && curW().vindicator) { player.vindicatorAlt = !player.vindicatorAlt; toast("Vingador · " + (player.vindicatorAlt ? "ALVO ÚNICO" : "PERFURAÇÃO DE 3 ALVOS")); return; }
   if (k === "q" && !game.hub && curW().id === "glock") {
     player.glockMode = player.glockMode === "single" ? "burst" : "single";
     player.glockBurstLeft = 0;

@@ -296,7 +296,7 @@ const fmSocial = (() => {
     if (!prev || !sameLocation(prev) || !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.a) || !WDEF[p.w]) return;
     if (Math.hypot(p.x - prev.x, p.y - prev.y) > 260) return;    // tiro longe de onde o jogador está: ignora
     const weapon = WDEF[p.w];
-    if (!weapon.melee) netShot(p.x, p.y, p.a, weapon.vindicator ? { ...weapon, pierce: !p.alt } : weapon, Math.max(1, Math.min(8, p.n | 0)));
+    if (!weapon.melee) netShot(p.x, p.y, p.a, weapon, Math.max(1, Math.min(8, p.n | 0)));
     weaponNoise(weapon, prev.x, prev.y, p.silence);
     prev.flashAt = performance.now();
   }
@@ -492,7 +492,7 @@ function netShot(x, y, a, w, n) {
   else for (let i = 0; i < n; i++) {
     const aa = w.vindicator ? a : a + (Math.random() - 0.5) * 2 * (w.spread || 0.05) * (n > 1 ? 1 : 0.5);
     const sp = (w.speed || 12) * (w.fire ? rand(0.8, 1.2) : 1);
-    bullets.push({ x, y, px: x, py: y, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, life: w.life || 900, max: w.life || 900, ghost: true, maxTargets: w.vindicator ? (w.pierce ? 3 : 1) : 0,
+    bullets.push({ x, y, px: x, py: y, vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, life: w.life || 900, max: w.life || 900, ghost: true,
       dmg: 0, pierce: !!w.pierce, hit: [], big: w.cat === "rifles" || w.rar >= 3, fire: !!w.fire, explode: w.explode || 0, bolt: w.look === "crossbow",
       grenade: !!w.grenade, fx: w, knock: false, color: w.rar >= 3 ? RARITY[w.rar].color : null });
   }

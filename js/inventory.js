@@ -65,9 +65,9 @@ function weaponDetail(d, inst, x, y, w) {
   if (d.melee) rows.push(["Alcance", `${Math.round(st.range)}`]);
   else if (d.vindicator) {
     rows.push(["Cone de mira", `${(thunderSpread(st) * 360 / Math.PI).toFixed(2)}°`]);
-    rows.push(["Crítico", `${Math.round(vindicatorCritChance())}% · 5x`]);
-    rows.push(["Modo (Q)", "60/20/20% ou alvo único"]);
-    rows.push(["Penetração PvE", "100%"]);
+    rows.push(["Crítico", `${Math.round(vindicatorCritChance())}% · 2×`]);
+    rows.push(["Alvos por tiro", "1"]);
+    rows.push(["Ignora armadura PvE", "100%"]);
   }
   else if (d.thunder) {
     rows.push(["Cone de mira", `${(thunderSpread(st) * 360 / Math.PI).toFixed(2)}°`]);

@@ -206,7 +206,7 @@ function hurt(z, dmg, ang, quiet, fx) {
   if (player.fx.rage && player.hp / player.maxHp < 0.4) d *= 1 + player.fx.rage / 100;
   if (fx?.alwaysCrit || (fx?.shotCrit ?? (!(fx && fx.noCrit) && Math.random() * 100 < Math.min(85, A("crit") * 0.5 + player.fx.crit + (fx && fx.crit ? fx.crit : 0))))) {
     // O dano do Trovão já inclui o crítico base; não duplicar os 1000.
-    d *= fx?.alwaysCrit ? 1 + player.fx.critDmg / 200 : fx?.vindicator ? 5 + player.fx.critDmg / 100 : 2 + player.fx.critDmg / 100;
+    d *= fx?.alwaysCrit ? 1 + player.fx.critDmg / 200 : fx?.vindicator ? 2 : 2 + player.fx.critDmg / 100;
     crit = true;
   }
   if (fx?.damageType === "energy") {
@@ -324,9 +324,8 @@ function attack() {
     player.shotAng = shotAngle;
   }
   else if (w.vindicator) {
-    const a = aim + (Math.random() * 2 - 1) * thunderSpread(st), alt = !!player.vindicatorAlt;
-    const fractions = alt ? [1] : [0.6, 0.2, 0.2];
-    bullets.push({ x: mx, y: my, px: mx, py: my, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, life: w.life, max: w.life, dmg: st.dmg * fractions[0], baseDmg: st.dmg, fractions, pierce: !alt, hit: [], big: true, fx: { ...w, shotCrit: Math.random() * 100 < vindicatorCritChance() }, color: RARITY[w.rar].color });
+    const a = aim + (Math.random() * 2 - 1) * thunderSpread(st);
+    bullets.push({ x: mx, y: my, px: mx, py: my, vx: Math.cos(a) * w.speed, vy: Math.sin(a) * w.speed, life: w.life, max: w.life, dmg: st.dmg, hit: [], big: true, fx: { ...w, shotCrit: Math.random() * 100 < vindicatorCritChance() }, color: RARITY[w.rar].color });
     player.shotAng = a;
   }
   else for (let i = 0; i < n; i++) {
@@ -336,7 +335,7 @@ function attack() {
       dmg: st.dmg * dmgMult(w), pierce: !!w.pierce, hit: [], big: w.cat === "rifles" || w.rar >= 3, fire: !!w.fire, explode: w.explode || 0, bolt: w.look === "crossbow",
       grenade: !!w.grenade, fx: w, knock: !!w.knock, color: w.rar >= 3 ? RARITY[w.rar].color : null });
   }
-  if (typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(mx, my, (w.thunder || w.vindicator) ? player.shotAng : aim, w.id, n, player.fx.silence, w.vindicator && player.vindicatorAlt);   // os outros veem o tiro
+  if (typeof fmSocial !== "undefined" && fmSocial.sendShot) fmSocial.sendShot(mx, my, (w.thunder || w.vindicator) ? player.shotAng : aim, w.id, n, player.fx.silence, !!w.vindicator);   // alt=true mantém alvo único nos clientes antigos
   if (!w.fire) {
     player.flashT = 60;
     player.thunderFlash = !!w.thunder;
@@ -622,8 +621,7 @@ function updateBullets(dt, k) {
         if (b.fire) { b.hit.push(z); hurt(z, b.dmg, null, Math.random() < 0.7, b.fx); continue; }
         hurt(z, b.dmg, Math.atan2(b.vy, b.vx), false, b.fx);
         if (b.explode) { b.life = 0; explode(b.x, b.y, b.explode, b.dmg * 0.5); break; }
-        if (b.fractions) { b.hit.push(z); if (b.hit.length >= b.fractions.length) { b.life = 0; break; } b.dmg = b.baseDmg * b.fractions[b.hit.length]; }
-        else if (b.pierce) { b.hit.push(z); b.dmg *= 0.8; } else { b.life = 0; break; }
+        if (b.pierce) { b.hit.push(z); b.dmg *= 0.8; } else { b.life = 0; break; }
       }
     }
     b.life -= dt;
@@ -636,7 +634,7 @@ function ghostBullet(b, list, dt, k) {
   for (let s = 0; s < 2 && b.life > 0; s++) {
     b.x += (b.vx * k) / 2; b.y += (b.vy * k) / 2;
     let stop = !!hitObstacle(b.x, b.y);
-    if (!stop && !b.fire) for (const z of list) if (z.hp > 0 && !b.hit.includes(z) && zDist(z, b.x, b.y) < z.r + 3) { if (b.maxTargets) { b.hit.push(z); stop = b.hit.length >= b.maxTargets; } else stop = !b.pierce; if (stop) break; }
+    if (!stop && !b.fire && !b.pierce) stop = list.some(z => z.hp > 0 && zDist(z, b.x, b.y) < z.r + 3);
     if (stop) {
       b.life = 0;
       if (b.explode) {
